@@ -45,6 +45,12 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
     private var pathAttributes: [String: String]?
     private var propertyName: String?
     private var text = ""
+    private let fractionalDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private let dateFormatter = ISO8601DateFormatter()
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
@@ -69,7 +75,7 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
         switch elementName {
         case "author": author = text
-        case "date": date = ISO8601DateFormatter().date(from: text)
+        case "date": date = parseDate(text)
         case "msg": message = text
         case "path":
             if let attributes = pathAttributes {
@@ -86,7 +92,12 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
             pathAttributes = nil
         case "property":
             if let propertyName {
-                revisionProperties.append(SVNRevisionProperty(name: propertyName, value: text))
+                switch propertyName {
+                case "svn:author": author = text
+                case "svn:date": date = parseDate(text)
+                case "svn:log": message = text
+                default: revisionProperties.append(SVNRevisionProperty(name: propertyName, value: text))
+                }
             }
             propertyName = nil
         case "logentry":
@@ -106,5 +117,9 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
         default: break
         }
         text = ""
+    }
+
+    private func parseDate(_ value: String) -> Date? {
+        fractionalDateFormatter.date(from: value) ?? dateFormatter.date(from: value)
     }
 }

@@ -31,6 +31,7 @@ import Testing
     #expect(entries[0].revision == "13267")
     #expect(entries[0].author == "thkim")
     #expect(entries[0].email == "thkim@example.com")
+    #expect(entries[0].date != nil)
     #expect(entries[0].message == "master 소스 반영")
     #expect(entries[0].changedPaths.count == 2)
     #expect(entries[0].changedPaths[0].path == "/trunk/Sources/App.swift")
@@ -39,4 +40,22 @@ import Testing
     #expect(entries[0].changedPaths[1].copyFromPath == "/branches/work")
     #expect(entries[0].changedPaths[1].copyFromRevision == "13260")
     #expect(entries[0].revisionProperties.map(\.name) == ["author-email", "reviewer"])
+}
+
+@Test func parsesStandardRevisionPropertiesAndDateWithoutFractionalSeconds() throws {
+    let xml = """
+    <?xml version="1.0"?><log><logentry revision="13268"><revprops>
+      <property name="svn:author">thkim</property>
+      <property name="svn:date">2026-07-15T01:02:03Z</property>
+      <property name="svn:log">revprop 형식 커밋</property>
+    </revprops></logentry></log>
+    """
+
+    let entries = try SVNXMLParser.logs(from: Data(xml.utf8))
+
+    #expect(entries.count == 1)
+    #expect(entries[0].author == "thkim")
+    #expect(entries[0].date != nil)
+    #expect(entries[0].message == "revprop 형식 커밋")
+    #expect(entries[0].revisionProperties.isEmpty)
 }
