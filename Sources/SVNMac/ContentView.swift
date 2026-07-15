@@ -313,19 +313,13 @@ private struct AddRepositoryView: View {
 
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = "체크아웃할 상위 폴더 선택"
+        panel.title = "체크아웃할 로컬 폴더 선택"
         panel.prompt = "선택"
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let parent = panel.url else { return }
-        destinationPath = parent.appendingPathComponent(suggestedFolderName).path
-    }
-
-    private var suggestedFolderName: String {
-        let trimmed = repositoryURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
-        let name = trimmed.split(separator: "/").last.map(String.init) ?? "svn-project"
-        return name.removingPercentEncoding ?? name
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        destinationPath = destination.standardizedFileURL.path
     }
 }
 
