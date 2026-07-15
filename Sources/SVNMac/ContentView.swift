@@ -26,9 +26,22 @@ struct ContentView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                HStack {
-                    Button(action: { store.isShowingAddRepository = true }) { Image(systemName: "plus") }
-                    Button(action: store.removeSelectedProject) { Image(systemName: "minus") }
+                HStack(spacing: 6) {
+                    Button(action: { store.isShowingAddRepository = true }) {
+                        Image(systemName: "plus")
+                            .frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .frame(width: 30, height: 24)
+
+                    Button(action: store.removeSelectedProject) {
+                        Image(systemName: "minus")
+                            .frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .frame(width: 30, height: 24)
                         .disabled(store.selectedProject == nil)
                     Spacer()
                 }
