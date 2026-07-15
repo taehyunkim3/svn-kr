@@ -53,7 +53,8 @@ private struct KeychainError: LocalizedError {
     let status: OSStatus
 
     var errorDescription: String? {
-        let detail = SecCopyErrorMessageString(status, nil) as String? ?? "알 수 없는 오류"
-        return "Keychain 처리 실패: \(detail)"
+        let detail = SecCopyErrorMessageString(status, nil) as String?
+            ?? AppLanguage.current.text("알 수 없는 오류", "Unknown error")
+        return AppLanguage.current.text("Keychain 처리 실패: \(detail)", "Keychain operation failed: \(detail)")
     }
 }

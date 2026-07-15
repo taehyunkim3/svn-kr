@@ -2,44 +2,84 @@ import Foundation
 import SwiftUI
 
 enum AppSettings {
+    static let languageKey = "app-language"
+    static let defaultLanguage = AppLanguage.korean.rawValue
     static let historyTimeZoneKey = "history-time-zone"
     static let defaultHistoryTimeZone = "Asia/Seoul"
     static let systemHistoryTimeZone = "__system__"
 
-    static let historyTimeZones: [(identifier: String, label: String)] = [
-        ("Asia/Seoul", "한국 표준시 (KST, UTC+9)"),
-        (systemHistoryTimeZone, "Mac 시스템 시간대 (\(TimeZone.current.identifier))"),
-        ("UTC", "협정 세계시 (UTC)"),
-        ("Asia/Tokyo", "일본 표준시 (JST, UTC+9)"),
-        ("America/Los_Angeles", "미국 태평양 시간"),
-        ("America/New_York", "미국 동부 시간"),
-        ("Europe/London", "영국 시간"),
-    ].reduce(into: []) { result, item in
-        if !result.contains(where: { $0.identifier == item.0 }) {
-            result.append((identifier: item.0, label: item.1))
+    static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
+        [
+            ("Asia/Seoul", language.text("한국 표준시 (KST, UTC+9)", "Korea Standard Time (KST, UTC+9)")),
+            (systemHistoryTimeZone, language.text("Mac 시스템 시간대 (\(TimeZone.current.identifier))", "Mac system time zone (\(TimeZone.current.identifier))")),
+            ("UTC", language.text("협정 세계시 (UTC)", "Coordinated Universal Time (UTC)")),
+            ("Asia/Tokyo", language.text("일본 표준시 (JST, UTC+9)", "Japan Standard Time (JST, UTC+9)")),
+            ("America/Los_Angeles", language.text("미국 태평양 시간", "US Pacific Time")),
+            ("America/New_York", language.text("미국 동부 시간", "US Eastern Time")),
+            ("Europe/London", language.text("영국 시간", "UK Time")),
+        ].reduce(into: []) { result, item in
+            if !result.contains(where: { $0.identifier == item.0 }) {
+                result.append((identifier: item.0, label: item.1))
+            }
         }
     }
 }
 
+enum AppLanguage: String, CaseIterable {
+    case korean = "ko"
+    case english = "en"
+
+    static var current: AppLanguage {
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: AppSettings.languageKey) ?? AppSettings.defaultLanguage) ?? .korean
+    }
+
+    func text(_ korean: String, _ english: String) -> String {
+        self == .english ? english : korean
+    }
+}
+
+private struct AppLanguageEnvironmentKey: EnvironmentKey {
+    static let defaultValue = AppLanguage.korean
+}
+
+extension EnvironmentValues {
+    var appLanguage: AppLanguage {
+        get { self[AppLanguageEnvironmentKey.self] }
+        set { self[AppLanguageEnvironmentKey.self] = newValue }
+    }
+}
+
 struct AppSettingsView: View {
+    @AppStorage(AppSettings.languageKey)
+    private var languageIdentifier = AppSettings.defaultLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
 
+    private var appLanguage: AppLanguage {
+        AppLanguage(rawValue: languageIdentifier) ?? .korean
+    }
+
     var body: some View {
         Form {
-            Picker("커밋 기록 시간대", selection: $historyTimeZoneIdentifier) {
-                ForEach(AppSettings.historyTimeZones, id: \.identifier) { timeZone in
+            Picker(appLanguage.text("언어", "Language"), selection: $languageIdentifier) {
+                Text("한국어").tag(AppLanguage.korean.rawValue)
+                Text("English").tag(AppLanguage.english.rawValue)
+            }
+            .help(appLanguage.text("앱 화면에 사용할 언어를 선택합니다.", "Choose the language used in the app interface."))
+
+            Picker(appLanguage.text("커밋 기록 시간대", "Commit history time zone"), selection: $historyTimeZoneIdentifier) {
+                ForEach(AppSettings.historyTimeZones(for: appLanguage), id: \.identifier) { timeZone in
                     Text(timeZone.label).tag(timeZone.identifier)
                 }
             }
-            .help("커밋 기록의 날짜와 시간을 표시할 기준 시간대를 선택합니다.")
+            .help(appLanguage.text("커밋 기록의 날짜와 시간을 표시할 기준 시간대를 선택합니다.", "Choose the time zone used for commit dates and times."))
 
-            Text("기본값은 한국 표준시(KST)이며 커밋 원본 시각은 변경하지 않습니다.")
+            Text(appLanguage.text("기본값은 한국 표준시(KST)이며 커밋 원본 시각은 변경하지 않습니다.", "The default is Korea Standard Time (KST). This does not change the original commit time."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 520, height: 180)
+        .frame(width: 560, height: 230)
     }
 }

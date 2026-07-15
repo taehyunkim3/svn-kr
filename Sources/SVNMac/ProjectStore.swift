@@ -25,7 +25,7 @@ final class ProjectStore: ObservableObject {
     @Published var workingCopyRevision: String?
     @Published var selectedPaths: Set<String> = []
     @Published var selectedStatusPath: String?
-    @Published var diff = "변경 파일을 선택하면 diff가 표시됩니다."
+    @Published var diff = AppLanguage.current.text("변경 파일을 선택하면 diff가 표시됩니다.", "Select a changed file to view its diff.")
     @Published var isWorking = false
     @Published var isShowingAddRepository = false
     @Published var isShowingCredentials = false
@@ -49,7 +49,7 @@ final class ProjectStore: ObservableObject {
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = "SVN 로컬 작업 폴더 선택"
+        panel.title = AppLanguage.current.text("SVN 로컬 작업 폴더 선택", "Choose SVN Local Working Folders")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
@@ -63,7 +63,7 @@ final class ProjectStore: ObservableObject {
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, !destinationPath.isEmpty else { return false }
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = "이미 등록된 로컬 작업 폴더입니다."
+            errorMessage = AppLanguage.current.text("이미 등록된 로컬 작업 폴더입니다.", "This local working folder is already registered.")
             return false
         }
 
@@ -83,7 +83,7 @@ final class ProjectStore: ObservableObject {
             await refresh()
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = localizedError(error)
             return false
         }
     }
@@ -98,7 +98,7 @@ final class ProjectStore: ObservableObject {
                 projects.append(project)
                 selectedProjectID = project.id
                 await refresh()
-            } catch { errorMessage = error.localizedDescription }
+            } catch { errorMessage = localizedError(error) }
         }
     }
 
@@ -125,8 +125,8 @@ final class ProjectStore: ObservableObject {
             self.logs = logs
             self.workingCopyRevision = workingCopyRevision
             selectedPaths.formIntersection(Set(statuses.map(\.path)))
-            notice = "\(project.name) 새로고침 완료"
-        } catch { errorMessage = error.localizedDescription }
+            notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
+        } catch { errorMessage = localizedError(error) }
     }
 
     func update() async {
@@ -136,7 +136,7 @@ final class ProjectStore: ObservableObject {
         do {
             notice = try await client.update(at: project.path, credentials: credentials(for: project)).trimmingCharacters(in: .whitespacesAndNewlines)
             await refresh()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = localizedError(error) }
     }
 
     func loadDiff(for path: String) async {
@@ -144,8 +144,10 @@ final class ProjectStore: ObservableObject {
         selectedStatusPath = path
         do {
             let value = try await client.diff(at: project.path, relativePath: path, credentials: credentials(for: project))
-            diff = value.isEmpty ? "텍스트 diff가 없습니다. 새 파일 또는 바이너리 파일일 수 있습니다." : value
-        } catch { errorMessage = error.localizedDescription }
+            diff = value.isEmpty
+                ? AppLanguage.current.text("텍스트 diff가 없습니다. 새 파일 또는 바이너리 파일일 수 있습니다.", "No text diff is available. This may be a new or binary file.")
+                : value
+        } catch { errorMessage = localizedError(error) }
     }
 
     func commit(message: String) async -> Bool {
@@ -159,7 +161,7 @@ final class ProjectStore: ObservableObject {
             await refresh()
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = localizedError(error)
             return false
         }
     }
@@ -176,10 +178,10 @@ final class ProjectStore: ObservableObject {
             if !newPassword.isEmpty {
                 try KeychainStore.setPassword(newPassword, for: projectID)
             }
-            notice = "\(projects[index].name) 인증 설정 저장 완료"
+            notice = AppLanguage.current.text("\(projects[index].name) 인증 설정 저장 완료", "Credentials saved for \(projects[index].name)")
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = localizedError(error)
             return false
         }
     }
@@ -187,10 +189,10 @@ final class ProjectStore: ObservableObject {
     func deleteSavedPassword(for projectID: UUID) -> Bool {
         do {
             try KeychainStore.deletePassword(for: projectID)
-            notice = "저장된 비밀번호를 삭제했습니다."
+            notice = AppLanguage.current.text("저장된 비밀번호를 삭제했습니다.", "The saved password was deleted.")
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = localizedError(error)
             return false
         }
     }
@@ -198,6 +200,22 @@ final class ProjectStore: ObservableObject {
     private func credentials(for project: SVNProject) throws -> SVNCredentials? {
         guard let username = project.username, !username.isEmpty else { return nil }
         return SVNCredentials(username: username, password: try KeychainStore.password(for: project.id))
+    }
+
+    private func localizedError(_ error: Error) -> String {
+        guard AppLanguage.current == .english, let svnError = error as? SVNError else {
+            return error.localizedDescription
+        }
+        switch svnError {
+        case let .commandFailed(command, message):
+            return "\(command) failed: \(message)"
+        case .invalidWorkingCopy:
+            return "The selected folder is not an SVN local working folder."
+        case .malformedResponse:
+            return "The SVN response could not be read."
+        case .svnExecutableNotFound:
+            return "The bundled SVN executable could not be found. Reinstall the app."
+        }
     }
 
     private func save() {
