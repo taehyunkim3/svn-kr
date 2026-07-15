@@ -89,6 +89,13 @@ struct ContentView: View {
                     .environmentObject(store)
             }
         }
+        .sheet(item: $store.authenticationRequest) { request in
+            AuthenticationRequiredView(request: request)
+                .environmentObject(store)
+        }
+        .onChange(of: store.lastCompletedCommitMessage) { _, message in
+            if message == commitMessage { commitMessage = "" }
+        }
         .alert(appLanguage.text("오류", "Error"), isPresented: Binding(get: { !store.isShowingAddRepository && store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button(appLanguage.text("확인", "OK"), role: .cancel) { store.errorMessage = nil }
                 .help(appLanguage.text("오류 메시지를 닫습니다.", "Close the error message."))
@@ -524,6 +531,112 @@ struct ContentView: View {
         guard !message.isEmpty else { return }
         Task {
             if await store.commit(message: message) { commitMessage = "" }
+        }
+    }
+}
+
+private struct AuthenticationRequiredView: View {
+    @EnvironmentObject private var store: ProjectStore
+    @Environment(\.appLanguage) private var appLanguage
+    let request: SVNAuthenticationRequest
+    @State private var username: String
+    @State private var password = ""
+    @State private var isSubmitting = false
+
+    init(request: SVNAuthenticationRequest) {
+        self.request = request
+        _username = State(initialValue: "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(appLanguage.text("SVN 인증 필요", "SVN Authentication Required"))
+                    .font(.title2.bold())
+                Text(reasonText)
+                    .foregroundStyle(.secondary)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text(appLanguage.text("사용자명", "Username"))
+                    TextField(appLanguage.text("SVN 계정명", "SVN username"), text: $username)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 360)
+                }
+                GridRow {
+                    Text(appLanguage.text("비밀번호", "Password"))
+                    SecureField(appLanguage.text("SVN 비밀번호", "SVN password"), text: $password)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Text(appLanguage.text(
+                "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다.",
+                "Canceling does not prevent viewing local changes and diffs."
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Divider()
+            HStack {
+                Button(appLanguage.text("키체인 다시 시도", "Try Keychain Again")) {
+                    isSubmitting = true
+                    Task { await store.retryKeychainAccess(for: request) }
+                }
+                .disabled(isSubmitting)
+                .help(appLanguage.text("macOS Keychain 접근 창을 다시 표시합니다.", "Show the macOS Keychain access prompt again."))
+                Spacer()
+                Button(appLanguage.text("취소", "Cancel"), role: .cancel) {
+                    store.cancelAuthentication(for: request)
+                }
+                .keyboardShortcut(.cancelAction)
+                Button(appLanguage.text("이번 실행에만 사용", "Use This Session Only")) {
+                    submit(saveInKeychain: false)
+                }
+                .disabled(!canSubmit)
+                Button(appLanguage.text("키체인에 저장하고 사용", "Save in Keychain and Use")) {
+                    submit(saveInKeychain: true)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSubmit)
+            }
+        }
+        .padding(24)
+        .frame(width: 620)
+        .onAppear {
+            username = store.projects.first(where: { $0.id == request.projectID })?.username ?? ""
+        }
+    }
+
+    private var canSubmit: Bool {
+        !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !password.isEmpty
+            && !store.isWorking
+            && !isSubmitting
+    }
+
+    private var reasonText: String {
+        switch request.action {
+        case .refreshHistory:
+            appLanguage.text("서버의 최신 커밋 기록을 불러오려면 인증이 필요합니다.", "Authentication is required to load the latest server history.")
+        case .update:
+            appLanguage.text("서버의 최신 변경 사항을 내려받으려면 인증이 필요합니다.", "Authentication is required to download the latest server changes.")
+        case .commit:
+            appLanguage.text("선택한 변경 사항을 서버에 커밋하려면 인증이 필요합니다.", "Authentication is required to commit the selected changes.")
+        }
+    }
+
+    private func submit(saveInKeychain: Bool) {
+        isSubmitting = true
+        Task {
+            let didStartOperation = await store.useCredentials(
+                for: request,
+                username: username,
+                password: password,
+                saveInKeychain: saveInKeychain
+            )
+            if !didStartOperation { isSubmitting = false }
         }
     }
 }

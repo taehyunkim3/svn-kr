@@ -16,6 +16,18 @@ struct SVNProject: Codable, Identifiable, Hashable {
     }
 }
 
+enum SVNAuthenticationAction: Equatable {
+    case refreshHistory
+    case update
+    case commit(message: String)
+}
+
+struct SVNAuthenticationRequest: Identifiable, Equatable {
+    let id = UUID()
+    let projectID: SVNProject.ID
+    let action: SVNAuthenticationAction
+}
+
 @MainActor
 final class ProjectStore: ObservableObject {
     @Published var projects: [SVNProject] = [] { didSet { save() } }
@@ -29,11 +41,14 @@ final class ProjectStore: ObservableObject {
     @Published var isWorking = false
     @Published var isShowingAddRepository = false
     @Published var isShowingCredentials = false
+    @Published var authenticationRequest: SVNAuthenticationRequest?
+    @Published var lastCompletedCommitMessage: String?
     @Published var notice: String?
     @Published var errorMessage: String?
 
     private let client = SVNClient()
     private let defaultsKey = "svn-projects-v1"
+    private var sessionPasswords: [SVNProject.ID: String] = [:]
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
@@ -103,7 +118,10 @@ final class ProjectStore: ObservableObject {
     }
 
     func removeSelectedProject() {
-        if let selectedProjectID { try? KeychainStore.deletePassword(for: selectedProjectID) }
+        if let selectedProjectID {
+            sessionPasswords[selectedProjectID] = nil
+            try? KeychainStore.deletePassword(for: selectedProjectID)
+        }
         projects.removeAll { $0.id == selectedProjectID }
         selectedProjectID = projects.first?.id
         statuses = []
@@ -116,17 +134,24 @@ final class ProjectStore: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         do {
-            let credentials = try credentials(for: project)
-            async let newStatuses = client.status(at: project.path, credentials: credentials)
-            async let newLogs = client.log(at: project.path, credentials: credentials)
-            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path, credentials: credentials)
-            let (statuses, logs, workingCopyRevision) = try await (newStatuses, newLogs, newWorkingCopyRevision)
+            async let newStatuses = client.status(at: project.path)
+            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path)
+            let (statuses, workingCopyRevision) = try await (newStatuses, newWorkingCopyRevision)
             self.statuses = statuses
-            self.logs = logs
             self.workingCopyRevision = workingCopyRevision
             selectedPaths.formIntersection(Set(statuses.map(\.path)))
+            notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
+        } catch {
+            errorMessage = localizedError(error)
+            return
+        }
+
+        do {
+            logs = try await client.log(at: project.path, credentials: credentials(for: project))
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            handleRemoteError(error, project: project, action: .refreshHistory)
+        }
     }
 
     func update() async {
@@ -136,14 +161,16 @@ final class ProjectStore: ObservableObject {
         do {
             notice = try await client.update(at: project.path, credentials: credentials(for: project)).trimmingCharacters(in: .whitespacesAndNewlines)
             await refresh()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            handleRemoteError(error, project: project, action: .update)
+        }
     }
 
     func loadDiff(for path: String) async {
         guard let project = selectedProject else { return }
         selectedStatusPath = path
         do {
-            let value = try await client.diff(at: project.path, relativePath: path, credentials: credentials(for: project))
+            let value = try await client.diff(at: project.path, relativePath: path)
             diff = value.isEmpty
                 ? AppLanguage.current.text("텍스트 diff가 없습니다. 새 파일 또는 바이너리 파일일 수 있습니다.", "No text diff is available. This may be a new or binary file.")
                 : value
@@ -158,10 +185,11 @@ final class ProjectStore: ObservableObject {
             notice = try await client.commit(at: project.path, paths: selectedPaths.sorted(), message: message, credentials: credentials(for: project))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             selectedPaths.removeAll()
+            lastCompletedCommitMessage = message
             await refresh()
             return true
         } catch {
-            errorMessage = localizedError(error)
+            handleRemoteError(error, project: project, action: .commit(message: message))
             return false
         }
     }
@@ -177,6 +205,7 @@ final class ProjectStore: ObservableObject {
             projects[index].username = username.isEmpty ? nil : username
             if !newPassword.isEmpty {
                 try KeychainStore.setPassword(newPassword, for: projectID)
+                sessionPasswords[projectID] = newPassword
             }
             notice = AppLanguage.current.text("\(projects[index].name) 인증 설정 저장 완료", "Credentials saved for \(projects[index].name)")
             return true
@@ -189,6 +218,7 @@ final class ProjectStore: ObservableObject {
     func deleteSavedPassword(for projectID: UUID) -> Bool {
         do {
             try KeychainStore.deletePassword(for: projectID)
+            sessionPasswords[projectID] = nil
             notice = AppLanguage.current.text("저장된 비밀번호를 삭제했습니다.", "The saved password was deleted.")
             return true
         } catch {
@@ -197,9 +227,106 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    func retryKeychainAccess(for request: SVNAuthenticationRequest) async {
+        guard authenticationRequest?.id == request.id else { return }
+        sessionPasswords[request.projectID] = nil
+        authenticationRequest = nil
+        await resume(request)
+    }
+
+    func useCredentials(
+        for request: SVNAuthenticationRequest,
+        username: String,
+        password: String,
+        saveInKeychain: Bool
+    ) async -> Bool {
+        guard authenticationRequest?.id == request.id,
+              let index = projects.firstIndex(where: { $0.id == request.projectID }) else { return false }
+        let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !username.isEmpty, !password.isEmpty else { return false }
+
+        do {
+            projects[index].username = username
+            if saveInKeychain {
+                try KeychainStore.setPassword(password, for: request.projectID)
+            }
+            sessionPasswords[request.projectID] = password
+            authenticationRequest = nil
+            await resume(request)
+            return true
+        } catch {
+            if isKeychainAccessDenied(error) {
+                notice = authenticationNotice
+            } else {
+                errorMessage = localizedError(error)
+            }
+            return false
+        }
+    }
+
+    func cancelAuthentication(for request: SVNAuthenticationRequest) {
+        guard authenticationRequest?.id == request.id else { return }
+        authenticationRequest = nil
+        notice = AppLanguage.current.text(
+            "인증을 취소했습니다. 로컬 변경 사항은 계속 확인할 수 있습니다.",
+            "Authentication was canceled. Local changes remain available."
+        )
+    }
+
     private func credentials(for project: SVNProject) throws -> SVNCredentials? {
         guard let username = project.username, !username.isEmpty else { return nil }
-        return SVNCredentials(username: username, password: try KeychainStore.password(for: project.id))
+        if let password = sessionPasswords[project.id] {
+            return SVNCredentials(username: username, password: password)
+        }
+        let password = try KeychainStore.password(for: project.id)
+        if let password, !password.isEmpty {
+            sessionPasswords[project.id] = password
+        }
+        return SVNCredentials(username: username, password: password)
+    }
+
+    private func handleRemoteError(_ error: Error, project: SVNProject, action: SVNAuthenticationAction) {
+        if isKeychainAccessDenied(error) {
+            authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
+            notice = authenticationNotice
+        } else {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    private func isKeychainAccessDenied(_ error: Error) -> Bool {
+        (error as? KeychainStoreError)?.isAccessDenied == true
+    }
+
+    private var authenticationNotice: String {
+        AppLanguage.current.text(
+            "Keychain 접근이 거부되었습니다. 인증 방식을 다시 선택할 수 있습니다.",
+            "Keychain access was denied. Choose how to authenticate."
+        )
+    }
+
+    private func resume(_ request: SVNAuthenticationRequest) async {
+        guard selectedProjectID == request.projectID else { return }
+        switch request.action {
+        case .refreshHistory:
+            await refreshRemoteHistory(for: request.projectID)
+        case .update:
+            await update()
+        case let .commit(message):
+            _ = await commit(message: message)
+        }
+    }
+
+    private func refreshRemoteHistory(for projectID: SVNProject.ID) async {
+        guard let project = projects.first(where: { $0.id == projectID }) else { return }
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            logs = try await client.log(at: project.path, credentials: credentials(for: project))
+            notice = AppLanguage.current.text("\(project.name) 커밋 기록 확인 완료", "\(project.name) history refreshed")
+        } catch {
+            handleRemoteError(error, project: project, action: .refreshHistory)
+        }
     }
 
     private func localizedError(_ error: Error) -> String {
