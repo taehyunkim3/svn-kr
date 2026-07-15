@@ -24,6 +24,7 @@ final class ProjectStore: ObservableObject {
     @Published var selectedStatusPath: String?
     @Published var diff = "변경 파일을 선택하면 diff가 표시됩니다."
     @Published var isWorking = false
+    @Published var isShowingAddRepository = false
     @Published var notice: String?
     @Published var errorMessage: String?
 
@@ -50,6 +51,32 @@ final class ProjectStore: ObservableObject {
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK else { return }
         for url in panel.urls { addProject(url) }
+    }
+
+    func checkout(repositoryURL: String, destinationPath: String) async -> Bool {
+        let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let destinationPath = (destinationPath as NSString).expandingTildeInPath
+        guard !repositoryURL.isEmpty, !destinationPath.isEmpty else { return false }
+        guard !projects.contains(where: { $0.path == destinationPath }) else {
+            errorMessage = "이미 등록된 작업 복사본입니다."
+            return false
+        }
+
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            notice = try await client.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
+            let project = SVNProject(name: destination.lastPathComponent, path: destination.path)
+            projects.append(project)
+            selectedProjectID = project.id
+            await refresh()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 
     func addProject(_ url: URL) {

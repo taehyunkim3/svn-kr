@@ -18,7 +18,7 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack {
-                    Button(action: store.showFolderPicker) { Image(systemName: "plus") }
+                    Button(action: { store.isShowingAddRepository = true }) { Image(systemName: "plus") }
                     Button(action: store.removeSelectedProject) { Image(systemName: "minus") }
                         .disabled(store.selectedProject == nil)
                     Spacer()
@@ -41,6 +41,15 @@ struct ContentView: View {
             if store.isWorking { ProgressView().controlSize(.small) }
         }
         .onChange(of: store.selectedProjectID) { _, _ in Task { await store.refresh() } }
+        .task {
+            if store.projects.isEmpty {
+                store.isShowingAddRepository = true
+            }
+        }
+        .sheet(isPresented: $store.isShowingAddRepository) {
+            AddRepositoryView()
+                .environmentObject(store)
+        }
         .alert("오류", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("확인", role: .cancel) { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
@@ -177,5 +186,83 @@ struct ContentView: View {
         Task {
             if await store.commit(message: message) { commitMessage = "" }
         }
+    }
+}
+
+private struct AddRepositoryView: View {
+    @EnvironmentObject private var store: ProjectStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var repositoryURL = ""
+    @State private var destinationPath = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("SVN 저장소 추가").font(.title2.bold())
+                Text("저장소 URL을 체크아웃하고 작업 복사본 목록에 등록합니다.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text("저장소 URL")
+                    TextField("https://server/svn/project/trunk", text: $repositoryURL)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 440)
+                }
+                GridRow {
+                    Text("로컬 폴더")
+                    HStack {
+                        TextField("/Users/name/Documents/project", text: $destinationPath)
+                            .textFieldStyle(.roundedBorder)
+                        Button("선택…") { chooseDestination() }
+                    }
+                }
+            }
+
+            Text("인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Divider()
+            HStack {
+                Button("기존 작업 복사본 등록…") {
+                    dismiss()
+                    store.showFolderPicker()
+                }
+                Spacer()
+                Button("취소", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("체크아웃 및 추가") {
+                    Task {
+                        if await store.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath) {
+                            dismiss()
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || destinationPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+            }
+        }
+        .padding(24)
+        .frame(width: 650)
+    }
+
+    private func chooseDestination() {
+        let panel = NSOpenPanel()
+        panel.title = "체크아웃할 상위 폴더 선택"
+        panel.prompt = "선택"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let parent = panel.url else { return }
+        destinationPath = parent.appendingPathComponent(suggestedFolderName).path
+    }
+
+    private var suggestedFolderName: String {
+        let trimmed = repositoryURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        let name = trimmed.split(separator: "/").last.map(String.init) ?? "svn-project"
+        return name.removingPercentEncoding ?? name
     }
 }

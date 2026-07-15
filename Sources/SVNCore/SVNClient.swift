@@ -3,6 +3,15 @@ import Foundation
 public actor SVNClient {
     public init() {}
 
+    public func checkout(repositoryURL: String, destinationPath: String) async throws -> String {
+        let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
+        let parent = destination.deletingLastPathComponent()
+        guard FileManager.default.fileExists(atPath: parent.path) else {
+            throw SVNError.commandFailed(command: "svn checkout", message: "저장할 상위 폴더가 존재하지 않습니다.")
+        }
+        return try checkedRun(["checkout", repositoryURL, destination.path], at: parent.path).output
+    }
+
     public func validateWorkingCopy(at path: String) async throws {
         let result = try run(["info", "--show-item", "wc-root"], at: path)
         guard result.exitCode == 0 else { throw SVNError.invalidWorkingCopy }
@@ -53,7 +62,7 @@ public actor SVNClient {
 
     private func run(_ arguments: [String], at path: String) throws -> SVNCommandResult {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/svn")
+        process.executableURL = try svnExecutableURL()
         process.arguments = ["--non-interactive"] + arguments
         process.currentDirectoryURL = URL(fileURLWithPath: path)
 
@@ -85,5 +94,21 @@ public actor SVNClient {
         let output = String(decoding: try Data(contentsOf: outputURL), as: UTF8.self)
         let error = String(decoding: try Data(contentsOf: errorURL), as: UTF8.self)
         return SVNCommandResult(output: output, error: error, exitCode: process.terminationStatus)
+    }
+
+    private func svnExecutableURL() throws -> URL {
+        var candidates: [String] = []
+        if let override = ProcessInfo.processInfo.environment["SVN_EXECUTABLE"], !override.isEmpty {
+            candidates.append(override)
+        }
+        candidates += [
+            "/opt/homebrew/bin/svn",
+            "/usr/local/bin/svn",
+            "/usr/bin/svn",
+        ]
+        guard let path = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+            throw SVNError.svnExecutableNotFound
+        }
+        return URL(fileURLWithPath: path)
     }
 }

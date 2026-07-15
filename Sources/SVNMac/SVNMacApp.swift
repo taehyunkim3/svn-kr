@@ -12,7 +12,7 @@ struct SVNMacApp: App {
         }
         .commands {
             CommandGroup(after: .newItem) {
-                Button("작업 복사본 추가…") { store.showFolderPicker() }
+                Button("저장소 URL 체크아웃…") { store.isShowingAddRepository = true }
                     .keyboardShortcut("o", modifiers: [.command])
             }
         }

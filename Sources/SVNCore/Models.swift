@@ -46,6 +46,7 @@ public enum SVNError: LocalizedError, Sendable {
     case commandFailed(command: String, message: String)
     case invalidWorkingCopy
     case malformedResponse
+    case svnExecutableNotFound
 
     public var errorDescription: String? {
         switch self {
@@ -55,6 +56,8 @@ public enum SVNError: LocalizedError, Sendable {
             "선택한 폴더는 SVN 작업 복사본이 아닙니다."
         case .malformedResponse:
             "SVN 응답을 읽지 못했습니다."
+        case .svnExecutableNotFound:
+            "SVN 실행 파일을 찾지 못했습니다. Homebrew에서 subversion을 설치해 주세요."
         }
     }
 }
