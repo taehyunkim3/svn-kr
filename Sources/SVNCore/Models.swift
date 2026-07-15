@@ -42,6 +42,16 @@ public struct SVNCommandResult: Sendable {
     }
 }
 
+public struct SVNCredentials: Sendable {
+    public let username: String
+    public let password: String?
+
+    public init(username: String, password: String? = nil) {
+        self.username = username
+        self.password = password
+    }
+}
+
 public enum SVNError: LocalizedError, Sendable {
     case commandFailed(command: String, message: String)
     case invalidWorkingCopy

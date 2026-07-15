@@ -10,7 +10,16 @@ struct ContentView: View {
             List(selection: $store.selectedProjectID) {
                 Section("작업 복사본") {
                     ForEach(store.projects) { project in
-                        Label(project.name, systemImage: "shippingbox")
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(project.name)
+                                if let username = project.username, !username.isEmpty {
+                                    Text(username).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        } icon: {
+                            Image(systemName: "shippingbox")
+                        }
                             .tag(project.id)
                             .help(project.path)
                     }
@@ -50,6 +59,12 @@ struct ContentView: View {
             AddRepositoryView()
                 .environmentObject(store)
         }
+        .sheet(isPresented: $store.isShowingCredentials) {
+            if let project = store.selectedProject {
+                CredentialsView(project: project)
+                    .environmentObject(store)
+            }
+        }
         .alert("오류", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("확인", role: .cancel) { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
@@ -63,6 +78,9 @@ struct ContentView: View {
                     Text(project.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 Spacer()
+                Button("인증 설정", systemImage: "person.badge.key") {
+                    store.isShowingCredentials = true
+                }
                 if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
             }
             .padding()
@@ -194,6 +212,8 @@ private struct AddRepositoryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var repositoryURL = ""
     @State private var destinationPath = ""
+    @State private var username = ""
+    @State private var password = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -218,6 +238,16 @@ private struct AddRepositoryView: View {
                         Button("선택…") { chooseDestination() }
                     }
                 }
+                GridRow {
+                    Text("사용자명")
+                    TextField("SVN 계정명 (선택)", text: $username)
+                        .textFieldStyle(.roundedBorder)
+                }
+                GridRow {
+                    Text("비밀번호")
+                    SecureField("macOS Keychain에 저장 (선택)", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             Text("인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다.")
@@ -235,7 +265,7 @@ private struct AddRepositoryView: View {
                     .keyboardShortcut(.cancelAction)
                 Button("체크아웃 및 추가") {
                     Task {
-                        if await store.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath) {
+                        if await store.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath, username: username, password: password) {
                             dismiss()
                         }
                     }
@@ -264,5 +294,77 @@ private struct AddRepositoryView: View {
         let trimmed = repositoryURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         let name = trimmed.split(separator: "/").last.map(String.init) ?? "svn-project"
         return name.removingPercentEncoding ?? name
+    }
+}
+
+private struct CredentialsView: View {
+    @EnvironmentObject private var store: ProjectStore
+    @Environment(\.dismiss) private var dismiss
+    let project: SVNProject
+    @State private var username: String
+    @State private var newPassword = ""
+    @State private var hasSavedPassword: Bool
+
+    init(project: SVNProject) {
+        self.project = project
+        _username = State(initialValue: project.username ?? "")
+        _hasSavedPassword = State(initialValue: false)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("폴더별 인증 설정").font(.title2.bold())
+                Text(project.name).foregroundStyle(.secondary)
+                Text(project.path).font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text("사용자명")
+                    TextField("SVN 계정명", text: $username)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 360)
+                }
+                GridRow {
+                    Text("비밀번호")
+                    SecureField(hasSavedPassword ? "비우면 기존 값 유지" : "비밀번호 입력", text: $newPassword)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Label(
+                hasSavedPassword ? "이 폴더의 비밀번호가 macOS Keychain에 저장되어 있습니다." : "저장된 비밀번호가 없습니다.",
+                systemImage: hasSavedPassword ? "checkmark.shield" : "shield"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Divider()
+            HStack {
+                if hasSavedPassword {
+                    Button("저장된 비밀번호 삭제", role: .destructive) {
+                        if store.deleteSavedPassword(for: project.id) {
+                            hasSavedPassword = false
+                            newPassword = ""
+                        }
+                    }
+                }
+                Spacer()
+                Button("취소", role: .cancel) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("저장") {
+                    if store.saveCredentials(for: project.id, username: username, newPassword: newPassword) {
+                        dismiss()
+                        Task { await store.refresh() }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 560)
+        .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
     }
 }

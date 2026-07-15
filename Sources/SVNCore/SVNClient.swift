@@ -1,58 +1,62 @@
 import Foundation
 
 public actor SVNClient {
-    public init() {}
+    private let executablePath: String?
 
-    public func checkout(repositoryURL: String, destinationPath: String) async throws -> String {
+    public init(executablePath: String? = nil) {
+        self.executablePath = executablePath
+    }
+
+    public func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials? = nil) async throws -> String {
         let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
         let parent = destination.deletingLastPathComponent()
         guard FileManager.default.fileExists(atPath: parent.path) else {
             throw SVNError.commandFailed(command: "svn checkout", message: "저장할 상위 폴더가 존재하지 않습니다.")
         }
-        return try checkedRun(["checkout", repositoryURL, destination.path], at: parent.path).output
+        return try checkedRun(["checkout", repositoryURL, destination.path], at: parent.path, credentials: credentials).output
     }
 
-    public func validateWorkingCopy(at path: String) async throws {
-        let result = try run(["info", "--show-item", "wc-root"], at: path)
+    public func validateWorkingCopy(at path: String, credentials: SVNCredentials? = nil) async throws {
+        let result = try run(["info", "--show-item", "wc-root"], at: path, credentials: credentials)
         guard result.exitCode == 0 else { throw SVNError.invalidWorkingCopy }
     }
 
-    public func status(at path: String) async throws -> [SVNStatusEntry] {
-        let result = try checkedRun(["status", "--xml"], at: path)
+    public func status(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
+        let result = try checkedRun(["status", "--xml"], at: path, credentials: credentials)
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
     }
 
-    public func log(at path: String, limit: Int = 50) async throws -> [SVNLogEntry] {
-        let result = try checkedRun(["log", "--xml", "--limit", String(limit)], at: path)
+    public func log(at path: String, limit: Int = 50, credentials: SVNCredentials? = nil) async throws -> [SVNLogEntry] {
+        let result = try checkedRun(["log", "--xml", "--limit", String(limit)], at: path, credentials: credentials)
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
 
-    public func update(at path: String) async throws -> String {
-        try checkedRun(["update"], at: path).output
+    public func update(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
+        try checkedRun(["update"], at: path, credentials: credentials).output
     }
 
-    public func diff(at path: String, relativePath: String? = nil) async throws -> String {
+    public func diff(at path: String, relativePath: String? = nil, credentials: SVNCredentials? = nil) async throws -> String {
         var arguments = ["diff"]
         if let relativePath { arguments.append(relativePath) }
-        return try checkedRun(arguments, at: path).output
+        return try checkedRun(arguments, at: path, credentials: credentials).output
     }
 
-    public func commit(at path: String, paths: [String], message: String) async throws -> String {
-        let currentStatuses = try await status(at: path)
+    public func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials? = nil) async throws -> String {
+        let currentStatuses = try await status(at: path, credentials: credentials)
         for item in paths {
             let status = currentStatuses.first(where: { $0.path == item })
             if status?.item == "unversioned" {
-                _ = try checkedRun(["add", "--parents", "--", item], at: path)
+                _ = try checkedRun(["add", "--parents", "--", item], at: path, credentials: credentials)
             } else if status?.item == "missing" {
-                _ = try checkedRun(["delete", "--force", "--", item], at: path)
+                _ = try checkedRun(["delete", "--force", "--", item], at: path, credentials: credentials)
             }
         }
-        return try checkedRun(["commit", "--message", message, "--"] + paths, at: path).output
+        return try checkedRun(["commit", "--message", message, "--"] + paths, at: path, credentials: credentials).output
     }
 
     @discardableResult
-    private func checkedRun(_ arguments: [String], at path: String) throws -> SVNCommandResult {
-        let result = try run(arguments, at: path)
+    private func checkedRun(_ arguments: [String], at path: String, credentials: SVNCredentials? = nil) throws -> SVNCommandResult {
+        let result = try run(arguments, at: path, credentials: credentials)
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
             throw SVNError.commandFailed(command: "svn \(arguments.first ?? "")", message: detail.isEmpty ? result.output : detail)
@@ -60,10 +64,19 @@ public actor SVNClient {
         return result
     }
 
-    private func run(_ arguments: [String], at path: String) throws -> SVNCommandResult {
+    private func run(_ arguments: [String], at path: String, credentials: SVNCredentials? = nil) throws -> SVNCommandResult {
         let process = Process()
         process.executableURL = try svnExecutableURL()
-        process.arguments = ["--non-interactive"] + arguments
+        var globalArguments = ["--non-interactive"]
+        var password: String?
+        if let credentials, !credentials.username.isEmpty {
+            globalArguments += ["--username", credentials.username]
+            if let storedPassword = credentials.password, !storedPassword.isEmpty {
+                globalArguments += ["--password-from-stdin", "--no-auth-cache"]
+                password = storedPassword
+            }
+        }
+        process.arguments = globalArguments + arguments
         process.currentDirectoryURL = URL(fileURLWithPath: path)
 
         let temporaryDirectory = FileManager.default.temporaryDirectory
@@ -79,9 +92,15 @@ public actor SVNClient {
         let errorHandle = try FileHandle(forWritingTo: errorURL)
         process.standardOutput = outputHandle
         process.standardError = errorHandle
+        let input = password.map { _ in Pipe() }
+        process.standardInput = input
 
         do {
             try process.run()
+            if let password, let input {
+                input.fileHandleForWriting.write(Data((password + "\n").utf8))
+                try input.fileHandleForWriting.close()
+            }
             process.waitUntilExit()
             try outputHandle.close()
             try errorHandle.close()
@@ -98,6 +117,7 @@ public actor SVNClient {
 
     private func svnExecutableURL() throws -> URL {
         var candidates: [String] = []
+        if let executablePath { candidates.append(executablePath) }
         if let override = ProcessInfo.processInfo.environment["SVN_EXECUTABLE"], !override.isEmpty {
             candidates.append(override)
         }
