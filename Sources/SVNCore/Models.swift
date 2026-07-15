@@ -67,7 +67,7 @@ public enum SVNError: LocalizedError, Sendable {
         case .malformedResponse:
             "SVN 응답을 읽지 못했습니다."
         case .svnExecutableNotFound:
-            "SVN 실행 파일을 찾지 못했습니다. Homebrew에서 subversion을 설치해 주세요."
+            "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
         }
     }
 }

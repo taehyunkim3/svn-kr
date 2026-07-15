@@ -1,6 +1,6 @@
 # SVN Mac
 
-여러 SVN 작업 복사본을 한곳에서 관리하기 위한 가벼운 macOS 네이티브 앱입니다. 복잡한 SVN 명령을 외우지 않아도 변경 확인부터 업데이트, 커밋 기록 조회, 선택 커밋까지 처리하는 것을 목표로 합니다.
+여러 SVN 작업 복사본을 한곳에서 관리하기 위한 가벼운 macOS 네이티브 앱입니다. 복잡한 SVN 명령을 외우지 않아도 변경 확인부터 업데이트, 커밋 기록 조회, 선택 커밋까지 처리하는 것을 목표로 합니다. 배포 앱에는 SVN CLI와 필요한 라이브러리가 포함되므로 사용자가 Homebrew나 SVN을 별도로 설치할 필요가 없습니다.
 
 ## 현재 제공하는 기능
 
@@ -15,7 +15,7 @@
 
 ## 실행
 
-macOS 14 이상, Xcode 16 이상, SVN CLI가 필요합니다.
+소스에서 실행하려면 macOS 14 이상, Xcode 16 이상, SVN CLI가 필요합니다. `dist/SVN Mac.app`을 사용하는 일반 사용자는 Xcode, Homebrew, SVN이 필요하지 않습니다.
 
 ```bash
 swift run SVNMac
@@ -29,7 +29,15 @@ swift test
 open 'dist/SVN Mac.app'
 ```
 
-생성된 앱은 `dist/SVN Mac.app`에 있습니다. 현재 패키징은 로컬 실행용 ad-hoc 서명입니다. 다른 사용자에게 배포하려면 Apple Developer ID 서명과 공증을 추가해야 합니다.
+생성된 앱은 `dist/SVN Mac.app`, 공유용 압축 파일은 `dist/SVN-Mac-버전-아키텍처.zip`에 있습니다. 패키징 스크립트는 빌드 Mac에 설치된 SVN과 비시스템 동적 라이브러리를 앱 내부에 포함하고 라이선스 파일도 함께 복사합니다. 현재 기본값은 로컬 실행용 ad-hoc 서명입니다.
+
+Developer ID가 있다면 다음처럼 서명할 수 있습니다. 이후 `notarytool`로 공증하고 티켓을 첨부해야 일반 사용자가 별도 보안 예외 없이 실행할 수 있습니다.
+
+```bash
+CODE_SIGN_IDENTITY='Developer ID Application: 회사명 (TEAMID)' ./scripts/package-app.sh
+```
+
+현재 패키지는 빌드 Mac과 동일한 CPU 아키텍처용입니다. Apple Silicon에서 빌드하면 Apple Silicon용 SVN이 포함됩니다.
 
 ## 사용 방법
 
@@ -55,3 +63,4 @@ open 'dist/SVN Mac.app'
 - `Sources/SVNCore`: `svn` 프로세스 실행, XML 상태/로그 파싱
 - `Tests/SVNCoreTests`: SVN XML 응답 파서 테스트
 - `scripts/package-app.sh`: 로컬용 `.app` 번들 생성
+- `scripts/embed-svn.sh`: SVN CLI, 의존 라이브러리, 오픈소스 라이선스 포함

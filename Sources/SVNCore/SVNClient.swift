@@ -121,6 +121,9 @@ public actor SVNClient {
         if let override = ProcessInfo.processInfo.environment["SVN_EXECUTABLE"], !override.isEmpty {
             candidates.append(override)
         }
+        if let bundled = Bundle.main.url(forResource: "svn", withExtension: nil, subdirectory: "bin")?.path {
+            candidates.append(bundled)
+        }
         candidates += [
             "/opt/homebrew/bin/svn",
             "/usr/local/bin/svn",

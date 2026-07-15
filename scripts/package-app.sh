@@ -15,6 +15,27 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$ROOT/.build/release/SVNMac" "$APP/Contents/MacOS/SVNMac"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+"$ROOT/scripts/embed-svn.sh" "$APP"
 
-codesign --force --deep --sign - "$APP"
+SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
+  SIGN_ARGUMENTS=(--force --sign -)
+else
+  SIGN_ARGUMENTS=(--force --options runtime --timestamp --sign "$SIGN_IDENTITY")
+fi
+
+for binary in "$APP"/Contents/Frameworks/*.dylib "$APP/Contents/Resources/bin/svn"; do
+  codesign "${SIGN_ARGUMENTS[@]}" "$binary"
+done
+codesign "${SIGN_ARGUMENTS[@]}" "$APP"
+codesign --verify --deep --strict "$APP"
+"$APP/Contents/Resources/bin/svn" --version --quiet
+
+VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
+ARCH=$(uname -m)
+ARCHIVE="$ROOT/dist/SVN-Mac-$VERSION-$ARCH.zip"
+rm -f "$ARCHIVE"
+ditto -c -k --keepParent "$APP" "$ARCHIVE"
+
 echo "$APP"
+echo "$ARCHIVE"
