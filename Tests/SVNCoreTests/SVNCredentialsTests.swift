@@ -56,3 +56,54 @@ import Testing
     #expect(result.contains("https://example.test/svn/%ED%95%9C%EA%B5%AD"))
     #expect(!result.contains("%E1%84%92%E1%85%A1"))
 }
+
+@Test func requestsRemoteLogFromHeadWithoutUpdatingWorkingCopy() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-remote-log-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"log --xml --verbose --with-all-revprops --revision HEAD:1 --limit 50"*)
+        printf '<?xml version="1.0"?><log><logentry revision="42"><author>tester</author><msg>remote</msg></logentry></log>'
+        ;;
+      *)
+        printf 'unexpected arguments: %s\n' "$*" >&2
+        exit 1
+        ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(executablePath: executable.path)
+    let entries = try await client.log(at: directory.path)
+
+    #expect(entries.map(\.revision) == ["42"])
+}
+
+@Test func readsTrimmedWorkingCopyRevision() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-working-copy-revision-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"info --show-item revision"*) printf '37\n' ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(executablePath: executable.path)
+    let revision = try await client.workingCopyRevision(at: directory.path)
+
+    #expect(revision == "37")
+}

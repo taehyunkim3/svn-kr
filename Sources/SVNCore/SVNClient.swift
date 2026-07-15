@@ -29,8 +29,18 @@ public actor SVNClient {
     }
 
     public func log(at path: String, limit: Int = 50, credentials: SVNCredentials? = nil) async throws -> [SVNLogEntry] {
-        let result = try checkedRun(["log", "--xml", "--limit", String(limit)], at: path, credentials: credentials)
+        let result = try checkedRun(
+            ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", "HEAD:1", "--limit", String(limit)],
+            at: path,
+            credentials: credentials
+        )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
+    }
+
+    public func workingCopyRevision(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
+        try checkedRun(["info", "--show-item", "revision"], at: path, credentials: credentials)
+            .output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func update(at path: String, credentials: SVNCredentials? = nil) async throws -> String {

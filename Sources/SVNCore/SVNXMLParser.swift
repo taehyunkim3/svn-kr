@@ -40,6 +40,10 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
     private var author = ""
     private var date: Date?
     private var message = ""
+    private var changedPaths: [SVNChangedPath] = []
+    private var revisionProperties: [SVNRevisionProperty] = []
+    private var pathAttributes: [String: String]?
+    private var propertyName: String?
     private var text = ""
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
@@ -49,6 +53,12 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
             author = ""
             date = nil
             message = ""
+            changedPaths = []
+            revisionProperties = []
+        } else if elementName == "path" {
+            pathAttributes = attributeDict
+        } else if elementName == "property" {
+            propertyName = attributeDict["name"]
         }
     }
 
@@ -61,7 +71,38 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
         case "author": author = text
         case "date": date = ISO8601DateFormatter().date(from: text)
         case "msg": message = text
-        case "logentry": entries.append(SVNLogEntry(revision: revision, author: author, date: date, message: message))
+        case "path":
+            if let attributes = pathAttributes {
+                changedPaths.append(SVNChangedPath(
+                    path: text,
+                    action: attributes["action"] ?? "?",
+                    kind: attributes["kind"],
+                    copyFromPath: attributes["copyfrom-path"],
+                    copyFromRevision: attributes["copyfrom-rev"],
+                    textModified: attributes["text-mods"],
+                    propertiesModified: attributes["prop-mods"]
+                ))
+            }
+            pathAttributes = nil
+        case "property":
+            if let propertyName {
+                revisionProperties.append(SVNRevisionProperty(name: propertyName, value: text))
+            }
+            propertyName = nil
+        case "logentry":
+            let email = revisionProperties.first { property in
+                let name = property.name.lowercased()
+                return name == "email" || name == "author-email" || name == "author_email" || name == "svn:author-email"
+            }?.value
+            entries.append(SVNLogEntry(
+                revision: revision,
+                author: author,
+                email: email,
+                date: date,
+                message: message,
+                changedPaths: changedPaths,
+                revisionProperties: revisionProperties
+            ))
         default: break
         }
         text = ""

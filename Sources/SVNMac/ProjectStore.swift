@@ -22,6 +22,7 @@ final class ProjectStore: ObservableObject {
     @Published var selectedProjectID: SVNProject.ID?
     @Published var statuses: [SVNStatusEntry] = []
     @Published var logs: [SVNLogEntry] = []
+    @Published var workingCopyRevision: String?
     @Published var selectedPaths: Set<String> = []
     @Published var selectedStatusPath: String?
     @Published var diff = "변경 파일을 선택하면 diff가 표시됩니다."
@@ -48,7 +49,7 @@ final class ProjectStore: ObservableObject {
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = "SVN 작업 복사본 선택"
+        panel.title = "SVN 로컬 작업 폴더 선택"
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
@@ -62,7 +63,7 @@ final class ProjectStore: ObservableObject {
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, !destinationPath.isEmpty else { return false }
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = "이미 등록된 작업 복사본입니다."
+            errorMessage = "이미 등록된 로컬 작업 폴더입니다."
             return false
         }
 
@@ -107,6 +108,7 @@ final class ProjectStore: ObservableObject {
         selectedProjectID = projects.first?.id
         statuses = []
         logs = []
+        workingCopyRevision = nil
     }
 
     func refresh() async {
@@ -117,8 +119,11 @@ final class ProjectStore: ObservableObject {
             let credentials = try credentials(for: project)
             async let newStatuses = client.status(at: project.path, credentials: credentials)
             async let newLogs = client.log(at: project.path, credentials: credentials)
-            statuses = try await newStatuses
-            logs = try await newLogs
+            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path, credentials: credentials)
+            let (statuses, logs, workingCopyRevision) = try await (newStatuses, newLogs, newWorkingCopyRevision)
+            self.statuses = statuses
+            self.logs = logs
+            self.workingCopyRevision = workingCopyRevision
             selectedPaths.formIntersection(Set(statuses.map(\.path)))
             notice = "\(project.name) 새로고침 완료"
         } catch { errorMessage = error.localizedDescription }
