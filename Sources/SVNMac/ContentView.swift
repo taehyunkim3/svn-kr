@@ -78,7 +78,7 @@ struct ContentView: View {
                     .environmentObject(store)
             }
         }
-        .alert("오류", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+        .alert("오류", isPresented: Binding(get: { !store.isShowingAddRepository && store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("확인", role: .cancel) { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
     }
@@ -266,6 +266,25 @@ private struct AddRepositoryView: View {
             Text("인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if store.isWorking {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("체크아웃 중…")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if let errorMessage = store.errorMessage {
+                ScrollView {
+                    Text(errorMessage)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .frame(maxHeight: 110)
+                .padding(10)
+                .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .foregroundStyle(.red)
+            }
 
             Divider()
             HStack {

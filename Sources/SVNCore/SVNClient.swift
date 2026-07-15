@@ -8,6 +8,8 @@ public actor SVNClient {
     }
 
     public func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials? = nil) async throws -> String {
+        let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
+        let repositoryURL = URL(string: normalizedRepositoryURL)?.absoluteString ?? normalizedRepositoryURL
         let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
         let parent = destination.deletingLastPathComponent()
         guard FileManager.default.fileExists(atPath: parent.path) else {

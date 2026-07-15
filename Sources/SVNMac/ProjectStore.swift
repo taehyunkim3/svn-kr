@@ -66,6 +66,7 @@ final class ProjectStore: ObservableObject {
             return false
         }
 
+        errorMessage = nil
         isWorking = true
         defer { isWorking = false }
         do {
