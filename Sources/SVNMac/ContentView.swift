@@ -178,19 +178,30 @@ struct ContentView: View {
     private var historyView: some View {
         VStack(spacing: 0) {
             if let headRevision = store.logs.first?.revision {
-                HStack(spacing: 10) {
-                    Label("서버 최신 r\(headRevision)", systemImage: "cloud")
-                    if let workingCopyRevision = store.workingCopyRevision {
-                        Label("내 로컬 폴더 r\(workingCopyRevision)", systemImage: "macbook")
-                        if isWorkingCopyBehind(headRevision: headRevision, workingCopyRevision: workingCopyRevision) {
-                            Text("업데이트 필요")
-                                .foregroundStyle(.orange)
-                        } else {
-                            Text("최신")
-                                .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        Label("서버 최신 r\(headRevision)", systemImage: "cloud")
+                        if let workingCopyRevision = store.workingCopyRevision {
+                            Label("내 로컬 폴더 r\(workingCopyRevision)", systemImage: "macbook")
+                            if isWorkingCopyBehind(headRevision: headRevision, workingCopyRevision: workingCopyRevision) {
+                                Text("업데이트 필요")
+                                    .foregroundStyle(.orange)
+                            } else {
+                                Text("최신")
+                                    .foregroundStyle(.green)
+                            }
                         }
+                        Spacer()
                     }
-                    Spacer()
+
+                    HStack(spacing: 14) {
+                        historyLegend(color: .blue, label: "서버 커밋")
+                        historyLegend(color: .green, label: "내 로컬 기준")
+                        if !store.statuses.isEmpty {
+                            historyLegend(color: .orange, label: "미커밋 변경 \(store.statuses.count)개")
+                        }
+                        Spacer()
+                    }
                 }
                 .font(.caption)
                 .padding(.horizontal)
@@ -199,85 +210,187 @@ struct ContentView: View {
                 Divider()
             }
 
-            List(store.logs) { entry in
-                VStack(alignment: .leading, spacing: 9) {
-                    HStack {
-                        Text("r\(entry.revision)").font(.headline.monospacedDigit())
-                        if entry.revision == store.logs.first?.revision {
-                            historyBadge("서버 최신", color: .blue)
-                        }
-                        if entry.revision == store.workingCopyRevision {
-                            historyBadge("내 로컬 폴더", color: .green)
-                        }
-                        Spacer()
-                        if let date = entry.date {
-                            Text(formattedHistoryDate(date))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                        } else {
-                            Text("커밋 시각 없음")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+            List {
+                ForEach(Array(store.logs.enumerated()), id: \.element.id) { index, entry in
+                    if workingCopyInsertionIndex == index, let workingCopyRevision = store.workingCopyRevision {
+                        workingCopyMarkerRow(revision: workingCopyRevision, isBeforeLoadedHistory: false)
                     }
 
-                    HStack(spacing: 12) {
-                        Label(entry.author.isEmpty ? "작성자 없음" : entry.author, systemImage: "person")
-                        if let email = entry.email, !email.isEmpty {
-                            Label(email, systemImage: "envelope")
+                    let isWorkingCopyEntry = entry.revision == workingCopyGraphEntryRevision
+                    HStack(alignment: .top, spacing: 0) {
+                        SVNHistoryGraphLane(
+                            isFirst: index == 0,
+                            isLast: index == store.logs.count - 1 && !isWorkingCopyBeforeLoadedHistory,
+                            showsServerCommit: true,
+                            isWorkingCopyRevision: isWorkingCopyEntry,
+                            hasLocalChanges: isWorkingCopyEntry && !store.statuses.isEmpty
+                        )
+                        .frame(width: 76)
+                        .help("파란 점은 서버 커밋, 초록 테두리는 내 로컬 기준, 주황 가지는 미커밋 변경을 뜻합니다.")
+
+                        VStack(alignment: .leading, spacing: 9) {
+                            HStack {
+                                Text("r\(entry.revision)").font(.headline.monospacedDigit())
+                                if entry.revision == store.logs.first?.revision {
+                                    historyBadge("서버 최신", color: .blue)
+                                }
+                                if isWorkingCopyEntry {
+                                    historyBadge(workingCopyEntryBadge(for: entry.revision), color: .green)
+                                    if !store.statuses.isEmpty {
+                                        historyBadge("로컬 변경 \(store.statuses.count)개", color: .orange)
+                                    }
+                                }
+                                Spacer()
+                                if let date = entry.date {
+                                    Text(formattedHistoryDate(date))
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                        .textSelection(.enabled)
+                                } else {
+                                    Text("커밋 시각 없음")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            HStack(spacing: 12) {
+                                Label(entry.author.isEmpty ? "작성자 없음" : entry.author, systemImage: "person")
+                                if let email = entry.email, !email.isEmpty {
+                                    Label(email, systemImage: "envelope")
+                                        .textSelection(.enabled)
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                            Text(entry.message.isEmpty ? "커밋 메시지 없음" : entry.message)
                                 .textSelection(.enabled)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
 
-                    Text(entry.message.isEmpty ? "커밋 메시지 없음" : entry.message)
-                        .textSelection(.enabled)
-
-                    if !entry.changedPaths.isEmpty {
-                        DisclosureGroup("변경 경로 \(entry.changedPaths.count)개") {
-                            VStack(alignment: .leading, spacing: 7) {
-                                ForEach(entry.changedPaths) { changedPath in
-                                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                        changedPathBadge(changedPath.action)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(changedPath.path)
-                                                .font(.caption.monospaced())
-                                                .textSelection(.enabled)
-                                            changedPathDetails(changedPath)
+                            if !entry.changedPaths.isEmpty {
+                                DisclosureGroup("변경 경로 \(entry.changedPaths.count)개") {
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        ForEach(entry.changedPaths) { changedPath in
+                                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                                changedPathBadge(changedPath.action)
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(changedPath.path)
+                                                        .font(.caption.monospaced())
+                                                        .textSelection(.enabled)
+                                                    changedPathDetails(changedPath)
+                                                }
+                                            }
                                         }
                                     }
+                                    .padding(.top, 6)
                                 }
+                                .font(.caption)
                             }
-                            .padding(.top, 6)
-                        }
-                        .font(.caption)
-                    }
 
-                    if !entry.revisionProperties.isEmpty {
-                        DisclosureGroup("추가 리비전 속성 \(entry.revisionProperties.count)개") {
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(entry.revisionProperties) { property in
-                                    HStack(alignment: .firstTextBaseline) {
-                                        Text(property.name)
-                                            .font(.caption.monospaced().bold())
-                                        Text(property.value.isEmpty ? "값 없음" : property.value)
-                                            .font(.caption)
-                                            .textSelection(.enabled)
+                            if !entry.revisionProperties.isEmpty {
+                                DisclosureGroup("추가 리비전 속성 \(entry.revisionProperties.count)개") {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        ForEach(entry.revisionProperties) { property in
+                                            HStack(alignment: .firstTextBaseline) {
+                                                Text(property.name)
+                                                    .font(.caption.monospaced().bold())
+                                                Text(property.value.isEmpty ? "값 없음" : property.value)
+                                                    .font(.caption)
+                                                    .textSelection(.enabled)
+                                            }
+                                        }
                                     }
+                                    .padding(.top, 6)
                                 }
+                                .font(.caption)
                             }
-                            .padding(.top, 6)
                         }
-                        .font(.caption)
+                        .padding(.vertical, 8)
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 }
-                .padding(.vertical, 6)
+
+                if let workingCopyRevision = store.workingCopyRevision, isWorkingCopyBeforeLoadedHistory {
+                    workingCopyMarkerRow(revision: workingCopyRevision, isBeforeLoadedHistory: true)
+                }
             }
         }
         .overlay {
             if store.logs.isEmpty { ContentUnavailableView("커밋 기록 없음", systemImage: "clock") }
+        }
+    }
+
+    private var workingCopyGraphEntryRevision: String? {
+        guard let workingCopyRevision = store.workingCopyRevision,
+              let headRevision = store.logs.first?.revision else { return nil }
+        if let workingCopy = Int(workingCopyRevision), let head = Int(headRevision), workingCopy >= head {
+            return headRevision
+        }
+        return store.logs.contains { $0.revision == workingCopyRevision } ? workingCopyRevision : nil
+    }
+
+    private var workingCopyInsertionIndex: Int? {
+        guard workingCopyGraphEntryRevision == nil,
+              let workingCopyRevision = store.workingCopyRevision,
+              let workingCopy = Int(workingCopyRevision) else { return nil }
+        return store.logs.firstIndex { entry in
+            guard let revision = Int(entry.revision) else { return false }
+            return revision < workingCopy
+        }
+    }
+
+    private var isWorkingCopyBeforeLoadedHistory: Bool {
+        guard store.workingCopyRevision != nil, !store.logs.isEmpty else { return false }
+        return workingCopyGraphEntryRevision == nil && workingCopyInsertionIndex == nil
+    }
+
+    private func workingCopyEntryBadge(for entryRevision: String) -> String {
+        entryRevision == store.workingCopyRevision ? "내 로컬 기준" : "내 로컬에 포함"
+    }
+
+    private func workingCopyMarkerRow(revision: String, isBeforeLoadedHistory: Bool) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            SVNHistoryGraphLane(
+                isFirst: store.logs.isEmpty,
+                isLast: isBeforeLoadedHistory,
+                showsServerCommit: false,
+                isWorkingCopyRevision: true,
+                hasLocalChanges: !store.statuses.isEmpty
+            )
+            .frame(width: 76, height: 72)
+
+            VStack(alignment: .leading, spacing: 6) {
+                if isBeforeLoadedHistory {
+                    Text("… 이전 기록")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text("r\(revision)").font(.headline.monospacedDigit())
+                    historyBadge("내 로컬 기준", color: .green)
+                    if !store.statuses.isEmpty {
+                        historyBadge("로컬 변경 \(store.statuses.count)개", color: .orange)
+                    }
+                }
+                Text(isBeforeLoadedHistory
+                     ? "내 로컬 기준 리비전이 최근 50개 서버 기록보다 이전입니다."
+                     : "두 서버 커밋 사이의 내 로컬 갱신 기준입니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+    }
+
+    private func historyLegend(color: Color, label: String) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(label)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -401,6 +514,66 @@ struct ContentView: View {
         Task {
             if await store.commit(message: message) { commitMessage = "" }
         }
+    }
+}
+
+private struct SVNHistoryGraphLane: View {
+    let isFirst: Bool
+    let isLast: Bool
+    let showsServerCommit: Bool
+    let isWorkingCopyRevision: Bool
+    let hasLocalChanges: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            let serverX: CGFloat = 22
+            let localX: CGFloat = 58
+            let nodeY: CGFloat = min(24, size.height / 2)
+
+            var serverLine = Path()
+            serverLine.move(to: CGPoint(x: serverX, y: isFirst ? nodeY : 0))
+            serverLine.addLine(to: CGPoint(x: serverX, y: isLast ? nodeY : size.height))
+            context.stroke(serverLine, with: .color(.secondary.opacity(0.35)), lineWidth: 2)
+
+            if showsServerCommit {
+                let serverNode = CGRect(x: serverX - 5, y: nodeY - 5, width: 10, height: 10)
+                context.fill(Path(ellipseIn: serverNode), with: .color(.blue))
+            }
+
+            if isWorkingCopyRevision {
+                let localRing = CGRect(x: serverX - 9, y: nodeY - 9, width: 18, height: 18)
+                context.stroke(Path(ellipseIn: localRing), with: .color(.green), lineWidth: 3)
+            }
+
+            if hasLocalChanges {
+                var localBranch = Path()
+                localBranch.move(to: CGPoint(x: serverX + 5, y: nodeY))
+                localBranch.addCurve(
+                    to: CGPoint(x: localX, y: nodeY),
+                    control1: CGPoint(x: serverX + 18, y: nodeY),
+                    control2: CGPoint(x: localX - 16, y: nodeY)
+                )
+                context.stroke(
+                    localBranch,
+                    with: .color(.orange),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [4, 3])
+                )
+                let localNode = CGRect(x: localX - 5, y: nodeY - 5, width: 10, height: 10)
+                context.fill(Path(ellipseIn: localNode), with: .color(.orange))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
+    }
+
+    private var accessibilityDescription: String {
+        if hasLocalChanges {
+            return "내 로컬 기준 리비전에서 미커밋 변경이 갈라져 있습니다."
+        }
+        if isWorkingCopyRevision {
+            return "내 로컬 기준 리비전입니다."
+        }
+        return "서버 커밋입니다."
     }
 }
 
