@@ -28,6 +28,7 @@
 
 ## 제출 전 남은 외부 항목
 
+• 배포 국가에서 프랑스 제외 (`ITSAppUsesNonExemptEncryption = NO` 기준)
 • App Store Connect 앱 레코드와 SKU 생성
 • 지원 URL 공개
 • 개인정보 처리방침을 공개 URL에 게시

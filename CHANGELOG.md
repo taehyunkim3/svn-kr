@@ -9,4 +9,5 @@
 - Fixed the final Korean character sometimes being omitted from commit messages.
 - Cleared messages after commits and refreshed automatically when the window becomes active.
 - Determined update status from actual remote changes for mixed-revision working copies.
+- Declared exempt encryption export compliance for distribution outside France.
 - Removed quarantine attributes before signing App Store packages.
