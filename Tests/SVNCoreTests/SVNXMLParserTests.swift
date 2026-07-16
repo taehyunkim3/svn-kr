@@ -15,6 +15,24 @@ import Testing
     #expect(entries.map(\.item) == [.modified, .unversioned])
 }
 
+@Test func parsesRecursiveIgnoreRules() throws {
+    let xml = """
+    <?xml version="1.0"?><properties>
+      <target path="."><property name="svn:ignore">.DS_Store
+    *.log
+    </property></target>
+      <target path="Documents"><property name="svn:ignore">~$*
+    </property></target>
+    </properties>
+    """
+    let rules = try SVNXMLParser.ignoreRules(from: Data(xml.utf8))
+    #expect(rules == [
+        SVNIgnoreRule(directory: ".", pattern: ".DS_Store"),
+        SVNIgnoreRule(directory: ".", pattern: "*.log"),
+        SVNIgnoreRule(directory: "Documents", pattern: "~$*"),
+    ])
+}
+
 @Test func detectsActualRemoteWorkingCopyChanges() throws {
     let upToDateXML = """
     <?xml version="1.0"?><status><target path=".">

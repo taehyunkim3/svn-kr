@@ -9,6 +9,10 @@ protocol SVNClientServing: Sendable {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
+    func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
+    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
+    func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
+    func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String
@@ -124,6 +128,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case refreshHistory(SVNProject.ID)
         case loadMoreHistory(SVNProject.ID)
         case revisionDiff(SVNProject.ID)
+        case ignore(SVNProject.ID)
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
     }

@@ -11,6 +11,7 @@ public enum SVNStatusKind: Hashable, Sendable {
     case deleted
     case missing
     case unversioned
+    case ignored
     case conflicted
     case replaced
     case unknown(String)
@@ -22,6 +23,7 @@ public enum SVNStatusKind: Hashable, Sendable {
         case "deleted": self = .deleted
         case "missing": self = .missing
         case "unversioned": self = .unversioned
+        case "ignored": self = .ignored
         case "conflicted": self = .conflicted
         case "replaced": self = .replaced
         default: self = .unknown(rawValue)
@@ -36,10 +38,24 @@ public enum SVNStatusKind: Hashable, Sendable {
         case .deleted: "deleted"
         case .missing: "missing"
         case .unversioned: "unversioned"
+        case .ignored: "ignored"
         case .conflicted: "conflicted"
         case .replaced: "replaced"
         case let .unknown(value): value
         }
+    }
+}
+
+/// 디렉터리의 `svn:ignore` 속성에 저장된 패턴 하나입니다.
+public struct SVNIgnoreRule: Identifiable, Hashable, Sendable {
+    public let directory: String
+    public let pattern: String
+
+    public var id: String { "\(directory):\(pattern)" }
+
+    public init(directory: String, pattern: String) {
+        self.directory = directory
+        self.pattern = pattern
     }
 }
 

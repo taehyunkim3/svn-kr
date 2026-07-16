@@ -26,6 +26,42 @@ public enum SVNXMLParser {
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.hasRemoteChanges
     }
+
+    public static func ignoreRules(from data: Data) throws -> [SVNIgnoreRule] {
+        let delegate = IgnoreRulesDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.rules
+    }
+}
+
+/// `svn propget svn:ignore --recursive --xml` 결과를 디렉터리별 패턴으로 펼칩니다.
+private final class IgnoreRulesDelegate: NSObject, XMLParserDelegate {
+    var rules: [SVNIgnoreRule] = []
+    private var targetPath: String?
+    private var isIgnoreProperty = false
+    private var text = ""
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        text = ""
+        if elementName == "target" { targetPath = attributeDict["path"] }
+        if elementName == "property" { isIgnoreProperty = attributeDict["name"] == "svn:ignore" }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+        if elementName == "property", isIgnoreProperty, let targetPath {
+            rules += text.split(whereSeparator: \.isNewline).map {
+                SVNIgnoreRule(directory: targetPath, pattern: String($0))
+            }
+            isIgnoreProperty = false
+        } else if elementName == "target" {
+            targetPath = nil
+        }
+        text = ""
+    }
 }
 
 /// `svn status --xml`에서 각 entry의 로컬 상태만 수집합니다.

@@ -12,6 +12,8 @@ struct ChangesView: View {
     var body: some View {
         HSplitView {
             VStack(spacing: 0) {
+                changesToolbar
+                Divider()
                 changedFileList
                 Divider()
                 commitControls
@@ -35,30 +37,38 @@ struct ChangesView: View {
             isCommitMessageFocused = false
             store.lastCompletedCommitMessage = nil
         }
+        .sheet(isPresented: $store.isShowingIgnoreRules) {
+            IgnoreRulesView()
+                .environmentObject(store)
+        }
     }
 
     // MARK: - 변경 파일 목록
 
     @ViewBuilder
     private var changedFileList: some View {
-        if store.statuses.isEmpty {
+        if displayedStatuses.isEmpty {
             ContentUnavailableView(
                 appLanguage.text("변경 사항 없음", "No Changes"),
                 systemImage: "checkmark.circle",
                 description: Text(appLanguage.text("로컬에서 수정된 파일이 없습니다.", "There are no locally modified files."))
             )
         } else {
-            List(store.statuses) { entry in
+            List(displayedStatuses) { entry in
                 HStack {
-                    Toggle("", isOn: Binding(
-                        get: { store.selectedPaths.contains(entry.path) },
-                        set: { checked in
-                            if checked { store.selectedPaths.insert(entry.path) }
-                            else { store.selectedPaths.remove(entry.path) }
-                        }
-                    ))
-                    .labelsHidden()
-                    .help(appLanguage.text("이 파일을 다음 선택 커밋에 포함하거나 제외합니다.", "Include or exclude this file from the next commit."))
+                    if entry.item != .ignored {
+                        Toggle("", isOn: Binding(
+                            get: { store.selectedPaths.contains(entry.path) },
+                            set: { checked in
+                                if checked { store.selectedPaths.insert(entry.path) }
+                                else { store.selectedPaths.remove(entry.path) }
+                            }
+                        ))
+                        .labelsHidden()
+                        .help(appLanguage.text("이 파일을 다음 선택 커밋에 포함하거나 제외합니다.", "Include or exclude this file from the next commit."))
+                    } else {
+                        Image(systemName: "eye.slash").frame(width: 18)
+                    }
                     statusBadge(entry.item)
                     Text(entry.path).lineLimit(1)
                     Spacer()
@@ -66,8 +76,45 @@ struct ChangesView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { Task { await store.loadDiff(for: entry.path) } }
                 .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
+                .contextMenu {
+                    if entry.item == .unversioned {
+                        Button(appLanguage.text("이 파일 무시", "Ignore This Item")) {
+                            Task { await store.ignore(path: entry.path, byExtension: false) }
+                        }
+                        if !(entry.path as NSString).pathExtension.isEmpty {
+                            Button(appLanguage.text("같은 확장자 모두 무시", "Ignore This Extension")) {
+                                Task { await store.ignore(path: entry.path, byExtension: true) }
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private var displayedStatuses: [SVNStatusEntry] {
+        store.statuses + (store.showsIgnoredFiles ? store.ignoredStatuses : [])
+    }
+
+    private var changesToolbar: some View {
+        HStack {
+            Toggle(appLanguage.text("무시된 파일 보기", "Show Ignored Files"), isOn: Binding(
+                get: { store.showsIgnoredFiles },
+                set: { value in Task { await store.setShowsIgnoredFiles(value) } }
+            ))
+            .toggleStyle(.checkbox)
+            Spacer()
+            Button(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules"), systemImage: "eye.slash") {
+                Task {
+                    await store.loadIgnoreRules()
+                    store.isShowingIgnoreRules = true
+                }
+            }
+            .buttonStyle(.borderless)
+        }
+        .font(.caption)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     // MARK: - 커밋 입력과 실행
@@ -129,6 +176,7 @@ struct ChangesView: View {
         case .added: appLanguage.text("추가", "Added")
         case .deleted, .missing: appLanguage.text("삭제", "Deleted")
         case .unversioned: appLanguage.text("미추적", "Unversioned")
+        case .ignored: appLanguage.text("무시됨", "Ignored")
         case .conflicted: appLanguage.text("충돌", "Conflict")
         case .replaced: appLanguage.text("교체", "Replaced")
         case let .unknown(value): value
@@ -139,6 +187,7 @@ struct ChangesView: View {
         switch item {
         case .modified: .orange
         case .added, .unversioned: .blue
+        case .ignored: .gray
         case .deleted, .missing, .conflicted: .red
         default: .gray
         }

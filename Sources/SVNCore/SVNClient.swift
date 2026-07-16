@@ -44,6 +44,48 @@ public actor SVNClient {
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
     }
 
+    public func ignoredStatus(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
+        let result = try checkedRun(["status", "--no-ignore", "--xml"], at: path, credentials: credentials)
+        return try SVNXMLParser.statuses(from: Data(result.output.utf8)).filter { $0.item == .ignored }
+    }
+
+    public func ignoreRules(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNIgnoreRule] {
+        let result = try run(["propget", "svn:ignore", "--recursive", "--xml", "."], at: path, credentials: credentials)
+        if result.exitCode != 0, result.error.contains("W200017") { return [] }
+        guard result.exitCode == 0 else {
+            throw SVNError.commandFailed(command: "svn propget", message: result.error)
+        }
+        return try SVNXMLParser.ignoreRules(from: Data(result.output.utf8))
+    }
+
+    public func addIgnoreRule(
+        at path: String,
+        directory: String,
+        pattern: String,
+        credentials: SVNCredentials? = nil
+    ) async throws {
+        let existing = try ignorePatterns(at: path, directory: directory, credentials: credentials)
+        guard !existing.contains(pattern) else { return }
+        let value = (existing + [pattern]).joined(separator: "\n") + "\n"
+        _ = try checkedRun(["propset", "svn:ignore", value, "--", directory], at: path, credentials: credentials)
+    }
+
+    public func removeIgnoreRule(
+        at path: String,
+        directory: String,
+        pattern: String,
+        credentials: SVNCredentials? = nil
+    ) async throws {
+        let remaining = try ignorePatterns(at: path, directory: directory, credentials: credentials)
+            .filter { $0 != pattern }
+        if remaining.isEmpty {
+            _ = try checkedRun(["propdel", "svn:ignore", "--", directory], at: path, credentials: credentials)
+        } else {
+            let value = remaining.joined(separator: "\n") + "\n"
+            _ = try checkedRun(["propset", "svn:ignore", value, "--", directory], at: path, credentials: credentials)
+        }
+    }
+
     public func log(
         at path: String,
         limit: Int = 50,
@@ -141,6 +183,15 @@ public actor SVNClient {
     }
 
     // MARK: - 공통 명령 실행
+
+    private func ignorePatterns(at path: String, directory: String, credentials: SVNCredentials?) throws -> [String] {
+        let result = try run(["propget", "svn:ignore", "--strict", "--", directory], at: path, credentials: credentials)
+        if result.exitCode != 0, result.error.contains("W200017") { return [] }
+        guard result.exitCode == 0 else {
+            throw SVNError.commandFailed(command: "svn propget", message: result.error)
+        }
+        return result.output.split(whereSeparator: \.isNewline).map(String.init)
+    }
 
     @discardableResult
     private func checkedRun(
