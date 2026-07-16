@@ -17,6 +17,8 @@ protocol SVNClientServing: Sendable {
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo?
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+    func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails?
+    func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String
@@ -134,6 +136,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case revisionDiff(SVNProject.ID)
         case ignore(SVNProject.ID)
         case lock(SVNProject.ID)
+        case resolveConflict(SVNProject.ID)
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
     }

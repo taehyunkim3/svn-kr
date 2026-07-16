@@ -8,7 +8,15 @@ public enum SVNXMLParser {
         let parser = XMLParser(data: data)
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
-        return delegate.entries
+        let conflictedPaths = delegate.entries.filter { $0.item == .conflicted }.map(\.path)
+        return delegate.entries.filter { entry in
+            !conflictedPaths.contains { conflictedPath in
+                entry.path == conflictedPath + ".mine" || entry.path.range(
+                    of: "^\(NSRegularExpression.escapedPattern(for: conflictedPath))\\.r[0-9]+$",
+                    options: .regularExpression
+                ) != nil
+            }
+        }
     }
 
     public static func logs(from data: Data) throws -> [SVNLogEntry] {
@@ -49,6 +57,66 @@ public enum SVNXMLParser {
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.lock
+    }
+
+    public static func conflictDetails(fromInfo data: Data) throws -> SVNConflictDetails? {
+        let delegate = ConflictInfoDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.details
+    }
+}
+
+private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
+    var details: SVNConflictDetails?
+    private var entryPath = ""
+    private var type = "unknown"
+    private var operation = "unknown"
+    private var previousBaseFile: String?
+    private var myFile: String?
+    private var serverFile: String?
+    private var previousRevision: String?
+    private var serverRevision: String?
+    private var inConflict = false
+    private var text = ""
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        text = ""
+        if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
+        if elementName == "conflict" {
+            inConflict = true
+            type = attributeDict["type"] ?? "unknown"
+            operation = attributeDict["operation"] ?? "unknown"
+        } else if elementName == "version", inConflict {
+            if attributeDict["side"] == "source-left" { previousRevision = attributeDict["revision"] }
+            if attributeDict["side"] == "source-right" { serverRevision = attributeDict["revision"] }
+        }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+        guard inConflict else { return }
+        switch elementName {
+        case "prev-base-file": previousBaseFile = text
+        case "prev-wc-file": myFile = text
+        case "cur-base-file": serverFile = text
+        case "conflict":
+            details = SVNConflictDetails(
+                path: entryPath,
+                type: type,
+                operation: operation,
+                previousBaseFile: previousBaseFile,
+                myFile: myFile,
+                serverFile: serverFile,
+                previousRevision: previousRevision,
+                serverRevision: serverRevision
+            )
+            inConflict = false
+        default: break
+        }
+        text = ""
     }
 }
 

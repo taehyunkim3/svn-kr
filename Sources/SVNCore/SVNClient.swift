@@ -144,6 +144,20 @@ public actor SVNClient {
         ).output
     }
 
+    public func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> SVNConflictDetails? {
+        let result = try checkedRun(["info", "--xml", "--", relativePath], at: path, credentials: credentials)
+        return try SVNXMLParser.conflictDetails(fromInfo: Data(result.output.utf8))
+    }
+
+    public func resolveConflict(
+        at path: String,
+        relativePath: String,
+        choice: SVNConflictChoice,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try checkedRun(["resolve", "--accept", choice.rawValue, "--", relativePath], at: path, credentials: credentials).output
+    }
+
     public func log(
         at path: String,
         limit: Int = 50,

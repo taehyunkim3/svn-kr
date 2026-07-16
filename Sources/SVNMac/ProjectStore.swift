@@ -102,6 +102,7 @@ final class ProjectStore: ObservableObject {
     @Published var isShowingIgnoreRules = false
     @Published var isShowingLocks = false
     @Published var documentOpenRequest: DocumentOpenRequest?
+    @Published var activeConflict: SVNConflictDetails?
     @Published var authenticationRequest: SVNAuthenticationRequest?
     @Published var lastCompletedCommitMessage: String?
     @Published var notice: String?
@@ -113,6 +114,7 @@ final class ProjectStore: ObservableObject {
     private let credentialStore: any CredentialStoring
     private let persistence: any ProjectPersisting
     private let projectAccessManager: any ProjectAccessManaging
+    private let conflictFileService: ConflictFileService
     private var sessionPasswords: [SVNProject.ID: String] = [:]
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
@@ -129,12 +131,14 @@ final class ProjectStore: ObservableObject {
         client: any SVNClientServing = SVNClient(),
         credentialStore: any CredentialStoring = KeychainCredentialStore(),
         persistence: any ProjectPersisting = UserDefaultsProjectPersistence(),
-        projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager()
+        projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
+        conflictFileService: ConflictFileService = ConflictFileService()
     ) {
         self.client = client
         self.credentialStore = credentialStore
         self.persistence = persistence
         self.projectAccessManager = projectAccessManager
+        self.conflictFileService = conflictFileService
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
@@ -285,7 +289,7 @@ final class ProjectStore: ObservableObject {
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.statuses = statuses
             self.workingCopyRevision = workingCopyRevision
-            selectedPaths.formIntersection(Set(statuses.map(\.path)))
+            selectedPaths.formIntersection(Set(statuses.filter { $0.item != .conflicted }.map(\.path)))
             notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -506,6 +510,65 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    func prepareConflictResolution(for relativePath: String) async {
+        guard let project = selectedProject else { return }
+        let operationID = beginOperation(.resolveConflict(project.id))
+        defer { endOperation(operationID) }
+        do {
+            guard let details = try await client.conflictDetails(at: project.path, relativePath: relativePath, credentials: nil) else {
+                errorMessage = AppLanguage.current.text("SVN 충돌 상세 정보를 찾지 못했습니다.", "SVN conflict details were not found.")
+                return
+            }
+            activeConflict = SVNConflictDetails(
+                path: relativePath,
+                type: details.type,
+                operation: details.operation,
+                previousBaseFile: details.previousBaseFile,
+                myFile: details.myFile,
+                serverFile: details.serverFile,
+                previousRevision: details.previousRevision,
+                serverRevision: details.serverRevision
+            )
+        } catch {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func resolveActiveConflict(using choice: SVNConflictChoice) async {
+        guard let project = selectedProject, let conflict = activeConflict else { return }
+        let operationID = beginOperation(.resolveConflict(project.id))
+        defer { endOperation(operationID) }
+        do {
+            _ = try conflictFileService.backup(conflict, projectID: project.id, workingCopyPath: project.path)
+            _ = try await client.resolveConflict(at: project.path, relativePath: conflict.path, choice: choice, credentials: nil)
+            activeConflict = nil
+            notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
+            await refresh()
+        } catch {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func preserveConflictVersions() {
+        guard let project = selectedProject, let conflict = activeConflict else { return }
+        do {
+            let files = try conflictFileService.preserveComparableVersions(conflict, workingCopyPath: project.path)
+            guard !files.isEmpty else {
+                errorMessage = AppLanguage.current.text("보관할 충돌 버전 파일을 찾지 못했습니다.", "No conflict version files were available to preserve.")
+                return
+            }
+            NSWorkspace.shared.activateFileViewerSelecting(files)
+            notice = AppLanguage.current.text("내 버전과 서버 버전을 원본 옆에 복사했습니다.", "Copied my version and the server version next to the original.")
+        } catch {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func openActiveConflictFile() {
+        guard let project = selectedProject, let conflict = activeConflict else { return }
+        openFile(conflict.path, in: project)
+    }
+
     func loadHistoryDiff(for revision: String) async {
         guard let project = selectedProject else { return }
         selectedHistoryRevision = revision
@@ -553,6 +616,10 @@ final class ProjectStore: ObservableObject {
     func commit(message: String) async -> Bool {
         guard let project = selectedProject, !selectedPaths.isEmpty else { return false }
         let paths = selectedPaths.sorted()
+        guard !paths.contains(where: { path in statuses.first(where: { $0.path == path })?.item == .conflicted }) else {
+            errorMessage = AppLanguage.current.text("충돌 파일은 해결 완료 처리 후 커밋할 수 있습니다.", "Resolve conflicted files before committing.")
+            return false
+        }
         let operationID = beginOperation(.commit(project.id))
         defer { endOperation(operationID) }
         do {
@@ -775,6 +842,7 @@ final class ProjectStore: ObservableObject {
         repositoryLocks = []
         showsIgnoredFiles = false
         documentOpenRequest = nil
+        activeConflict = nil
         logs = []
         selectedHistoryRevision = nil
         historyDiffContent = .placeholder

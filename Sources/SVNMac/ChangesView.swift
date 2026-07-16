@@ -45,6 +45,10 @@ struct ChangesView: View {
             RepositoryLocksView()
                 .environmentObject(store)
         }
+        .sheet(item: $store.activeConflict) { _ in
+            ConflictResolutionView()
+                .environmentObject(store)
+        }
         .documentOpenConfirmation()
     }
 
@@ -61,7 +65,7 @@ struct ChangesView: View {
         } else {
             List(displayedStatuses) { entry in
                 HStack {
-                    if entry.item != .ignored {
+                    if entry.item != .ignored && entry.item != .conflicted {
                         Toggle("", isOn: Binding(
                             get: { store.selectedPaths.contains(entry.path) },
                             set: { checked in
@@ -86,6 +90,12 @@ struct ChangesView: View {
                         Task { await store.prepareToOpen(path: entry.path) }
                     }
                     Divider()
+                    if entry.item == .conflicted {
+                        Button(appLanguage.text("충돌 해결…", "Resolve Conflict…")) {
+                            Task { await store.prepareConflictResolution(for: entry.path) }
+                        }
+                        Divider()
+                    }
                     if entry.item == .unversioned {
                         Button(appLanguage.text("이 파일 무시", "Ignore This Item")) {
                             Task { await store.ignore(path: entry.path, byExtension: false) }

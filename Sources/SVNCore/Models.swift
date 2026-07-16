@@ -78,6 +78,45 @@ public struct SVNLockInfo: Identifiable, Hashable, Sendable {
     }
 }
 
+public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
+    public let path: String
+    public let type: String
+    public let operation: String
+    public let previousBaseFile: String?
+    public let myFile: String?
+    public let serverFile: String?
+    public let previousRevision: String?
+    public let serverRevision: String?
+
+    public var id: String { path }
+
+    public init(
+        path: String,
+        type: String,
+        operation: String,
+        previousBaseFile: String? = nil,
+        myFile: String? = nil,
+        serverFile: String? = nil,
+        previousRevision: String? = nil,
+        serverRevision: String? = nil
+    ) {
+        self.path = path
+        self.type = type
+        self.operation = operation
+        self.previousBaseFile = previousBaseFile
+        self.myFile = myFile
+        self.serverFile = serverFile
+        self.previousRevision = previousRevision
+        self.serverRevision = serverRevision
+    }
+}
+
+public enum SVNConflictChoice: String, Sendable {
+    case working
+    case mineFull = "mine-full"
+    case theirsFull = "theirs-full"
+}
+
 /// 커밋 기록의 변경 경로에 붙는 SVN 작업 코드입니다.
 public enum SVNChangeAction: Hashable, Sendable {
     case added

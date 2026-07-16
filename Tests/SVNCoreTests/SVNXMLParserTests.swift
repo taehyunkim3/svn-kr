@@ -47,6 +47,29 @@ import Testing
     #expect(locks[0].comment == "editing")
 }
 
+@Test func parsesConflictArtifactsAndHidesTemporaryStatusEntries() throws {
+    let statusXML = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="sample.txt"><wc-status item="conflicted" revision="3" props="none"/></entry>
+      <entry path="sample.txt.mine"><wc-status item="unversioned" props="none"/></entry>
+      <entry path="sample.txt.r2"><wc-status item="unversioned" props="none"/></entry>
+      <entry path="sample.txt.r3"><wc-status item="unversioned" props="none"/></entry>
+    </target></status>
+    """
+    #expect(try SVNXMLParser.statuses(from: Data(statusXML.utf8)).map(\.path) == ["sample.txt"])
+
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="file" path="sample.txt" revision="3"><conflict operation="update" type="text">
+      <version kind="file" revision="2" side="source-left"/><version kind="file" revision="3" side="source-right"/>
+      <prev-base-file>/tmp/sample.txt.r2</prev-base-file><prev-wc-file>/tmp/sample.txt.mine</prev-wc-file><cur-base-file>/tmp/sample.txt.r3</cur-base-file>
+    </conflict></entry></info>
+    """
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+    #expect(details?.path == "sample.txt")
+    #expect(details?.myFile == "/tmp/sample.txt.mine")
+    #expect(details?.serverRevision == "3")
+}
+
 @Test func detectsActualRemoteWorkingCopyChanges() throws {
     let upToDateXML = """
     <?xml version="1.0"?><status><target path=".">
