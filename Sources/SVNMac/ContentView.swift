@@ -24,6 +24,7 @@ struct ContentView: View {
                                 if let username = project.username, !username.isEmpty {
                                     Text(username).font(.caption).foregroundStyle(.secondary)
                                 }
+                                ProjectStatusBadges(summary: store.projectSummaries[project.id])
                             }
                         } icon: {
                             Image(systemName: "shippingbox")
@@ -73,7 +74,7 @@ struct ContentView: View {
             Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") { Task { await store.refresh() } }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
-            Button(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle") { Task { await store.update() } }
+            Button(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle") { Task { await store.previewUpdate() } }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
             if store.isWorking { ProgressView().controlSize(.small) }
@@ -97,6 +98,10 @@ struct ContentView: View {
                 CredentialsView(project: project)
                     .environmentObject(store)
             }
+        }
+        .sheet(isPresented: $store.isShowingUpdatePreview) {
+            UpdatePreviewView()
+                .environmentObject(store)
         }
         .sheet(item: $store.authenticationRequest) { request in
             AuthenticationRequiredView(request: request)

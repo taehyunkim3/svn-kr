@@ -86,6 +86,10 @@ final class ProjectStore: ObservableObject {
     @Published var ignoredStatuses: [SVNStatusEntry] = []
     @Published var ignoreRules: [SVNIgnoreRule] = []
     @Published var repositoryLocks: [SVNLockInfo] = []
+    @Published var remoteChanges: [SVNStatusEntry] = []
+    @Published var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
+    @Published var fileHistory: [SVNLogEntry] = []
+    @Published var fileHistoryPath: String?
     @Published var showsIgnoredFiles = false
     @Published var logs: [SVNLogEntry] = []
     @Published var selectedHistoryRevision: String?
@@ -101,8 +105,11 @@ final class ProjectStore: ObservableObject {
     @Published var isShowingCredentials = false
     @Published var isShowingIgnoreRules = false
     @Published var isShowingLocks = false
+    @Published var isShowingUpdatePreview = false
+    @Published var isShowingFileHistory = false
     @Published var documentOpenRequest: DocumentOpenRequest?
     @Published var activeConflict: SVNConflictDetails?
+    @Published var revertRequest: RevertRequest?
     @Published var authenticationRequest: SVNAuthenticationRequest?
     @Published var lastCompletedCommitMessage: String?
     @Published var notice: String?
@@ -268,6 +275,7 @@ final class ProjectStore: ObservableObject {
             sessionPasswords[selectedProjectID] = nil
             try? credentialStore.deletePassword(for: selectedProjectID)
             projectAccessManager.endAccessing(projectID: selectedProjectID)
+            projectSummaries[selectedProjectID] = nil
         }
         projects.removeAll { $0.id == selectedProjectID }
         selectedProjectID = projects.first?.id
@@ -290,6 +298,7 @@ final class ProjectStore: ObservableObject {
             self.statuses = statuses
             self.workingCopyRevision = workingCopyRevision
             selectedPaths.formIntersection(Set(statuses.filter { $0.item != .conflicted }.map(\.path)))
+            updateLocalSummary(for: project.id, statuses: statuses)
             notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -317,6 +326,7 @@ final class ProjectStore: ObservableObject {
             self.logs = logs
             self.hasMoreHistory = logs.count == 50
             self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
+            updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -337,11 +347,30 @@ final class ProjectStore: ObservableObject {
             ).trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return }
             notice = result
+            isShowingUpdatePreview = false
             await refresh()
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .update)
             }
+        }
+    }
+
+    func previewUpdate() async {
+        guard let project = selectedProject else { return }
+        let operationID = beginOperation(.previewUpdate(project.id))
+        defer { endOperation(operationID) }
+        do {
+            remoteChanges = try await client.remoteChanges(
+                at: project.path,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            guard selectedProjectID == project.id else { return }
+            updateRemoteSummary(for: project.id, needsUpdate: !remoteChanges.isEmpty)
+            isShowingUpdatePreview = true
+        } catch {
+            handleRemoteError(error, project: project, action: .update)
         }
     }
 
@@ -487,9 +516,62 @@ final class ProjectStore: ObservableObject {
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
+            updateLockSummary(for: project.id, lockCount: repositoryLocks.count)
         } catch {
             errorMessage = localizedError(error)
         }
+    }
+
+    func requestRevert(_ entry: SVNStatusEntry) {
+        revertRequest = RevertRequest(entry: entry)
+    }
+
+    func confirmRevert() async {
+        guard let project = selectedProject, let request = revertRequest else { return }
+        revertRequest = nil
+        let operationID = beginOperation(.revert(project.id))
+        defer { endOperation(operationID) }
+        do {
+            _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
+            selectedPaths.remove(request.entry.path)
+            notice = AppLanguage.current.text("로컬 변경을 되돌렸습니다: \(request.entry.path)", "Reverted local changes: \(request.entry.path)")
+            await refresh()
+        } catch {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func loadFileHistory(for relativePath: String) async {
+        guard let project = selectedProject else { return }
+        let operationID = beginOperation(.fileHistory(project.id))
+        defer { endOperation(operationID) }
+        do {
+            fileHistory = try await client.fileLog(
+                at: project.path,
+                relativePath: relativePath,
+                limit: 100,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            fileHistoryPath = relativePath
+            isShowingFileHistory = true
+        } catch {
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func revealInFinder(_ relativePath: String) {
+        guard let project = selectedProject else { return }
+        let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    func copyPath(_ relativePath: String) {
+        guard let project = selectedProject else { return }
+        let path = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath).path
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects([path as NSString])
+        notice = AppLanguage.current.text("파일 경로를 복사했습니다.", "Copied the file path.")
     }
 
     func unlock(_ lock: SVNLockInfo) async {
@@ -829,6 +911,25 @@ final class ProjectStore: ObservableObject {
         persistence.saveProjects(projects)
     }
 
+    private func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
+        var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
+        summary.localChangeCount = statuses.count
+        summary.conflictCount = statuses.filter { $0.item == .conflicted }.count
+        projectSummaries[projectID] = summary
+    }
+
+    private func updateRemoteSummary(for projectID: SVNProject.ID, needsUpdate: Bool) {
+        var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
+        summary.needsUpdate = needsUpdate
+        projectSummaries[projectID] = summary
+    }
+
+    private func updateLockSummary(for projectID: SVNProject.ID, lockCount: Int) {
+        var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
+        summary.lockCount = lockCount
+        projectSummaries[projectID] = summary
+    }
+
     // MARK: - 화면 상태와 작업 수명 관리
 
     /// 프로젝트가 바뀔 때 이전 프로젝트의 화면 상태가 잠깐 보이지 않도록 관련
@@ -840,9 +941,13 @@ final class ProjectStore: ObservableObject {
         ignoredStatuses = []
         ignoreRules = []
         repositoryLocks = []
+        remoteChanges = []
+        fileHistory = []
+        fileHistoryPath = nil
         showsIgnoredFiles = false
         documentOpenRequest = nil
         activeConflict = nil
+        revertRequest = nil
         logs = []
         selectedHistoryRevision = nil
         historyDiffContent = .placeholder

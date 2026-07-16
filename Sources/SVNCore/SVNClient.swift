@@ -209,6 +209,20 @@ public actor SVNClient {
         return try SVNXMLParser.workingCopyIsOutOfDate(from: Data(result.output.utf8))
     }
 
+    public func remoteChanges(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> [SVNStatusEntry] {
+        let result = try checkedRun(
+            ["status", "--show-updates", "--xml"],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        return try SVNXMLParser.remoteChanges(from: Data(result.output.utf8))
+    }
+
     public func update(
         at path: String,
         credentials: SVNCredentials? = nil,
@@ -226,6 +240,26 @@ public actor SVNClient {
         var arguments = ["diff"]
         if let relativePath { arguments.append(relativePath) }
         return try checkedRun(arguments, at: path, credentials: credentials).output
+    }
+
+    public func revert(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> String {
+        try checkedRun(["revert", "--", relativePath], at: path, credentials: credentials).output
+    }
+
+    public func fileLog(
+        at path: String,
+        relativePath: String,
+        limit: Int = 100,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> [SVNLogEntry] {
+        let result = try checkedRun(
+            ["log", "--xml", "--verbose", "--with-all-revprops", "--limit", String(limit), "--", relativePath],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
 
     public func commit(

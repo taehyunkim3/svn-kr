@@ -88,6 +88,19 @@ import Testing
     #expect(try SVNXMLParser.workingCopyIsOutOfDate(from: Data(outOfDateXML.utf8)))
 }
 
+@Test func parsesIncomingServerChangesForUpdatePreview() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="Sources/App.swift"><wc-status item="normal" revision="10"/><repos-status item="modified" props="none"/></entry>
+      <entry path="Documents/old.pptx"><wc-status item="normal" revision="10"/><repos-status item="deleted" props="none"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="10"/><repos-status item="none" props="none"/></entry>
+    </target></status>
+    """
+    let changes = try SVNXMLParser.remoteChanges(from: Data(xml.utf8))
+    #expect(changes.map(\.path) == ["Sources/App.swift", "Documents/old.pptx"])
+    #expect(changes.map(\.item) == [.modified, .deleted])
+}
+
 @Test func parsesLogHistory() throws {
     let xml = """
     <?xml version="1.0"?><log><logentry revision="13267">

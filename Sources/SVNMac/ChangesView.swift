@@ -49,6 +49,11 @@ struct ChangesView: View {
             ConflictResolutionView()
                 .environmentObject(store)
         }
+        .sheet(isPresented: $store.isShowingFileHistory) {
+            FileHistoryView()
+                .environmentObject(store)
+        }
+        .revertConfirmation()
         .documentOpenConfirmation()
     }
 
@@ -89,6 +94,17 @@ struct ChangesView: View {
                     Button(appLanguage.text("파일 열기", "Open File")) {
                         Task { await store.prepareToOpen(path: entry.path) }
                     }
+                    Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
+                        store.revealInFinder(entry.path)
+                    }
+                    Button(appLanguage.text("전체 경로 복사", "Copy Full Path")) {
+                        store.copyPath(entry.path)
+                    }
+                    if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
+                        Button(appLanguage.text("이 파일의 커밋 기록", "File Commit History")) {
+                            Task { await store.loadFileHistory(for: entry.path) }
+                        }
+                    }
                     Divider()
                     if entry.item == .conflicted {
                         Button(appLanguage.text("충돌 해결…", "Resolve Conflict…")) {
@@ -104,6 +120,12 @@ struct ChangesView: View {
                             Button(appLanguage.text("같은 확장자 모두 무시", "Ignore This Extension")) {
                                 Task { await store.ignore(path: entry.path, byExtension: true) }
                             }
+                        }
+                    }
+                    if entry.item != .unversioned && entry.item != .ignored && entry.item != .conflicted {
+                        Divider()
+                        Button(appLanguage.text("로컬 변경 되돌리기…", "Revert Local Changes…"), role: .destructive) {
+                            store.requestRevert(entry)
                         }
                     }
                 }

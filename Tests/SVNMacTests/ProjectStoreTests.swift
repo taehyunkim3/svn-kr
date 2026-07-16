@@ -183,8 +183,11 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return false
     }
+    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] { [] }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "updated" }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
+    func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String { "reverted" }
+    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] { [] }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "committed" }
 }
 

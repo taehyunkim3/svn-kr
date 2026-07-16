@@ -23,8 +23,11 @@ protocol SVNClientServing: Sendable {
     func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool
+    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry]
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String
+    func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String
+    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
 }
 
@@ -137,6 +140,9 @@ struct ProjectOperation: Identifiable, Equatable {
         case ignore(SVNProject.ID)
         case lock(SVNProject.ID)
         case resolveConflict(SVNProject.ID)
+        case previewUpdate(SVNProject.ID)
+        case revert(SVNProject.ID)
+        case fileHistory(SVNProject.ID)
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
     }

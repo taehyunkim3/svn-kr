@@ -35,6 +35,14 @@ public enum SVNXMLParser {
         return delegate.hasRemoteChanges
     }
 
+    public static func remoteChanges(from data: Data) throws -> [SVNStatusEntry] {
+        let delegate = RemoteChangesDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.entries
+    }
+
     public static func ignoreRules(from data: Data) throws -> [SVNIgnoreRule] {
         let delegate = IgnoreRulesDelegate()
         let parser = XMLParser(data: data)
@@ -255,6 +263,26 @@ private final class RemoteStatusDelegate: NSObject, XMLParserDelegate {
         let properties = attributeDict["props"] ?? "none"
         if item != "none" || properties != "none" {
             hasRemoteChanges = true
+        }
+    }
+}
+
+private final class RemoteChangesDelegate: NSObject, XMLParserDelegate {
+    var entries: [SVNStatusEntry] = []
+    private var path: String?
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        if elementName == "entry" {
+            path = attributeDict["path"]
+        } else if elementName == "repos-status", let path {
+            let item = attributeDict["item"] ?? "none"
+            let properties = attributeDict["props"] ?? "none"
+            guard item != "none" || properties != "none" else { return }
+            entries.append(SVNStatusEntry(
+                path: path,
+                item: SVNStatusKind(rawValue: item == "none" ? "modified" : item),
+                revision: nil
+            ))
         }
     }
 }
