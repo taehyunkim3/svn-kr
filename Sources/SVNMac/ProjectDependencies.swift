@@ -13,6 +13,10 @@ protocol SVNClientServing: Sendable {
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
     func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
+    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo]
+    func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo?
+    func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+    func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String
@@ -129,6 +133,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case loadMoreHistory(SVNProject.ID)
         case revisionDiff(SVNProject.ID)
         case ignore(SVNProject.ID)
+        case lock(SVNProject.ID)
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
     }

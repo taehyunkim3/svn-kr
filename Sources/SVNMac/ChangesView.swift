@@ -41,6 +41,11 @@ struct ChangesView: View {
             IgnoreRulesView()
                 .environmentObject(store)
         }
+        .sheet(isPresented: $store.isShowingLocks) {
+            RepositoryLocksView()
+                .environmentObject(store)
+        }
+        .documentOpenConfirmation()
     }
 
     // MARK: - 변경 파일 목록
@@ -77,6 +82,10 @@ struct ChangesView: View {
                 .onTapGesture { Task { await store.loadDiff(for: entry.path) } }
                 .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
                 .contextMenu {
+                    Button(appLanguage.text("파일 열기", "Open File")) {
+                        Task { await store.prepareToOpen(path: entry.path) }
+                    }
+                    Divider()
                     if entry.item == .unversioned {
                         Button(appLanguage.text("이 파일 무시", "Ignore This Item")) {
                             Task { await store.ignore(path: entry.path, byExtension: false) }
@@ -108,6 +117,13 @@ struct ChangesView: View {
                 Task {
                     await store.loadIgnoreRules()
                     store.isShowingIgnoreRules = true
+                }
+            }
+            .buttonStyle(.borderless)
+            Button(appLanguage.text("잠금 목록", "Locks"), systemImage: "lock") {
+                Task {
+                    await store.loadRepositoryLocks()
+                    store.isShowingLocks = true
                 }
             }
             .buttonStyle(.borderless)

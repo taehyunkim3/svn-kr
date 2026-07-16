@@ -59,6 +59,25 @@ public struct SVNIgnoreRule: Identifiable, Hashable, Sendable {
     }
 }
 
+/// 저장소에 즉시 등록되는 파일 잠금 정보입니다.
+public struct SVNLockInfo: Identifiable, Hashable, Sendable {
+    public let path: String
+    public let token: String?
+    public let owner: String
+    public let comment: String?
+    public let created: Date?
+
+    public var id: String { path }
+
+    public init(path: String, token: String? = nil, owner: String, comment: String? = nil, created: Date? = nil) {
+        self.path = path
+        self.token = token
+        self.owner = owner
+        self.comment = comment
+        self.created = created
+    }
+}
+
 /// 커밋 기록의 변경 경로에 붙는 SVN 작업 코드입니다.
 public enum SVNChangeAction: Hashable, Sendable {
     case added

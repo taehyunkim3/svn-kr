@@ -86,6 +86,64 @@ public actor SVNClient {
         }
     }
 
+    public func repositoryLocks(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> [SVNLockInfo] {
+        let result = try checkedRun(
+            ["status", "--show-updates", "--xml"],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        return try SVNXMLParser.repositoryLocks(fromStatus: Data(result.output.utf8))
+    }
+
+    public func lockInfo(
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> SVNLockInfo? {
+        let result = try checkedRun(
+            ["info", "--xml", "--revision", "HEAD", "--", relativePath],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        return try SVNXMLParser.repositoryLock(fromInfo: Data(result.output.utf8))
+    }
+
+    public func lock(
+        at path: String,
+        relativePath: String,
+        comment: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
+        try checkedRun(
+            ["lock", "--message", comment, "--", relativePath],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
+    }
+
+    public func unlock(
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
+        try checkedRun(
+            ["unlock", "--", relativePath],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
+    }
+
     public func log(
         at path: String,
         limit: Int = 50,

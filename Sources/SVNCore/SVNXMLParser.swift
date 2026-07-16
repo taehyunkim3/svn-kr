@@ -34,6 +34,98 @@ public enum SVNXMLParser {
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.rules
     }
+
+    public static func repositoryLocks(fromStatus data: Data) throws -> [SVNLockInfo] {
+        let delegate = StatusLocksDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.locks
+    }
+
+    public static func repositoryLock(fromInfo data: Data) throws -> SVNLockInfo? {
+        let delegate = InfoLockDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.lock
+    }
+}
+
+private final class StatusLocksDelegate: NSObject, XMLParserDelegate {
+    var locks: [SVNLockInfo] = []
+    private var entryPath = ""
+    private var inRepositoryStatus = false
+    private var lockBuilder: LockBuilder?
+    private var text = ""
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        text = ""
+        if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
+        if elementName == "repos-status" { inRepositoryStatus = true }
+        if elementName == "lock", inRepositoryStatus { lockBuilder = LockBuilder(path: entryPath) }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+        lockBuilder?.set(element: elementName, value: text)
+        if elementName == "lock", let lockBuilder {
+            locks.append(lockBuilder.build())
+            self.lockBuilder = nil
+        }
+        if elementName == "repos-status" { inRepositoryStatus = false }
+        text = ""
+    }
+}
+
+private final class InfoLockDelegate: NSObject, XMLParserDelegate {
+    var lock: SVNLockInfo?
+    private var entryPath = ""
+    private var lockBuilder: LockBuilder?
+    private var text = ""
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        text = ""
+        if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
+        if elementName == "lock" { lockBuilder = LockBuilder(path: entryPath) }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+        lockBuilder?.set(element: elementName, value: text)
+        if elementName == "lock", let lockBuilder {
+            lock = lockBuilder.build()
+            self.lockBuilder = nil
+        }
+        text = ""
+    }
+}
+
+private final class LockBuilder {
+    let path: String
+    var token: String?
+    var owner = ""
+    var comment: String?
+    var created: Date?
+    private let dateFormatter = ISO8601DateFormatter()
+
+    init(path: String) { self.path = path }
+
+    func set(element: String, value: String) {
+        switch element {
+        case "token": token = value
+        case "owner": owner = value
+        case "comment": comment = value
+        case "created": created = dateFormatter.date(from: value)
+        default: break
+        }
+    }
+
+    func build() -> SVNLockInfo {
+        SVNLockInfo(path: path, token: token, owner: owner, comment: comment, created: created)
+    }
 }
 
 /// `svn propget svn:ignore --recursive --xml` 결과를 디렉터리별 패턴으로 펼칩니다.

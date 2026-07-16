@@ -33,6 +33,20 @@ import Testing
     ])
 }
 
+@Test func parsesRepositoryLocksFromRemoteStatus() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path="."><entry path="Documents/plan.pptx">
+      <wc-status item="normal" revision="10"/>
+      <repos-status item="none" props="none"><lock><token>token-1</token><owner>tester</owner><comment>editing</comment><created>2026-07-16T01:02:03.000000Z</created></lock></repos-status>
+    </entry></target></status>
+    """
+    let locks = try SVNXMLParser.repositoryLocks(fromStatus: Data(xml.utf8))
+    #expect(locks.count == 1)
+    #expect(locks[0].path == "Documents/plan.pptx")
+    #expect(locks[0].owner == "tester")
+    #expect(locks[0].comment == "editing")
+}
+
 @Test func detectsActualRemoteWorkingCopyChanges() throws {
     let upToDateXML = """
     <?xml version="1.0"?><status><target path=".">
