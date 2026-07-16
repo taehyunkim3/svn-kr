@@ -47,16 +47,32 @@ public actor SVNClient {
     public func log(
         at path: String,
         limit: Int = 50,
+        endingAtRevision: String? = nil,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> [SVNLogEntry] {
+        let revisionRange = "\(endingAtRevision ?? "HEAD"):1"
         let result = try checkedRun(
-            ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", "HEAD:1", "--limit", String(limit)],
+            ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", revisionRange, "--limit", String(limit)],
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
+    }
+
+    public func revisionDiff(
+        at path: String,
+        revision: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
+        try checkedRun(
+            ["diff", "--change", revision],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
     }
 
     public func workingCopyRevision(at path: String, credentials: SVNCredentials? = nil) async throws -> String {

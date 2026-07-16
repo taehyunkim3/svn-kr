@@ -11,18 +11,26 @@ struct HistoryView: View {
 
     /// DateFormatter는 생성 비용이 크므로 뷰 상태로 한 번 만들고 설정만 갱신해 재사용합니다.
     @State private var dateFormatter = DateFormatter()
+    @State private var searchText = ""
 
     var body: some View {
         let timeline = SVNHistoryTimeline(logs: store.logs, workingCopyRevision: store.workingCopyRevision)
-        VStack(spacing: 0) {
-            historySummary
-            historyList(timeline: timeline)
+        HSplitView {
+            VStack(spacing: 0) {
+                historySummary
+                historyList(timeline: timeline)
+            }
+            .frame(minWidth: 520)
+
+            HistoryRevisionDiffView()
+                .frame(minWidth: 380)
         }
         .overlay {
             if store.logs.isEmpty {
                 ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No Commit History"), systemImage: "clock")
             }
         }
+        .searchable(text: $searchText, prompt: appLanguage.text("작성자, 파일, 메시지, 리비전 검색", "Search author, file, message, or revision"))
     }
 
     // MARK: - 기록 요약
@@ -63,30 +71,54 @@ struct HistoryView: View {
     // MARK: - 타임라인 목록
 
     private func historyList(timeline: SVNHistoryTimeline) -> some View {
-        List {
-            ForEach(Array(store.logs.enumerated()), id: \.element.id) { index, entry in
-                if timeline.insertionIndex == index, let revision = store.workingCopyRevision {
+        let entries = filteredLogs
+        return List {
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                if searchText.isEmpty, timeline.insertionIndex == index, let revision = store.workingCopyRevision {
                     workingCopyMarkerRow(revision: revision, isBeforeLoadedHistory: false)
                 }
                 historyEntryRow(
                     entry,
                     index: index,
+                    totalCount: entries.count,
                     timeline: timeline
                 )
             }
 
-            if let revision = store.workingCopyRevision, timeline.isBeforeLoadedHistory {
+            if searchText.isEmpty, let revision = store.workingCopyRevision, timeline.isBeforeLoadedHistory {
                 workingCopyMarkerRow(revision: revision, isBeforeLoadedHistory: true)
+            }
+
+            if searchText.isEmpty, store.hasMoreHistory {
+                HStack {
+                    Spacer()
+                    Button(appLanguage.text("이전 기록 50개 더 불러오기", "Load 50 More")) {
+                        Task { await store.loadMoreHistory() }
+                    }
+                    .disabled(store.isWorking)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
             }
         }
     }
 
-    private func historyEntryRow(_ entry: SVNLogEntry, index: Int, timeline: SVNHistoryTimeline) -> some View {
+    private var filteredLogs: [SVNLogEntry] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return store.logs }
+        return store.logs.filter { entry in
+            let values = [entry.revision, entry.author, entry.email ?? "", entry.message]
+                + entry.changedPaths.map(\.path)
+            return values.contains { $0.localizedCaseInsensitiveContains(query) }
+        }
+    }
+
+    private func historyEntryRow(_ entry: SVNLogEntry, index: Int, totalCount: Int, timeline: SVNHistoryTimeline) -> some View {
         let isWorkingCopyEntry = entry.revision == timeline.graphEntryRevision
         return HStack(alignment: .top, spacing: 0) {
             SVNHistoryGraphLane(
                 isFirst: index == 0,
-                isLast: index == store.logs.count - 1 && !timeline.isBeforeLoadedHistory,
+                isLast: index == totalCount - 1 && (!searchText.isEmpty || !timeline.isBeforeLoadedHistory),
                 showsServerCommit: true,
                 isWorkingCopyRevision: isWorkingCopyEntry,
                 hasLocalChanges: isWorkingCopyEntry && !store.statuses.isEmpty
@@ -104,6 +136,13 @@ struct HistoryView: View {
                     .textSelection(.enabled)
                 changedPaths(entry.changedPaths)
                 revisionProperties(entry.revisionProperties)
+                Button {
+                    Task { await store.loadHistoryDiff(for: entry.revision) }
+                } label: {
+                    Label(appLanguage.text("이 커밋의 변경 내용 보기", "View Changes in This Commit"), systemImage: "doc.text.magnifyingglass")
+                }
+                .buttonStyle(.bordered)
+                .tint(store.selectedHistoryRevision == entry.revision ? .accentColor : nil)
             }
             .padding(.vertical, 8)
         }

@@ -14,6 +14,8 @@ import Testing
     store.selectedPaths = ["changed.txt"]
     store.selectedStatusPath = "changed.txt"
     store.diffContent = .text("diff")
+    store.selectedHistoryRevision = "10"
+    store.historyDiffContent = .text("history diff")
     store.notice = "완료"
     store.authenticationRequest = SVNAuthenticationRequest(projectID: first.id, action: .update)
 
@@ -24,6 +26,8 @@ import Testing
     #expect(store.selectedPaths.isEmpty)
     #expect(store.selectedStatusPath == nil)
     #expect(store.diffContent == .placeholder)
+    #expect(store.selectedHistoryRevision == nil)
+    #expect(store.historyDiffContent == .placeholder)
     #expect(store.notice == nil)
     #expect(store.authenticationRequest == nil)
 }
@@ -156,10 +160,11 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return statusesByPath[path] ?? []
     }
-    func log(at path: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+    func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
     }
+    func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "revision diff" }
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String {
         await delay(for: path)
         return revisionsByPath[path] ?? "0"

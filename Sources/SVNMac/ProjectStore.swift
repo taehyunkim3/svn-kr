@@ -84,6 +84,9 @@ final class ProjectStore: ObservableObject {
     }
     @Published var statuses: [SVNStatusEntry] = []
     @Published var logs: [SVNLogEntry] = []
+    @Published var selectedHistoryRevision: String?
+    @Published var historyDiffContent: DiffContent = .placeholder
+    @Published var hasMoreHistory = true
     @Published var workingCopyRevision: String?
     @Published var isWorkingCopyOutOfDate: Bool?
     @Published var selectedPaths: Set<String> = []
@@ -289,6 +292,7 @@ final class ProjectStore: ObservableObject {
             async let newLogs = client.log(
                 at: project.path,
                 limit: 50,
+                endingAtRevision: nil,
                 credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
@@ -300,6 +304,7 @@ final class ProjectStore: ObservableObject {
             let (logs, isWorkingCopyOutOfDate) = try await (newLogs, outOfDate)
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.logs = logs
+            self.hasMoreHistory = logs.count == 50
             self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
         } catch {
@@ -348,6 +353,50 @@ final class ProjectStore: ObservableObject {
             if diffRequestID == requestID, selectedProjectID == project.id {
                 errorMessage = localizedError(error)
             }
+        }
+    }
+
+    func loadHistoryDiff(for revision: String) async {
+        guard let project = selectedProject else { return }
+        selectedHistoryRevision = revision
+        historyDiffContent = .placeholder
+        let operationID = beginOperation(.revisionDiff(project.id))
+        defer { endOperation(operationID) }
+        do {
+            let value = try await client.revisionDiff(
+                at: project.path,
+                revision: revision,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            guard selectedProjectID == project.id, selectedHistoryRevision == revision else { return }
+            historyDiffContent = value.isEmpty ? .noTextDiff : .text(value)
+        } catch {
+            if selectedProjectID == project.id { errorMessage = localizedError(error) }
+        }
+    }
+
+    func loadMoreHistory() async {
+        guard let project = selectedProject,
+              hasMoreHistory,
+              let lastRevision = logs.last?.revision,
+              let revision = Int(lastRevision), revision > 1 else { return }
+        let operationID = beginOperation(.loadMoreHistory(project.id))
+        defer { endOperation(operationID) }
+        do {
+            let olderLogs = try await client.log(
+                at: project.path,
+                limit: 50,
+                endingAtRevision: String(revision - 1),
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            guard selectedProjectID == project.id else { return }
+            let existingRevisions = Set(logs.map(\.revision))
+            logs.append(contentsOf: olderLogs.filter { !existingRevisions.contains($0.revision) })
+            hasMoreHistory = olderLogs.count == 50
+        } catch {
+            if selectedProjectID == project.id { errorMessage = localizedError(error) }
         }
     }
 
@@ -518,11 +567,13 @@ final class ProjectStore: ObservableObject {
             let newLogs = try await client.log(
                 at: project.path,
                 limit: 50,
+                endingAtRevision: nil,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
             logs = newLogs
+            hasMoreHistory = newLogs.count == 50
             notice = AppLanguage.current.text("\(project.name) 커밋 기록 확인 완료", "\(project.name) history refreshed")
         } catch {
             if selectedProjectID == project.id {
@@ -562,6 +613,9 @@ final class ProjectStore: ObservableObject {
         diffRequestID = nil
         statuses = []
         logs = []
+        selectedHistoryRevision = nil
+        historyDiffContent = .placeholder
+        hasMoreHistory = true
         workingCopyRevision = nil
         isWorkingCopyOutOfDate = nil
         selectedPaths = []
