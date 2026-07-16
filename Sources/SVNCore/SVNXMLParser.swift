@@ -1,6 +1,8 @@
 import Foundation
 
 public enum SVNXMLParser {
+    /// 로컬 작업 복사본의 변경 항목만 읽습니다. 정상 항목과 external은 UI에
+    /// 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
     public static func statuses(from data: Data) throws -> [SVNStatusEntry] {
         let delegate = StatusDelegate()
         let parser = XMLParser(data: data)
@@ -26,6 +28,7 @@ public enum SVNXMLParser {
     }
 }
 
+/// `svn status --xml`에서 각 entry의 로컬 상태만 수집합니다.
 private final class StatusDelegate: NSObject, XMLParserDelegate {
     var entries: [SVNStatusEntry] = []
     private var path: String?
@@ -34,14 +37,19 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
         if elementName == "entry" {
             path = attributeDict["path"]
         } else if elementName == "wc-status", let path {
-            let item = attributeDict["item"] ?? "unknown"
-            if item != "normal" && item != "external" {
-                entries.append(SVNStatusEntry(path: path, item: item, revision: attributeDict["revision"]))
+            let rawItem = attributeDict["item"] ?? "unknown"
+            if rawItem != "normal" && rawItem != "external" {
+                entries.append(SVNStatusEntry(
+                    path: path,
+                    item: SVNStatusKind(rawValue: rawItem),
+                    revision: attributeDict["revision"]
+                ))
             }
         }
     }
 }
 
+/// `svn status --show-updates --xml`의 repos-status를 보고 서버 변경 유무만 판단합니다.
 private final class RemoteStatusDelegate: NSObject, XMLParserDelegate {
     var hasRemoteChanges = false
 
@@ -55,7 +63,10 @@ private final class RemoteStatusDelegate: NSObject, XMLParserDelegate {
     }
 }
 
+/// logentry 안의 작성자, 날짜, 메시지, 경로, 사용자 정의 속성을 한 모델로 조립합니다.
 private final class LogDelegate: NSObject, XMLParserDelegate {
+    // XMLParser는 텍스트를 여러 번 나누어 전달할 수 있으므로 foundCharacters에서
+    // 누적하고, 닫는 태그를 만났을 때 현재 모델 속성으로 확정합니다.
     var entries: [SVNLogEntry] = []
     private var revision = ""
     private var author = ""
@@ -102,12 +113,12 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
             if let attributes = pathAttributes {
                 changedPaths.append(SVNChangedPath(
                     path: text,
-                    action: attributes["action"] ?? "?",
-                    kind: attributes["kind"],
+                    action: SVNChangeAction(rawValue: attributes["action"] ?? "?"),
+                    kind: attributes["kind"].map(SVNNodeKind.init(rawValue:)),
                     copyFromPath: attributes["copyfrom-path"],
                     copyFromRevision: attributes["copyfrom-rev"],
-                    textModified: attributes["text-mods"],
-                    propertiesModified: attributes["prop-mods"]
+                    textModified: attributes["text-mods"].map { $0 == "true" },
+                    propertiesModified: attributes["prop-mods"].map { $0 == "true" }
                 ))
             }
             pathAttributes = nil

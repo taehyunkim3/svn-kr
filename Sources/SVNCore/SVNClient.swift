@@ -1,5 +1,10 @@
 import Foundation
 
+/// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
+///
+/// actor로 선언해 동일 클라이언트에서 update와 commit 같은 명령이 동시에
+/// 작업 복사본을 변경하지 않도록 보장합니다. 실제 CLI 실행은 `run` 한곳을
+/// 통과하므로 인증 인자와 출력 수집 방식도 모든 명령에서 동일합니다.
 public actor SVNClient {
     private let executablePath: String?
     private let configDirectoryPath: String?
@@ -8,6 +13,8 @@ public actor SVNClient {
         self.executablePath = executablePath
         self.configDirectoryPath = configDirectoryPath
     }
+
+    // MARK: - 사용자가 실행하는 SVN 기능
 
     public func checkout(
         repositoryURL: String,
@@ -98,12 +105,14 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
+        // 선택 커밋 전에 SVN 관리 대상이 아닌 파일과 디스크에서 사라진 파일을
+        // 각각 add/delete 예약해 사용자가 별도 명령을 실행하지 않아도 되게 합니다.
         let currentStatuses = try await status(at: path, credentials: credentials)
         for item in paths {
             let status = currentStatuses.first(where: { $0.path == item })
-            if status?.item == "unversioned" {
+            if status?.item == .unversioned {
                 _ = try checkedRun(["add", "--parents", "--", item], at: path, credentials: credentials)
-            } else if status?.item == "missing" {
+            } else if status?.item == .missing {
                 _ = try checkedRun(["delete", "--force", "--", item], at: path, credentials: credentials)
             }
         }
@@ -114,6 +123,8 @@ public actor SVNClient {
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         ).output
     }
+
+    // MARK: - 공통 명령 실행
 
     @discardableResult
     private func checkedRun(
@@ -159,6 +170,9 @@ public actor SVNClient {
         process.arguments = globalArguments + arguments
         process.currentDirectoryURL = URL(fileURLWithPath: path)
 
+        // stdout/stderr를 Pipe로 계속 읽지 않으면 출력이 큰 명령에서 버퍼가 차
+        // 프로세스가 멈출 수 있습니다. 임시 파일로 받으면 waitUntilExit 중에도
+        // 출력 크기와 관계없이 안전하게 명령 완료를 기다릴 수 있습니다.
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("svn-mac-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
@@ -172,6 +186,8 @@ public actor SVNClient {
         let errorHandle = try FileHandle(forWritingTo: errorURL)
         process.standardOutput = outputHandle
         process.standardError = errorHandle
+        // 비밀번호는 프로세스 인자에 넣지 않습니다. 명령행은 다른 프로세스에서
+        // 조회될 수 있으므로 SVN의 --password-from-stdin 계약만 사용합니다.
         let input = password.map { _ in Pipe() }
         process.standardInput = input
 
@@ -196,6 +212,8 @@ public actor SVNClient {
     }
 
     private func svnExecutableURL() throws -> URL {
+        // 테스트 주입 경로, 환경 변수, 앱 번들, 개발 Mac 설치 경로 순서로 찾습니다.
+        // 배포 앱에서는 Contents/Helpers/svn이 가장 먼저 사용됩니다.
         var candidates: [String] = []
         if let executablePath { candidates.append(executablePath) }
         if let override = ProcessInfo.processInfo.environment["SVN_EXECUTABLE"], !override.isEmpty {
@@ -224,6 +242,8 @@ public actor SVNClient {
     }
 
     private func svnConfigDirectory() throws -> URL {
+        // 시스템 SVN 설정과 앱 설정이 서로 영향을 주지 않도록 앱 전용 config-dir을
+        // 사용합니다. 테스트에서는 임시 디렉터리를 주입할 수 있습니다.
         if let configDirectoryPath {
             let directory = URL(fileURLWithPath: configDirectoryPath, isDirectory: true)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

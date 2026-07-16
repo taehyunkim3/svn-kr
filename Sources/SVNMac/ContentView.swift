@@ -3,6 +3,8 @@ import SwiftUI
 import SVNCore
 
 struct ContentView: View {
+    // MARK: - 앱 전역 상태와 화면 전용 입력 상태
+
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.scenePhase) private var scenePhase
@@ -10,6 +12,8 @@ struct ContentView: View {
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
     @State private var commitMessage = ""
     @FocusState private var isCommitMessageFocused: Bool
+
+    // MARK: - 최상위 화면 구성
 
     var body: some View {
         NavigationSplitView {
@@ -112,8 +116,11 @@ struct ContentView: View {
         } message: { Text(store.errorMessage ?? "") }
     }
 
+    // MARK: - 선택 프로젝트 화면
+
+    /// 선택한 프로젝트의 공통 머리글과 변경/기록 탭을 구성합니다.
     private func projectView(_ project: SVNProject) -> some View {
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(project.name).font(.title2.bold())
@@ -143,6 +150,8 @@ struct ContentView: View {
             }
         }
     }
+
+    // MARK: - 변경 파일과 선택 커밋
 
     private var changesView: some View {
         HSplitView {
@@ -198,7 +207,7 @@ struct ContentView: View {
             .frame(minWidth: 380)
 
             ScrollView([.horizontal, .vertical]) {
-                Text(store.diff)
+                Text(store.diffContent.localizedText(appLanguage))
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -209,8 +218,16 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - 서버 커밋 기록과 로컬 기준 타임라인
+
     private var historyView: some View {
-        VStack(spacing: 0) {
+        // 로컬 리비전의 삽입 위치 계산은 SVNCore의 순수 모델이 담당합니다.
+        // 이 뷰는 계산 결과를 실제 타임라인 행으로 표현하는 역할만 가집니다.
+        let timeline = SVNHistoryTimeline(
+            logs: store.logs,
+            workingCopyRevision: store.workingCopyRevision
+        )
+        return VStack(spacing: 0) {
             if let headRevision = store.logs.first?.revision {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 10) {
@@ -246,15 +263,15 @@ struct ContentView: View {
 
             List {
                 ForEach(Array(store.logs.enumerated()), id: \.element.id) { index, entry in
-                    if workingCopyInsertionIndex == index, let workingCopyRevision = store.workingCopyRevision {
+                    if timeline.insertionIndex == index, let workingCopyRevision = store.workingCopyRevision {
                         workingCopyMarkerRow(revision: workingCopyRevision, isBeforeLoadedHistory: false)
                     }
 
-                    let isWorkingCopyEntry = entry.revision == workingCopyGraphEntryRevision
+                    let isWorkingCopyEntry = entry.revision == timeline.graphEntryRevision
                     HStack(alignment: .top, spacing: 0) {
                         SVNHistoryGraphLane(
                             isFirst: index == 0,
-                            isLast: index == store.logs.count - 1 && !isWorkingCopyBeforeLoadedHistory,
+                            isLast: index == store.logs.count - 1 && !timeline.isBeforeLoadedHistory,
                             showsServerCommit: true,
                             isWorkingCopyRevision: isWorkingCopyEntry,
                             hasLocalChanges: isWorkingCopyEntry && !store.statuses.isEmpty
@@ -344,7 +361,7 @@ struct ContentView: View {
                     .listRowSeparator(.hidden)
                 }
 
-                if let workingCopyRevision = store.workingCopyRevision, isWorkingCopyBeforeLoadedHistory {
+                if let workingCopyRevision = store.workingCopyRevision, timeline.isBeforeLoadedHistory {
                     workingCopyMarkerRow(revision: workingCopyRevision, isBeforeLoadedHistory: true)
                 }
             }
@@ -354,29 +371,7 @@ struct ContentView: View {
         }
     }
 
-    private var workingCopyGraphEntryRevision: String? {
-        guard let workingCopyRevision = store.workingCopyRevision,
-              let headRevision = store.logs.first?.revision else { return nil }
-        if let workingCopy = Int(workingCopyRevision), let head = Int(headRevision), workingCopy >= head {
-            return headRevision
-        }
-        return store.logs.contains { $0.revision == workingCopyRevision } ? workingCopyRevision : nil
-    }
-
-    private var workingCopyInsertionIndex: Int? {
-        guard workingCopyGraphEntryRevision == nil,
-              let workingCopyRevision = store.workingCopyRevision,
-              let workingCopy = Int(workingCopyRevision) else { return nil }
-        return store.logs.firstIndex { entry in
-            guard let revision = Int(entry.revision) else { return false }
-            return revision < workingCopy
-        }
-    }
-
-    private var isWorkingCopyBeforeLoadedHistory: Bool {
-        guard store.workingCopyRevision != nil, !store.logs.isEmpty else { return false }
-        return workingCopyGraphEntryRevision == nil && workingCopyInsertionIndex == nil
-    }
+    // MARK: - 타임라인 표현 도우미
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
         entryRevision == store.workingCopyRevision
@@ -459,7 +454,9 @@ struct ContentView: View {
         return "\(formatter.string(from: date)) \(abbreviation)"
     }
 
-    private func changedPathBadge(_ action: String) -> some View {
+    // MARK: - SVN 상태 표현 도우미
+
+    private func changedPathBadge(_ action: SVNChangeAction) -> some View {
         Text(changedPathActionLabel(action))
             .font(.caption2.bold())
             .foregroundStyle(.white)
@@ -471,9 +468,15 @@ struct ContentView: View {
     @ViewBuilder
     private func changedPathDetails(_ changedPath: SVNChangedPath) -> some View {
         let details = [
-            changedPath.kind.map { $0 == "dir" ? appLanguage.text("폴더", "Folder") : appLanguage.text("파일", "File") },
-            changedPath.textModified == "true" ? appLanguage.text("내용 변경", "Content changed") : nil,
-            changedPath.propertiesModified == "true" ? appLanguage.text("속성 변경", "Properties changed") : nil,
+            changedPath.kind.map { kind in
+                switch kind {
+                case .directory: appLanguage.text("폴더", "Folder")
+                case .file: appLanguage.text("파일", "File")
+                case let .unknown(value): value
+                }
+            },
+            changedPath.textModified == true ? appLanguage.text("내용 변경", "Content changed") : nil,
+            changedPath.propertiesModified == true ? appLanguage.text("속성 변경", "Properties changed") : nil,
         ].compactMap { $0 }
 
         if !details.isEmpty {
@@ -489,27 +492,27 @@ struct ContentView: View {
         }
     }
 
-    private func changedPathActionLabel(_ action: String) -> String {
+    private func changedPathActionLabel(_ action: SVNChangeAction) -> String {
         switch action {
-        case "A": appLanguage.text("추가", "Added")
-        case "M": appLanguage.text("수정", "Modified")
-        case "D": appLanguage.text("삭제", "Deleted")
-        case "R": appLanguage.text("교체", "Replaced")
-        default: action
+        case .added: appLanguage.text("추가", "Added")
+        case .modified: appLanguage.text("수정", "Modified")
+        case .deleted: appLanguage.text("삭제", "Deleted")
+        case .replaced: appLanguage.text("교체", "Replaced")
+        case let .unknown(value): value
         }
     }
 
-    private func changedPathActionColor(_ action: String) -> Color {
+    private func changedPathActionColor(_ action: SVNChangeAction) -> Color {
         switch action {
-        case "A": .blue
-        case "M": .orange
-        case "D": .red
-        case "R": .purple
-        default: .gray
+        case .added: .blue
+        case .modified: .orange
+        case .deleted: .red
+        case .replaced: .purple
+        case .unknown: .gray
         }
     }
 
-    private func statusBadge(_ item: String) -> some View {
+    private func statusBadge(_ item: SVNStatusKind) -> some View {
         Text(statusLabel(item))
             .font(.caption2.bold())
             .foregroundStyle(.white)
@@ -518,26 +521,28 @@ struct ContentView: View {
             .background(statusColor(item), in: Capsule())
     }
 
-    private func statusLabel(_ item: String) -> String {
+    private func statusLabel(_ item: SVNStatusKind) -> String {
         switch item {
-        case "modified": appLanguage.text("수정", "Modified")
-        case "added": appLanguage.text("추가", "Added")
-        case "deleted", "missing": appLanguage.text("삭제", "Deleted")
-        case "unversioned": appLanguage.text("미추적", "Unversioned")
-        case "conflicted": appLanguage.text("충돌", "Conflict")
-        case "replaced": appLanguage.text("교체", "Replaced")
-        default: item
+        case .modified: appLanguage.text("수정", "Modified")
+        case .added: appLanguage.text("추가", "Added")
+        case .deleted, .missing: appLanguage.text("삭제", "Deleted")
+        case .unversioned: appLanguage.text("미추적", "Unversioned")
+        case .conflicted: appLanguage.text("충돌", "Conflict")
+        case .replaced: appLanguage.text("교체", "Replaced")
+        case let .unknown(value): value
         }
     }
 
-    private func statusColor(_ item: String) -> Color {
+    private func statusColor(_ item: SVNStatusKind) -> Color {
         switch item {
-        case "modified": .orange
-        case "added", "unversioned": .blue
-        case "deleted", "missing", "conflicted": .red
+        case .modified: .orange
+        case .added, .unversioned: .blue
+        case .deleted, .missing, .conflicted: .red
         default: .gray
         }
     }
+
+    // MARK: - 커밋 입력 처리
 
     private func submitCommit() {
         let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -556,6 +561,8 @@ struct ContentView: View {
     }
 }
 
+/// Keychain 접근이 거부됐을 때 사용자가 인증 방식을 다시 선택하는 화면입니다.
+/// 원래 수행하려던 작업은 `SVNAuthenticationRequest`에 보존되어 인증 성공 후 재개됩니다.
 private struct AuthenticationRequiredView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
@@ -662,6 +669,8 @@ private struct AuthenticationRequiredView: View {
     }
 }
 
+/// 서버 커밋, 로컬 기준, 미커밋 변경의 관계를 한 행의 Canvas에 그립니다.
+/// 데이터 위치 계산은 `SVNHistoryTimeline`이 맡고 이 타입은 시각화만 담당합니다.
 private struct SVNHistoryGraphLane: View {
     @Environment(\.appLanguage) private var appLanguage
     let isFirst: Bool
@@ -672,6 +681,8 @@ private struct SVNHistoryGraphLane: View {
 
     var body: some View {
         Canvas { context, size in
+            // 서버 이력은 왼쪽 세로선, 미커밋 변경은 오른쪽으로 갈라지는 가지로
+            // 배치해 Git 그래프에 익숙하지 않은 사용자도 관계를 알아볼 수 있게 합니다.
             let serverX: CGFloat = 22
             let localX: CGFloat = 58
             let nodeY: CGFloat = min(24, size.height / 2)
@@ -723,6 +734,8 @@ private struct SVNHistoryGraphLane: View {
     }
 }
 
+/// 새 저장소 체크아웃에 필요한 입력을 수집하는 모달 화면입니다.
+/// 실제 파일 작업과 상태 갱신은 `ProjectStore.checkout`에 위임합니다.
 private struct AddRepositoryView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.dismiss) private var dismiss
@@ -858,6 +871,7 @@ private struct AddRepositoryView: View {
     }
 }
 
+/// 프로젝트별 SVN 사용자명, Keychain 비밀번호, 인증서 예외를 관리합니다.
 private struct CredentialsView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.dismiss) private var dismiss

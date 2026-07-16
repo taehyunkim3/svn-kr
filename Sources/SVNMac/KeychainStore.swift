@@ -2,6 +2,8 @@ import Foundation
 import Security
 
 enum KeychainStore {
+    /// 프로젝트 UUID를 계정 키로 사용해 서로 다른 작업 폴더의 비밀번호가
+    /// 섞이지 않게 합니다. 비밀번호는 프로젝트 JSON이나 UserDefaults에 저장하지 않습니다.
     private static let service = "com.mrdevello.svnmac.credentials"
 
     static func password(for projectID: UUID) throws -> String? {
@@ -35,6 +37,8 @@ enum KeychainStore {
             kSecAttrLabel as String: "SVN Mac - \(projectID.uuidString)",
             kSecValueData as String: Data(password.utf8),
         ]
+        // 먼저 기존 항목 갱신을 시도하고, 없을 때만 새 항목을 추가합니다.
+        // 이 순서로 중복 Keychain 항목이 생기는 것을 방지합니다.
         let updateStatus = SecItemUpdate(itemQuery as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecSuccess { return }
         guard updateStatus == errSecItemNotFound else {

@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 
 enum AppSettings {
+    // UserDefaults 키와 기본값을 한곳에 모아 화면과 앱 시작 코드가 같은 설정을
+    // 사용하도록 합니다. 문자열 키가 여러 파일에 흩어지는 것을 막는 역할입니다.
     static let languageKey = "app-language"
     static let defaultLanguage = AppLanguage.korean.rawValue
     static let historyTimeZoneKey = "history-time-zone"
@@ -34,6 +36,8 @@ enum AppLanguage: String, CaseIterable {
     }
 
     func text(_ korean: String, _ english: String) -> String {
+        // 현재 앱은 두 언어만 지원하므로 간단한 쌍을 사용합니다. 상태 모델에는
+        // 번역 결과를 저장하지 않고 화면을 그릴 때 이 메서드로 선택합니다.
         self == .english ? english : korean
     }
 }
@@ -50,6 +54,7 @@ extension EnvironmentValues {
 }
 
 struct AppSettingsView: View {
+    // @AppStorage를 사용해 변경 즉시 UserDefaults와 앱 환경에 반영합니다.
     @AppStorage(AppSettings.languageKey)
     private var languageIdentifier = AppSettings.defaultLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
