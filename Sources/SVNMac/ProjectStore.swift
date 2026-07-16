@@ -89,7 +89,7 @@ final class ProjectStore: ObservableObject {
     @Published var selectedPaths: Set<String> = []
     @Published var selectedStatusPath: String?
     @Published var diffContent: DiffContent = .placeholder
-    @Published private(set) var isWorking = false
+    @Published private(set) var activeOperations: [ProjectOperation] = []
     @Published var isShowingAddRepository = false
     @Published var isShowingCredentials = false
     @Published var authenticationRequest: SVNAuthenticationRequest?
@@ -99,13 +99,11 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - 외부 서비스와 비동기 작업 추적
 
-    private let client = SVNClient()
-    private let defaultsKey = "svn-projects-v1"
+    private let client: any SVNClientServing
+    private let credentialStore: any CredentialStoring
+    private let persistence: any ProjectPersisting
+    private let projectAccessManager: any ProjectAccessManaging
     private var sessionPasswords: [SVNProject.ID: String] = [:]
-    private var accessedProjectURLs: [SVNProject.ID: URL] = [:]
-    /// update가 끝난 뒤 refresh가 이어지는 것처럼 작업이 중첩될 수 있으므로
-    /// Bool을 직접 켜고 끄지 않고 실행 중인 작업 수로 busy 상태를 계산합니다.
-    private var activeOperationCount = 0
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
@@ -115,13 +113,23 @@ final class ProjectStore: ObservableObject {
         projects.first { $0.id == selectedProjectID }
     }
 
-    init() {
-        if let data = UserDefaults.standard.data(forKey: defaultsKey),
-           let saved = try? JSONDecoder().decode([SVNProject].self, from: data) {
-            projects = saved
-            restoreProjectAccess()
-            selectedProjectID = saved.first?.id
-        }
+    var isWorking: Bool { !activeOperations.isEmpty }
+
+    init(
+        client: any SVNClientServing = SVNClient(),
+        credentialStore: any CredentialStoring = KeychainCredentialStore(),
+        persistence: any ProjectPersisting = UserDefaultsProjectPersistence(),
+        projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager()
+    ) {
+        self.client = client
+        self.credentialStore = credentialStore
+        self.persistence = persistence
+        self.projectAccessManager = projectAccessManager
+
+        var saved = persistence.loadProjects()
+        projectAccessManager.restoreAccess(for: &saved)
+        projects = saved
+        selectedProjectID = saved.first?.id
     }
 
     // MARK: - 프로젝트 등록과 삭제
@@ -160,8 +168,8 @@ final class ProjectStore: ObservableObject {
         }
 
         errorMessage = nil
-        beginOperation()
-        defer { endOperation() }
+        let operationID = beginOperation(.checkout)
+        defer { endOperation(operationID) }
 
         // 체크아웃은 파일 시스템을 실제로 변경합니다. 체크아웃 성공 이후의
         // Keychain 저장 실패까지 전체 실패로 취급하면, 화면에는 실패라고 나오지만
@@ -170,8 +178,8 @@ final class ProjectStore: ObservableObject {
         let bookmarkData: Data
         let checkoutNotice: String
         do {
-            bookmarkData = try makeBookmark(for: destination)
-            beginAccessing(destination, for: id)
+            bookmarkData = try projectAccessManager.makeBookmark(for: destination)
+            projectAccessManager.beginAccessing(destination, for: id)
             let credentials = username.isEmpty ? nil : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
             checkoutNotice = try await client.checkout(
                 repositoryURL: repositoryURL,
@@ -181,7 +189,7 @@ final class ProjectStore: ObservableObject {
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
-            endAccessingProject(at: destinationURL.standardizedFileURL)
+            projectAccessManager.endAccessing(url: destinationURL.standardizedFileURL)
             errorMessage = localizedError(error)
             return false
         }
@@ -203,7 +211,7 @@ final class ProjectStore: ObservableObject {
             // Keychain 저장이 실패해도 이번 실행의 인증과 체크아웃 결과는 유지합니다.
             sessionPasswords[id] = password
             do {
-                try KeychainStore.setPassword(password, for: id)
+                try credentialStore.setPassword(password, for: id)
             } catch {
                 keychainWarning = AppLanguage.current.text(
                     "체크아웃은 완료했지만 비밀번호를 Keychain에 저장하지 못했습니다: \(localizedError(error))",
@@ -223,19 +231,19 @@ final class ProjectStore: ObservableObject {
         let path = url.standardizedFileURL.path
         guard !projects.contains(where: { $0.path == path }) else { return }
         Task {
-            beginOperation()
-            defer { endOperation() }
+            let operationID = beginOperation(.registerProject)
+            defer { endOperation(operationID) }
             let projectID = UUID()
             do {
-                let bookmarkData = try makeBookmark(for: url)
-                beginAccessing(url, for: projectID)
-                try await client.validateWorkingCopy(at: path)
+                let bookmarkData = try projectAccessManager.makeBookmark(for: url)
+                projectAccessManager.beginAccessing(url, for: projectID)
+                try await client.validateWorkingCopy(at: path, credentials: nil)
                 let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
                 selectedProjectID = project.id
                 await refresh()
             } catch {
-                endAccessingProject(id: projectID)
+                projectAccessManager.endAccessing(projectID: projectID)
                 errorMessage = localizedError(error)
             }
         }
@@ -244,8 +252,8 @@ final class ProjectStore: ObservableObject {
     func removeSelectedProject() {
         if let selectedProjectID {
             sessionPasswords[selectedProjectID] = nil
-            try? KeychainStore.deletePassword(for: selectedProjectID)
-            endAccessingProject(id: selectedProjectID)
+            try? credentialStore.deletePassword(for: selectedProjectID)
+            projectAccessManager.endAccessing(projectID: selectedProjectID)
         }
         projects.removeAll { $0.id == selectedProjectID }
         selectedProjectID = projects.first?.id
@@ -257,12 +265,12 @@ final class ProjectStore: ObservableObject {
         guard let project = selectedProject else { return }
         let requestID = UUID()
         refreshRequestID = requestID
-        beginOperation()
-        defer { endOperation() }
+        let operationID = beginOperation(.refresh(project.id))
+        defer { endOperation(operationID) }
         isWorkingCopyOutOfDate = nil
         do {
-            async let newStatuses = client.status(at: project.path)
-            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path)
+            async let newStatuses = client.status(at: project.path, credentials: nil)
+            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path, credentials: nil)
             let (statuses, workingCopyRevision) = try await (newStatuses, newWorkingCopyRevision)
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.statuses = statuses
@@ -280,6 +288,7 @@ final class ProjectStore: ObservableObject {
             let projectCredentials = try credentials(for: project)
             async let newLogs = client.log(
                 at: project.path,
+                limit: 50,
                 credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
@@ -302,8 +311,8 @@ final class ProjectStore: ObservableObject {
 
     func update() async {
         guard let project = selectedProject else { return }
-        beginOperation()
-        defer { endOperation() }
+        let operationID = beginOperation(.update(project.id))
+        defer { endOperation(operationID) }
         do {
             let result = try await client.update(
                 at: project.path,
@@ -330,7 +339,7 @@ final class ProjectStore: ObservableObject {
             return
         }
         do {
-            let value = try await client.diff(at: project.path, relativePath: path)
+            let value = try await client.diff(at: project.path, relativePath: path, credentials: nil)
             guard diffRequestID == requestID,
                   selectedProjectID == project.id,
                   selectedStatusPath == path else { return }
@@ -345,8 +354,8 @@ final class ProjectStore: ObservableObject {
     func commit(message: String) async -> Bool {
         guard let project = selectedProject, !selectedPaths.isEmpty else { return false }
         let paths = selectedPaths.sorted()
-        beginOperation()
-        defer { endOperation() }
+        let operationID = beginOperation(.commit(project.id))
+        defer { endOperation(operationID) }
         do {
             let result = try await client.commit(
                 at: project.path,
@@ -371,7 +380,7 @@ final class ProjectStore: ObservableObject {
     }
 
     func hasSavedPassword(for projectID: UUID) -> Bool {
-        (try? KeychainStore.password(for: projectID)) != nil
+        (try? credentialStore.password(for: projectID)) != nil
     }
 
     func saveCredentials(
@@ -386,7 +395,7 @@ final class ProjectStore: ObservableObject {
             projects[index].username = username.isEmpty ? nil : username
             projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
             if !newPassword.isEmpty {
-                try KeychainStore.setPassword(newPassword, for: projectID)
+                try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
             notice = AppLanguage.current.text("\(projects[index].name) 인증 설정 저장 완료", "Credentials saved for \(projects[index].name)")
@@ -399,7 +408,7 @@ final class ProjectStore: ObservableObject {
 
     func deleteSavedPassword(for projectID: UUID) -> Bool {
         do {
-            try KeychainStore.deletePassword(for: projectID)
+            try credentialStore.deletePassword(for: projectID)
             sessionPasswords[projectID] = nil
             notice = AppLanguage.current.text("저장된 비밀번호를 삭제했습니다.", "The saved password was deleted.")
             return true
@@ -430,7 +439,7 @@ final class ProjectStore: ObservableObject {
         do {
             projects[index].username = username
             if saveInKeychain {
-                try KeychainStore.setPassword(password, for: request.projectID)
+                try credentialStore.setPassword(password, for: request.projectID)
             }
             sessionPasswords[request.projectID] = password
             authenticationRequest = nil
@@ -462,7 +471,7 @@ final class ProjectStore: ObservableObject {
         if let password = sessionPasswords[project.id] {
             return SVNCredentials(username: username, password: password)
         }
-        let password = try KeychainStore.password(for: project.id)
+        let password = try credentialStore.password(for: project.id)
         if let password, !password.isEmpty {
             sessionPasswords[project.id] = password
         }
@@ -503,11 +512,12 @@ final class ProjectStore: ObservableObject {
 
     private func refreshRemoteHistory(for projectID: SVNProject.ID) async {
         guard let project = projects.first(where: { $0.id == projectID }) else { return }
-        beginOperation()
-        defer { endOperation() }
+        let operationID = beginOperation(.refreshHistory(project.id))
+        defer { endOperation(operationID) }
         do {
             let newLogs = try await client.log(
                 at: project.path,
+                limit: 50,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
@@ -537,58 +547,10 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    // MARK: - Security-scoped bookmark 관리
-
-    private func makeBookmark(for url: URL) throws -> Data {
-        try url.standardizedFileURL.bookmarkData(
-            options: .withSecurityScope,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
-    }
-
-    private func restoreProjectAccess() {
-        for index in projects.indices {
-            guard let bookmarkData = projects[index].bookmarkData else { continue }
-            var isStale = false
-            guard let url = try? URL(
-                resolvingBookmarkData: bookmarkData,
-                options: .withSecurityScope,
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            ) else { continue }
-
-            let standardizedURL = url.standardizedFileURL
-            projects[index].path = standardizedURL.path
-            if isStale, let refreshedBookmark = try? makeBookmark(for: standardizedURL) {
-                projects[index].bookmarkData = refreshedBookmark
-            }
-            beginAccessing(standardizedURL, for: projects[index].id)
-        }
-    }
-
-    private func beginAccessing(_ url: URL, for projectID: SVNProject.ID) {
-        guard accessedProjectURLs[projectID] == nil else { return }
-        _ = url.startAccessingSecurityScopedResource()
-        accessedProjectURLs[projectID] = url
-    }
-
-    private func endAccessingProject(id: SVNProject.ID) {
-        guard let url = accessedProjectURLs.removeValue(forKey: id) else { return }
-        url.stopAccessingSecurityScopedResource()
-    }
-
-    private func endAccessingProject(at url: URL) {
-        guard let entry = accessedProjectURLs.first(where: { $0.value == url }) else { return }
-        endAccessingProject(id: entry.key)
-    }
-
     private func save() {
         // 프로젝트 목록 변경마다 즉시 저장해 앱이 비정상 종료되어도 최근 등록 및
         // 삭제 상태를 최대한 보존합니다. 인코딩 실패 시 기존 저장값은 유지합니다.
-        if let data = try? JSONEncoder().encode(projects) {
-            UserDefaults.standard.set(data, forKey: defaultsKey)
-        }
+        persistence.saveProjects(projects)
     }
 
     // MARK: - 화면 상태와 작업 수명 관리
@@ -609,14 +571,15 @@ final class ProjectStore: ObservableObject {
         authenticationRequest = nil
     }
 
-    private func beginOperation() {
-        activeOperationCount += 1
-        isWorking = true
+    @discardableResult
+    private func beginOperation(_ kind: ProjectOperation.Kind) -> UUID {
+        let operation = ProjectOperation(kind: kind)
+        activeOperations.append(operation)
+        return operation.id
     }
 
-    private func endOperation() {
-        activeOperationCount = max(0, activeOperationCount - 1)
-        isWorking = activeOperationCount > 0
+    private func endOperation(_ id: UUID) {
+        activeOperations.removeAll { $0.id == id }
     }
 
     /// 요청을 시작했던 프로젝트가 아직 선택되어 있고, 더 최신 refresh가 없을 때만
