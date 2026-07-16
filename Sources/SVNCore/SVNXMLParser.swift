@@ -16,6 +16,14 @@ public enum SVNXMLParser {
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.entries
     }
+
+    public static func workingCopyIsOutOfDate(from data: Data) throws -> Bool {
+        let delegate = RemoteStatusDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.hasRemoteChanges
+    }
 }
 
 private final class StatusDelegate: NSObject, XMLParserDelegate {
@@ -30,6 +38,19 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
             if item != "normal" && item != "external" {
                 entries.append(SVNStatusEntry(path: path, item: item, revision: attributeDict["revision"]))
             }
+        }
+    }
+}
+
+private final class RemoteStatusDelegate: NSObject, XMLParserDelegate {
+    var hasRemoteChanges = false
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        guard elementName == "repos-status" else { return }
+        let item = attributeDict["item"] ?? "none"
+        let properties = attributeDict["props"] ?? "none"
+        if item != "none" || properties != "none" {
+            hasRemoteChanges = true
         }
     }
 }

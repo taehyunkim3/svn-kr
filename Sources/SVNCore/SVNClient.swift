@@ -58,6 +58,20 @@ public actor SVNClient {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    public func workingCopyIsOutOfDate(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> Bool {
+        let result = try checkedRun(
+            ["status", "--show-updates", "--xml"],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        return try SVNXMLParser.workingCopyIsOutOfDate(from: Data(result.output.utf8))
+    }
+
     public func update(
         at path: String,
         credentials: SVNCredentials? = nil,

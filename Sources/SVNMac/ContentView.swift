@@ -217,10 +217,10 @@ struct ContentView: View {
                         Label(appLanguage.text("서버 최신 r\(headRevision)", "Server latest r\(headRevision)"), systemImage: "cloud")
                         if let workingCopyRevision = store.workingCopyRevision {
                             Label(appLanguage.text("내 로컬 폴더 r\(workingCopyRevision)", "My local folder r\(workingCopyRevision)"), systemImage: "macbook")
-                            if isWorkingCopyBehind(headRevision: headRevision, workingCopyRevision: workingCopyRevision) {
+                            if store.isWorkingCopyOutOfDate == true {
                                 Text(appLanguage.text("업데이트 필요", "Update required"))
                                     .foregroundStyle(.orange)
-                            } else {
+                            } else if store.isWorkingCopyOutOfDate == false {
                                 Text(appLanguage.text("최신", "Up to date"))
                                     .foregroundStyle(.green)
                             }
@@ -437,11 +437,6 @@ struct ContentView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(color.opacity(0.12), in: Capsule())
-    }
-
-    private func isWorkingCopyBehind(headRevision: String, workingCopyRevision: String) -> Bool {
-        guard let head = Int(headRevision), let workingCopy = Int(workingCopyRevision) else { return false }
-        return workingCopy < head
     }
 
     private var historyTimeZone: TimeZone {

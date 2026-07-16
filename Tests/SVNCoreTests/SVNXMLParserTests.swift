@@ -15,6 +15,24 @@ import Testing
     #expect(entries.map(\.item) == ["modified", "unversioned"])
 }
 
+@Test func detectsActualRemoteWorkingCopyChanges() throws {
+    let upToDateXML = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="13282"/><repos-status item="none" props="none"/></entry>
+      <against revision="13283"/>
+    </target></status>
+    """
+    let outOfDateXML = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="Sources/App.swift"><wc-status item="normal" revision="13282"/><repos-status item="modified" props="none"/></entry>
+      <against revision="13283"/>
+    </target></status>
+    """
+
+    #expect(try !SVNXMLParser.workingCopyIsOutOfDate(from: Data(upToDateXML.utf8)))
+    #expect(try SVNXMLParser.workingCopyIsOutOfDate(from: Data(outOfDateXML.utf8)))
+}
+
 @Test func parsesLogHistory() throws {
     let xml = """
     <?xml version="1.0"?><log><logentry revision="13267">

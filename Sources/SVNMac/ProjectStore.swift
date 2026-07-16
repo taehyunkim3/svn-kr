@@ -46,6 +46,7 @@ final class ProjectStore: ObservableObject {
     @Published var statuses: [SVNStatusEntry] = []
     @Published var logs: [SVNLogEntry] = []
     @Published var workingCopyRevision: String?
+    @Published var isWorkingCopyOutOfDate: Bool?
     @Published var selectedPaths: Set<String> = []
     @Published var selectedStatusPath: String?
     @Published var diff = AppLanguage.current.text("변경 파일을 선택하면 diff가 표시됩니다.", "Select a changed file to view its diff.")
@@ -174,12 +175,14 @@ final class ProjectStore: ObservableObject {
         statuses = []
         logs = []
         workingCopyRevision = nil
+        isWorkingCopyOutOfDate = nil
     }
 
     func refresh() async {
         guard let project = selectedProject else { return }
         isWorking = true
         defer { isWorking = false }
+        isWorkingCopyOutOfDate = nil
         do {
             async let newStatuses = client.status(at: project.path)
             async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path)
@@ -194,11 +197,20 @@ final class ProjectStore: ObservableObject {
         }
 
         do {
-            logs = try await client.log(
+            let projectCredentials = try credentials(for: project)
+            async let newLogs = client.log(
                 at: project.path,
-                credentials: credentials(for: project),
+                credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
+            async let outOfDate = client.workingCopyIsOutOfDate(
+                at: project.path,
+                credentials: projectCredentials,
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            let (logs, isWorkingCopyOutOfDate) = try await (newLogs, outOfDate)
+            self.logs = logs
+            self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
         } catch {
             handleRemoteError(error, project: project, action: .refreshHistory)
