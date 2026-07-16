@@ -8,13 +8,22 @@ struct SVNProject: Codable, Identifiable, Hashable {
     var path: String
     var username: String?
     var bookmarkData: Data?
+    var allowsUntrustedServerCertificate: Bool?
 
-    init(id: UUID = UUID(), name: String, path: String, username: String? = nil, bookmarkData: Data? = nil) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        path: String,
+        username: String? = nil,
+        bookmarkData: Data? = nil,
+        allowsUntrustedServerCertificate: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.path = path
         self.username = username
         self.bookmarkData = bookmarkData
+        self.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
     }
 }
 
@@ -76,7 +85,13 @@ final class ProjectStore: ObservableObject {
         for url in panel.urls { addProject(url) }
     }
 
-    func checkout(repositoryURL: String, destinationURL: URL?, username: String, password: String) async -> Bool {
+    func checkout(
+        repositoryURL: String,
+        destinationURL: URL?,
+        username: String,
+        password: String,
+        allowsUntrustedServerCertificate: Bool
+    ) async -> Bool {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
@@ -101,14 +116,20 @@ final class ProjectStore: ObservableObject {
             let bookmarkData = try makeBookmark(for: destination)
             beginAccessing(destination, for: id)
             let credentials = username.isEmpty ? nil : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
-            notice = try await client.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath, credentials: credentials)
+            notice = try await client.checkout(
+                repositoryURL: repositoryURL,
+                destinationPath: destinationPath,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowsUntrustedServerCertificate
+            )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let project = SVNProject(
                 id: id,
                 name: destination.lastPathComponent,
                 path: destination.path,
                 username: username.isEmpty ? nil : username,
-                bookmarkData: bookmarkData
+                bookmarkData: bookmarkData,
+                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
             )
             if !password.isEmpty { try KeychainStore.setPassword(password, for: id) }
             projects.append(project)
@@ -173,7 +194,11 @@ final class ProjectStore: ObservableObject {
         }
 
         do {
-            logs = try await client.log(at: project.path, credentials: credentials(for: project))
+            logs = try await client.log(
+                at: project.path,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
         } catch {
             handleRemoteError(error, project: project, action: .refreshHistory)
@@ -185,7 +210,11 @@ final class ProjectStore: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         do {
-            notice = try await client.update(at: project.path, credentials: credentials(for: project)).trimmingCharacters(in: .whitespacesAndNewlines)
+            notice = try await client.update(
+                at: project.path,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            ).trimmingCharacters(in: .whitespacesAndNewlines)
             await refresh()
         } catch {
             handleRemoteError(error, project: project, action: .update)
@@ -208,7 +237,13 @@ final class ProjectStore: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         do {
-            notice = try await client.commit(at: project.path, paths: selectedPaths.sorted(), message: message, credentials: credentials(for: project))
+            notice = try await client.commit(
+                at: project.path,
+                paths: selectedPaths.sorted(),
+                message: message,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             selectedPaths.removeAll()
             lastCompletedCommitMessage = message
@@ -224,11 +259,17 @@ final class ProjectStore: ObservableObject {
         (try? KeychainStore.password(for: projectID)) != nil
     }
 
-    func saveCredentials(for projectID: UUID, username: String, newPassword: String) -> Bool {
+    func saveCredentials(
+        for projectID: UUID,
+        username: String,
+        newPassword: String,
+        allowsUntrustedServerCertificate: Bool
+    ) -> Bool {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return false }
         do {
             let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
             projects[index].username = username.isEmpty ? nil : username
+            projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
             if !newPassword.isEmpty {
                 try KeychainStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
@@ -348,7 +389,11 @@ final class ProjectStore: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         do {
-            logs = try await client.log(at: project.path, credentials: credentials(for: project))
+            logs = try await client.log(
+                at: project.path,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
             notice = AppLanguage.current.text("\(project.name) 커밋 기록 확인 완료", "\(project.name) history refreshed")
         } catch {
             handleRemoteError(error, project: project, action: .refreshHistory)

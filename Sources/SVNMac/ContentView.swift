@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import SVNCore
 
@@ -110,6 +111,13 @@ struct ContentView: View {
                     Text(project.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 Spacer()
+                Button(appLanguage.text("Finder에서 열기", "Open in Finder"), systemImage: "folder") {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
+                }
+                .help(appLanguage.text(
+                    "이 SVN 로컬 작업 폴더를 Finder에서 엽니다.",
+                    "Open this SVN local working folder in Finder."
+                ))
                 Button(appLanguage.text("인증 설정", "Credentials"), systemImage: "person.badge.key") {
                     store.isShowingCredentials = true
                 }
@@ -710,6 +718,7 @@ private struct AddRepositoryView: View {
     @State private var destinationURL: URL?
     @State private var username = ""
     @State private var password = ""
+    @State private var allowsUntrustedServerCertificate = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -758,6 +767,19 @@ private struct AddRepositoryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            Toggle(
+                appLanguage.text(
+                    "신뢰할 수 없는 SSL 인증서 허용",
+                    "Allow untrusted SSL certificates"
+                ),
+                isOn: $allowsUntrustedServerCertificate
+            )
+            .toggleStyle(.checkbox)
+            .help(appLanguage.text(
+                "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요.",
+                "Use only for servers with self-signed certificates or certificate name mismatches."
+            ))
+
             if store.isWorking {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -790,7 +812,13 @@ private struct AddRepositoryView: View {
                     .help(appLanguage.text("저장소 추가를 취소하고 창을 닫습니다.", "Cancel adding the repository and close this window."))
                 Button(appLanguage.text("체크아웃 및 추가", "Check Out and Add")) {
                     Task {
-                        if await store.checkout(repositoryURL: repositoryURL, destinationURL: destinationURL, username: username, password: password) {
+                        if await store.checkout(
+                            repositoryURL: repositoryURL,
+                            destinationURL: destinationURL,
+                            username: username,
+                            password: password,
+                            allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+                        ) {
                             dismiss()
                         }
                     }
@@ -825,11 +853,13 @@ private struct CredentialsView: View {
     @State private var username: String
     @State private var newPassword = ""
     @State private var hasSavedPassword: Bool
+    @State private var allowsUntrustedServerCertificate: Bool
 
     init(project: SVNProject) {
         self.project = project
         _username = State(initialValue: project.username ?? "")
         _hasSavedPassword = State(initialValue: false)
+        _allowsUntrustedServerCertificate = State(initialValue: project.allowsUntrustedServerCertificate == true)
     }
 
     var body: some View {
@@ -868,6 +898,19 @@ private struct CredentialsView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
+            Toggle(
+                appLanguage.text(
+                    "신뢰할 수 없는 SSL 인증서 허용",
+                    "Allow untrusted SSL certificates"
+                ),
+                isOn: $allowsUntrustedServerCertificate
+            )
+            .toggleStyle(.checkbox)
+            .help(appLanguage.text(
+                "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다.",
+                "Allow self-signed and certificate name mismatch errors for this repository."
+            ))
+
             Divider()
             HStack {
                 if hasSavedPassword {
@@ -884,7 +927,12 @@ private struct CredentialsView: View {
                     .keyboardShortcut(.cancelAction)
                     .help(appLanguage.text("인증 설정 변경을 저장하지 않고 창을 닫습니다.", "Close without saving credential changes."))
                 Button(appLanguage.text("저장", "Save")) {
-                    if store.saveCredentials(for: project.id, username: username, newPassword: newPassword) {
+                    if store.saveCredentials(
+                        for: project.id,
+                        username: username,
+                        newPassword: newPassword,
+                        allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+                    ) {
                         dismiss()
                         Task { await store.refresh() }
                     }

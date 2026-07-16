@@ -9,15 +9,22 @@ public actor SVNClient {
         self.configDirectoryPath = configDirectoryPath
     }
 
-    public func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials? = nil) async throws -> String {
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
         let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
         let repositoryURL = URL(string: normalizedRepositoryURL)?.absoluteString ?? normalizedRepositoryURL
         let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
-        let parent = destination.deletingLastPathComponent()
-        guard FileManager.default.fileExists(atPath: parent.path) else {
-            throw SVNError.commandFailed(command: "svn checkout", message: "저장할 상위 폴더가 존재하지 않습니다.")
-        }
-        return try checkedRun(["checkout", repositoryURL, destination.path], at: parent.path, credentials: credentials).output
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        return try checkedRun(
+            ["checkout", repositoryURL, "."],
+            at: destination.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
     }
 
     public func validateWorkingCopy(at path: String, credentials: SVNCredentials? = nil) async throws {
@@ -30,11 +37,17 @@ public actor SVNClient {
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
     }
 
-    public func log(at path: String, limit: Int = 50, credentials: SVNCredentials? = nil) async throws -> [SVNLogEntry] {
+    public func log(
+        at path: String,
+        limit: Int = 50,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> [SVNLogEntry] {
         let result = try checkedRun(
             ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", "HEAD:1", "--limit", String(limit)],
             at: path,
-            credentials: credentials
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
@@ -45,8 +58,17 @@ public actor SVNClient {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    public func update(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
-        try checkedRun(["update"], at: path, credentials: credentials).output
+    public func update(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
+        try checkedRun(
+            ["update"],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
     }
 
     public func diff(at path: String, relativePath: String? = nil, credentials: SVNCredentials? = nil) async throws -> String {
@@ -55,7 +77,13 @@ public actor SVNClient {
         return try checkedRun(arguments, at: path, credentials: credentials).output
     }
 
-    public func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials? = nil) async throws -> String {
+    public func commit(
+        at path: String,
+        paths: [String],
+        message: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
         let currentStatuses = try await status(at: path, credentials: credentials)
         for item in paths {
             let status = currentStatuses.first(where: { $0.path == item })
@@ -65,12 +93,27 @@ public actor SVNClient {
                 _ = try checkedRun(["delete", "--force", "--", item], at: path, credentials: credentials)
             }
         }
-        return try checkedRun(["commit", "--message", message, "--"] + paths, at: path, credentials: credentials).output
+        return try checkedRun(
+            ["commit", "--message", message, "--"] + paths,
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        ).output
     }
 
     @discardableResult
-    private func checkedRun(_ arguments: [String], at path: String, credentials: SVNCredentials? = nil) throws -> SVNCommandResult {
-        let result = try run(arguments, at: path, credentials: credentials)
+    private func checkedRun(
+        _ arguments: [String],
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) throws -> SVNCommandResult {
+        let result = try run(
+            arguments,
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
             throw SVNError.commandFailed(command: "svn \(arguments.first ?? "")", message: detail.isEmpty ? result.output : detail)
@@ -78,11 +121,19 @@ public actor SVNClient {
         return result
     }
 
-    private func run(_ arguments: [String], at path: String, credentials: SVNCredentials? = nil) throws -> SVNCommandResult {
+    private func run(
+        _ arguments: [String],
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) throws -> SVNCommandResult {
         let process = Process()
         process.executableURL = try svnExecutableURL()
         let configDirectory = try svnConfigDirectory()
         var globalArguments = ["--non-interactive", "--config-dir", configDirectory.path]
+        if allowUntrustedServerCertificate {
+            globalArguments.append("--trust-server-cert-failures=unknown-ca,cn-mismatch")
+        }
         var password: String?
         if let credentials, !credentials.username.isEmpty {
             globalArguments += ["--username", credentials.username]

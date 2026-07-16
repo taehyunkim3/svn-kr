@@ -46,13 +46,9 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 1.0 Release Notes
+## Version 0.4.1 Release Notes
 
-The first App Store release of SVN Mac.
-
-• Multiple SVN working copies
-• Change and diff review
-• Selective commit and update
-• Server and local revision timeline
-• Per-project Keychain credentials
-• Korean and English interfaces
+• Fixed checkout into user-selected folders under App Sandbox
+• Added a per-repository option for self-signed certificates and hostname mismatches
+• Added a button to open the current SVN working folder in Finder
+• Removed quarantine attributes from App Store package contents

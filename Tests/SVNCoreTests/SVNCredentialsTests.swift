@@ -33,6 +33,7 @@ import Testing
     #expect(result.contains("stdin=keychain-secret"))
     let argumentsLine = result.split(separator: "\n").first.map(String.init) ?? ""
     #expect(!argumentsLine.contains("keychain-secret"))
+    #expect(!argumentsLine.contains("--trust-server-cert-failures"))
 }
 
 @Test func normalizesCheckoutURLToPrecomposedUnicode() async throws {
@@ -61,6 +62,38 @@ import Testing
 
     #expect(result.contains("https://example.test/svn/%ED%95%9C%EA%B5%AD"))
     #expect(!result.contains("%E1%84%92%E1%85%A1"))
+}
+
+@Test func runsCheckoutInsideSelectedDestination() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-checkout-destination-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    : > checkout-marker
+    printf 'cwd=%s\n' "$PWD"
+    printf 'args=%s\n' "$*"
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.checkout(
+        repositoryURL: "https://example.test/svn/project",
+        destinationPath: destination.path,
+        allowUntrustedServerCertificate: true
+    )
+
+    #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-marker").path))
+    #expect(result.contains("--trust-server-cert-failures=unknown-ca,cn-mismatch"))
+    #expect(result.contains("checkout https://example.test/svn/project ."))
 }
 
 @Test func requestsRemoteLogFromHeadWithoutUpdatingWorkingCopy() async throws {
