@@ -154,6 +154,13 @@ public actor SVNClient {
     ) throws -> SVNCommandResult {
         let process = Process()
         process.executableURL = try svnExecutableURL()
+        // Finder/Dock에서 실행한 GUI 앱은 LANG/LC_ALL이 없을 수 있습니다.
+        // SVN은 명령행 인자를 현재 로케일에서 UTF-8로 변환하므로, 로케일이
+        // 비어 있으면 한글 커밋 메시지가 mojibake 상태로 저장될 수 있습니다.
+        var environment = ProcessInfo.processInfo.environment
+        environment["LANG"] = "en_US.UTF-8"
+        environment["LC_ALL"] = "en_US.UTF-8"
+        process.environment = environment
         let configDirectory = try svnConfigDirectory()
         var globalArguments = ["--non-interactive", "--config-dir", configDirectory.path]
         if allowUntrustedServerCertificate {

@@ -152,3 +152,40 @@ import Testing
 
     #expect(revision == "37")
 }
+
+@Test func commitsKoreanMessageWithUTF8Locale() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-korean-commit-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --xml"*)
+        printf '<?xml version="1.0"?><status><target path="."><entry path="한글.txt"><wc-status item="modified" revision="1"/></entry></target></status>'
+        ;;
+      *"commit --message"*)
+        printf 'LANG=%s\nLC_ALL=%s\nargs=%s\n' "$LANG" "$LC_ALL" "$*"
+        ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.commit(
+        at: directory.path,
+        paths: ["한글.txt"],
+        message: "한글 커밋 메시지"
+    )
+
+    #expect(result.contains("LANG=en_US.UTF-8"))
+    #expect(result.contains("LC_ALL=en_US.UTF-8"))
+    #expect(result.contains("commit --message 한글 커밋 메시지 -- 한글.txt"))
+}

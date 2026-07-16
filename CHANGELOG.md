@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 (2026-07-16)
+
+- Forced a UTF-8 locale for SVN commands so Korean commit messages are stored correctly when the app is launched from Finder or the Dock.
+
 ## 0.4.1 (2026-07-16)
 
 - Fixed checkout into user-selected folders under App Sandbox.
