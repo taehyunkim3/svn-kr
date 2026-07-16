@@ -15,6 +15,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$ROOT/.build/release/SVNMac" "$APP/Contents/MacOS/SVNMac"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 "$ROOT/scripts/embed-svn.sh" "$APP"
 
 SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
