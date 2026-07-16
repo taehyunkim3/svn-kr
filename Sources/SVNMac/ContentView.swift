@@ -5,9 +5,11 @@ import SVNCore
 struct ContentView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
     @State private var commitMessage = ""
+    @FocusState private var isCommitMessageFocused: Bool
 
     var body: some View {
         NavigationSplitView {
@@ -75,6 +77,10 @@ struct ContentView: View {
             if store.isWorking { ProgressView().controlSize(.small) }
         }
         .onChange(of: store.selectedProjectID) { _, _ in Task { await store.refresh() } }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, store.selectedProject != nil, !store.isWorking else { return }
+            Task { await store.refresh() }
+        }
         .task {
             if store.projects.isEmpty {
                 store.isShowingAddRepository = true
@@ -95,7 +101,10 @@ struct ContentView: View {
                 .environmentObject(store)
         }
         .onChange(of: store.lastCompletedCommitMessage) { _, message in
-            if message == commitMessage { commitMessage = "" }
+            guard message != nil else { return }
+            commitMessage = ""
+            isCommitMessageFocused = false
+            store.lastCompletedCommitMessage = nil
         }
         .alert(appLanguage.text("오류", "Error"), isPresented: Binding(get: { !store.isShowingAddRepository && store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button(appLanguage.text("확인", "OK"), role: .cancel) { store.errorMessage = nil }
@@ -169,7 +178,8 @@ struct ContentView: View {
                 VStack(spacing: 8) {
                     TextField(appLanguage.text("커밋 메시지", "Commit message"), text: $commitMessage)
                         .textFieldStyle(.roundedBorder)
-                        .onSubmit { submitCommit() }
+                        .focused($isCommitMessageFocused)
+                        .onSubmit { submitCommitAfterEndingTextInput() }
                     HStack {
                         Button(appLanguage.text("전체 선택", "Select All")) { store.selectedPaths = Set(store.statuses.map(\.path)) }
                             .help(appLanguage.text("현재 변경된 파일을 모두 커밋 대상으로 선택합니다.", "Select all currently changed files for commit."))
@@ -177,7 +187,7 @@ struct ContentView: View {
                             .help(appLanguage.text("현재 선택된 커밋 대상을 모두 해제합니다.", "Clear all selected commit targets."))
                         Spacer()
                         Text(appLanguage.text("\(store.selectedPaths.count)개 선택", "\(store.selectedPaths.count) selected")).foregroundStyle(.secondary)
-                        Button(appLanguage.text("선택 항목 커밋", "Commit Selected")) { submitCommit() }
+                        Button(appLanguage.text("선택 항목 커밋", "Commit Selected")) { submitCommitAfterEndingTextInput() }
                             .buttonStyle(.borderedProminent)
                             .disabled(store.selectedPaths.isEmpty || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
                             .help(appLanguage.text("선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.", "Commit the selected files to the SVN server with the entered message."))
@@ -539,6 +549,14 @@ struct ContentView: View {
         guard !message.isEmpty else { return }
         Task {
             if await store.commit(message: message) { commitMessage = "" }
+        }
+    }
+
+    private func submitCommitAfterEndingTextInput() {
+        isCommitMessageFocused = false
+        Task { @MainActor in
+            await Task.yield()
+            submitCommit()
         }
     }
 }
