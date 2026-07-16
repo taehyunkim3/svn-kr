@@ -2,9 +2,11 @@ import Foundation
 
 public actor SVNClient {
     private let executablePath: String?
+    private let configDirectoryPath: String?
 
-    public init(executablePath: String? = nil) {
+    public init(executablePath: String? = nil, configDirectoryPath: String? = nil) {
         self.executablePath = executablePath
+        self.configDirectoryPath = configDirectoryPath
     }
 
     public func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials? = nil) async throws -> String {
@@ -79,7 +81,8 @@ public actor SVNClient {
     private func run(_ arguments: [String], at path: String, credentials: SVNCredentials? = nil) throws -> SVNCommandResult {
         let process = Process()
         process.executableURL = try svnExecutableURL()
-        var globalArguments = ["--non-interactive"]
+        let configDirectory = try svnConfigDirectory()
+        var globalArguments = ["--non-interactive", "--config-dir", configDirectory.path]
         var password: String?
         if let credentials, !credentials.username.isEmpty {
             globalArguments += ["--username", credentials.username]
@@ -133,6 +136,14 @@ public actor SVNClient {
         if let override = ProcessInfo.processInfo.environment["SVN_EXECUTABLE"], !override.isEmpty {
             candidates.append(override)
         }
+        let helper = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("Helpers", isDirectory: true)
+            .appendingPathComponent("svn", isDirectory: false)
+            .path
+        if FileManager.default.isExecutableFile(atPath: helper) {
+            candidates.append(helper)
+        }
         if let bundled = Bundle.main.url(forResource: "svn", withExtension: nil, subdirectory: "bin")?.path {
             candidates.append(bundled)
         }
@@ -145,5 +156,24 @@ public actor SVNClient {
             throw SVNError.svnExecutableNotFound
         }
         return URL(fileURLWithPath: path)
+    }
+
+    private func svnConfigDirectory() throws -> URL {
+        if let configDirectoryPath {
+            let directory = URL(fileURLWithPath: configDirectoryPath, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            return directory
+        }
+        let applicationSupport = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = applicationSupport
+            .appendingPathComponent("SVN Mac", isDirectory: true)
+            .appendingPathComponent("Subversion", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }

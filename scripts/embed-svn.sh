@@ -11,11 +11,11 @@ fi
 
 RESOURCES="$APP/Contents/Resources"
 FRAMEWORKS="$APP/Contents/Frameworks"
-BIN_DIR="$RESOURCES/bin"
+HELPERS="$APP/Contents/Helpers"
 LICENSES="$RESOURCES/Licenses"
-SVN_TARGET="$BIN_DIR/svn"
+SVN_TARGET="$HELPERS/svn"
 
-mkdir -p "$BIN_DIR" "$FRAMEWORKS" "$LICENSES"
+mkdir -p "$HELPERS" "$FRAMEWORKS" "$LICENSES"
 cp -L "$SVN_SOURCE" "$SVN_TARGET"
 chmod u+w "$SVN_TARGET"
 
@@ -74,7 +74,7 @@ done
 
 for binary in "${queue[@]}"; do
   if [[ "$binary" == "$SVN_TARGET" ]]; then
-    loader_prefix='@loader_path/../../Frameworks'
+    loader_prefix='@loader_path/../Frameworks'
   else
     loader_prefix='@loader_path'
     install_name_tool -id "@rpath/${binary:t}" "$binary"

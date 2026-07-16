@@ -18,7 +18,10 @@ import Testing
     try Data(script.utf8).write(to: executable)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
 
-    let client = SVNClient(executablePath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
     let result = try await client.checkout(
         repositoryURL: "https://example.test/svn/project",
         destinationPath: directory.appendingPathComponent("checkout").path,
@@ -47,7 +50,10 @@ import Testing
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
 
     let decomposedRepositoryURL = "https://example.test/svn/\u{1112}\u{1161}\u{11AB}\u{1100}\u{116E}\u{11A8}"
-    let client = SVNClient(executablePath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
     let result = try await client.checkout(
         repositoryURL: decomposedRepositoryURL,
         destinationPath: directory.appendingPathComponent("checkout").path
@@ -79,7 +85,10 @@ import Testing
     try Data(script.utf8).write(to: executable)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
 
-    let client = SVNClient(executablePath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
     let entries = try await client.log(at: directory.path)
 
     #expect(entries.map(\.revision) == ["42"])
@@ -102,7 +111,10 @@ import Testing
     try Data(script.utf8).write(to: executable)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
 
-    let client = SVNClient(executablePath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
     let revision = try await client.workingCopyRevision(at: directory.path)
 
     #expect(revision == "37")

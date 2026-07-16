@@ -707,7 +707,7 @@ private struct AddRepositoryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var appLanguage
     @State private var repositoryURL = ""
-    @State private var destinationPath = ""
+    @State private var destinationURL: URL?
     @State private var username = ""
     @State private var password = ""
 
@@ -729,8 +729,15 @@ private struct AddRepositoryView: View {
                 GridRow {
                     Text(appLanguage.text("로컬 폴더", "Local folder"))
                     HStack {
-                        TextField("/Users/name/Documents/project", text: $destinationPath)
+                        TextField(
+                            "/Users/name/Documents/project",
+                            text: Binding(
+                                get: { destinationURL?.path ?? "" },
+                                set: { _ in }
+                            )
+                        )
                             .textFieldStyle(.roundedBorder)
+                            .disabled(true)
                         Button(appLanguage.text("선택…", "Choose…")) { chooseDestination() }
                             .help(appLanguage.text("체크아웃 결과를 저장할 로컬 폴더를 선택합니다.", "Choose the local folder for the checkout."))
                     }
@@ -783,14 +790,14 @@ private struct AddRepositoryView: View {
                     .help(appLanguage.text("저장소 추가를 취소하고 창을 닫습니다.", "Cancel adding the repository and close this window."))
                 Button(appLanguage.text("체크아웃 및 추가", "Check Out and Add")) {
                     Task {
-                        if await store.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath, username: username, password: password) {
+                        if await store.checkout(repositoryURL: repositoryURL, destinationURL: destinationURL, username: username, password: password) {
                             dismiss()
                         }
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || destinationPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+                .disabled(repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || destinationURL == nil || store.isWorking)
                 .help(appLanguage.text("입력한 SVN 저장소를 로컬 폴더에 체크아웃하고 앱에 등록합니다.", "Check out the SVN repository into the local folder and add it to the app."))
             }
         }
@@ -806,7 +813,7 @@ private struct AddRepositoryView: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let destination = panel.url else { return }
-        destinationPath = destination.standardizedFileURL.path
+        destinationURL = destination.standardizedFileURL
     }
 }
 

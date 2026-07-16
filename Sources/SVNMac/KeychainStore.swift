@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "com.taehyunkim3.svnmac.credentials"
+    private static let service = "com.mrdevello.svnmac.credentials"
 
     static func password(for projectID: UUID) throws -> String? {
         let query: [String: Any] = [

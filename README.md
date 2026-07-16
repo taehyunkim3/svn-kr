@@ -16,7 +16,7 @@
 - 설정에서 커밋 시각 표시 시간대 변경 (기본값 KST)
 - 모든 작업 버튼의 역할을 설명하는 hover 도움말
 - 로컬 작업 폴더 업데이트 및 새로고침
-- 기존 SVN 인증 캐시와 macOS Keychain 사용 (앱에는 비밀번호를 저장하지 않음)
+- 앱 전용 SVN 설정과 macOS Keychain 사용 (앱 설정에는 비밀번호를 저장하지 않음)
 
 ## 실행
 
@@ -44,6 +44,20 @@ CODE_SIGN_IDENTITY='Developer ID Application: 회사명 (TEAMID)' ./scripts/pack
 
 현재 패키지는 빌드 Mac과 동일한 CPU 아키텍처용입니다. Apple Silicon에서 빌드하면 Apple Silicon용 SVN이 포함됩니다.
 
+Mac App Store 제출용 패키지는 Apple Distribution 인증서, Mac App Store 프로비저닝
+프로파일, Mac Installer Distribution 인증서가 준비된 Mac에서 다음처럼 생성합니다.
+
+```bash
+CODE_SIGN_IDENTITY='Apple Distribution: 회사명 (TEAMID)' \
+PROVISIONING_PROFILE='/path/to/SVN_Mac_App_Store.provisionprofile' \
+INSTALLER_SIGN_IDENTITY='3rd Party Mac Developer Installer: 회사명 (TEAMID)' \
+./scripts/package-app-store.sh
+```
+
+생성된 `dist/SVN-Mac-버전-app-store.pkg`는 Transporter로 App Store Connect에
+업로드할 수 있습니다. 스토어 빌드는 App Sandbox를 사용하며 사용자가 선택한 로컬
+작업 폴더 권한을 보안 범위 북마크로 유지합니다.
+
 ## 사용 방법
 
 1. 왼쪽 아래 `+` 또는 `⌘O`로 저장소 URL과 체크아웃할 로컬 폴더를 입력합니다.
@@ -52,7 +66,7 @@ CODE_SIGN_IDENTITY='Developer ID Application: 회사명 (TEAMID)' ./scripts/pack
 3. 메시지를 입력한 뒤 `선택 항목 커밋`을 누릅니다.
 4. `커밋 기록`에서 다른 사용자를 포함한 최근 서버 이력을 확인합니다.
 
-프로젝트 상단의 `인증 설정`에서 로컬 작업 폴더마다 서로 다른 사용자명과 비밀번호를 지정할 수 있습니다. 비밀번호는 앱 설정이나 Git에 기록하지 않고 macOS Keychain에 프로젝트별로 저장하며, SVN 명령에는 표준 입력으로만 전달합니다. Keychain 접근을 거부해도 로컬 변경 사항과 diff는 계속 확인할 수 있고, 원격 작업이 필요할 때 Keychain 접근을 다시 시도하거나 비밀번호를 이번 앱 실행에서만 사용할 수 있습니다. 서버 인증서 승인이 아직 저장되지 않았다면 터미널에서 한 번 `svn update --username 계정명`으로 인증서를 승인한 뒤 앱을 사용하세요.
+프로젝트 상단의 `인증 설정`에서 로컬 작업 폴더마다 서로 다른 사용자명과 비밀번호를 지정할 수 있습니다. 비밀번호는 앱 설정이나 Git에 기록하지 않고 macOS Keychain에 프로젝트별로 저장하며, SVN 명령에는 표준 입력으로만 전달합니다. Keychain 접근을 거부해도 로컬 변경 사항과 diff는 계속 확인할 수 있고, 원격 작업이 필요할 때 Keychain 접근을 다시 시도하거나 비밀번호를 이번 앱 실행에서만 사용할 수 있습니다.
 
 ## 다음 단계
 

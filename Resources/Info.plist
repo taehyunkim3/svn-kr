@@ -4,7 +4,7 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>ko</string>
     <key>CFBundleExecutable</key><string>SVNMac</string>
-    <key>CFBundleIdentifier</key><string>com.taehyunkim3.svnmac</string>
+    <key>CFBundleIdentifier</key><string>com.mrdevello.svnmac</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>SVN Mac</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
@@ -12,6 +12,7 @@
     <key>CFBundleShortVersionString</key><string>0.4.0</string>
     <key>CFBundleVersion</key><string>5</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
     <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>

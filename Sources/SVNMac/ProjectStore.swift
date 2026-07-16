@@ -7,12 +7,14 @@ struct SVNProject: Codable, Identifiable, Hashable {
     var name: String
     var path: String
     var username: String?
+    var bookmarkData: Data?
 
-    init(id: UUID = UUID(), name: String, path: String, username: String? = nil) {
+    init(id: UUID = UUID(), name: String, path: String, username: String? = nil, bookmarkData: Data? = nil) {
         self.id = id
         self.name = name
         self.path = path
         self.username = username
+        self.bookmarkData = bookmarkData
     }
 }
 
@@ -49,6 +51,7 @@ final class ProjectStore: ObservableObject {
     private let client = SVNClient()
     private let defaultsKey = "svn-projects-v1"
     private var sessionPasswords: [SVNProject.ID: String] = [:]
+    private var accessedProjectURLs: [SVNProject.ID: URL] = [:]
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
@@ -58,6 +61,7 @@ final class ProjectStore: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: defaultsKey),
            let saved = try? JSONDecoder().decode([SVNProject].self, from: data) {
             projects = saved
+            restoreProjectAccess()
             selectedProjectID = saved.first?.id
         }
     }
@@ -72,11 +76,18 @@ final class ProjectStore: ObservableObject {
         for url in panel.urls { addProject(url) }
     }
 
-    func checkout(repositoryURL: String, destinationPath: String, username: String, password: String) async -> Bool {
+    func checkout(repositoryURL: String, destinationURL: URL?, username: String, password: String) async -> Bool {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let destinationPath = (destinationPath as NSString).expandingTildeInPath
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !repositoryURL.isEmpty, !destinationPath.isEmpty else { return false }
+        guard !repositoryURL.isEmpty, let destinationURL else {
+            errorMessage = AppLanguage.current.text(
+                "체크아웃할 로컬 폴더를 선택해 주세요.",
+                "Choose a local folder for the checkout."
+            )
+            return false
+        }
+        let destination = destinationURL.standardizedFileURL
+        let destinationPath = destination.path
         guard !projects.contains(where: { $0.path == destinationPath }) else {
             errorMessage = AppLanguage.current.text("이미 등록된 로컬 작업 폴더입니다.", "This local working folder is already registered.")
             return false
@@ -87,17 +98,25 @@ final class ProjectStore: ObservableObject {
         defer { isWorking = false }
         do {
             let id = UUID()
+            let bookmarkData = try makeBookmark(for: destination)
+            beginAccessing(destination, for: id)
             let credentials = username.isEmpty ? nil : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
             notice = try await client.checkout(repositoryURL: repositoryURL, destinationPath: destinationPath, credentials: credentials)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
-            let project = SVNProject(id: id, name: destination.lastPathComponent, path: destination.path, username: username.isEmpty ? nil : username)
+            let project = SVNProject(
+                id: id,
+                name: destination.lastPathComponent,
+                path: destination.path,
+                username: username.isEmpty ? nil : username,
+                bookmarkData: bookmarkData
+            )
             if !password.isEmpty { try KeychainStore.setPassword(password, for: id) }
             projects.append(project)
             selectedProjectID = project.id
             await refresh()
             return true
         } catch {
+            endAccessingProject(at: destinationURL.standardizedFileURL)
             errorMessage = localizedError(error)
             return false
         }
@@ -107,13 +126,19 @@ final class ProjectStore: ObservableObject {
         let path = url.standardizedFileURL.path
         guard !projects.contains(where: { $0.path == path }) else { return }
         Task {
+            let projectID = UUID()
             do {
+                let bookmarkData = try makeBookmark(for: url)
+                beginAccessing(url, for: projectID)
                 try await client.validateWorkingCopy(at: path)
-                let project = SVNProject(name: url.lastPathComponent, path: path)
+                let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
                 selectedProjectID = project.id
                 await refresh()
-            } catch { errorMessage = localizedError(error) }
+            } catch {
+                endAccessingProject(id: projectID)
+                errorMessage = localizedError(error)
+            }
         }
     }
 
@@ -121,6 +146,7 @@ final class ProjectStore: ObservableObject {
         if let selectedProjectID {
             sessionPasswords[selectedProjectID] = nil
             try? KeychainStore.deletePassword(for: selectedProjectID)
+            endAccessingProject(id: selectedProjectID)
         }
         projects.removeAll { $0.id == selectedProjectID }
         selectedProjectID = projects.first?.id
@@ -343,6 +369,50 @@ final class ProjectStore: ObservableObject {
         case .svnExecutableNotFound:
             return "The bundled SVN executable could not be found. Reinstall the app."
         }
+    }
+
+    private func makeBookmark(for url: URL) throws -> Data {
+        try url.standardizedFileURL.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+    }
+
+    private func restoreProjectAccess() {
+        for index in projects.indices {
+            guard let bookmarkData = projects[index].bookmarkData else { continue }
+            var isStale = false
+            guard let url = try? URL(
+                resolvingBookmarkData: bookmarkData,
+                options: .withSecurityScope,
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ) else { continue }
+
+            let standardizedURL = url.standardizedFileURL
+            projects[index].path = standardizedURL.path
+            if isStale, let refreshedBookmark = try? makeBookmark(for: standardizedURL) {
+                projects[index].bookmarkData = refreshedBookmark
+            }
+            beginAccessing(standardizedURL, for: projects[index].id)
+        }
+    }
+
+    private func beginAccessing(_ url: URL, for projectID: SVNProject.ID) {
+        guard accessedProjectURLs[projectID] == nil else { return }
+        _ = url.startAccessingSecurityScopedResource()
+        accessedProjectURLs[projectID] = url
+    }
+
+    private func endAccessingProject(id: SVNProject.ID) {
+        guard let url = accessedProjectURLs.removeValue(forKey: id) else { return }
+        url.stopAccessingSecurityScopedResource()
+    }
+
+    private func endAccessingProject(at url: URL) {
+        guard let entry = accessedProjectURLs.first(where: { $0.value == url }) else { return }
+        endAccessingProject(id: entry.key)
     }
 
     private func save() {
