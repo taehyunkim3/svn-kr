@@ -5,4 +5,5 @@
 - Fixed checkout into user-selected folders under App Sandbox.
 - Added a per-repository option to allow self-signed certificates and hostname mismatches.
 - Added an Open in Finder button for the current SVN working folder.
+- Replaced diff errors for unversioned files with a clear status message.
 - Removed quarantine attributes before signing App Store packages.

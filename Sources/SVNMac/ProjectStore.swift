@@ -224,6 +224,13 @@ final class ProjectStore: ObservableObject {
     func loadDiff(for path: String) async {
         guard let project = selectedProject else { return }
         selectedStatusPath = path
+        if statuses.first(where: { $0.path == path })?.item == "unversioned" {
+            diff = AppLanguage.current.text(
+                "아직 SVN에 추가되지 않은 파일은 diff를 표시할 수 없습니다. 커밋할 때 자동으로 추가됩니다.",
+                "Diff is unavailable until this file is added to SVN. It will be added automatically when committed."
+            )
+            return
+        }
         do {
             let value = try await client.diff(at: project.path, relativePath: path)
             diff = value.isEmpty

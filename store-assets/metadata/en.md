@@ -51,4 +51,5 @@ Secondary: Productivity
 • Fixed checkout into user-selected folders under App Sandbox
 • Added a per-repository option for self-signed certificates and hostname mismatches
 • Added a button to open the current SVN working folder in Finder
+• Replaced diff errors for unversioned files with a clear status message
 • Removed quarantine attributes from App Store package contents
