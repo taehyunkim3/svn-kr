@@ -26,10 +26,6 @@ if [[ "$SIGN_IDENTITY" != "-" ]]; then
   SIGN_ARGUMENTS+=(--options runtime --timestamp)
 fi
 
-for binary in "$APP"/Contents/Frameworks/*.dylib; do
-  codesign "${SIGN_ARGUMENTS[@]}" "$binary"
-done
-
 if [[ "$DISTRIBUTION" == "app-store" ]]; then
   : "${PROVISIONING_PROFILE:?Set PROVISIONING_PROFILE to the Mac App Store provisioning profile path}"
   : "${INSTALLER_SIGN_IDENTITY:?Set INSTALLER_SIGN_IDENTITY to the Mac Installer Distribution certificate name}"
@@ -60,6 +56,17 @@ if [[ "$DISTRIBUTION" == "app-store" ]]; then
   done
 
   cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
+fi
+
+# Downloaded inputs such as provisioning profiles can carry Gatekeeper metadata.
+# App Store Connect rejects a package if any file in the app retains it.
+xattr -cr "$APP"
+
+for binary in "$APP"/Contents/Frameworks/*.dylib; do
+  codesign "${SIGN_ARGUMENTS[@]}" "$binary"
+done
+
+if [[ "$DISTRIBUTION" == "app-store" ]]; then
   codesign "${SIGN_ARGUMENTS[@]}" --entitlements "$ROOT/Resources/SVNHelper.entitlements" "$APP/Contents/Helpers/svn"
   codesign "${SIGN_ARGUMENTS[@]}" --entitlements "$APP_ENTITLEMENTS" "$APP"
   rm -rf "$STORE_ENTITLEMENTS_DIR"
