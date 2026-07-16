@@ -117,11 +117,11 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - 외부 서비스와 비동기 작업 추적
 
-    private let client: any SVNClientServing
+    let client: any SVNClientServing
     private let credentialStore: any CredentialStoring
     private let persistence: any ProjectPersisting
     private let projectAccessManager: any ProjectAccessManaging
-    private let conflictFileService: ConflictFileService
+    let conflictFileService: ConflictFileService
     private var sessionPasswords: [SVNProject.ID: String] = [:]
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
@@ -335,45 +335,6 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    func update() async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.update(project.id))
-        defer { endOperation(operationID) }
-        do {
-            let result = try await client.update(
-                at: project.path,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            ).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard selectedProjectID == project.id else { return }
-            notice = result
-            isShowingUpdatePreview = false
-            await refresh()
-        } catch {
-            if selectedProjectID == project.id {
-                handleRemoteError(error, project: project, action: .update)
-            }
-        }
-    }
-
-    func previewUpdate() async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.previewUpdate(project.id))
-        defer { endOperation(operationID) }
-        do {
-            remoteChanges = try await client.remoteChanges(
-                at: project.path,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            guard selectedProjectID == project.id else { return }
-            updateRemoteSummary(for: project.id, needsUpdate: !remoteChanges.isEmpty)
-            isShowingUpdatePreview = true
-        } catch {
-            handleRemoteError(error, project: project, action: .update)
-        }
-    }
-
     func loadDiff(for path: String) async {
         guard let project = selectedProject else { return }
         let requestID = UUID()
@@ -393,305 +354,6 @@ final class ProjectStore: ObservableObject {
             if diffRequestID == requestID, selectedProjectID == project.id {
                 errorMessage = localizedError(error)
             }
-        }
-    }
-
-    func setShowsIgnoredFiles(_ showsIgnoredFiles: Bool) async {
-        self.showsIgnoredFiles = showsIgnoredFiles
-        guard showsIgnoredFiles, let project = selectedProject else {
-            ignoredStatuses = []
-            return
-        }
-        do {
-            ignoredStatuses = try await client.ignoredStatus(at: project.path, credentials: nil)
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func loadIgnoreRules() async {
-        guard let project = selectedProject else { return }
-        do {
-            ignoreRules = try await client.ignoreRules(at: project.path, credentials: nil)
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func ignore(path relativePath: String, byExtension: Bool) async {
-        guard let project = selectedProject else { return }
-        let path = relativePath as NSString
-        let directory = path.deletingLastPathComponent.isEmpty ? "." : path.deletingLastPathComponent
-        let pattern: String
-        if byExtension, !path.pathExtension.isEmpty {
-            pattern = "*.\(path.pathExtension)"
-        } else {
-            pattern = path.lastPathComponent
-        }
-        let operationID = beginOperation(.ignore(project.id))
-        defer { endOperation(operationID) }
-        do {
-            try await client.addIgnoreRule(at: project.path, directory: directory, pattern: pattern, credentials: nil)
-            notice = AppLanguage.current.text("무시 규칙 '\(pattern)'을 추가했습니다. 디렉터리 속성을 커밋하면 팀에 공유됩니다.", "Added ignore rule '\(pattern)'. Commit the directory property to share it with the team.")
-            await refresh()
-            await loadIgnoreRules()
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.ignore(project.id))
-        defer { endOperation(operationID) }
-        do {
-            try await client.removeIgnoreRule(at: project.path, directory: rule.directory, pattern: rule.pattern, credentials: nil)
-            notice = AppLanguage.current.text("무시 규칙 '\(rule.pattern)'을 제거했습니다.", "Removed ignore rule '\(rule.pattern)'.")
-            await refresh()
-            await loadIgnoreRules()
-            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func prepareToOpen(path relativePath: String) async {
-        guard let project = selectedProject else { return }
-        guard DocumentFilePolicy.recommendsLock(for: relativePath) else {
-            openFile(relativePath, in: project)
-            return
-        }
-        let operationID = beginOperation(.lock(project.id))
-        defer { endOperation(operationID) }
-        do {
-            let existingLock = try await client.lockInfo(
-                at: project.path,
-                relativePath: relativePath,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            guard selectedProjectID == project.id else { return }
-            documentOpenRequest = DocumentOpenRequest(relativePath: relativePath, existingLock: existingLock)
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func lockAndOpen(_ request: DocumentOpenRequest) async {
-        guard let project = selectedProject else { return }
-        documentOpenRequest = nil
-        let operationID = beginOperation(.lock(project.id))
-        defer { endOperation(operationID) }
-        do {
-            let comment = AppLanguage.current.text("SVN Mac에서 문서 편집 중", "Editing document in SVN Mac")
-            _ = try await client.lock(
-                at: project.path,
-                relativePath: request.relativePath,
-                comment: comment,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            notice = AppLanguage.current.text("파일을 잠갔습니다. 커밋에 성공하면 잠금이 자동으로 해제됩니다.", "The file is locked. A successful commit automatically releases the lock.")
-            openFile(request.relativePath, in: project)
-            await loadRepositoryLocks()
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func openWithoutLock(_ request: DocumentOpenRequest) {
-        documentOpenRequest = nil
-        guard let project = selectedProject else { return }
-        openFile(request.relativePath, in: project)
-        notice = AppLanguage.current.text("잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다.", "Opened without a lock. A concurrent commit by another user may cause a conflict.")
-    }
-
-    func loadRepositoryLocks() async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.lock(project.id))
-        defer { endOperation(operationID) }
-        do {
-            repositoryLocks = try await client.repositoryLocks(
-                at: project.path,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            updateLockSummary(for: project.id, lockCount: repositoryLocks.count)
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func requestRevert(_ entry: SVNStatusEntry) {
-        revertRequest = RevertRequest(entry: entry)
-    }
-
-    func confirmRevert() async {
-        guard let project = selectedProject, let request = revertRequest else { return }
-        revertRequest = nil
-        let operationID = beginOperation(.revert(project.id))
-        defer { endOperation(operationID) }
-        do {
-            _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
-            selectedPaths.remove(request.entry.path)
-            notice = AppLanguage.current.text("로컬 변경을 되돌렸습니다: \(request.entry.path)", "Reverted local changes: \(request.entry.path)")
-            await refresh()
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func loadFileHistory(for relativePath: String) async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.fileHistory(project.id))
-        defer { endOperation(operationID) }
-        do {
-            fileHistory = try await client.fileLog(
-                at: project.path,
-                relativePath: relativePath,
-                limit: 100,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            fileHistoryPath = relativePath
-            isShowingFileHistory = true
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func revealInFinder(_ relativePath: String) {
-        guard let project = selectedProject else { return }
-        let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
-        NSWorkspace.shared.activateFileViewerSelecting([url])
-    }
-
-    func copyPath(_ relativePath: String) {
-        guard let project = selectedProject else { return }
-        let path = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath).path
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects([path as NSString])
-        notice = AppLanguage.current.text("파일 경로를 복사했습니다.", "Copied the file path.")
-    }
-
-    func unlock(_ lock: SVNLockInfo) async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.lock(project.id))
-        defer { endOperation(operationID) }
-        do {
-            _ = try await client.unlock(
-                at: project.path,
-                relativePath: lock.path,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            notice = AppLanguage.current.text("잠금을 해제했습니다.", "The lock was released.")
-            await loadRepositoryLocks()
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func prepareConflictResolution(for relativePath: String) async {
-        guard let project = selectedProject else { return }
-        let operationID = beginOperation(.resolveConflict(project.id))
-        defer { endOperation(operationID) }
-        do {
-            guard let details = try await client.conflictDetails(at: project.path, relativePath: relativePath, credentials: nil) else {
-                errorMessage = AppLanguage.current.text("SVN 충돌 상세 정보를 찾지 못했습니다.", "SVN conflict details were not found.")
-                return
-            }
-            activeConflict = SVNConflictDetails(
-                path: relativePath,
-                type: details.type,
-                operation: details.operation,
-                previousBaseFile: details.previousBaseFile,
-                myFile: details.myFile,
-                serverFile: details.serverFile,
-                previousRevision: details.previousRevision,
-                serverRevision: details.serverRevision
-            )
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func resolveActiveConflict(using choice: SVNConflictChoice) async {
-        guard let project = selectedProject, let conflict = activeConflict else { return }
-        let operationID = beginOperation(.resolveConflict(project.id))
-        defer { endOperation(operationID) }
-        do {
-            _ = try conflictFileService.backup(conflict, projectID: project.id, workingCopyPath: project.path)
-            _ = try await client.resolveConflict(at: project.path, relativePath: conflict.path, choice: choice, credentials: nil)
-            activeConflict = nil
-            notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
-            await refresh()
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func preserveConflictVersions() {
-        guard let project = selectedProject, let conflict = activeConflict else { return }
-        do {
-            let files = try conflictFileService.preserveComparableVersions(conflict, workingCopyPath: project.path)
-            guard !files.isEmpty else {
-                errorMessage = AppLanguage.current.text("보관할 충돌 버전 파일을 찾지 못했습니다.", "No conflict version files were available to preserve.")
-                return
-            }
-            NSWorkspace.shared.activateFileViewerSelecting(files)
-            notice = AppLanguage.current.text("내 버전과 서버 버전을 원본 옆에 복사했습니다.", "Copied my version and the server version next to the original.")
-        } catch {
-            errorMessage = localizedError(error)
-        }
-    }
-
-    func openActiveConflictFile() {
-        guard let project = selectedProject, let conflict = activeConflict else { return }
-        openFile(conflict.path, in: project)
-    }
-
-    func loadHistoryDiff(for revision: String) async {
-        guard let project = selectedProject else { return }
-        selectedHistoryRevision = revision
-        historyDiffContent = .placeholder
-        let operationID = beginOperation(.revisionDiff(project.id))
-        defer { endOperation(operationID) }
-        do {
-            let value = try await client.revisionDiff(
-                at: project.path,
-                revision: revision,
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            guard selectedProjectID == project.id, selectedHistoryRevision == revision else { return }
-            historyDiffContent = value.isEmpty ? .noTextDiff : .text(value)
-        } catch {
-            if selectedProjectID == project.id { errorMessage = localizedError(error) }
-        }
-    }
-
-    func loadMoreHistory() async {
-        guard let project = selectedProject,
-              hasMoreHistory,
-              let lastRevision = logs.last?.revision,
-              let revision = Int(lastRevision), revision > 1 else { return }
-        let operationID = beginOperation(.loadMoreHistory(project.id))
-        defer { endOperation(operationID) }
-        do {
-            let olderLogs = try await client.log(
-                at: project.path,
-                limit: 50,
-                endingAtRevision: String(revision - 1),
-                credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
-            )
-            guard selectedProjectID == project.id else { return }
-            let existingRevisions = Set(logs.map(\.revision))
-            logs.append(contentsOf: olderLogs.filter { !existingRevisions.contains($0.revision) })
-            hasMoreHistory = olderLogs.count == 50
-        } catch {
-            if selectedProjectID == project.id { errorMessage = localizedError(error) }
         }
     }
 
@@ -814,7 +476,7 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - 인증 조회와 실패 후 작업 재개
 
-    private func credentials(for project: SVNProject) throws -> SVNCredentials? {
+    func credentials(for project: SVNProject) throws -> SVNCredentials? {
         guard let username = project.username, !username.isEmpty else { return nil }
         if let password = sessionPasswords[project.id] {
             return SVNCredentials(username: username, password: password)
@@ -826,7 +488,7 @@ final class ProjectStore: ObservableObject {
         return SVNCredentials(username: username, password: password)
     }
 
-    private func handleRemoteError(_ error: Error, project: SVNProject, action: SVNAuthenticationAction) {
+    func handleRemoteError(_ error: Error, project: SVNProject, action: SVNAuthenticationAction) {
         if isKeychainAccessDenied(error) {
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
@@ -881,7 +543,7 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    private func localizedError(_ error: Error) -> String {
+    func localizedError(_ error: Error) -> String {
         guard AppLanguage.current == .english, let svnError = error as? SVNError else {
             return error.localizedDescription
         }
@@ -897,7 +559,7 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    private func openFile(_ relativePath: String, in project: SVNProject) {
+    func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
         guard NSWorkspace.shared.open(url) else {
             errorMessage = AppLanguage.current.text("파일을 열 수 없습니다: \(relativePath)", "Unable to open file: \(relativePath)")
@@ -911,20 +573,20 @@ final class ProjectStore: ObservableObject {
         persistence.saveProjects(projects)
     }
 
-    private func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
+    func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
         var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
         summary.localChangeCount = statuses.count
         summary.conflictCount = statuses.filter { $0.item == .conflicted }.count
         projectSummaries[projectID] = summary
     }
 
-    private func updateRemoteSummary(for projectID: SVNProject.ID, needsUpdate: Bool) {
+    func updateRemoteSummary(for projectID: SVNProject.ID, needsUpdate: Bool) {
         var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
         summary.needsUpdate = needsUpdate
         projectSummaries[projectID] = summary
     }
 
-    private func updateLockSummary(for projectID: SVNProject.ID, lockCount: Int) {
+    func updateLockSummary(for projectID: SVNProject.ID, lockCount: Int) {
         var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
         summary.lockCount = lockCount
         projectSummaries[projectID] = summary
@@ -962,13 +624,13 @@ final class ProjectStore: ObservableObject {
     }
 
     @discardableResult
-    private func beginOperation(_ kind: ProjectOperation.Kind) -> UUID {
+    func beginOperation(_ kind: ProjectOperation.Kind) -> UUID {
         let operation = ProjectOperation(kind: kind)
         activeOperations.append(operation)
         return operation.id
     }
 
-    private func endOperation(_ id: UUID) {
+    func endOperation(_ id: UUID) {
         activeOperations.removeAll { $0.id == id }
     }
 
