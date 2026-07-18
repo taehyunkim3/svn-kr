@@ -83,6 +83,13 @@ struct WorkingCopyBrowserView: View {
                 Button(appLanguage.text("파일 열기", "Open File")) {
                     Task { await store.prepareToOpen(path: node.relativePath, isVersioned: node.isVersioned) }
                 }
+                if let lock = lockInfo(for: node),
+                   lock.owner == store.selectedProject?.username {
+                    Button(appLanguage.text("잠금 해제", "Release Lock")) {
+                        Task { await store.unlock(lock) }
+                    }
+                    .disabled(store.isWorking)
+                }
             }
             Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
                 store.revealInFinder(node.relativePath)
