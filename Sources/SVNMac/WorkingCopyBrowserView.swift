@@ -7,28 +7,25 @@ struct WorkingCopyBrowserView: View {
     @State private var searchText = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            browserToolbar
-            Divider()
-            List(selection: $store.selectedBrowserPath) {
-                OutlineGroup(filteredTree, children: \.children) { node in
-                    fileRow(node)
-                        .tag(node.relativePath)
-                }
-            }
-            .overlay {
-                if isLoading, store.workingCopyFileTree.isEmpty {
-                    ProgressView(appLanguage.text("파일 목록을 불러오는 중…", "Loading files…"))
-                } else if filteredTree.isEmpty {
-                    ContentUnavailableView(
-                        searchText.isEmpty
-                            ? appLanguage.text("표시할 파일 없음", "No Files")
-                            : appLanguage.text("검색 결과 없음", "No Search Results"),
-                        systemImage: searchText.isEmpty ? "folder" : "magnifyingglass"
-                    )
-                }
+        List(selection: $store.selectedBrowserPath) {
+            OutlineGroup(filteredTree, children: \.children) { node in
+                fileRow(node)
+                    .tag(node.relativePath)
             }
         }
+        .overlay {
+            if isLoading, store.workingCopyFileTree.isEmpty {
+                ProgressView(appLanguage.text("파일 목록을 불러오는 중…", "Loading files…"))
+            } else if filteredTree.isEmpty {
+                ContentUnavailableView(
+                    searchText.isEmpty
+                        ? appLanguage.text("표시할 파일 없음", "No Files")
+                        : appLanguage.text("검색 결과 없음", "No Search Results"),
+                    systemImage: searchText.isEmpty ? "folder" : "magnifyingglass"
+                )
+            }
+        }
+        .searchable(text: $searchText, prompt: appLanguage.text("파일 검색", "Search Files"))
         .task(id: store.selectedProjectID) {
             await store.refreshWorkingCopyBrowser()
         }
@@ -36,18 +33,6 @@ struct WorkingCopyBrowserView: View {
             FileHistoryView().environmentObject(store)
         }
         .documentOpenConfirmation()
-    }
-
-    private var browserToolbar: some View {
-        HStack {
-            TextField(appLanguage.text("파일 검색", "Search Files"), text: $searchText)
-                .textFieldStyle(.roundedBorder)
-            Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") {
-                Task { await store.refreshWorkingCopyBrowser() }
-            }
-            .disabled(isLoading)
-        }
-        .padding()
     }
 
     private func fileRow(_ node: WorkingCopyFileNode) -> some View {
