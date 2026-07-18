@@ -75,7 +75,7 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") { Task { await store.refresh() } }
+            Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") { Task { await refreshSelectedProject() } }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
             Button(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle") { Task { await store.previewUpdate() } }
@@ -83,10 +83,10 @@ struct ContentView: View {
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
             if store.isWorking { ProgressView().controlSize(.small) }
         }
-        .onChange(of: store.selectedProjectID) { _, _ in Task { await store.refresh() } }
+        .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, store.selectedProject != nil, !store.isWorking else { return }
-            Task { await store.refresh() }
+            Task { await refreshSelectedProject() }
         }
         .task {
             if store.projects.isEmpty {
@@ -152,6 +152,12 @@ struct ContentView: View {
                     .tabItem { Label(appLanguage.text("커밋 기록", "Commit History"), systemImage: "clock.arrow.circlepath") }
             }
         }
+    }
+
+    private func refreshSelectedProject() async {
+        async let project: Void = store.refresh()
+        async let files: Void = store.refreshWorkingCopyBrowser()
+        _ = await (project, files)
     }
 
 }

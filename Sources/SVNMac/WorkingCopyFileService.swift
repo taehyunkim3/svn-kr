@@ -21,7 +21,9 @@ protocol WorkingCopyFileListing: Sendable {
 actor WorkingCopyFileService: WorkingCopyFileListing {
     func tree(at rootPath: String, svnEntries: [SVNWorkingCopyEntry]) throws -> [WorkingCopyFileNode] {
         let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
-        let entriesByPath = Dictionary(uniqueKeysWithValues: svnEntries.map { ($0.path, $0) })
+        let entriesByPath = svnEntries.reduce(into: [String: SVNWorkingCopyEntry]()) { result, entry in
+            result[entry.path] = entry
+        }
         return try children(of: rootURL, relativeDirectory: "", entriesByPath: entriesByPath)
     }
 

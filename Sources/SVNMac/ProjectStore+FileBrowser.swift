@@ -2,6 +2,8 @@ import Foundation
 
 extension ProjectStore {
     func refreshWorkingCopyBrowser() async {
+        guard let projectID = selectedProjectID,
+              !activeOperations.contains(where: { $0.kind == .browseFiles(projectID) }) else { return }
         async let files: Void = loadWorkingCopyFiles()
         async let locks: Void = loadRepositoryLocks()
         _ = await (files, locks)
