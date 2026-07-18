@@ -18,24 +18,25 @@ struct FileHistoryView: View {
             .padding()
             Divider()
 
-            if store.fileHistory.isEmpty {
-                ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No File History"), systemImage: "clock")
-            } else {
-                List(store.fileHistory) { entry in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("r\(entry.revision)").font(.headline.monospacedDigit())
-                            Label(entry.author, systemImage: "person").font(.caption)
-                            Spacer()
-                            if let date = entry.date { Text(date.formatted(date: .numeric, time: .standard)).font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Text(entry.message.isEmpty ? appLanguage.text("커밋 메시지 없음", "No commit message") : entry.message)
-                            .textSelection(.enabled)
+            List(store.fileHistory) { entry in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("r\(entry.revision)").font(.headline.monospacedDigit())
+                        Label(entry.author, systemImage: "person").font(.caption)
+                        Spacer()
+                        if let date = entry.date { Text(date.formatted(date: .numeric, time: .standard)).font(.caption).foregroundStyle(.secondary) }
                     }
-                    .padding(.vertical, 4)
+                    Text(entry.message.isEmpty ? appLanguage.text("커밋 메시지 없음", "No commit message") : entry.message)
+                        .textSelection(.enabled)
+                }
+                .padding(.vertical, 4)
+            }
+            .overlay {
+                if store.fileHistory.isEmpty {
+                    ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No File History"), systemImage: "clock")
                 }
             }
         }
-        .frame(minWidth: 760, minHeight: 520)
+        .appSheetFrame(minimumSize: AppLayout.fileHistorySheetMinimumSize)
     }
 }

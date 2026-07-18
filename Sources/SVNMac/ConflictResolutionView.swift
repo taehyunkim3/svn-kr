@@ -20,7 +20,7 @@ struct ConflictResolutionView: View {
             footer
         }
         .padding()
-        .frame(minWidth: 680, minHeight: 480)
+        .appSheetFrame(minimumSize: AppLayout.conflictResolutionSheetMinimumSize)
         .alert(
             appLanguage.text("이 버전으로 파일 전체를 교체할까요?", "Replace the Entire File with This Version?"),
             isPresented: Binding(get: { pendingChoice != nil }, set: { if !$0 { pendingChoice = nil } })

@@ -17,18 +17,19 @@ struct UpdatePreviewView: View {
             .padding()
             Divider()
 
-            if store.remoteChanges.isEmpty {
-                ContentUnavailableView(
-                    appLanguage.text("내려받을 변경 없음", "No Incoming Changes"),
-                    systemImage: "checkmark.circle",
-                    description: Text(appLanguage.text("현재 로컬 작업 폴더가 서버와 최신 상태입니다.", "The working copy is up to date with the server."))
-                )
-            } else {
-                List(store.remoteChanges) { entry in
-                    HStack {
-                        remoteBadge(entry.item)
-                        Text(entry.path).font(.body.monospaced()).textSelection(.enabled)
-                    }
+            List(store.remoteChanges) { entry in
+                HStack {
+                    remoteBadge(entry.item)
+                    Text(entry.path).font(.body.monospaced()).textSelection(.enabled)
+                }
+            }
+            .overlay {
+                if store.remoteChanges.isEmpty {
+                    ContentUnavailableView(
+                        appLanguage.text("내려받을 변경 없음", "No Incoming Changes"),
+                        systemImage: "checkmark.circle",
+                        description: Text(appLanguage.text("현재 로컬 작업 폴더가 서버와 최신 상태입니다.", "The working copy is up to date with the server."))
+                    )
                 }
             }
 
@@ -45,7 +46,7 @@ struct UpdatePreviewView: View {
             }
             .padding()
         }
-        .frame(minWidth: 720, minHeight: 480)
+        .appSheetFrame(minimumSize: AppLayout.updatePreviewSheetMinimumSize)
     }
 
     private func remoteBadge(_ item: SVNStatusKind) -> some View {

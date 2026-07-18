@@ -19,27 +19,28 @@ struct IgnoreRulesView: View {
             .padding()
             Divider()
 
-            if store.ignoreRules.isEmpty {
-                ContentUnavailableView(
-                    appLanguage.text("무시 규칙 없음", "No Ignore Rules"),
-                    systemImage: "eye.slash",
-                    description: Text(appLanguage.text("변경 목록의 미추적 파일을 우클릭해 규칙을 추가할 수 있습니다.", "Right-click an unversioned item in Changes to add a rule."))
-                )
-            } else {
-                List(store.ignoreRules) { rule in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(rule.pattern).font(.body.monospaced())
-                            Text(rule.directory).font(.caption.monospaced()).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button(role: .destructive) {
-                            Task { await store.removeIgnoreRule(rule) }
-                        } label: {
-                            Label(appLanguage.text("제거", "Remove"), systemImage: "trash")
-                        }
-                        .disabled(store.isWorking)
+            List(store.ignoreRules) { rule in
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(rule.pattern).font(.body.monospaced())
+                        Text(rule.directory).font(.caption.monospaced()).foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    Button(role: .destructive) {
+                        Task { await store.removeIgnoreRule(rule) }
+                    } label: {
+                        Label(appLanguage.text("제거", "Remove"), systemImage: "trash")
+                    }
+                    .disabled(store.isWorking)
+                }
+            }
+            .overlay {
+                if store.ignoreRules.isEmpty {
+                    ContentUnavailableView(
+                        appLanguage.text("무시 규칙 없음", "No Ignore Rules"),
+                        systemImage: "eye.slash",
+                        description: Text(appLanguage.text("변경 목록의 미추적 파일을 우클릭해 규칙을 추가할 수 있습니다.", "Right-click an unversioned item in Changes to add a rule."))
+                    )
                 }
             }
 
@@ -52,6 +53,6 @@ struct IgnoreRulesView: View {
             .foregroundStyle(.secondary)
             .padding()
         }
-        .frame(minWidth: 620, minHeight: 420)
+        .appSheetFrame(minimumSize: AppLayout.ignoreRulesSheetMinimumSize)
     }
 }
