@@ -19,6 +19,15 @@ public enum SVNXMLParser {
         }
     }
 
+    /// 전체 파일 탐색용으로 정상 항목을 포함한 작업 복사본 경로를 읽습니다.
+    public static func workingCopyEntries(from data: Data) throws -> [SVNWorkingCopyEntry] {
+        let delegate = WorkingCopyEntriesDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.entries
+    }
+
     public static func logs(from data: Data) throws -> [SVNLogEntry] {
         let delegate = LogDelegate()
         let parser = XMLParser(data: data)
@@ -249,6 +258,23 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
                     revision: attributeDict["revision"]
                 ))
             }
+        }
+    }
+}
+
+private final class WorkingCopyEntriesDelegate: NSObject, XMLParserDelegate {
+    var entries: [SVNWorkingCopyEntry] = []
+    private var path: String?
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        if elementName == "entry" {
+            path = attributeDict["path"]
+        } else if elementName == "wc-status", let path {
+            entries.append(SVNWorkingCopyEntry(
+                path: path,
+                status: attributeDict["item"] ?? "unknown",
+                revision: attributeDict["revision"]
+            ))
         }
     }
 }

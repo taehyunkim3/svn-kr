@@ -9,6 +9,7 @@ protocol SVNClientServing: Sendable {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
+    func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws

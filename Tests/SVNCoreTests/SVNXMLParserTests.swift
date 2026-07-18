@@ -15,6 +15,19 @@ import Testing
     #expect(entries.map(\.item) == [.modified, .unversioned])
 }
 
+@Test func parsesNormalAndUnversionedWorkingCopyEntries() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="Documents"><wc-status item="normal" revision="12"/></entry>
+      <entry path="Documents/plan.pptx"><wc-status item="normal" revision="12"/></entry>
+      <entry path="draft.txt"><wc-status item="unversioned"/></entry>
+    </target></status>
+    """
+    let entries = try SVNXMLParser.workingCopyEntries(from: Data(xml.utf8))
+    #expect(entries.map(\.path) == ["Documents", "Documents/plan.pptx", "draft.txt"])
+    #expect(entries.map(\.isVersioned) == [true, true, false])
+}
+
 @Test func parsesRecursiveIgnoreRules() throws {
     let xml = """
     <?xml version="1.0"?><properties>

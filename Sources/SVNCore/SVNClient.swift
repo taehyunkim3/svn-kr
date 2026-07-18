@@ -44,6 +44,11 @@ public actor SVNClient {
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
     }
 
+    public func workingCopyEntries(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNWorkingCopyEntry] {
+        let result = try checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
+        return try SVNXMLParser.workingCopyEntries(from: Data(result.output.utf8))
+    }
+
     public func ignoredStatus(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
         let result = try checkedRun(["status", "--no-ignore", "--xml"], at: path, credentials: credentials)
         return try SVNXMLParser.statuses(from: Data(result.output.utf8)).filter { $0.item == .ignored }

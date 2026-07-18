@@ -176,6 +176,28 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     }
 }
 
+/// 전체 작업 복사본 탐색기에서 사용하는 경로 상태입니다.
+///
+/// 기존 `SVNStatusEntry`는 변경된 경로만 표현합니다. 이 모델은
+/// `svn status --verbose --no-ignore --xml`의 정상 경로까지 보존해 파일이
+/// 저장소 관리 대상인지 판단할 수 있게 합니다.
+public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
+    public let path: String
+    public let status: String
+    public let revision: String?
+
+    public var id: String { path }
+    public var isVersioned: Bool {
+        status != "unversioned" && status != "ignored" && status != "external"
+    }
+
+    public init(path: String, status: String, revision: String? = nil) {
+        self.path = path
+        self.status = status
+        self.revision = revision
+    }
+}
+
 /// 서버의 커밋 한 건과 그 커밋에 포함된 상세 변경 정보를 표현합니다.
 public struct SVNLogEntry: Identifiable, Hashable, Sendable {
     public let revision: String
