@@ -130,6 +130,7 @@ final class ProjectStore: ObservableObject {
     private let projectAccessManager: any ProjectAccessManaging
     let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
+    private let workspaceOpener: any WorkspaceOpening
     private var sessionPasswords: [SVNProject.ID: String] = [:]
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
@@ -149,7 +150,8 @@ final class ProjectStore: ObservableObject {
         persistence: any ProjectPersisting = UserDefaultsProjectPersistence(),
         projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
         conflictFileService: ConflictFileService = ConflictFileService(),
-        workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService()
+        workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
+        workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener()
     ) {
         self.client = client
         self.credentialStore = credentialStore
@@ -157,6 +159,7 @@ final class ProjectStore: ObservableObject {
         self.projectAccessManager = projectAccessManager
         self.conflictFileService = conflictFileService
         self.workingCopyFileService = workingCopyFileService
+        self.workspaceOpener = workspaceOpener
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
@@ -578,7 +581,7 @@ final class ProjectStore: ObservableObject {
 
     func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
-        guard NSWorkspace.shared.open(url) else {
+        guard workspaceOpener.open(url) else {
             errorMessage = AppLanguage.current.text("파일을 열 수 없습니다: \(relativePath)", "Unable to open file: \(relativePath)")
             return
         }

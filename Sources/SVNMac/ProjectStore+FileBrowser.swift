@@ -1,6 +1,12 @@
 import Foundation
 
 extension ProjectStore {
+    func refreshWorkingCopyBrowser() async {
+        async let files: Void = loadWorkingCopyFiles()
+        async let locks: Void = loadRepositoryLocks()
+        _ = await (files, locks)
+    }
+
     func loadWorkingCopyFiles() async {
         guard let project = selectedProject else { return }
         let requestID = UUID()

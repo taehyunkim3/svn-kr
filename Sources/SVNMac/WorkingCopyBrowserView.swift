@@ -1,4 +1,5 @@
 import SwiftUI
+import SVNCore
 
 struct WorkingCopyBrowserView: View {
     @EnvironmentObject private var store: ProjectStore
@@ -29,7 +30,7 @@ struct WorkingCopyBrowserView: View {
             }
         }
         .task(id: store.selectedProjectID) {
-            await store.loadWorkingCopyFiles()
+            await store.refreshWorkingCopyBrowser()
         }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environmentObject(store)
@@ -42,7 +43,7 @@ struct WorkingCopyBrowserView: View {
             TextField(appLanguage.text("파일 검색", "Search Files"), text: $searchText)
                 .textFieldStyle(.roundedBorder)
             Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") {
-                Task { await store.loadWorkingCopyFiles() }
+                Task { await store.refreshWorkingCopyBrowser() }
             }
             .disabled(isLoading)
         }
@@ -60,6 +61,12 @@ struct WorkingCopyBrowserView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if let lock = lockInfo(for: node) {
+                Label(lock.owner, systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange)
+                    .help(lockDescription(lock))
+            }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
@@ -69,12 +76,12 @@ struct WorkingCopyBrowserView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             guard !node.isDirectory else { return }
-            Task { await store.prepareToOpen(path: node.relativePath) }
+            Task { await store.prepareToOpen(path: node.relativePath, isVersioned: node.isVersioned) }
         }
         .contextMenu {
             if !node.isDirectory {
                 Button(appLanguage.text("파일 열기", "Open File")) {
-                    Task { await store.prepareToOpen(path: node.relativePath) }
+                    Task { await store.prepareToOpen(path: node.relativePath, isVersioned: node.isVersioned) }
                 }
             }
             Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
@@ -125,6 +132,17 @@ struct WorkingCopyBrowserView: View {
         case "conflicted": return appLanguage.text("충돌", "Conflict")
         default: return status
         }
+    }
+
+    private func lockInfo(for node: WorkingCopyFileNode) -> SVNLockInfo? {
+        store.repositoryLocks.first { $0.path == node.relativePath }
+    }
+
+    private func lockDescription(_ lock: SVNLockInfo) -> String {
+        if lock.owner == store.selectedProject?.username {
+            return appLanguage.text("내가 잠근 파일", "Locked by you")
+        }
+        return appLanguage.text("\(lock.owner) 사용자가 잠근 파일", "Locked by \(lock.owner)")
     }
 }
 

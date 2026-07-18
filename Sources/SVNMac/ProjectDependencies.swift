@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SVNCore
 
@@ -126,6 +127,17 @@ final class SecurityScopedProjectAccessManager: ProjectAccessManaging {
         guard let entry = accessedURLs.first(where: { $0.value == url }) else { return }
         endAccessing(projectID: entry.key)
     }
+}
+
+// MARK: - 파일 열기
+
+@MainActor
+protocol WorkspaceOpening {
+    func open(_ url: URL) -> Bool
+}
+
+struct AppWorkspaceOpener: WorkspaceOpening {
+    func open(_ url: URL) -> Bool { NSWorkspace.shared.open(url) }
 }
 
 // MARK: - 실행 중 작업 모델

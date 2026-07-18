@@ -56,6 +56,49 @@ import Testing
 }
 
 @MainActor
+@Test func unversionedDocumentOpensWithoutRequestingALock() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+
+    await store.prepareToOpen(path: "draft.docx", isVersioned: false)
+
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["draft.docx"])
+    #expect(store.documentOpenRequest == nil)
+    #expect(await client.lockInfoRequestCount() == 0)
+}
+
+@MainActor
+@Test func versionedDocumentOffersLockBeforeOpening() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+
+    await store.prepareToOpen(path: "plan.pptx", isVersioned: true)
+
+    #expect(opener.openedURLs.isEmpty)
+    #expect(store.documentOpenRequest?.relativePath == "plan.pptx")
+    #expect(await client.lockInfoRequestCount() == 1)
+}
+
+@MainActor
+@Test func documentAlreadyLockedByCurrentUserOpensImmediately() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient(lockInfoByPath: [
+        "plan.pptx": SVNLockInfo(path: "plan.pptx", owner: "tester"),
+    ])
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+
+    await store.prepareToOpen(path: "plan.pptx", isVersioned: true)
+
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["plan.pptx"])
+    #expect(store.documentOpenRequest == nil)
+}
+
+@MainActor
 @Test func staleRefreshDoesNotOverwriteNewlySelectedProject() async {
     let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow")
     let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast")
@@ -167,14 +210,16 @@ import Testing
 private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient(),
-    fileService: any WorkingCopyFileListing = WorkingCopyFileService()
+    fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
+    workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener()
 ) -> ProjectStore {
     ProjectStore(
         client: client,
         credentialStore: StubCredentialStore(),
         persistence: MemoryProjectPersistence(projects: projects),
         projectAccessManager: StubProjectAccessManager(),
-        workingCopyFileService: fileService
+        workingCopyFileService: fileService,
+        workspaceOpener: workspaceOpener
     )
 }
 
@@ -197,18 +242,22 @@ private actor StubSVNClient: SVNClientServing {
     let revisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
     let checkoutResult: String
+    let lockInfoByPath: [String: SVNLockInfo]
     private var revisionDiffRequests: [RevisionDiffRequest] = []
+    private var lockInfoRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
         revisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
-        checkoutResult: String = "checked out"
+        checkoutResult: String = "checked out",
+        lockInfoByPath: [String: SVNLockInfo] = [:]
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
         self.delaysByPath = delaysByPath
         self.checkoutResult = checkoutResult
+        self.lockInfoByPath = lockInfoByPath
     }
 
     private func delay(for path: String) async {
@@ -227,7 +276,11 @@ private actor StubSVNClient: SVNClientServing {
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
     func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] { [] }
-    func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? { nil }
+    func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
+        lockInfoRequests += 1
+        return lockInfoByPath[relativePath]
+    }
+    func lockInfoRequestCount() -> Int { lockInfoRequests }
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "locked" }
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? { nil }
@@ -276,6 +329,16 @@ private actor StubWorkingCopyFileService: WorkingCopyFileListing {
             svnEntry: nil,
             children: []
         )]
+    }
+}
+
+@MainActor
+private final class StubWorkspaceOpener: WorkspaceOpening {
+    private(set) var openedURLs: [URL] = []
+
+    func open(_ url: URL) -> Bool {
+        openedURLs.append(url)
+        return true
     }
 }
 

@@ -95,7 +95,14 @@ struct ChangesView: View {
                 .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
                 .contextMenu {
                     Button(appLanguage.text("파일 열기", "Open File")) {
-                        Task { await store.prepareToOpen(path: entry.path) }
+                        Task {
+                            await store.prepareToOpen(
+                                path: entry.path,
+                                isVersioned: entry.item != .unversioned
+                                    && entry.item != .ignored
+                                    && entry.item != .added
+                            )
+                        }
                     }
                     Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
                         store.revealInFinder(entry.path)

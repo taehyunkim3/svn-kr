@@ -2,9 +2,9 @@ import Foundation
 import SVNCore
 
 extension ProjectStore {
-    func prepareToOpen(path relativePath: String) async {
+    func prepareToOpen(path relativePath: String, isVersioned: Bool = true) async {
         guard let project = selectedProject else { return }
-        guard DocumentFilePolicy.recommendsLock(for: relativePath) else {
+        guard isVersioned, DocumentFilePolicy.recommendsLock(for: relativePath) else {
             openFile(relativePath, in: project)
             return
         }
@@ -18,6 +18,17 @@ extension ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
+            if let existingLock,
+               let username = project.username,
+               !username.isEmpty,
+               existingLock.owner == username {
+                notice = AppLanguage.current.text(
+                    "내가 잠근 파일을 엽니다.",
+                    "Opening a file locked by you."
+                )
+                openFile(relativePath, in: project)
+                return
+            }
             documentOpenRequest = DocumentOpenRequest(relativePath: relativePath, existingLock: existingLock)
         } catch { errorMessage = localizedError(error) }
     }
