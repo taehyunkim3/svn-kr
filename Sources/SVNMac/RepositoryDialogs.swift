@@ -168,18 +168,27 @@ struct AddRepositoryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Toggle(
-                appLanguage.text(
-                    "신뢰할 수 없는 SSL 인증서 허용",
-                    "Allow untrusted SSL certificates"
-                ),
-                isOn: $allowsUntrustedServerCertificate
-            )
-            .toggleStyle(.checkbox)
-            .help(appLanguage.text(
-                "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요.",
-                "Use only for servers with self-signed certificates or certificate name mismatches."
-            ))
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(
+                    appLanguage.text(
+                        "신뢰할 수 없는 SSL 인증서 허용",
+                        "Allow untrusted SSL certificates"
+                    ),
+                    isOn: $allowsUntrustedServerCertificate
+                )
+                .toggleStyle(.checkbox)
+                .help(appLanguage.text(
+                    "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요.",
+                    "Use only for servers with self-signed certificates or certificate name mismatches."
+                ))
+
+                Text(appLanguage.text(
+                    "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
+                    "Use this when the target server's certificate is invalid but you trust the server."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
 
             if store.isWorking {
                 HStack(spacing: 8) {
@@ -300,18 +309,27 @@ struct CredentialsView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Toggle(
-                appLanguage.text(
-                    "신뢰할 수 없는 SSL 인증서 허용",
-                    "Allow untrusted SSL certificates"
-                ),
-                isOn: $allowsUntrustedServerCertificate
-            )
-            .toggleStyle(.checkbox)
-            .help(appLanguage.text(
-                "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다.",
-                "Allow self-signed and certificate name mismatch errors for this repository."
-            ))
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(
+                    appLanguage.text(
+                        "신뢰할 수 없는 SSL 인증서 허용",
+                        "Allow untrusted SSL certificates"
+                    ),
+                    isOn: $allowsUntrustedServerCertificate
+                )
+                .toggleStyle(.checkbox)
+                .help(appLanguage.text(
+                    "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다.",
+                    "Allow self-signed and certificate name mismatch errors for this repository."
+                ))
+
+                Text(appLanguage.text(
+                    "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
+                    "Use this when the target server's certificate is invalid but you trust the server."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
 
             Divider()
             HStack {
@@ -349,4 +367,3 @@ struct CredentialsView: View {
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
     }
 }
-
