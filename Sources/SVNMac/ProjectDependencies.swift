@@ -139,6 +139,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case refreshHistory(SVNProject.ID)
         case loadMoreHistory(SVNProject.ID)
         case revisionDiff(SVNProject.ID)
+        case browseFiles(SVNProject.ID)
         case ignore(SVNProject.ID)
         case lock(SVNProject.ID)
         case resolveConflict(SVNProject.ID)

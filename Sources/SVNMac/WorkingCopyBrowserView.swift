@@ -1,0 +1,146 @@
+import SwiftUI
+
+struct WorkingCopyBrowserView: View {
+    @EnvironmentObject private var store: ProjectStore
+    @Environment(\.appLanguage) private var appLanguage
+    @State private var searchText = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            browserToolbar
+            Divider()
+            List(selection: $store.selectedBrowserPath) {
+                OutlineGroup(filteredTree, children: \.children) { node in
+                    fileRow(node)
+                        .tag(node.relativePath)
+                }
+            }
+            .overlay {
+                if isLoading, store.workingCopyFileTree.isEmpty {
+                    ProgressView(appLanguage.text("파일 목록을 불러오는 중…", "Loading files…"))
+                } else if filteredTree.isEmpty {
+                    ContentUnavailableView(
+                        searchText.isEmpty
+                            ? appLanguage.text("표시할 파일 없음", "No Files")
+                            : appLanguage.text("검색 결과 없음", "No Search Results"),
+                        systemImage: searchText.isEmpty ? "folder" : "magnifyingglass"
+                    )
+                }
+            }
+        }
+        .task(id: store.selectedProjectID) {
+            await store.loadWorkingCopyFiles()
+        }
+        .sheet(isPresented: $store.isShowingFileHistory) {
+            FileHistoryView().environmentObject(store)
+        }
+        .documentOpenConfirmation()
+    }
+
+    private var browserToolbar: some View {
+        HStack {
+            TextField(appLanguage.text("파일 검색", "Search Files"), text: $searchText)
+                .textFieldStyle(.roundedBorder)
+            Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") {
+                Task { await store.loadWorkingCopyFiles() }
+            }
+            .disabled(isLoading)
+        }
+        .padding()
+    }
+
+    private func fileRow(_ node: WorkingCopyFileNode) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName(for: node))
+                .foregroundStyle(node.isDirectory ? Color.accentColor : Color.secondary)
+            Text(node.name).lineLimit(1)
+            if let status = visibleStatus(for: node) {
+                Text(status)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if node.isSymbolicLink {
+                Image(systemName: "arrow.triangle.turn.up.right.diamond")
+                    .foregroundStyle(.secondary)
+                    .help(appLanguage.text("심볼릭 링크", "Symbolic Link"))
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            guard !node.isDirectory else { return }
+            Task { await store.prepareToOpen(path: node.relativePath) }
+        }
+        .contextMenu {
+            if !node.isDirectory {
+                Button(appLanguage.text("파일 열기", "Open File")) {
+                    Task { await store.prepareToOpen(path: node.relativePath) }
+                }
+            }
+            Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
+                store.revealInFinder(node.relativePath)
+            }
+            Button(appLanguage.text("전체 경로 복사", "Copy Full Path")) {
+                store.copyPath(node.relativePath)
+            }
+            if !node.isDirectory, node.isVersioned {
+                Divider()
+                Button(appLanguage.text("이 파일의 커밋 기록", "File Commit History")) {
+                    Task { await store.loadFileHistory(for: node.relativePath) }
+                }
+            }
+        }
+    }
+
+    private var filteredTree: [WorkingCopyFileNode] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return store.workingCopyFileTree }
+        return store.workingCopyFileTree.compactMap { $0.filtering(query: query) }
+    }
+
+    private var isLoading: Bool {
+        guard let projectID = store.selectedProjectID else { return false }
+        return store.activeOperations.contains { $0.kind == .browseFiles(projectID) }
+    }
+
+    private func iconName(for node: WorkingCopyFileNode) -> String {
+        if node.isDirectory { return "folder" }
+        switch (node.name as NSString).pathExtension.lowercased() {
+        case "png", "jpg", "jpeg", "gif", "tiff", "heic", "webp": return "photo"
+        case "doc", "docx", "pages": return "doc.richtext"
+        case "xls", "xlsx", "numbers": return "tablecells"
+        case "ppt", "pptx", "key": return "rectangle.on.rectangle"
+        case "pdf": return "doc.text"
+        default: return "doc"
+        }
+    }
+
+    private func visibleStatus(for node: WorkingCopyFileNode) -> String? {
+        guard let status = node.svnEntry?.status, status != "normal" else { return nil }
+        switch status {
+        case "modified": return appLanguage.text("수정", "Modified")
+        case "added": return appLanguage.text("추가", "Added")
+        case "unversioned": return appLanguage.text("미추적", "Unversioned")
+        case "ignored": return appLanguage.text("무시됨", "Ignored")
+        case "conflicted": return appLanguage.text("충돌", "Conflict")
+        default: return status
+        }
+    }
+}
+
+private extension WorkingCopyFileNode {
+    func filtering(query: String) -> WorkingCopyFileNode? {
+        let filteredChildren = children?.compactMap { $0.filtering(query: query) }
+        let matches = name.localizedCaseInsensitiveContains(query)
+            || relativePath.localizedCaseInsensitiveContains(query)
+        guard matches || filteredChildren?.isEmpty == false else { return nil }
+        return WorkingCopyFileNode(
+            name: name,
+            relativePath: relativePath,
+            isDirectory: isDirectory,
+            isSymbolicLink: isSymbolicLink,
+            svnEntry: svnEntry,
+            children: filteredChildren
+        )
+    }
+}

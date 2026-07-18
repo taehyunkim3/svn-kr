@@ -89,6 +89,8 @@ final class ProjectStore: ObservableObject {
     @Published var ignoredStatuses: [SVNStatusEntry] = []
     @Published var ignoreRules: [SVNIgnoreRule] = []
     @Published var repositoryLocks: [SVNLockInfo] = []
+    @Published var workingCopyFileTree: [WorkingCopyFileNode] = []
+    @Published var selectedBrowserPath: String?
     @Published var remoteChanges: [SVNStatusEntry] = []
     @Published var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
     @Published var fileHistory: [SVNLogEntry] = []
@@ -126,12 +128,14 @@ final class ProjectStore: ObservableObject {
     private let credentialStore: any CredentialStoring
     private let persistence: any ProjectPersisting
     private let projectAccessManager: any ProjectAccessManaging
+    let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
     private var sessionPasswords: [SVNProject.ID: String] = [:]
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
     private var diffRequestID: UUID?
+    var fileTreeRequestID: UUID?
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
@@ -144,13 +148,15 @@ final class ProjectStore: ObservableObject {
         credentialStore: any CredentialStoring = KeychainCredentialStore(),
         persistence: any ProjectPersisting = UserDefaultsProjectPersistence(),
         projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
-        conflictFileService: ConflictFileService = ConflictFileService()
+        conflictFileService: ConflictFileService = ConflictFileService(),
+        workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService()
     ) {
         self.client = client
         self.credentialStore = credentialStore
         self.persistence = persistence
         self.projectAccessManager = projectAccessManager
         self.conflictFileService = conflictFileService
+        self.workingCopyFileService = workingCopyFileService
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
@@ -610,10 +616,13 @@ final class ProjectStore: ObservableObject {
     private func resetSelectedProjectState() {
         refreshRequestID = nil
         diffRequestID = nil
+        fileTreeRequestID = nil
         statuses = []
         ignoredStatuses = []
         ignoreRules = []
         repositoryLocks = []
+        workingCopyFileTree = []
+        selectedBrowserPath = nil
         remoteChanges = []
         fileHistory = []
         fileHistoryPath = nil

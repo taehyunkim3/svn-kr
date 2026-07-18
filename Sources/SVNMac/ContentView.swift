@@ -146,6 +146,8 @@ struct ContentView: View {
             TabView {
                 ChangesView()
                     .tabItem { Label(appLanguage.text("변경 사항", "Changes"), systemImage: "checklist") }
+                WorkingCopyBrowserView()
+                    .tabItem { Label(appLanguage.text("파일", "Files"), systemImage: "folder") }
                 HistoryView()
                     .tabItem { Label(appLanguage.text("커밋 기록", "Commit History"), systemImage: "clock.arrow.circlepath") }
             }

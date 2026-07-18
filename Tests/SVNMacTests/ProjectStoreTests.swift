@@ -23,6 +23,7 @@ import Testing
     store.selectedProjectID = second.id
 
     #expect(store.statuses.isEmpty)
+    #expect(store.workingCopyFileTree.isEmpty)
     #expect(store.logs.isEmpty)
     #expect(store.selectedPaths.isEmpty)
     #expect(store.selectedStatusPath == nil)
@@ -32,6 +33,26 @@ import Testing
     #expect(store.historyDiffContent == .placeholder)
     #expect(store.notice == nil)
     #expect(store.authenticationRequest == nil)
+}
+
+@MainActor
+@Test func staleFileTreeDoesNotOverwriteNewlySelectedProject() async {
+    let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow-tree")
+    let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast-tree")
+    let fileService = StubWorkingCopyFileService(delaysByPath: [
+        first.path: .milliseconds(150),
+        second.path: .milliseconds(5),
+    ])
+    let store = makeStore(projects: [first, second], fileService: fileService)
+
+    let slowLoad = Task { await store.loadWorkingCopyFiles() }
+    try? await Task.sleep(for: .milliseconds(20))
+    store.selectedProjectID = second.id
+    let fastLoad = Task { await store.loadWorkingCopyFiles() }
+    await slowLoad.value
+    await fastLoad.value
+
+    #expect(store.workingCopyFileTree.map(\.name) == ["fast-tree"])
 }
 
 @MainActor
@@ -145,13 +166,15 @@ import Testing
 @MainActor
 private func makeStore(
     projects: [SVNProject],
-    client: StubSVNClient = StubSVNClient()
+    client: StubSVNClient = StubSVNClient(),
+    fileService: any WorkingCopyFileListing = WorkingCopyFileService()
 ) -> ProjectStore {
     ProjectStore(
         client: client,
         credentialStore: StubCredentialStore(),
         persistence: MemoryProjectPersistence(projects: projects),
-        projectAccessManager: StubProjectAccessManager()
+        projectAccessManager: StubProjectAccessManager(),
+        workingCopyFileService: fileService
     )
 }
 
@@ -233,6 +256,27 @@ private actor StubSVNClient: SVNClientServing {
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String { "reverted" }
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] { [] }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "committed" }
+}
+
+private actor StubWorkingCopyFileService: WorkingCopyFileListing {
+    let delaysByPath: [String: Duration]
+
+    init(delaysByPath: [String: Duration]) {
+        self.delaysByPath = delaysByPath
+    }
+
+    func tree(at rootPath: String, svnEntries: [SVNWorkingCopyEntry]) async throws -> [WorkingCopyFileNode] {
+        if let duration = delaysByPath[rootPath] { try? await Task.sleep(for: duration) }
+        let name = URL(fileURLWithPath: rootPath).lastPathComponent
+        return [WorkingCopyFileNode(
+            name: name,
+            relativePath: name,
+            isDirectory: true,
+            isSymbolicLink: false,
+            svnEntry: nil,
+            children: []
+        )]
+    }
 }
 
 private final class StubCredentialStore: CredentialStoring {
