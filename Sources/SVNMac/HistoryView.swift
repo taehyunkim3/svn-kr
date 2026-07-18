@@ -11,7 +11,7 @@ struct HistoryView: View {
 
     /// DateFormatter는 생성 비용이 크므로 뷰 상태로 한 번 만들고 설정만 갱신해 재사용합니다.
     @State private var dateFormatter = DateFormatter()
-    @State private var searchText = ""
+    @Binding var searchText: String
 
     var body: some View {
         let timeline = SVNHistoryTimeline(logs: store.logs, workingCopyRevision: store.workingCopyRevision)
@@ -31,7 +31,6 @@ struct HistoryView: View {
                 ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No Commit History"), systemImage: "clock")
             }
         }
-        .searchable(text: $searchText, prompt: appLanguage.text("작성자, 파일, 메시지, 리비전 검색", "Search author, file, message, or revision"))
     }
 
     // MARK: - 기록 요약

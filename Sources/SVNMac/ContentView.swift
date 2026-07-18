@@ -10,6 +10,9 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
+    @State private var selectedProjectTab: ProjectTab = .changes
+    @State private var fileSearchText = ""
+    @State private var historySearchText = ""
 
     // MARK: - 최상위 화면 구성
 
@@ -143,14 +146,24 @@ struct ContentView: View {
             }
             .padding()
 
-            TabView {
+            TabView(selection: $selectedProjectTab) {
                 ChangesView()
                     .tabItem { Label(appLanguage.text("변경 사항", "Changes"), systemImage: "checklist") }
-                WorkingCopyBrowserView()
+                    .tag(ProjectTab.changes)
+                WorkingCopyBrowserView(searchText: $fileSearchText)
                     .tabItem { Label(appLanguage.text("파일", "Files"), systemImage: "folder") }
-                HistoryView()
+                    .tag(ProjectTab.files)
+                HistoryView(searchText: $historySearchText)
                     .tabItem { Label(appLanguage.text("커밋 기록", "Commit History"), systemImage: "clock.arrow.circlepath") }
+                    .tag(ProjectTab.history)
             }
+            .modifier(ProjectTabSearchModifier(
+                selectedTab: selectedProjectTab,
+                fileSearchText: $fileSearchText,
+                historySearchText: $historySearchText,
+                filePrompt: appLanguage.text("파일 검색", "Search Files"),
+                historyPrompt: appLanguage.text("작성자, 파일, 메시지, 리비전 검색", "Search author, file, message, or revision")
+            ))
         }
     }
 
@@ -160,4 +173,30 @@ struct ContentView: View {
         _ = await (project, files)
     }
 
+}
+
+private enum ProjectTab: Hashable {
+    case changes
+    case files
+    case history
+}
+
+private struct ProjectTabSearchModifier: ViewModifier {
+    let selectedTab: ProjectTab
+    @Binding var fileSearchText: String
+    @Binding var historySearchText: String
+    let filePrompt: String
+    let historyPrompt: String
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch selectedTab {
+        case .changes:
+            content
+        case .files:
+            content.searchable(text: $fileSearchText, prompt: filePrompt)
+        case .history:
+            content.searchable(text: $historySearchText, prompt: historyPrompt)
+        }
+    }
 }

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.5.1 (2026-07-18)
+
+- Prevented file and history searches from inserting duplicate macOS toolbar items when switching tabs.
 - Made functional actions consistently appear as bordered buttons across the app.
 - Kept empty change lists and history diff panels aligned across content states.
 - Prevented long revision diff lines from wrapping into narrow vertical columns.

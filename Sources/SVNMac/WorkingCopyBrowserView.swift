@@ -4,7 +4,7 @@ import SVNCore
 struct WorkingCopyBrowserView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
-    @State private var searchText = ""
+    @Binding var searchText: String
 
     var body: some View {
         List(selection: $store.selectedBrowserPath) {
@@ -25,7 +25,6 @@ struct WorkingCopyBrowserView: View {
                 )
             }
         }
-        .searchable(text: $searchText, prompt: appLanguage.text("파일 검색", "Search Files"))
         .task(id: store.selectedProjectID) {
             await store.refreshWorkingCopyBrowser()
         }
