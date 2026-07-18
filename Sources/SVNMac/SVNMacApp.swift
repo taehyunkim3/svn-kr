@@ -16,6 +16,9 @@ struct SVNMacApp: App {
             ContentView()
                 .environmentObject(store)
                 .environment(\.appLanguage, appLanguage)
+                // 앱 안의 기능 동작은 기본적으로 테두리가 있는 버튼으로 표시합니다.
+                // 목록 행 선택과 컨텍스트 메뉴처럼 플랫폼 표현이 있는 곳만 화면에서 별도 스타일을 사용합니다.
+                .buttonStyle(.bordered)
                 .frame(
                     minWidth: AppLayout.windowMinimumWidth,
                     minHeight: AppLayout.windowMinimumHeight
@@ -35,6 +38,7 @@ struct SVNMacApp: App {
 
         Settings {
             AppSettingsView()
+                .buttonStyle(.bordered)
         }
     }
 }

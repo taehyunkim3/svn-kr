@@ -16,9 +16,6 @@ struct SVNLogMessageView: View {
                 Button(appLanguage.text("복원됨", "Restored")) {
                     showsOriginalMessage = true
                 }
-                .buttonStyle(.borderless)
-                .font(.caption)
-                .foregroundStyle(.secondary)
                 .help(appLanguage.text("복원 전 원문 보기", "View the original message before restoration"))
                 .popover(isPresented: $showsOriginalMessage) {
                     VStack(alignment: .leading, spacing: 10) {

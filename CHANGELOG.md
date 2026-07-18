@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Made functional actions consistently appear as bordered buttons across the app.
 - Kept empty change lists and history diff panels aligned across content states.
 - Prevented long revision diff lines from wrapping into narrow vertical columns.
 - Repaired display of recoverable legacy Korean commit-message mojibake.

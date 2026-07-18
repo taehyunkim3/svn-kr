@@ -154,6 +154,7 @@ struct ChangesView: View {
                 set: { value in Task { await store.setShowsIgnoredFiles(value) } }
             ))
             .toggleStyle(.checkbox)
+            .font(.caption)
             Spacer()
             Button(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules"), systemImage: "eye.slash") {
                 Task {
@@ -161,16 +162,13 @@ struct ChangesView: View {
                     store.isShowingIgnoreRules = true
                 }
             }
-            .buttonStyle(.borderless)
             Button(appLanguage.text("잠금 목록", "Locks"), systemImage: "lock") {
                 Task {
                     await store.loadRepositoryLocks()
                     store.isShowingLocks = true
                 }
             }
-            .buttonStyle(.borderless)
         }
-        .font(.caption)
         .padding(.horizontal)
         .padding(.vertical, 8)
     }
