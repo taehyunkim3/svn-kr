@@ -23,6 +23,7 @@ struct HistoryRevisionDiffView: View {
 
             content
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .textBackgroundColor))
     }
 
