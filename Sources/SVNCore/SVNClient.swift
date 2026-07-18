@@ -184,18 +184,49 @@ public actor SVNClient {
         at path: String,
         revision: String,
         repositoryPath: String,
+        workingCopyRepositoryPath: String?,
         pegRevision: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        let normalizedPath = repositoryPath.hasPrefix("/") ? repositoryPath : "/\(repositoryPath)"
-        let target = "^\(normalizedPath)@\(pegRevision)"
+        let targetPath = revisionTargetPath(
+            repositoryPath: repositoryPath,
+            workingCopyRepositoryPath: workingCopyRepositoryPath
+        )
+        let target = "^\(targetPath)@\(pegRevision)"
         return try checkedRun(
             ["diff", "--change", revision, "--", target],
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         ).output
+    }
+
+    /// 로그 경로의 작업 복사본 root만 `svn info relative-url`이 반환한 실제
+    /// 서버 경로로 교체합니다. root 아래의 이름은 원문을 보존해야 저장소에
+    /// NFD 이름으로 남아 있는 과거 파일도 해당 리비전에서 조회할 수 있습니다.
+    private func revisionTargetPath(repositoryPath: String, workingCopyRepositoryPath: String?) -> String {
+        let repositoryPath = repositoryPath.hasPrefix("/") ? repositoryPath : "/\(repositoryPath)"
+        guard let workingCopyRepositoryPath, !workingCopyRepositoryPath.isEmpty else {
+            return repositoryPath
+        }
+
+        let rootPath = workingCopyRepositoryPath.hasPrefix("/")
+            ? workingCopyRepositoryPath
+            : "/\(workingCopyRepositoryPath)"
+        let decodedRootPath = rootPath.removingPercentEncoding ?? rootPath
+        let repositoryComponents = pathComponents(repositoryPath)
+        let rootComponents = pathComponents(decodedRootPath)
+        guard repositoryComponents.starts(with: rootComponents) else { return repositoryPath }
+
+        let suffix = repositoryComponents.dropFirst(rootComponents.count).joined(separator: "/")
+        let encodedRoot = rootPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let components = [encodedRoot, suffix].filter { !$0.isEmpty }
+        return "/" + components.joined(separator: "/")
+    }
+
+    private func pathComponents(_ path: String) -> [String] {
+        path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
     }
 
     public func workingCopyRevision(at path: String, credentials: SVNCredentials? = nil) async throws -> String {

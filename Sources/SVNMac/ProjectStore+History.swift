@@ -19,6 +19,7 @@ extension ProjectStore {
                 at: project.path,
                 revision: revision,
                 repositoryPath: changedPath.path,
+                workingCopyRepositoryPath: workingCopyRepositoryPath,
                 pegRevision: pegRevision(for: changedPath, revision: revision),
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true

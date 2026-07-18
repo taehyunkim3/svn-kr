@@ -149,10 +149,72 @@ import Testing
         at: directory.path,
         revision: "42",
         repositoryPath: "/trunk/Sources/App.swift",
+        workingCopyRepositoryPath: "/trunk",
         pegRevision: "42"
     )
 
     #expect(result.contains("diff --change 42 -- ^/trunk/Sources/App.swift@42"))
+}
+
+@Test func revisionDiffUsesExactWorkingCopyRootAndPreservesNFDFileName() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-revision-unicode-path-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    printf '%s\n' "$*"
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let nfdFileName = "테스트.png"
+    let result = try await client.revisionDiff(
+        at: directory.path,
+        revision: "42",
+        repositoryPath: "/한글/project/images/\(nfdFileName)",
+        workingCopyRepositoryPath: "/%ED%95%9C%EA%B8%80/project",
+        pegRevision: "42"
+    )
+
+    let resultData = Data(result.utf8)
+    #expect(resultData.range(of: Data("^/%ED%95%9C%EA%B8%80/project/images/\(nfdFileName)@42".utf8)) != nil)
+    #expect(resultData.range(of: Data("테스트.png".utf8)) == nil)
+}
+
+@Test func revisionDiffKeepsRepositoryPathOutsideWorkingCopyRoot() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-revision-outside-root-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    printf '%s\n' "$*"
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.revisionDiff(
+        at: directory.path,
+        revision: "42",
+        repositoryPath: "/shared/Old.swift",
+        workingCopyRepositoryPath: "/project/trunk",
+        pegRevision: "41"
+    )
+
+    #expect(result.contains("^/shared/Old.swift@41"))
 }
 
 @Test func readsTrimmedWorkingCopyRevision() async throws {

@@ -193,6 +193,7 @@ import Testing
             changedPaths: [deletedPath]
         ),
     ]
+    store.workingCopyRepositoryPath = "/trunk"
     store.selectHistoryRevision("42")
     await store.loadHistoryDiff(for: "42", changedPath: deletedPath)
 
@@ -202,6 +203,7 @@ import Testing
     #expect(await client.lastRevisionDiffRequest() == RevisionDiffRequest(
         revision: "42",
         repositoryPath: "/trunk/Old.swift",
+        workingCopyRepositoryPath: "/trunk",
         pegRevision: "41"
     ))
 }
@@ -234,6 +236,7 @@ private enum TestError: Error {
 private struct RevisionDiffRequest: Equatable, Sendable {
     let revision: String
     let repositoryPath: String
+    let workingCopyRepositoryPath: String?
     let pegRevision: String
 }
 
@@ -289,8 +292,13 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
     }
-    func revisionDiff(at path: String, revision: String, repositoryPath: String, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
-        revisionDiffRequests.append(RevisionDiffRequest(revision: revision, repositoryPath: repositoryPath, pegRevision: pegRevision))
+    func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        revisionDiffRequests.append(RevisionDiffRequest(
+            revision: revision,
+            repositoryPath: repositoryPath,
+            workingCopyRepositoryPath: workingCopyRepositoryPath,
+            pegRevision: pegRevision
+        ))
         return "revision diff"
     }
     func lastRevisionDiffRequest() -> RevisionDiffRequest? { revisionDiffRequests.last }
