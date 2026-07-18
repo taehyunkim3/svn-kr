@@ -22,33 +22,38 @@ struct HistoryRevisionDiffView: View {
             .padding()
             Divider()
 
-            content
+            stableContent
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .textBackgroundColor))
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if store.selectedHistoryRevision == nil {
-            ContentUnavailableView(
-                appLanguage.text("커밋을 선택하세요", "Select a Commit"),
-                systemImage: "clock.arrow.circlepath",
-                description: Text(appLanguage.text("기록에서 변경 내용 보기 버튼을 누르면 실제 diff가 표시됩니다.", "Choose View Changes in the history to display the actual diff."))
-            )
-        } else if let entry = selectedEntry {
-            VSplitView {
-                changedPathList(entry.changedPaths)
-                    .frame(minHeight: 120, idealHeight: 180)
+    /// 선택/로딩 상태가 바뀌어도 파일 목록과 diff 컨테이너 자체는 교체하지 않습니다.
+    /// 컨테이너 타입을 유지해야 List와 placeholder의 고유 크기 차이로 패널이 재배치되지 않습니다.
+    private var stableContent: some View {
+        VStack(spacing: 0) {
+            changedPathList(selectedEntry?.changedPaths ?? [])
+                .frame(height: AppLayout.historyChangedFilesHeight)
 
-                selectedPathDiff
-                    .frame(minHeight: 220)
+            Divider()
+
+            selectedPathDiff
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .opacity(selectedEntry == nil ? 0 : 1)
+        .overlay {
+            if store.selectedHistoryRevision == nil {
+                ContentUnavailableView(
+                    appLanguage.text("커밋을 선택하세요", "Select a Commit"),
+                    systemImage: "clock.arrow.circlepath",
+                    description: Text(appLanguage.text("기록에서 변경 내용 보기 버튼을 누르면 실제 diff가 표시됩니다.", "Choose View Changes in the history to display the actual diff."))
+                )
+            } else if selectedEntry == nil {
+                ContentUnavailableView(
+                    appLanguage.text("커밋 기록을 찾을 수 없습니다", "Commit Not Found"),
+                    systemImage: "exclamationmark.magnifyingglass"
+                )
             }
-        } else {
-            ContentUnavailableView(
-                appLanguage.text("커밋 기록을 찾을 수 없습니다", "Commit Not Found"),
-                systemImage: "exclamationmark.magnifyingglass"
-            )
         }
     }
 

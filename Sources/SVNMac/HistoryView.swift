@@ -15,17 +15,17 @@ struct HistoryView: View {
 
     var body: some View {
         let timeline = SVNHistoryTimeline(logs: store.logs, workingCopyRevision: store.workingCopyRevision)
-        HSplitView {
+        WorkspaceSplitView(
+            primaryMinWidth: AppLayout.historyPrimaryMinimumWidth,
+            detailMinWidth: AppLayout.historyDetailMinimumWidth
+        ) {
             VStack(spacing: 0) {
                 historySummary
                 historyList(timeline: timeline)
             }
-            .frame(minWidth: 520, maxHeight: .infinity)
-
+        } detail: {
             HistoryRevisionDiffView()
-                .frame(minWidth: 380, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if store.logs.isEmpty {
                 ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No Commit History"), systemImage: "clock")
