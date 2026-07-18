@@ -35,6 +35,7 @@ function build_app_bundle() {
   cp "$ROOT/.build/release/SVNMac" "$APP/Contents/MacOS/SVNMac"
   cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
   cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+  cp "$ROOT/Resources/Credits.rtf" "$APP/Contents/Resources/Credits.rtf"
   cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
   "$ROOT/scripts/embed-svn.sh" "$APP"
 }
