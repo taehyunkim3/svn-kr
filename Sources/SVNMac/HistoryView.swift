@@ -138,7 +138,7 @@ struct HistoryView: View {
                 changedPaths(entry.changedPaths)
                 revisionProperties(entry.revisionProperties)
                 Button {
-                    Task { await store.loadHistoryDiff(for: entry.revision) }
+                    store.selectHistoryRevision(entry.revision)
                 } label: {
                     Label(appLanguage.text("이 커밋의 변경 내용 보기", "View Changes in This Commit"), systemImage: "doc.text.magnifyingglass")
                 }

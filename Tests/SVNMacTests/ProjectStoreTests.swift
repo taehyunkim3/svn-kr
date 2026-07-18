@@ -15,6 +15,7 @@ import Testing
     store.selectedStatusPath = "changed.txt"
     store.diffContent = .text("diff")
     store.selectedHistoryRevision = "10"
+    store.selectedHistoryPath = "/trunk/changed.txt"
     store.historyDiffContent = .text("history diff")
     store.notice = "완료"
     store.authenticationRequest = SVNAuthenticationRequest(projectID: first.id, action: .update)
@@ -27,6 +28,7 @@ import Testing
     #expect(store.selectedStatusPath == nil)
     #expect(store.diffContent == .placeholder)
     #expect(store.selectedHistoryRevision == nil)
+    #expect(store.selectedHistoryPath == nil)
     #expect(store.historyDiffContent == .placeholder)
     #expect(store.notice == nil)
     #expect(store.authenticationRequest == nil)
@@ -112,6 +114,35 @@ import Testing
 }
 
 @MainActor
+@Test func historyDiffLoadsOnlySelectedFileAndUsesPreviousPegForDeletion() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+    let deletedPath = SVNChangedPath(path: "/trunk/Old.swift", action: .deleted, kind: .file)
+
+    store.logs = [
+        SVNLogEntry(
+            revision: "42",
+            author: "tester",
+            date: nil,
+            message: "delete",
+            changedPaths: [deletedPath]
+        ),
+    ]
+    store.selectHistoryRevision("42")
+    await store.loadHistoryDiff(for: "42", changedPath: deletedPath)
+
+    #expect(store.selectedHistoryRevision == "42")
+    #expect(store.selectedHistoryPath == "/trunk/Old.swift")
+    #expect(store.historyDiffContent == .text("revision diff"))
+    #expect(await client.lastRevisionDiffRequest() == RevisionDiffRequest(
+        revision: "42",
+        repositoryPath: "/trunk/Old.swift",
+        pegRevision: "41"
+    ))
+}
+
+@MainActor
 private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient()
@@ -132,11 +163,18 @@ private enum TestError: Error {
     case credentialWriteFailed
 }
 
+private struct RevisionDiffRequest: Equatable, Sendable {
+    let revision: String
+    let repositoryPath: String
+    let pegRevision: String
+}
+
 private actor StubSVNClient: SVNClientServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
     let checkoutResult: String
+    private var revisionDiffRequests: [RevisionDiffRequest] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -174,7 +212,11 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
     }
-    func revisionDiff(at path: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "revision diff" }
+    func revisionDiff(at path: String, revision: String, repositoryPath: String, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        revisionDiffRequests.append(RevisionDiffRequest(revision: revision, repositoryPath: repositoryPath, pegRevision: pegRevision))
+        return "revision diff"
+    }
+    func lastRevisionDiffRequest() -> RevisionDiffRequest? { revisionDiffRequests.last }
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String {
         await delay(for: path)
         return revisionsByPath[path] ?? "0"

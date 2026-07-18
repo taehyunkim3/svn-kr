@@ -93,6 +93,7 @@ final class ProjectStore: ObservableObject {
     @Published var showsIgnoredFiles = false
     @Published var logs: [SVNLogEntry] = []
     @Published var selectedHistoryRevision: String?
+    @Published var selectedHistoryPath: String?
     @Published var historyDiffContent: DiffContent = .placeholder
     @Published var hasMoreHistory = true
     @Published var workingCopyRevision: String?
@@ -612,6 +613,7 @@ final class ProjectStore: ObservableObject {
         revertRequest = nil
         logs = []
         selectedHistoryRevision = nil
+        selectedHistoryPath = nil
         historyDiffContent = .placeholder
         hasMoreHistory = true
         workingCopyRevision = nil

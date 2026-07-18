@@ -178,11 +178,15 @@ public actor SVNClient {
     public func revisionDiff(
         at path: String,
         revision: String,
+        repositoryPath: String,
+        pegRevision: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        try checkedRun(
-            ["diff", "--change", revision],
+        let normalizedPath = repositoryPath.hasPrefix("/") ? repositoryPath : "/\(repositoryPath)"
+        let target = "^\(normalizedPath)@\(pegRevision)"
+        return try checkedRun(
+            ["diff", "--change", revision, "--", target],
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate

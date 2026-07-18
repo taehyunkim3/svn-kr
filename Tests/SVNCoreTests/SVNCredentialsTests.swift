@@ -127,6 +127,34 @@ import Testing
     #expect(entries.map(\.revision) == ["42"])
 }
 
+@Test func requestsRevisionDiffForOnlySelectedRepositoryPath() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-revision-file-diff-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    printf '%s\n' "$*"
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.revisionDiff(
+        at: directory.path,
+        revision: "42",
+        repositoryPath: "/trunk/Sources/App.swift",
+        pegRevision: "42"
+    )
+
+    #expect(result.contains("diff --change 42 -- ^/trunk/Sources/App.swift@42"))
+}
+
 @Test func readsTrimmedWorkingCopyRevision() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-working-copy-revision-test-\(UUID().uuidString)", isDirectory: true)

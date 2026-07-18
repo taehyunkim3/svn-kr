@@ -1,9 +1,16 @@
 import SVNCore
 
 extension ProjectStore {
-    func loadHistoryDiff(for revision: String) async {
+    func selectHistoryRevision(_ revision: String) {
+        selectedHistoryRevision = revision
+        selectedHistoryPath = nil
+        historyDiffContent = .placeholder
+    }
+
+    func loadHistoryDiff(for revision: String, changedPath: SVNChangedPath) async {
         guard let project = selectedProject else { return }
         selectedHistoryRevision = revision
+        selectedHistoryPath = changedPath.path
         historyDiffContent = .placeholder
         let operationID = beginOperation(.revisionDiff(project.id))
         defer { endOperation(operationID) }
@@ -11,14 +18,28 @@ extension ProjectStore {
             let value = try await client.revisionDiff(
                 at: project.path,
                 revision: revision,
+                repositoryPath: changedPath.path,
+                pegRevision: pegRevision(for: changedPath, revision: revision),
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
-            guard selectedProjectID == project.id, selectedHistoryRevision == revision else { return }
+            guard selectedProjectID == project.id,
+                  selectedHistoryRevision == revision,
+                  selectedHistoryPath == changedPath.path else { return }
             historyDiffContent = value.isEmpty ? .noTextDiff : .text(value)
         } catch {
-            if selectedProjectID == project.id { errorMessage = localizedError(error) }
+            if selectedProjectID == project.id,
+               selectedHistoryRevision == revision,
+               selectedHistoryPath == changedPath.path {
+                errorMessage = localizedError(error)
+            }
         }
+    }
+
+    private func pegRevision(for changedPath: SVNChangedPath, revision: String) -> String {
+        guard changedPath.action == .deleted,
+              let revisionNumber = Int(revision), revisionNumber > 0 else { return revision }
+        return String(revisionNumber - 1)
     }
 
     func loadMoreHistory() async {

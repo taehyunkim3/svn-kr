@@ -1,4 +1,5 @@
 import SwiftUI
+import SVNCore
 
 /// 선택한 서버 리비전의 실제 패치를 기록 목록과 분리해 표시합니다.
 /// 바이너리 변경처럼 SVN이 텍스트 패치를 만들 수 없는 경우도 의미 있는 상태로 안내합니다.
@@ -35,6 +36,70 @@ struct HistoryRevisionDiffView: View {
                 systemImage: "clock.arrow.circlepath",
                 description: Text(appLanguage.text("기록에서 변경 내용 보기 버튼을 누르면 실제 diff가 표시됩니다.", "Choose View Changes in the history to display the actual diff."))
             )
+        } else if let entry = selectedEntry {
+            VSplitView {
+                changedPathList(entry.changedPaths)
+                    .frame(minHeight: 120, idealHeight: 180)
+
+                selectedPathDiff
+                    .frame(minHeight: 220)
+            }
+        } else {
+            ContentUnavailableView(
+                appLanguage.text("커밋 기록을 찾을 수 없습니다", "Commit Not Found"),
+                systemImage: "exclamationmark.magnifyingglass"
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func changedPathList(_ paths: [SVNChangedPath]) -> some View {
+        let files = paths.filter { changedPath in
+            if case .directory? = changedPath.kind { return false }
+            return true
+        }
+        if files.isEmpty {
+            ContentUnavailableView(
+                appLanguage.text("변경 파일 없음", "No Changed Files"),
+                systemImage: "doc"
+            )
+        } else {
+            List(files) { changedPath in
+                Button {
+                    guard let revision = store.selectedHistoryRevision else { return }
+                    Task { await store.loadHistoryDiff(for: revision, changedPath: changedPath) }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(changedPath.action.rawValue)
+                            .font(.caption2.bold().monospaced())
+                            .foregroundStyle(actionColor(changedPath.action))
+                            .frame(width: 18)
+                        Text(changedPath.path)
+                            .font(.caption.monospaced())
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(
+                    store.selectedHistoryPath == changedPath.path
+                        ? Color.accentColor.opacity(0.14)
+                        : Color.clear
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedPathDiff: some View {
+        if store.selectedHistoryPath == nil {
+            ContentUnavailableView(
+                appLanguage.text("파일을 선택하세요", "Select a File"),
+                systemImage: "doc.text.magnifyingglass",
+                description: Text(appLanguage.text("위 목록에서 변경 파일을 선택하면 해당 파일의 diff만 표시됩니다.", "Choose a changed file above to display only that file's diff."))
+            )
         } else if isLoading {
             VStack {
                 Spacer()
@@ -42,14 +107,50 @@ struct HistoryRevisionDiffView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity)
+        } else if case let .text(value) = store.historyDiffContent {
+            diffText(value)
         } else {
-            ScrollView([.horizontal, .vertical]) {
-                Text(store.historyDiffContent.localizedText(appLanguage))
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding()
+            Text(store.historyDiffContent.localizedText(appLanguage))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func diffText(_ value: String) -> some View {
+        let lines = value.split(separator: "\n", omittingEmptySubsequences: false)
+        return ScrollView([.horizontal, .vertical]) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                    Text(String(line))
+                        .foregroundStyle(diffLineColor(line))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
+            .font(.system(.caption, design: .monospaced))
+            .textSelection(.enabled)
+            .padding()
+        }
+    }
+
+    private var selectedEntry: SVNLogEntry? {
+        guard let revision = store.selectedHistoryRevision else { return nil }
+        return store.logs.first { $0.revision == revision }
+    }
+
+    private func diffLineColor(_ line: Substring) -> Color {
+        if line.hasPrefix("+") && !line.hasPrefix("+++") { return .green }
+        if line.hasPrefix("-") && !line.hasPrefix("---") { return .red }
+        return .primary
+    }
+
+    private func actionColor(_ action: SVNChangeAction) -> Color {
+        switch action {
+        case .added: .green
+        case .deleted: .red
+        case .modified: .blue
+        case .replaced: .orange
+        case .unknown: .secondary
         }
     }
 
