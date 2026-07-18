@@ -153,7 +153,10 @@ struct HistoryRevisionDiffView: View {
     private func diffText(_ value: String) -> some View {
         let lines = value.split(separator: "\n", omittingEmptySubsequences: false)
         return ScrollView([.horizontal, .vertical]) {
-            LazyVStack(alignment: .leading, spacing: 0) {
+            // LazyVStack은 가로 ScrollView 안에서 보이는 패널 너비만 콘텐츠
+            // 너비로 보고해 긴 행의 뒷부분을 스크롤 범위에 포함하지 않을 수 있습니다.
+            // 일반 VStack이 가장 긴 행의 실제 너비를 보고하게 합니다.
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                     Text(String(line))
                         .foregroundStyle(diffLineColor(line))
