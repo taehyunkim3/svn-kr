@@ -23,6 +23,26 @@ enum AppLayout {
     /// 기록 상세의 파일 목록은 사용자가 조절하는 분할 영역이 아닙니다.
     /// 높이를 한곳에서 고정해 로딩/빈 화면/diff 상태 전환에도 아래 패널이 흔들리지 않게 합니다.
     static let historyChangedFilesHeight: CGFloat = 220
+
+    static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
+    static let ignoreRulesSheetMinimumSize = CGSize(width: 620, height: 420)
+    static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
+    static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
+    static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
+}
+
+extension View {
+    /// 시트가 최소 크기만 보고한 뒤 작은 콘텐츠를 가운데 배치하지 않도록
+    /// 루트 컨테이너 자체가 시트의 전체 제안 크기를 채우게 합니다.
+    func appSheetFrame(minimumSize: CGSize) -> some View {
+        frame(
+            minWidth: minimumSize.width,
+            maxWidth: .infinity,
+            minHeight: minimumSize.height,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
+    }
 }
 
 /// 변경 화면과 기록 화면이 공유하는 유일한 좌우 크기 소유자입니다.

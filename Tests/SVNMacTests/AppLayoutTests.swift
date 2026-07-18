@@ -22,3 +22,20 @@ import Testing
     #expect(AppLayout.windowMinimumWidth <= AppLayout.windowDefaultWidth)
     #expect(AppLayout.windowMinimumHeight <= AppLayout.windowDefaultHeight)
 }
+
+@Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {
+    let sheetSizes = [
+        AppLayout.repositoryLocksSheetMinimumSize,
+        AppLayout.ignoreRulesSheetMinimumSize,
+        AppLayout.updatePreviewSheetMinimumSize,
+        AppLayout.fileHistorySheetMinimumSize,
+        AppLayout.conflictResolutionSheetMinimumSize,
+    ]
+
+    for size in sheetSizes {
+        #expect(size.width > 0)
+        #expect(size.height > 0)
+        #expect(size.width <= AppLayout.windowDefaultWidth)
+        #expect(size.height <= AppLayout.windowDefaultHeight)
+    }
+}
