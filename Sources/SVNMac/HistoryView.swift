@@ -108,7 +108,7 @@ struct HistoryView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return store.logs }
         return store.logs.filter { entry in
-            let values = [entry.revision, entry.author, entry.email ?? "", entry.message]
+            let values = [entry.revision, entry.author, entry.email ?? "", entry.message, entry.originalMessage ?? ""]
                 + entry.changedPaths.map(\.path)
             return values.contains { $0.localizedCaseInsensitiveContains(query) }
         }
@@ -133,8 +133,7 @@ struct HistoryView: View {
             VStack(alignment: .leading, spacing: 9) {
                 historyEntryHeader(entry, isWorkingCopyEntry: isWorkingCopyEntry)
                 historyAuthor(entry)
-                Text(entry.message.isEmpty ? appLanguage.text("커밋 메시지 없음", "No commit message") : entry.message)
-                    .textSelection(.enabled)
+                SVNLogMessageView(entry: entry)
                 changedPaths(entry.changedPaths)
                 revisionProperties(entry.revisionProperties)
                 Button {

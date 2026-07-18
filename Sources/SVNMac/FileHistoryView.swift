@@ -26,8 +26,7 @@ struct FileHistoryView: View {
                         Spacer()
                         if let date = entry.date { Text(date.formatted(date: .numeric, time: .standard)).font(.caption).foregroundStyle(.secondary) }
                     }
-                    Text(entry.message.isEmpty ? appLanguage.text("커밋 메시지 없음", "No commit message") : entry.message)
-                        .textSelection(.enabled)
+                        SVNLogMessageView(entry: entry)
                 }
                 .padding(.vertical, 4)
             }

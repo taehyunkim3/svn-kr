@@ -205,6 +205,7 @@ public struct SVNLogEntry: Identifiable, Hashable, Sendable {
     public let email: String?
     public let date: Date?
     public let message: String
+    public let originalMessage: String?
     public let changedPaths: [SVNChangedPath]
     public let revisionProperties: [SVNRevisionProperty]
 
@@ -216,6 +217,7 @@ public struct SVNLogEntry: Identifiable, Hashable, Sendable {
         email: String? = nil,
         date: Date?,
         message: String,
+        originalMessage: String? = nil,
         changedPaths: [SVNChangedPath] = [],
         revisionProperties: [SVNRevisionProperty] = []
     ) {
@@ -224,6 +226,7 @@ public struct SVNLogEntry: Identifiable, Hashable, Sendable {
         self.email = email
         self.date = date
         self.message = message
+        self.originalMessage = originalMessage
         self.changedPaths = changedPaths
         self.revisionProperties = revisionProperties
     }

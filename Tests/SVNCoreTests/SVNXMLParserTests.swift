@@ -160,6 +160,20 @@ import Testing
     let entries = try SVNXMLParser.logs(from: Data(xml.utf8))
 
     #expect(entries.map(\.message) == [intended, intended])
+    #expect(entries.map(\.originalMessage) == [mojibake, mojibake])
+}
+
+@Test func leavesOriginalMessageEmptyWhenLogMessageNeedsNoRepair() throws {
+    let xml = """
+    <?xml version="1.0"?><log><logentry revision="13287">
+      <author>tester</author><msg>정상 한글 메시지</msg>
+    </logentry></log>
+    """
+
+    let entries = try SVNXMLParser.logs(from: Data(xml.utf8))
+
+    #expect(entries[0].message == "정상 한글 메시지")
+    #expect(entries[0].originalMessage == nil)
 }
 
 @Test func parsesStandardRevisionPropertiesAndDateWithoutFractionalSeconds() throws {

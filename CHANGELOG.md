@@ -5,6 +5,7 @@
 - Kept empty change lists and history diff panels aligned across content states.
 - Prevented long revision diff lines from wrapping into narrow vertical columns.
 - Repaired display of recoverable legacy Korean commit-message mojibake.
+- Marked restored commit messages and made their original text available from the history UI.
 - Added a searchable working-copy file tree so unchanged files can be selected before editing.
 - Connected tracked documents to lock-before-open and displayed current lock owners in the file tree.
 - Prevented unversioned documents from attempting unsupported SVN lock operations.
