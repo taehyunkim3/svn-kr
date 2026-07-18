@@ -358,7 +358,7 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
         switch elementName {
         case "author": author = text
         case "date": date = parseDate(text)
-        case "msg": message = text
+        case "msg": message = text.repairingLegacyUTF8Mojibake
         case "path":
             if let attributes = pathAttributes {
                 changedPaths.append(SVNChangedPath(
@@ -377,7 +377,7 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
                 switch propertyName {
                 case "svn:author": author = text
                 case "svn:date": date = parseDate(text)
-                case "svn:log": message = text
+                case "svn:log": message = text.repairingLegacyUTF8Mojibake
                 default: revisionProperties.append(SVNRevisionProperty(name: propertyName, value: text))
                 }
             }
@@ -403,5 +403,23 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
 
     private func parseDate(_ value: String) -> Date? {
         fractionalDateFormatter.date(from: value) ?? dateFormatter.date(from: value)
+    }
+}
+
+private extension String {
+    /// UTF-8 한글 바이트를 Latin-1 문자로 잘못 저장한 과거 SVN 로그를 표시할 때 복원합니다.
+    /// 정상 한글이나 일반 라틴 문장은 변경하지 않고, 복원 결과에 한글이 있을 때만 적용합니다.
+    var repairingLegacyUTF8Mojibake: String {
+        let scalars = unicodeScalars
+        guard !scalars.isEmpty, scalars.allSatisfy({ $0.value <= 0xFF }) else { return self }
+        let bytes = scalars.map { UInt8($0.value) }
+        guard let decoded = String(data: Data(bytes), encoding: .utf8) else { return self }
+        let normalized = decoded.precomposedStringWithCanonicalMapping
+        guard normalized.unicodeScalars.contains(where: { scalar in
+            (0x1100...0x11FF).contains(scalar.value)
+                || (0x3130...0x318F).contains(scalar.value)
+                || (0xAC00...0xD7AF).contains(scalar.value)
+        }) else { return self }
+        return normalized
     }
 }

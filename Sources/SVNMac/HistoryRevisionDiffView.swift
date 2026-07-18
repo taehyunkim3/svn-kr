@@ -57,19 +57,12 @@ struct HistoryRevisionDiffView: View {
         }
     }
 
-    @ViewBuilder
     private func changedPathList(_ paths: [SVNChangedPath]) -> some View {
         let files = paths.filter { changedPath in
             if case .directory? = changedPath.kind { return false }
             return true
         }
-        if files.isEmpty {
-            ContentUnavailableView(
-                appLanguage.text("변경 파일 없음", "No Changed Files"),
-                systemImage: "doc"
-            )
-        } else {
-            List(files) { changedPath in
+        return List(files) { changedPath in
                 let presentation = HistoryPathPresentation(
                     repositoryPath: changedPath.path,
                     workingCopyRepositoryPath: store.workingCopyRepositoryPath
@@ -105,6 +98,13 @@ struct HistoryRevisionDiffView: View {
                         : Color.clear
                 )
                 .help(presentation.relativePath)
+        }
+        .overlay {
+            if files.isEmpty {
+                ContentUnavailableView(
+                    appLanguage.text("변경 파일 없음", "No Changed Files"),
+                    systemImage: "doc"
+                )
             }
         }
     }
@@ -157,7 +157,10 @@ struct HistoryRevisionDiffView: View {
                 ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                     Text(String(line))
                         .foregroundStyle(diffLineColor(line))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        // 가로 ScrollView 안에서 무한 너비 frame을 사용하면 Text가 최소
+                        // 너비로 압축돼 단어 단위로 줄바꿈됩니다. 각 diff 행은 원문 너비를
+                        // 유지하고 넘치는 부분만 가로 스크롤로 확인합니다.
+                        .fixedSize(horizontal: true, vertical: true)
                 }
             }
             .font(.system(.caption, design: .monospaced))

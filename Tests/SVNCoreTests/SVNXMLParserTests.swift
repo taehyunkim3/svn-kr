@@ -141,6 +141,27 @@ import Testing
     #expect(entries[0].revisionProperties.map(\.name) == ["author-email", "reviewer"])
 }
 
+@Test func repairsLegacyUTF8MojibakeInLogMessages() throws {
+    let intended = "전자정부프레임워크 4.3 추가"
+    let decomposed = intended.decomposedStringWithCanonicalMapping
+    let mojibake = String(data: Data(decomposed.utf8), encoding: .isoLatin1)!
+    let xml = """
+    <?xml version="1.0"?><log>
+      <logentry revision="13285">
+        <author>jude</author><date>2026-07-16T05:33:47.501907Z</date>
+        <msg>\(mojibake)</msg>
+      </logentry>
+      <logentry revision="13286"><revprops>
+        <property name="svn:log">\(mojibake)</property>
+      </revprops></logentry>
+    </log>
+    """
+
+    let entries = try SVNXMLParser.logs(from: Data(xml.utf8))
+
+    #expect(entries.map(\.message) == [intended, intended])
+}
+
 @Test func parsesStandardRevisionPropertiesAndDateWithoutFractionalSeconds() throws {
     let xml = """
     <?xml version="1.0"?><log><logentry revision="13268"><revprops>
