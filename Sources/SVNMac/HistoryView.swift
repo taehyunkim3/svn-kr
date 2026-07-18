@@ -25,6 +25,7 @@ struct HistoryView: View {
             HistoryRevisionDiffView()
                 .frame(minWidth: 380)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if store.logs.isEmpty {
                 ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No Commit History"), systemImage: "clock")
