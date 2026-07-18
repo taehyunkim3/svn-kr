@@ -13,7 +13,7 @@
 
 1. `01-timeline-overview.png`
 2. `02-selective-commit.png`
-3. `03-commit-history.png`
+3. `03-working-copy-files.png`
 
 ## 재생성
 

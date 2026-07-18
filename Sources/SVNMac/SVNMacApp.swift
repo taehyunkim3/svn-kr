@@ -3,12 +3,17 @@ import SwiftUI
 @main
 struct SVNMacApp: App {
     // ProjectStore는 앱 창의 수명 동안 하나만 유지하며 모든 하위 화면이 공유합니다.
-    @StateObject private var store = ProjectStore()
+    @StateObject private var store: ProjectStore
     @AppStorage(AppSettings.languageKey)
     private var languageIdentifier = AppSettings.defaultLanguage
 
     private var appLanguage: AppLanguage {
         AppLanguage(rawValue: languageIdentifier) ?? .korean
+    }
+
+    init() {
+        let isDemoMode = ProcessInfo.processInfo.environment["SVN_MAC_DEMO_MODE"] == "1"
+        _store = StateObject(wrappedValue: isDemoMode ? ProjectStore.demo() : ProjectStore())
     }
 
     var body: some Scene {

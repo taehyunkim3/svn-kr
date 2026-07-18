@@ -122,6 +122,9 @@ final class ProjectStore: ObservableObject {
     @Published var notice: String?
     @Published var errorMessage: String?
 
+    /// 소개 이미지 촬영용 실행에서는 실제 UserDefaults, Keychain, 파일 시스템과 SVN을 사용하지 않습니다.
+    let isDemoMode: Bool
+
     // MARK: - 외부 서비스와 비동기 작업 추적
 
     let client: any SVNClientServing
@@ -151,8 +154,10 @@ final class ProjectStore: ObservableObject {
         projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
         conflictFileService: ConflictFileService = ConflictFileService(),
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
-        workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener()
+        workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
+        isDemoMode: Bool = false
     ) {
+        self.isDemoMode = isDemoMode
         self.client = client
         self.credentialStore = credentialStore
         self.persistence = persistence

@@ -168,6 +168,7 @@ struct ContentView: View {
     }
 
     private func refreshSelectedProject() async {
+        guard !store.isDemoMode else { return }
         async let project: Void = store.refresh()
         async let files: Void = store.refreshWorkingCopyBrowser()
         _ = await (project, files)
