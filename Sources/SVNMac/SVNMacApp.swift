@@ -16,9 +16,15 @@ struct SVNMacApp: App {
             ContentView()
                 .environmentObject(store)
                 .environment(\.appLanguage, appLanguage)
-                .frame(minWidth: 1120, minHeight: 700)
+                .frame(
+                    minWidth: AppLayout.windowMinimumWidth,
+                    minHeight: AppLayout.windowMinimumHeight
+                )
         }
-        .defaultSize(width: 1280, height: 780)
+        .defaultSize(
+            width: AppLayout.windowDefaultWidth,
+            height: AppLayout.windowDefaultHeight
+        )
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .newItem) {

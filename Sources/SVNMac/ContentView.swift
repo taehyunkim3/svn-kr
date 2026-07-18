@@ -58,7 +58,11 @@ struct ContentView: View {
                 }
                 .padding(8)
             }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 230)
+            .navigationSplitViewColumnWidth(
+                min: AppLayout.sidebarMinimumWidth,
+                ideal: AppLayout.sidebarIdealWidth,
+                max: AppLayout.sidebarMaximumWidth
+            )
         } detail: {
             if let project = store.selectedProject {
                 projectView(project)

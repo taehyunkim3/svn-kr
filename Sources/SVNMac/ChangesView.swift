@@ -10,7 +10,10 @@ struct ChangesView: View {
     @FocusState private var isCommitMessageFocused: Bool
 
     var body: some View {
-        HSplitView {
+        WorkspaceSplitView(
+            primaryMinWidth: AppLayout.changesPrimaryMinimumWidth,
+            detailMinWidth: AppLayout.changesDetailMinimumWidth
+        ) {
             VStack(spacing: 0) {
                 changesToolbar
                 Divider()
@@ -18,8 +21,7 @@ struct ChangesView: View {
                 Divider()
                 commitControls
             }
-            .frame(minWidth: 380)
-
+        } detail: {
             ScrollView([.horizontal, .vertical]) {
                 Text(store.diffContent.localizedText(appLanguage))
                     .font(.system(.caption, design: .monospaced))
@@ -27,7 +29,8 @@ struct ChangesView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding()
             }
-            .frame(minWidth: 400)
+            // 배경보다 먼저 전체 크기를 확정해야 빈 diff와 긴 diff가 같은 패널 크기를 사용합니다.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(nsColor: .textBackgroundColor))
         }
         .onChange(of: store.lastCompletedCommitMessage) { _, message in
