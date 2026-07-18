@@ -221,6 +221,7 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return revisionsByPath[path] ?? "0"
     }
+    func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String { "/trunk" }
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool {
         await delay(for: path)
         return false

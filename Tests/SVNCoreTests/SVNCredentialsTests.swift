@@ -181,6 +181,32 @@ import Testing
     #expect(revision == "37")
 }
 
+@Test func readsWorkingCopyPathRelativeToRepositoryRoot() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-working-copy-repository-path-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"info --show-item relative-url"*) printf '^/project/trunk/backend\n' ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let repositoryPath = try await client.workingCopyRepositoryPath(at: directory.path)
+
+    #expect(repositoryPath == "/project/trunk/backend")
+}
+
 @Test func commitsKoreanMessageWithUTF8Locale() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-korean-commit-test-\(UUID().uuidString)", isDirectory: true)

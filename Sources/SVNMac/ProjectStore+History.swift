@@ -31,7 +31,7 @@ extension ProjectStore {
             if selectedProjectID == project.id,
                selectedHistoryRevision == revision,
                selectedHistoryPath == changedPath.path {
-                errorMessage = localizedError(error)
+                historyDiffContent = .failure(localizedError(error))
             }
         }
     }

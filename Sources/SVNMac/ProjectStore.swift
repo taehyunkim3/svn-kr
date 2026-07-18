@@ -38,6 +38,7 @@ enum DiffContent: Equatable {
     case unavailableForUnversioned
     case noTextDiff
     case text(String)
+    case failure(String)
 
     func localizedText(_ language: AppLanguage) -> String {
         switch self {
@@ -55,6 +56,8 @@ enum DiffContent: Equatable {
             )
         case let .text(value):
             value
+        case let .failure(message):
+            message
         }
     }
 }
@@ -97,6 +100,7 @@ final class ProjectStore: ObservableObject {
     @Published var historyDiffContent: DiffContent = .placeholder
     @Published var hasMoreHistory = true
     @Published var workingCopyRevision: String?
+    @Published var workingCopyRepositoryPath: String?
     @Published var isWorkingCopyOutOfDate: Bool?
     @Published var selectedPaths: Set<String> = []
     @Published var selectedStatusPath: String?
@@ -294,10 +298,16 @@ final class ProjectStore: ObservableObject {
         do {
             async let newStatuses = client.status(at: project.path, credentials: nil)
             async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path, credentials: nil)
-            let (statuses, workingCopyRevision) = try await (newStatuses, newWorkingCopyRevision)
+            async let newWorkingCopyRepositoryPath = client.workingCopyRepositoryPath(at: project.path, credentials: nil)
+            let (statuses, workingCopyRevision, workingCopyRepositoryPath) = try await (
+                newStatuses,
+                newWorkingCopyRevision,
+                newWorkingCopyRepositoryPath
+            )
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.statuses = statuses
             self.workingCopyRevision = workingCopyRevision
+            self.workingCopyRepositoryPath = workingCopyRepositoryPath
             selectedPaths.formIntersection(Set(statuses.filter { $0.item != .conflicted }.map(\.path)))
             updateLocalSummary(for: project.id, statuses: statuses)
             notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
@@ -617,6 +627,7 @@ final class ProjectStore: ObservableObject {
         historyDiffContent = .placeholder
         hasMoreHistory = true
         workingCopyRevision = nil
+        workingCopyRepositoryPath = nil
         isWorkingCopyOutOfDate = nil
         selectedPaths = []
         selectedStatusPath = nil

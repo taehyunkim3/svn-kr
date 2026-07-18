@@ -22,6 +22,7 @@ protocol SVNClientServing: Sendable {
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func revisionDiff(at path: String, revision: String, repositoryPath: String, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String
+    func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry]
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String

@@ -199,6 +199,21 @@ public actor SVNClient {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// 작업 복사본 루트가 저장소 루트 아래에서 차지하는 경로를 반환합니다.
+    /// `svn log --verbose`의 변경 경로는 저장소 루트 기준 절대 경로이므로,
+    /// 화면에서 로컬 프로젝트 루트 기준 경로로 줄여 표시할 때 이 값이 필요합니다.
+    public func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
+        let relativeURL = try checkedRun(
+            ["info", "--show-item", "relative-url"],
+            at: path,
+            credentials: credentials
+        )
+            .output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard relativeURL.hasPrefix("^/") else { return relativeURL }
+        return "/" + relativeURL.dropFirst(2)
+    }
+
     public func workingCopyIsOutOfDate(
         at path: String,
         credentials: SVNCredentials? = nil,

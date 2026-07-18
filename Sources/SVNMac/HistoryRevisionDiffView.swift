@@ -70,6 +70,10 @@ struct HistoryRevisionDiffView: View {
             )
         } else {
             List(files) { changedPath in
+                let presentation = HistoryPathPresentation(
+                    repositoryPath: changedPath.path,
+                    workingCopyRepositoryPath: store.workingCopyRepositoryPath
+                )
                 Button {
                     guard let revision = store.selectedHistoryRevision else { return }
                     Task { await store.loadHistoryDiff(for: revision, changedPath: changedPath) }
@@ -79,10 +83,17 @@ struct HistoryRevisionDiffView: View {
                             .font(.caption2.bold().monospaced())
                             .foregroundStyle(actionColor(changedPath.action))
                             .frame(width: 18)
-                        Text(changedPath.path)
-                            .font(.caption.monospaced())
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(presentation.fileName)
+                                .font(.caption.monospaced().weight(.medium))
+                            if !presentation.directory.isEmpty {
+                                Text(presentation.directory)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                         Spacer()
                     }
                     .contentShape(Rectangle())
@@ -93,6 +104,7 @@ struct HistoryRevisionDiffView: View {
                         ? Color.accentColor.opacity(0.14)
                         : Color.clear
                 )
+                .help(presentation.relativePath)
             }
         }
     }
@@ -114,12 +126,28 @@ struct HistoryRevisionDiffView: View {
             .frame(maxWidth: .infinity)
         } else if case let .text(value) = store.historyDiffContent {
             diffText(value)
+        } else if case let .failure(message) = store.historyDiffContent {
+            ContentUnavailableView(
+                appLanguage.text("변경 내용을 불러올 수 없습니다", "Unable to Load Changes"),
+                systemImage: "lock.trianglebadge.exclamationmark",
+                description: Text(historyDiffFailureDescription(message))
+            )
         } else {
             Text(store.historyDiffContent.localizedText(appLanguage))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private func historyDiffFailureDescription(_ message: String) -> String {
+        if message.contains("E175013") || message.localizedCaseInsensitiveContains("forbidden") {
+            return appLanguage.text(
+                "SVN 서버가 이 파일 내용에 대한 읽기 접근을 거부했습니다. 프로젝트 인증 정보와 서버 경로 권한을 확인해 주세요.\n\n\(message)",
+                "The SVN server denied read access to this file. Check the project credentials and server path permissions.\n\n\(message)"
+            )
+        }
+        return message
     }
 
     private func diffText(_ value: String) -> some View {
