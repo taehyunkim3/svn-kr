@@ -20,10 +20,10 @@ struct HistoryView: View {
                 historySummary
                 historyList(timeline: timeline)
             }
-            .frame(minWidth: 520)
+            .frame(minWidth: 520, maxHeight: .infinity)
 
             HistoryRevisionDiffView()
-                .frame(minWidth: 380)
+                .frame(minWidth: 380, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
