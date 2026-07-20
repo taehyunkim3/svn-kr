@@ -84,3 +84,28 @@
 - [x] `swift test` 전체를 실행해 모든 테스트가 통과하는지 확인한다.
 - [x] `git diff --check`, `git status --short`로 기존 변경 보존과 범위를 확인한다.
 - [ ] `./scripts/package-app.sh`로 앱을 패키징하고 코드 서명을 확인한 뒤 실행 중인 앱을 재시작한다.
+
+### Task 5: 안전성 리뷰 보강
+
+**Files:**
+- Modify: `Sources/SVNCore/Models.swift`
+- Modify: `Sources/SVNCore/SVNXMLParser.swift`
+- Modify: `Sources/SVNCore/SVNWorkingCopySnapshot.swift`
+- Modify: `Sources/SVNCore/SVNClient.swift`
+- Test: `Tests/SVNCoreTests/SVNWorkingCopySnapshotTests.swift`
+- Test: `Tests/SVNCoreTests/SVNCredentialsTests.swift`
+
+**Interfaces:**
+- Produces: `SVNWorkingCopyEntry.treeConflicted: Bool`
+- Produces: `SVNWorkingCopySnapshot.scheduledAdditionPaths: [String]`
+- Produces: 후보별 정리 후 새로 읽은 최신 스냅샷
+
+- [x] tree conflict와 canonical-equivalent unversioned 별칭이 자동 정리 후보가 되는 실패 테스트를 작성한다.
+- [x] 관리 상위가 없는 최상위 NFD 신규 경로가 NFC로 바뀌는 실패 테스트를 작성한다.
+- [x] 여러 후보 중 두 번째 정리 실패 시 첫 번째의 오래된 상태가 남는 실패 테스트를 작성한다.
+- [x] 커밋 전에 이미 추가 예약된 부모가 rollback root가 되는 실패 테스트를 작성한다.
+- [x] tree conflict와 canonical subtree 전체를 후보 판정에 포함하고 충돌은 `.conflicted`로 표시한다.
+- [x] 신규 suffix는 관리 상위가 없어도 원문을 유지한다.
+- [x] 자동 정리를 후보별로 실행하고 성공·실패마다 상태를 다시 읽는다.
+- [x] 기존 추가 예약 경로를 별도 보존해 이번 커밋이 만든 예약만 rollback한다.
+- [x] 전체 테스트와 독립 재리뷰로 안전성 보강을 확인한다.

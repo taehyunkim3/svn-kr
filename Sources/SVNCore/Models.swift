@@ -195,16 +195,23 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     public let path: String
     public let status: String
     public let revision: String?
+    public let treeConflicted: Bool
 
     public var id: String { path }
     public var isVersioned: Bool {
         status != "unversioned" && status != "ignored" && status != "external"
     }
 
-    public init(path: String, status: String, revision: String? = nil) {
+    public init(
+        path: String,
+        status: String,
+        revision: String? = nil,
+        treeConflicted: Bool = false
+    ) {
         self.path = path
         self.status = status
         self.revision = revision
+        self.treeConflicted = treeConflicted
     }
 }
 

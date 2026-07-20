@@ -125,22 +125,28 @@ public actor SVNClient {
         credentials: SVNCredentials?
     ) -> SVNWorkingCopySnapshot {
         let root = URL(fileURLWithPath: path, isDirectory: true)
-        let targets = snapshot.missingScheduledAdditionCleanupTargets.filter { target in
-            !Self.pathEntryExists(at: root.appendingPathComponent(target))
-        }
-        guard !targets.isEmpty else { return snapshot }
+        var current = snapshot
 
-        do {
-            _ = try checkedRunWithTargets(
-                ["revert", "--depth", "infinity"],
-                targets: targets,
-                at: path,
-                credentials: credentials
-            )
-            return try readWorkingCopySnapshot(at: path, credentials: credentials)
-        } catch {
-            return snapshot
+        for target in snapshot.missingScheduledAdditionCleanupTargets {
+            let targetBytes = Data(target.utf8)
+            guard current.missingScheduledAdditionCleanupTargets.contains(where: {
+                Data($0.utf8) == targetBytes
+            }) else { continue }
+            guard !Self.pathEntryExists(at: root.appendingPathComponent(target)) else { continue }
+
+            do {
+                _ = try checkedRunWithTargets(
+                    ["revert", "--depth", "infinity"],
+                    targets: [target],
+                    at: path,
+                    credentials: credentials
+                )
+                current = try readWorkingCopySnapshot(at: path, credentials: credentials)
+            } catch {
+                return (try? readWorkingCopySnapshot(at: path, credentials: credentials)) ?? current
+            }
         }
+        return current
     }
 
     private static func pathEntryExists(at url: URL) -> Bool {
@@ -565,7 +571,8 @@ public actor SVNClient {
             if !additions.isEmpty {
                 scheduledByThisCommit.append(contentsOf: Self.additionRollbackRoots(
                     additions,
-                    versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+                    versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey,
+                    preexistingScheduledAdditionPaths: snapshot.scheduledAdditionPaths
                 ))
                 _ = try checkedRunWithTargets(
                     ["add", "--parents"],
@@ -797,14 +804,19 @@ public actor SVNClient {
 
     static func additionRollbackRoots(
         _ additions: [String],
-        versionedPathsByCanonicalKey: [String: [String]]
+        versionedPathsByCanonicalKey: [String: [String]],
+        preexistingScheduledAdditionPaths: [String] = []
     ) -> [String] {
+        let preexistingKeys = Set(preexistingScheduledAdditionPaths.map {
+            $0.precomposedStringWithCanonicalMapping
+        })
         let roots = additions.map { path -> String in
             let components = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
             guard !components.isEmpty else { return path }
             for length in 1...components.count {
                 let prefix = components.prefix(length).joined(separator: "/")
                 let key = prefix.precomposedStringWithCanonicalMapping
+                if preexistingKeys.contains(key) { continue }
                 if versionedPathsByCanonicalKey[key] == nil { return prefix }
             }
             return path

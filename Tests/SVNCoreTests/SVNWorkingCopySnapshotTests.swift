@@ -37,6 +37,75 @@ struct SVNWorkingCopySnapshotTests {
         ])
     }
 
+    @Test func excludesTreeConflictsAndCanonicalAliasesFromAutomaticCleanup() throws {
+        let composedAlias = "별칭 폴더"
+        let decomposedAlias = composedAlias.decomposedStringWithCanonicalMapping
+        let xml = """
+        <?xml version="1.0"?>
+        <status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="충돌 폴더"><wc-status item="missing" revision="-1" tree-conflicted="true"/></entry>
+          <entry path="\(composedAlias)"><wc-status item="missing" revision="-1"/></entry>
+          <entry path="\(decomposedAlias)"><wc-status item="unversioned"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.missingScheduledAdditionCleanupTargets.isEmpty)
+        #expect(snapshot.statuses.contains(
+            SVNStatusEntry(path: "충돌 폴더", item: .conflicted, revision: "-1")
+        ))
+    }
+
+    @Test func preservesTopLevelNFDNewPathBytes() throws {
+        let rawPath = "최상위 새 폴더".decomposedStringWithCanonicalMapping
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13302"),
+            (rawPath, "unversioned", nil),
+        ]))
+
+        #expect(snapshot.statuses.map(\.path).map { Data($0.utf8) } == [Data(rawPath.utf8)])
+        #expect(snapshot.resolvedPath(for: rawPath).map { Data($0.utf8) } == Data(rawPath.utf8))
+    }
+
+    @Test func treeConflictedCanonicalAliasIsNeverAutomaticallyRepairable() throws {
+        let composed = "관리 폴더"
+        let decomposed = composed.decomposedStringWithCanonicalMapping
+        let xml = """
+        <?xml version="1.0"?><status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(composed)"><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(decomposed)"><wc-status item="missing" revision="-1" tree-conflicted="true"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.repairableAliasPaths.isEmpty)
+        #expect(snapshot.canonicalAliasRepairTargets.isEmpty)
+        #expect(snapshot.statuses == [
+            SVNStatusEntry(path: composed, item: .conflicted, revision: "-1"),
+        ])
+    }
+
+    @Test func treeConflictBelowCanonicalAliasRootMakesWholeRootUnrepairable() throws {
+        let composed = "관리 폴더"
+        let decomposed = composed.decomposedStringWithCanonicalMapping
+        let xml = """
+        <?xml version="1.0"?><status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(composed)"><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(decomposed)"><wc-status item="missing" revision="-1"/></entry>
+          <entry path="\(decomposed)/하위.txt"><wc-status item="added" revision="-1" tree-conflicted="true"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.repairableAliasPaths.isEmpty)
+        #expect(snapshot.canonicalAliasRepairTargets.isEmpty)
+        #expect(snapshot.collisions.count == 1)
+        #expect(snapshot.collisions[0].canonicalPath == composed)
+    }
+
     @Test func resolvesDecomposedNewChildAgainstComposedVersionedAncestor() throws {
         let decomposedAncestor = "00 사업관리".decomposedStringWithCanonicalMapping
         let decomposedSuffix = "0720 기획서".decomposedStringWithCanonicalMapping

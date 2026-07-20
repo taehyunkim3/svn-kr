@@ -3,6 +3,25 @@ import Foundation
 import Testing
 @testable import SVNCore
 
+@Test func rollbackRootsPreservePreexistingScheduledAdditionParent() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="1"/></entry>
+      <entry path="기존 추가 부모"><wc-status item="added" revision="-1"/></entry>
+      <entry path="기존 추가 부모/이번 자식"><wc-status item="unversioned"/></entry>
+    </target></status>
+    """
+    let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+    let roots = SVNClient.additionRollbackRoots(
+        ["기존 추가 부모/이번 자식"],
+        versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey,
+        preexistingScheduledAdditionPaths: snapshot.scheduledAdditionPaths
+    )
+
+    #expect(snapshot.scheduledAdditionPaths == ["기존 추가 부모"])
+    #expect(roots == ["기존 추가 부모/이번 자식"])
+}
+
 @Test func targetFilesEscapePegSyntaxAndRejectLineBreaks() throws {
     #expect(SVNClient.escapedPegTarget("보고서@최종.hwp") == "보고서@최종.hwp@")
     #expect(SVNClient.escapedPegTarget("보고서.hwp") == "보고서.hwp")
@@ -527,6 +546,56 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     #expect(snapshot.statuses.count == 2)
 }
 
+@Test func partialMissingAdditionCleanupReturnsFreshRemainingState() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-partial-missing-addition-cleanup-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then targets=$argument; expects_targets=0; continue; fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|revert) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry>'
+      [ -f first-cleaned ] || printf '%s' '<entry path="a-stale"><wc-status item="missing" revision="-1"/></entry>'
+      printf '%s' '<entry path="b-stale"><wc-status item="missing" revision="-1"/></entry></target></status>'
+      exit 0
+    fi
+    if [ "$command" = revert ]; then
+      while IFS= read -r target || [ -n "$target" ]; do
+        if [ "$target" = a-stale ]; then : > first-cleaned; fi
+        if [ "$target" = b-stale ]; then : > second-attempted; printf 'second failed\n' >&2; exit 1; fi
+      done < "$targets"
+      exit 0
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("first-cleaned").path))
+    #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("second-attempted").path))
+    #expect(snapshot.statuses == [
+        SVNStatusEntry(path: "b-stale", item: .missing, revision: "-1"),
+    ])
+}
+
 @Test func workingCopySnapshotDoesNotTreatCanonicalAliasDirectoryAsFileReplacement() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-file-replacement-directory-test-\(UUID().uuidString)", isDirectory: true)
@@ -733,8 +802,9 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
 
     let composed = "주간보고서.hwp"
     let decomposed = composed.decomposedStringWithCanonicalMapping
-    let replacementBytes = Data([0xAA, 0x00, 0xFF, 0x42])
+    let replacementBytes = Data([0xDE, 0xAD, 0x00, 0xBE, 0xEF])
     try replacementBytes.write(to: directory.appendingPathComponent(decomposed))
+    try replacementBytes.write(to: directory.appendingPathComponent("expected-backup"))
     let executable = directory.appendingPathComponent("fake-svn")
     let script = """
     #!/bin/sh
@@ -754,7 +824,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     fi
     if [ "$command" = revert ]; then
       for backup in "$TMPDIR"/svn-mac-file-replacement-backup-*/replacement; do
-        if [ -f "$backup" ]; then
+        if [ -f "$backup" ] && cmp -s "$backup" expected-backup; then
           printf '%s' "$backup" > observed-backup
           break
         fi

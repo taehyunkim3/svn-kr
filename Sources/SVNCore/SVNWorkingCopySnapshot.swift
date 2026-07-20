@@ -64,6 +64,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     public let canonicalAliasRepairTargets: [String]
     public let canonicalFileReplacements: [SVNCanonicalFileReplacement]
     public let missingScheduledAdditionCleanupTargets: [String]
+    public let scheduledAdditionPaths: [String]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
     public var repairableAliasPaths: [String] {
@@ -80,7 +81,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
         versionedPathsByCanonicalKey: [String: [String]],
         canonicalAliasRepairTargets: [String]? = nil,
         canonicalFileReplacements: [SVNCanonicalFileReplacement] = [],
-        missingScheduledAdditionCleanupTargets: [String] = []
+        missingScheduledAdditionCleanupTargets: [String] = [],
+        scheduledAdditionPaths: [String] = []
     ) {
         self.statuses = statuses
         self.revision = revision
@@ -90,6 +92,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
             ?? collisions.compactMap(\.repairableRawPath)
         self.canonicalFileReplacements = canonicalFileReplacements
         self.missingScheduledAdditionCleanupTargets = missingScheduledAdditionCleanupTargets
+        self.scheduledAdditionPaths = scheduledAdditionPaths
     }
 
     init(entries: [SVNWorkingCopyEntry]) throws {
@@ -143,6 +146,9 @@ public struct SVNWorkingCopySnapshot: Sendable {
             roots: missingScheduledAdditionRoots,
             versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
         )
+        scheduledAdditionPaths = distinctRawPaths(entries.compactMap { entry in
+            Self.isCanonicalAliasSchedulingNode(entry) ? entry.path : nil
+        })
         statuses = Self.visibleStatuses(
             from: entries,
             orphanedRoots: orphanedRoots.map(\.canonicalPath),
@@ -169,7 +175,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
                 .joined(separator: "/")
             return suffix.isEmpty ? ancestors[0] : ancestors[0] + "/" + suffix
         }
-        return canonicalPath
+        return rawPath
     }
 
     func resolvingCanonicalFileReplacements(
@@ -190,7 +196,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
             versionedPathsByCanonicalKey: versionedPathsByCanonicalKey,
             canonicalAliasRepairTargets: canonicalAliasRepairTargets,
             canonicalFileReplacements: canonicalFileReplacements,
-            missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets
+            missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets,
+            scheduledAdditionPaths: scheduledAdditionPaths
         )
     }
 
@@ -205,14 +212,17 @@ public struct SVNWorkingCopySnapshot: Sendable {
         versionedPathsByCanonicalKey: [String: [String]]
     ) -> [OrphanedRoot] {
         let candidates = entries.compactMap { entry -> OrphanedRoot? in
-            guard isMissingScheduledAddition(entry) else { return nil }
+            guard isMissingScheduledAddition(entry), !entry.treeConflicted else { return nil }
             let key = canonicalKey(entry.path)
             guard let versionedPaths = versionedPathsByCanonicalKey[key], !versionedPaths.isEmpty else { return nil }
             guard versionedPaths.contains(where: { Data($0.utf8) != Data(entry.path.utf8) }) else { return nil }
+            let subtreeHasTreeConflict = entries.contains {
+                $0.treeConflicted && isAtOrBelow(canonicalKey($0.path), root: key)
+            }
             return OrphanedRoot(
                 canonicalPath: key,
                 rawPaths: versionedPaths + [entry.path],
-                repairableRawPath: versionedPaths.count == 1 ? entry.path : nil
+                repairableRawPath: versionedPaths.count == 1 && !subtreeHasTreeConflict ? entry.path : nil
             )
         }
         .sorted { pathComponents($0.canonicalPath).count < pathComponents($1.canonicalPath).count }
@@ -269,7 +279,9 @@ public struct SVNWorkingCopySnapshot: Sendable {
             }
             return SVNStatusEntry(
                 path: resolved,
-                item: SVNStatusKind(rawValue: preferred.status),
+                item: preferred.treeConflicted
+                    ? .conflicted
+                    : SVNStatusKind(rawValue: preferred.status),
                 revision: preferred.revision
             )
         }
@@ -289,7 +301,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
                 .joined(separator: "/")
             return ancestors[0] + "/" + suffix
         }
-        return canonicalKey(rawPath)
+        return rawPath
     }
 
     private static func isMissingScheduledAddition(_ entry: SVNWorkingCopyEntry) -> Bool {
@@ -324,8 +336,13 @@ public struct SVNWorkingCopySnapshot: Sendable {
     ) -> [String] {
         roots.filter { root in
             guard versionedPathsByCanonicalKey[canonicalKey(root)] == nil else { return false }
-            let affected = entries.filter { isRawAtOrBelow($0.path, root: root) }
-            return !affected.isEmpty && affected.allSatisfy(isCanonicalAliasSchedulingNode)
+            let canonicalRoot = canonicalKey(root)
+            let affected = entries.filter {
+                isAtOrBelow(canonicalKey($0.path), root: canonicalRoot)
+            }
+            return !affected.isEmpty && affected.allSatisfy {
+                !$0.treeConflicted && isCanonicalAliasSchedulingNode($0)
+            }
         }
     }
 
@@ -340,6 +357,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     ) -> [String] {
         distinctRawPaths(entries.compactMap { entry in
             guard isCanonicalAliasSchedulingNode(entry),
+                  !entry.treeConflicted,
                   rawRoots.contains(where: { isRawAtOrBelow(entry.path, root: $0) }) else {
                 return nil
             }

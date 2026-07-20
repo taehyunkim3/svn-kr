@@ -290,7 +290,8 @@ private final class WorkingCopyEntriesDelegate: NSObject, XMLParserDelegate {
             entries.append(SVNWorkingCopyEntry(
                 path: path,
                 status: attributeDict["item"] ?? "unknown",
-                revision: attributeDict["revision"]
+                revision: attributeDict["revision"],
+                treeConflicted: attributeDict["tree-conflicted"] == "true"
             ))
         }
     }
