@@ -28,10 +28,10 @@
 **Interfaces:**
 - Produces: `SVNWorkingCopySnapshot.resolvedPath(for:) -> String?`가 관리 상위 경로와 원문 신규 suffix를 결합한 경로
 
-- [ ] 기존 `resolvesDecomposedNewChildAgainstComposedVersionedAncestor` 기대값을 “NFC 관리 상위 + NFD 신규 suffix”로 바꿔 실패를 확인한다.
-- [ ] 실제 커밋 명령 테스트가 `add:`와 `commit:` targets에서 NFD 신규 suffix를 요구하도록 바꾸고 실패를 확인한다.
-- [ ] `resolvedPath(for:)`와 `resolveNewPath`에서 신규 suffix의 `precomposedStringWithCanonicalMapping` 변환을 제거한다.
-- [ ] 두 테스트를 실행해 원문 신규 경로가 targets 파일까지 보존되는지 확인한다.
+- [x] 기존 `resolvesDecomposedNewChildAgainstComposedVersionedAncestor` 기대값을 “NFC 관리 상위 + NFD 신규 suffix”로 바꿔 실패를 확인한다.
+- [x] 실제 커밋 명령 테스트가 `add:`와 `commit:` targets에서 NFD 신규 suffix를 요구하도록 바꾸고 실패를 확인한다.
+- [x] `resolvedPath(for:)`와 `resolveNewPath`에서 신규 suffix의 `precomposedStringWithCanonicalMapping` 변환을 제거한다.
+- [x] 두 테스트를 실행해 원문 신규 경로가 targets 파일까지 보존되는지 확인한다.
 
 ### Task 2: 안전한 누락 추가 예약 후보와 목록 접기
 

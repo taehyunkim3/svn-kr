@@ -673,6 +673,9 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
 
     let precomposedDirectory = "구현"
     let decomposedDirectory = precomposedDirectory.decomposedStringWithCanonicalMapping
+    let decomposedNewDirectory = "0720 기획서".decomposedStringWithCanonicalMapping
+    let selectedPath = "\(decomposedDirectory)/\(decomposedNewDirectory)"
+    let expectedPath = "\(precomposedDirectory)/\(decomposedNewDirectory)"
     let executable = directory.appendingPathComponent("fake-svn")
     let script = """
     #!/bin/sh
@@ -691,7 +694,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
       esac
     done
     if [ "$command" = status ]; then
-      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(precomposedDirectory)"><wc-status item="normal" revision="1"/></entry><entry path="\(decomposedDirectory)/새 파일.txt"><wc-status item="unversioned"/></entry></target></status>'
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(precomposedDirectory)"><wc-status item="normal" revision="1"/></entry><entry path="\(selectedPath)"><wc-status item="unversioned"/></entry></target></status>'
       exit 0
     fi
     if [ -n "$targets" ]; then
@@ -711,16 +714,16 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     )
     _ = try await client.commit(
         at: directory.path,
-        paths: ["\(decomposedDirectory)/새 파일.txt"],
+        paths: [selectedPath],
         message: "정규화 경로"
     )
 
     let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
-    #expect(log.contains("add:\(precomposedDirectory)/새 파일.txt"))
-    #expect(log.contains("commit:\(precomposedDirectory)/새 파일.txt"))
+    #expect(log.contains("add:\(expectedPath)"))
+    #expect(log.contains("commit:\(expectedPath)"))
     let rawLines = log.split(whereSeparator: \.isNewline).map { Data($0.utf8) }
-    #expect(rawLines.contains(Data("add:\(precomposedDirectory)/새 파일.txt".utf8)))
-    #expect(!rawLines.contains(Data("add:\(decomposedDirectory)/새 파일.txt".utf8)))
+    #expect(rawLines.contains(Data("add:\(expectedPath)".utf8)))
+    #expect(!rawLines.contains(Data("add:\(expectedPath.precomposedStringWithCanonicalMapping)".utf8)))
 }
 
 @Test func commitRepairsCanonicalAliasesBeforeScheduling() async throws {

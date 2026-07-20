@@ -5,15 +5,18 @@ import Testing
 @Suite("SVNWorkingCopySnapshotTests")
 struct SVNWorkingCopySnapshotTests {
     @Test func resolvesDecomposedNewChildAgainstComposedVersionedAncestor() throws {
-        let decomposed = "00 사업관리/새파일.xlsx".decomposedStringWithCanonicalMapping
+        let decomposedAncestor = "00 사업관리".decomposedStringWithCanonicalMapping
+        let decomposedSuffix = "0720 기획서".decomposedStringWithCanonicalMapping
+        let decomposed = "\(decomposedAncestor)/\(decomposedSuffix)"
+        let expected = "00 사업관리/\(decomposedSuffix)"
         let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
             (".", "normal", "13302"),
             ("00 사업관리", "normal", "13302"),
             (decomposed, "unversioned", nil),
         ]))
 
-        #expect(snapshot.statuses.map(\.path) == ["00 사업관리/새파일.xlsx"])
-        #expect(snapshot.resolvedPath(for: decomposed) == "00 사업관리/새파일.xlsx")
+        #expect(snapshot.statuses.map(\.path).map { Data($0.utf8) } == [Data(expected.utf8)])
+        #expect(snapshot.resolvedPath(for: decomposed).map { Data($0.utf8) } == Data(expected.utf8))
         #expect(snapshot.revision == SVNWorkingCopyRevision(minimum: "13302", maximum: "13302"))
     }
 

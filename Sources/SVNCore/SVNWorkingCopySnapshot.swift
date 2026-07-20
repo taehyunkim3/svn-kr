@@ -156,7 +156,6 @@ public struct SVNWorkingCopySnapshot: Sendable {
             guard let ancestors = versionedPathsByCanonicalKey[canonicalKey(prefix)] else { continue }
             guard ancestors.count == 1 else { return nil }
             let suffix = components.dropFirst(prefixLength)
-                .map { $0.precomposedStringWithCanonicalMapping }
                 .joined(separator: "/")
             return suffix.isEmpty ? ancestors[0] : ancestors[0] + "/" + suffix
         }
@@ -268,7 +267,6 @@ public struct SVNWorkingCopySnapshot: Sendable {
             guard let ancestors = versionedPathsByCanonicalKey[canonicalKey(prefix)] else { continue }
             guard ancestors.count == 1 else { return nil }
             let suffix = components.dropFirst(prefixLength)
-                .map { $0.precomposedStringWithCanonicalMapping }
                 .joined(separator: "/")
             return ancestors[0] + "/" + suffix
         }
