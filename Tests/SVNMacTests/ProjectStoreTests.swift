@@ -272,6 +272,54 @@ import Testing
 }
 
 @MainActor
+@Test func recoveryRegistersSideBySideProjectAndKeepsSource() async {
+    let source = SVNProject(
+        name: "손상 작업본",
+        path: "/tmp/corrupted-source",
+        username: "tester",
+        allowsUntrustedServerCertificate: true
+    )
+    let preview = SVNRecoveryPreview(
+        mappings: [
+            SVNRecoveryPathMapping(sourcePath: "기능/수정.txt", destinationPath: "기능/수정.txt", status: .modified),
+        ],
+        ignoredAliasCount: 17_361,
+        blockingPaths: []
+    )
+    let recoveredSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: "기능/수정.txt", item: .modified, revision: "10")],
+        revision: SVNWorkingCopyRevision(minimum: "10", maximum: "10"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        recoveryPreview: preview,
+        recoveryResult: SVNRecoveryResult(
+            destinationPath: "/tmp/recovered-copy",
+            snapshot: recoveredSnapshot,
+            migratedPaths: ["기능/수정.txt"]
+        )
+    )
+    let store = makeStore(projects: [source], client: client)
+
+    await store.beginPathRecovery()
+    #expect(store.isShowingPathRecovery)
+    #expect(store.pathRecoveryPreview?.ignoredAliasCount == 17_361)
+
+    let succeeded = await store.recoverWorkingCopy(
+        to: URL(fileURLWithPath: "/tmp/recovered-copy", isDirectory: true)
+    )
+
+    #expect(succeeded)
+    #expect(store.projects.count == 2)
+    #expect(store.projects.contains(where: { $0.id == source.id && $0.path == source.path }))
+    #expect(store.selectedProject?.path == "/tmp/recovered-copy")
+    #expect(store.selectedProject?.username == "tester")
+    #expect(store.selectedProject?.allowsUntrustedServerCertificate == true)
+    #expect(await client.lastRecoveryPaths() == [source.path, "/tmp/recovered-copy"])
+}
+
+@MainActor
 @Test func historyDiffLoadsOnlySelectedFileAndUsesPreviousPegForDeletion() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient()
@@ -341,8 +389,11 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutResult: String
     let lockInfoByPath: [String: SVNLockInfo]
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
+    let recoveryPreviewValue: SVNRecoveryPreview
+    let recoveryResultValue: SVNRecoveryResult
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
+    private var recoveryPaths: [String] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -350,7 +401,11 @@ private actor StubSVNClient: SVNClientServing {
         delaysByPath: [String: Duration] = [:],
         checkoutResult: String = "checked out",
         lockInfoByPath: [String: SVNLockInfo] = [:],
-        snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:]
+        snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
+        recoveryPreview: SVNRecoveryPreview = SVNRecoveryPreview(
+            mappings: [], ignoredAliasCount: 0, blockingPaths: []
+        ),
+        recoveryResult: SVNRecoveryResult? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -358,6 +413,17 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutResult = checkoutResult
         self.lockInfoByPath = lockInfoByPath
         self.snapshotsByPath = snapshotsByPath
+        recoveryPreviewValue = recoveryPreview
+        recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
+            destinationPath: "/tmp/recovered",
+            snapshot: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "0", maximum: "0"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+            migratedPaths: []
+        )
     }
 
     private func delay(for path: String) async {
@@ -382,6 +448,14 @@ private actor StubSVNClient: SVNClientServing {
             versionedPathsByCanonicalKey: [:]
         )
     }
+    func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview {
+        recoveryPreviewValue
+    }
+    func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRecoveryResult {
+        recoveryPaths = [sourcePath, destinationPath]
+        return recoveryResultValue
+    }
+    func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { [] }
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}

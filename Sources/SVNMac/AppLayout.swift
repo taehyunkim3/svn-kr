@@ -29,6 +29,7 @@ enum AppLayout {
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
+    static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)
 }
 
 extension View {

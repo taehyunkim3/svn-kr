@@ -30,6 +30,7 @@ import Testing
         AppLayout.updatePreviewSheetMinimumSize,
         AppLayout.fileHistorySheetMinimumSize,
         AppLayout.conflictResolutionSheetMinimumSize,
+        AppLayout.pathRecoverySheetMinimumSize,
     ]
 
     for size in sheetSizes {

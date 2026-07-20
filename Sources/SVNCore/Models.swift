@@ -335,6 +335,9 @@ public enum SVNError: LocalizedError, Sendable {
     case invalidWorkingCopy
     case malformedResponse
     case pathNormalizationCollision(paths: [String])
+    case recoveryBlocked(paths: [String])
+    case recoveryDestinationNotEmpty
+    case recoveryValidationFailed(paths: [String])
     case svnExecutableNotFound
 
     public var errorDescription: String? {
@@ -347,6 +350,12 @@ public enum SVNError: LocalizedError, Sendable {
             "SVN 응답을 읽지 못했습니다."
         case let .pathNormalizationCollision(paths):
             "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))"
+        case let .recoveryBlocked(paths):
+            "자동 복구할 수 없는 변경이 있습니다: \(paths.joined(separator: ", "))"
+        case .recoveryDestinationNotEmpty:
+            "복구 대상 폴더는 비어 있어야 합니다."
+        case let .recoveryValidationFailed(paths):
+            "새 작업 폴더 검증에 실패했습니다: \(paths.joined(separator: ", "))"
         case .svnExecutableNotFound:
             "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
         }

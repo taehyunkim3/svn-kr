@@ -12,6 +12,8 @@ protocol SVNClientServing: Sendable {
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot
+    func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview
+    func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRecoveryResult
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
@@ -161,6 +163,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case fileHistory(SVNProject.ID)
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
+        case recover(SVNProject.ID)
     }
 
     let id: UUID

@@ -115,6 +115,8 @@ final class ProjectStore: ObservableObject {
     @Published var isShowingLocks = false
     @Published var isShowingUpdatePreview = false
     @Published var isShowingFileHistory = false
+    @Published var isShowingPathRecovery = false
+    @Published var pathRecoveryPreview: SVNRecoveryPreview?
     @Published var documentOpenRequest: DocumentOpenRequest?
     @Published var activeConflict: SVNConflictDetails?
     @Published var revertRequest: RevertRequest?
@@ -129,13 +131,14 @@ final class ProjectStore: ObservableObject {
     // MARK: - 외부 서비스와 비동기 작업 추적
 
     let client: any SVNClientServing
-    private let credentialStore: any CredentialStoring
+    let credentialStore: any CredentialStoring
     private let persistence: any ProjectPersisting
-    private let projectAccessManager: any ProjectAccessManaging
+    let projectAccessManager: any ProjectAccessManaging
     let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
     private let workspaceOpener: any WorkspaceOpening
-    private var sessionPasswords: [SVNProject.ID: String] = [:]
+    var sessionPasswords: [SVNProject.ID: String] = [:]
+    var pathRecoverySourceProjectID: SVNProject.ID?
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
@@ -158,6 +161,11 @@ final class ProjectStore: ObservableObject {
     var isCommittingSelectedProject: Bool {
         guard let projectID = selectedProjectID else { return false }
         return activeOperations.contains { $0.kind == .commit(projectID) }
+    }
+
+    var isPathRecoveryRunning: Bool {
+        guard let projectID = pathRecoverySourceProjectID else { return false }
+        return activeOperations.contains { $0.kind == .recover(projectID) }
     }
 
     var showsGlobalProgress: Bool {
@@ -336,6 +344,9 @@ final class ProjectStore: ObservableObject {
         let operationID = beginOperation(.refresh(project.id))
         defer { endOperation(operationID) }
         isWorkingCopyOutOfDate = nil
+        isShowingPathRecovery = false
+        pathRecoveryPreview = nil
+        pathRecoverySourceProjectID = nil
         do {
             async let newSnapshot = client.workingCopySnapshot(at: project.path, credentials: nil)
             async let newWorkingCopyRepositoryPath = client.workingCopyRepositoryPath(at: project.path, credentials: nil)
@@ -615,6 +626,12 @@ final class ProjectStore: ObservableObject {
             return "The SVN response could not be read."
         case let .pathNormalizationCollision(paths):
             return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
+        case let .recoveryBlocked(paths):
+            return "Some changes cannot be recovered automatically: \(paths.joined(separator: ", "))"
+        case .recoveryDestinationNotEmpty:
+            return "The recovery destination folder must be empty."
+        case let .recoveryValidationFailed(paths):
+            return "The recovered working copy did not pass validation: \(paths.joined(separator: ", "))"
         case .svnExecutableNotFound:
             return "The bundled SVN executable could not be found. Reinstall the app."
         }

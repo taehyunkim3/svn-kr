@@ -166,6 +166,16 @@ private struct DemoSVNClient: SVNClientServing {
             versionedPathsByCanonicalKey: [:]
         )
     }
+    func recoveryPreview(at _: String, credentials _: SVNCredentials?) async throws -> SVNRecoveryPreview {
+        SVNRecoveryPreview(mappings: [], ignoredAliasCount: 0, blockingPaths: [])
+    }
+    func recoverWorkingCopy(from _: String, to destinationPath: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNRecoveryResult {
+        SVNRecoveryResult(
+            destinationPath: destinationPath,
+            snapshot: try await workingCopySnapshot(at: destinationPath, credentials: nil),
+            migratedPaths: []
+        )
+    }
     func ignoredStatus(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { [SVNStatusEntry(path: ".build/", item: .ignored)] }
     func ignoreRules(at _: String, credentials _: SVNCredentials?) async throws -> [SVNIgnoreRule] { [SVNIgnoreRule(directory: ".", pattern: ".build")] }
     func addIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}

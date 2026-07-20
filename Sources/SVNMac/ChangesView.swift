@@ -47,6 +47,10 @@ struct ChangesView: View {
             FileHistoryView()
                 .environmentObject(store)
         }
+        .sheet(isPresented: $store.isShowingPathRecovery) {
+            WorkingCopyRecoveryView()
+                .environmentObject(store)
+        }
         .revertConfirmation()
         .documentOpenConfirmation()
     }
@@ -164,6 +168,12 @@ struct ChangesView: View {
             Text(appLanguage.text("\(collision.affectedEntryCount)개 영향", "\(collision.affectedEntryCount) affected"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if collision.id == store.pathCollisions.first?.id {
+                Button(appLanguage.text("경로 자동 복구…", "Recover Paths…")) {
+                    Task { await store.beginPathRecovery() }
+                }
+                .disabled(store.isWorking)
+            }
         }
     }
 

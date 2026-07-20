@@ -39,6 +39,53 @@ public actor SVNClient {
         guard result.exitCode == 0 else { throw SVNError.invalidWorkingCopy }
     }
 
+    public func workingCopyRepositoryURL(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
+        try checkedRun(["info", "--show-item", "url"], at: path, credentials: credentials)
+            .output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func recoveryPreview(
+        at path: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> SVNRecoveryPreview {
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        return SVNWorkingCopyRecovery.preview(sourcePath: path, snapshot: snapshot)
+    }
+
+    public func recoverWorkingCopy(
+        from sourcePath: String,
+        to destinationPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> SVNRecoveryResult {
+        let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
+        let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
+        try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
+
+        let preview = try await recoveryPreview(at: source.path, credentials: credentials)
+        guard preview.blockingPaths.isEmpty else {
+            throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
+        }
+        let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
+        _ = try await checkout(
+            repositoryURL: repositoryURL,
+            destinationPath: destination.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
+
+        let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
+        guard !recoveredSnapshot.hasPathCollisions else {
+            throw SVNError.recoveryValidationFailed(paths: recoveredSnapshot.collisions.map(\.displayPath))
+        }
+        return SVNRecoveryResult(
+            destinationPath: destination.path,
+            snapshot: recoveredSnapshot,
+            migratedPaths: preview.mappings.map(\.destinationPath)
+        )
+    }
+
     public func status(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
         let result = try checkedRun(["status", "--xml"], at: path, credentials: credentials)
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
