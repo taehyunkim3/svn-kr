@@ -121,7 +121,7 @@ import Testing
 
     #expect(store.selectedProjectID == second.id)
     #expect(store.statuses.map(\.path) == ["fast.txt"])
-    #expect(store.workingCopyRevision == "2")
+    #expect(store.workingCopyRevision == SVNWorkingCopyRevision(minimum: "2", maximum: "2"))
     #expect(!store.isWorking)
 }
 
@@ -327,9 +327,10 @@ private actor StubSVNClient: SVNClientServing {
         return "revision diff"
     }
     func lastRevisionDiffRequest() -> RevisionDiffRequest? { revisionDiffRequests.last }
-    func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> String {
+    func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopyRevision {
         await delay(for: path)
-        return revisionsByPath[path] ?? "0"
+        let revision = revisionsByPath[path] ?? "0"
+        return SVNWorkingCopyRevision(minimum: revision, maximum: revision)
     }
     func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String { "/trunk" }
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool {

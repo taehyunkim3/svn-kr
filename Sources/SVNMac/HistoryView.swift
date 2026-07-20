@@ -14,7 +14,10 @@ struct HistoryView: View {
     @Binding var searchText: String
 
     var body: some View {
-        let timeline = SVNHistoryTimeline(logs: store.logs, workingCopyRevision: store.workingCopyRevision)
+        let timeline = SVNHistoryTimeline(
+            logs: store.logs,
+            workingCopyRevision: store.workingCopyRevision?.timelineRevision
+        )
         WorkspaceSplitView(
             primaryMinWidth: AppLayout.historyPrimaryMinimumWidth,
             detailMinWidth: AppLayout.historyDetailMinimumWidth
@@ -47,7 +50,7 @@ struct HistoryView: View {
                 HStack(spacing: 10) {
                     Label(appLanguage.text("서버 최신 r\(headRevision)", "Server latest r\(headRevision)"), systemImage: "cloud")
                     if let workingCopyRevision = store.workingCopyRevision {
-                        Label(appLanguage.text("내 로컬 폴더 r\(workingCopyRevision)", "My local folder r\(workingCopyRevision)"), systemImage: "macbook")
+                        Label(appLanguage.text("내 로컬 폴더 r\(workingCopyRevision.displayValue)", "My local folder r\(workingCopyRevision.displayValue)"), systemImage: "macbook")
                         if store.isWorkingCopyOutOfDate == true {
                             Text(appLanguage.text("업데이트 필요", "Update required")).foregroundStyle(.orange)
                         } else if store.isWorkingCopyOutOfDate == false {
@@ -80,7 +83,7 @@ struct HistoryView: View {
         return List {
             ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                 if searchText.isEmpty, timeline.insertionIndex == index, let revision = store.workingCopyRevision {
-                    workingCopyMarkerRow(revision: revision, isBeforeLoadedHistory: false)
+                    workingCopyMarkerRow(revision: revision.timelineRevision, isBeforeLoadedHistory: false)
                 }
                 historyEntryRow(
                     entry,
@@ -91,7 +94,7 @@ struct HistoryView: View {
             }
 
             if searchText.isEmpty, let revision = store.workingCopyRevision, timeline.isBeforeLoadedHistory {
-                workingCopyMarkerRow(revision: revision, isBeforeLoadedHistory: true)
+                workingCopyMarkerRow(revision: revision.timelineRevision, isBeforeLoadedHistory: true)
             }
 
             if searchText.isEmpty, !store.logs.isEmpty, store.hasMoreHistory {
@@ -237,7 +240,7 @@ struct HistoryView: View {
     // MARK: - 타임라인 표현 도우미
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
-        entryRevision == store.workingCopyRevision
+        entryRevision == store.workingCopyRevision?.timelineRevision
             ? appLanguage.text("내 로컬 기준", "My local base")
             : appLanguage.text("내 로컬에 포함", "Included locally")
     }

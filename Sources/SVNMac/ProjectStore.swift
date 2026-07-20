@@ -101,7 +101,7 @@ final class ProjectStore: ObservableObject {
     @Published var selectedHistoryPath: String?
     @Published var historyDiffContent: DiffContent = .placeholder
     @Published var hasMoreHistory = true
-    @Published var workingCopyRevision: String?
+    @Published var workingCopyRevision: SVNWorkingCopyRevision?
     @Published var workingCopyRepositoryPath: String?
     @Published var isWorkingCopyOutOfDate: Bool?
     @Published var selectedPaths: Set<String> = []

@@ -22,7 +22,7 @@ extension ProjectStore {
         store.workingCopyFileTree = DemoData.fileTree
         store.remoteChanges = DemoData.remoteChanges
         store.logs = DemoData.logs
-        store.workingCopyRevision = "1842"
+        store.workingCopyRevision = SVNWorkingCopyRevision(minimum: "1842", maximum: "1842")
         store.workingCopyRepositoryPath = "/products/atlas-mobile/trunk"
         store.isWorkingCopyOutOfDate = true
         store.selectedPaths = Set(DemoData.statuses.prefix(3).map(\.path))
@@ -170,7 +170,9 @@ private struct DemoSVNClient: SVNClientServing {
     func resolveConflict(at _: String, relativePath _: String, choice _: SVNConflictChoice, credentials _: SVNCredentials?) async throws -> String { "Resolved" }
     func log(at _: String, limit _: Int, endingAtRevision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
     func revisionDiff(at _: String, revision _: String, repositoryPath _: String, workingCopyRepositoryPath _: String?, pegRevision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { DemoData.diff }
-    func workingCopyRevision(at _: String, credentials _: SVNCredentials?) async throws -> String { "1842" }
+    func workingCopyRevision(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopyRevision {
+        SVNWorkingCopyRevision(minimum: "1842", maximum: "1842")
+    }
     func workingCopyRepositoryPath(at _: String, credentials _: SVNCredentials?) async throws -> String { "/products/atlas-mobile/trunk" }
     func workingCopyIsOutOfDate(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> Bool { true }
     func remoteChanges(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNStatusEntry] { DemoData.remoteChanges }

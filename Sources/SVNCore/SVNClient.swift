@@ -229,10 +229,9 @@ public actor SVNClient {
         path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
     }
 
-    public func workingCopyRevision(at path: String, credentials: SVNCredentials? = nil) async throws -> String {
-        try checkedRun(["info", "--show-item", "revision"], at: path, credentials: credentials)
-            .output
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+    public func workingCopyRevision(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopyRevision {
+        let result = try checkedRun(["status", "--verbose", "--xml"], at: path, credentials: credentials)
+        return try SVNXMLParser.workingCopyRevision(from: Data(result.output.utf8))
     }
 
     /// 작업 복사본 루트가 저장소 루트 아래에서 차지하는 경로를 반환합니다.

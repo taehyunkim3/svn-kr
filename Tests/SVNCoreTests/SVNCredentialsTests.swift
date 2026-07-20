@@ -227,7 +227,7 @@ import Testing
     let script = """
     #!/bin/sh
     case "$*" in
-      *"info --show-item revision"*) printf '37\n' ;;
+      *"status --verbose --xml"*) printf '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="37"/></entry><entry path="file.txt"><wc-status item="normal" revision="41"/></entry></target></status>' ;;
       *) exit 1 ;;
     esac
     """
@@ -240,7 +240,7 @@ import Testing
     )
     let revision = try await client.workingCopyRevision(at: directory.path)
 
-    #expect(revision == "37")
+    #expect(revision == SVNWorkingCopyRevision(minimum: "37", maximum: "41"))
 }
 
 @Test func readsWorkingCopyPathRelativeToRepositoryRoot() async throws {
