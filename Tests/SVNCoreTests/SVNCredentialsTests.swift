@@ -1,6 +1,16 @@
+import Darwin
 import Foundation
 import Testing
 @testable import SVNCore
+
+@Test func targetFilesEscapePegSyntaxAndRejectLineBreaks() throws {
+    #expect(SVNClient.escapedPegTarget("보고서@최종.hwp") == "보고서@최종.hwp@")
+    #expect(SVNClient.escapedPegTarget("보고서.hwp") == "보고서.hwp")
+    #expect(try SVNClient.targetsFileContents(["보고서@최종.hwp"]) == Data("보고서@최종.hwp@\n".utf8))
+    #expect(throws: SVNError.self) {
+        _ = try SVNClient.targetsFileContents(["보고서\n최종.hwp"])
+    }
+}
 
 @Test func sendsPasswordThroughStandardInputNotArguments() async throws {
     let directory = FileManager.default.temporaryDirectory
@@ -269,6 +279,140 @@ import Testing
     #expect(repositoryPath == "/project/trunk/backend")
 }
 
+@Test func workingCopySnapshotTreatsDifferentCanonicalAliasBytesAsModified() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-modified-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    try writeCredentialTestRawFile(
+        Data([0xFF, 0x00, 0x41]),
+        atPath: directory.path + "/" + decomposed
+    )
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    printf '%s\n' "$*" >> command-log
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+        ;;
+      *"cat --revision BASE -- "*) printf '\001\002\003' ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+    let commandLog = try String(
+        contentsOf: directory.appendingPathComponent("command-log"),
+        encoding: .utf8
+    )
+    let commandLogData = try Data(contentsOf: directory.appendingPathComponent("command-log"))
+
+    #expect(snapshot.canonicalFileReplacements.count == 1)
+    #expect(commandLog.contains("cat --revision BASE"))
+    #expect(commandLogData.range(of: Data(composed.utf8)) != nil)
+    #expect(commandLogData.range(of: Data(decomposed.utf8)) == nil)
+    #expect(snapshot.statuses == [
+        SVNStatusEntry(path: composed, item: .modified, revision: "7"),
+    ])
+}
+
+private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throws {
+    let descriptor = path.withCString {
+        Darwin.open($0, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)
+    }
+    guard descriptor >= 0 else {
+        throw CocoaError(.fileWriteUnknown)
+    }
+    defer { Darwin.close(descriptor) }
+    try data.withUnsafeBytes { bytes in
+        guard let address = bytes.baseAddress else { return }
+        var offset = 0
+        while offset < bytes.count {
+            let count = Darwin.write(descriptor, address.advanced(by: offset), bytes.count - offset)
+            guard count > 0 else { throw CocoaError(.fileWriteUnknown) }
+            offset += count
+        }
+    }
+}
+
+@Test func workingCopySnapshotDropsCanonicalAliasReplacementWithBaseBytes() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-normal-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    try Data([0xFF, 0x00, 0x41]).write(to: directory.appendingPathComponent(decomposed))
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+        ;;
+      *"cat --revision BASE -- "*) printf '\\377\\000A' ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(snapshot.statuses.isEmpty)
+}
+
+@Test func workingCopySnapshotDoesNotTreatCanonicalAliasDirectoryAsFileReplacement() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-directory-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    try FileManager.default.createDirectory(
+        at: directory.appendingPathComponent(decomposed),
+        withIntermediateDirectories: false
+    )
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+        ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(snapshot.statuses == [
+        SVNStatusEntry(path: composed, item: .missing, revision: "7"),
+    ])
+}
+
 @Test func batchesSelectedCommitTargets() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-batched-commit-test-\(UUID().uuidString)", isDirectory: true)
@@ -335,6 +479,158 @@ import Testing
     #expect(lines.contains("commit:Application/file.swift"))
     #expect(lines.contains("commit:New"))
     #expect(lines.contains("commit:Old"))
+}
+
+@Test func commitMaterializesCanonicalFileReplacementBeforeCommit() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-commit-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    let replacementBytes = Data([0xFF, 0x00, 0x41, 0x42])
+    try replacementBytes.write(to: directory.appendingPathComponent(decomposed))
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then
+        targets=$argument
+        expects_targets=0
+        continue
+      fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|cat|revert|commit) command=$argument ;;
+      esac
+    done
+    printf '%s\n' "$command" >> command-log
+    if [ "$command" = status ]; then
+      if [ -f committed ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="8"/></entry><entry path="\(composed)"><wc-status item="normal" revision="8"/></entry></target></status>'
+      elif [ -f rebound ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="modified" revision="7"/></entry></target></status>'
+      else
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+      fi
+      exit 0
+    fi
+    if [ "$command" = cat ]; then
+      printf 'base'
+      exit 0
+    fi
+    if [ -n "$targets" ]; then
+      while IFS= read -r target || [ -n "$target" ]; do
+        printf '%s:%s\n' "$command" "$target" >> target-log
+      done < "$targets"
+    fi
+    if [ "$command" = revert ]; then
+      backup_found=0
+      for backup in "$TMPDIR"/svn-mac-file-replacement-backup-*/replacement; do
+        if [ -f "$backup" ]; then
+          backup_found=1
+          break
+        fi
+      done
+      [ "$backup_found" = 1 ] || exit 2
+      printf 'base' > '\(composed)'
+      : > rebound
+      exit 0
+    fi
+    if [ "$command" = commit ]; then
+      : > committed
+      printf 'committed\n'
+      exit 0
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    _ = try await client.commit(
+        at: directory.path,
+        paths: [composed],
+        message: "HWP 대치"
+    )
+
+    let commands = try String(
+        contentsOf: directory.appendingPathComponent("command-log"),
+        encoding: .utf8
+    ).split(whereSeparator: \.isNewline).map(String.init)
+    let targets = try String(
+        contentsOf: directory.appendingPathComponent("target-log"),
+        encoding: .utf8
+    )
+    #expect(commands == ["status", "cat", "revert", "status", "commit", "status"])
+    #expect(targets.contains("revert:\(composed)"))
+    #expect(targets.contains("commit:\(composed)"))
+    #expect(try Data(contentsOf: directory.appendingPathComponent(composed)) == replacementBytes)
+}
+
+@Test func failedReplacementRevertRestoresAliasBytesAndRemovesBackup() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-rollback-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    let replacementBytes = Data([0xAA, 0x00, 0xFF, 0x42])
+    try replacementBytes.write(to: directory.appendingPathComponent(decomposed))
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|cat|revert|commit) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+      exit 0
+    fi
+    if [ "$command" = cat ]; then
+      printf 'base'
+      exit 0
+    fi
+    if [ "$command" = revert ]; then
+      for backup in "$TMPDIR"/svn-mac-file-replacement-backup-*/replacement; do
+        if [ -f "$backup" ]; then
+          printf '%s' "$backup" > observed-backup
+          break
+        fi
+      done
+      printf 'revert failed\n' >&2
+      exit 1
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    await #expect(throws: SVNError.self) {
+        _ = try await client.commit(at: directory.path, paths: [composed], message: "실패")
+    }
+
+    let backupPath = try String(
+        contentsOf: directory.appendingPathComponent("observed-backup"),
+        encoding: .utf8
+    )
+    #expect(try Data(contentsOf: directory.appendingPathComponent(decomposed)) == replacementBytes)
+    #expect(!FileManager.default.fileExists(atPath: backupPath))
 }
 
 @Test func commitMapsDecomposedSelectionToExistingPrecomposedAncestor() async throws {

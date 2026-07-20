@@ -646,6 +646,10 @@ final class ProjectStore: ObservableObject {
             return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
         case let .pathAliasRepairFailed(paths):
             return "Korean path alias repair could not be validated: \(paths.joined(separator: ", "))"
+        case let .fileReplacementRecoveryFailed(paths, backupPaths):
+            return "Replacement files could not be restored to their original paths: \(paths.joined(separator: ", ")). Backups: \(backupPaths.joined(separator: ", "))"
+        case let .unsupportedTargetPath(paths):
+            return "Paths containing line breaks cannot be passed safely to SVN: \(paths.joined(separator: ", "))"
         case let .commitSucceededWithValidationWarning(_, details):
             return "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: \(details)"
         case let .recoveryBlocked(paths):

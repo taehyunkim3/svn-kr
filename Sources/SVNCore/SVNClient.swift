@@ -98,7 +98,57 @@ public actor SVNClient {
 
     public func workingCopySnapshot(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopySnapshot {
         let result = try checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
-        return try SVNXMLParser.workingCopySnapshot(from: Data(result.output.utf8))
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(result.output.utf8))
+        return resolveCanonicalFileReplacements(
+            in: snapshot,
+            at: path,
+            credentials: credentials
+        )
+    }
+
+    private func resolveCanonicalFileReplacements(
+        in snapshot: SVNWorkingCopySnapshot,
+        at path: String,
+        credentials: SVNCredentials?
+    ) -> SVNWorkingCopySnapshot {
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        var modifiedPaths: Set<String> = []
+        var unchangedPaths: Set<String> = []
+
+        for replacement in snapshot.canonicalFileReplacements {
+            let localURL = root.appendingPathComponent(replacement.localAliasPath)
+            guard let values = try? localURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+                  values.isRegularFile == true,
+                  values.isSymbolicLink != true else {
+                continue
+            }
+            let baseDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("svn-mac-base-\(UUID().uuidString)", isDirectory: true)
+            let baseURL = baseDirectory.appendingPathComponent("base", isDirectory: false)
+            do {
+                try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: false)
+                defer { try? FileManager.default.removeItem(at: baseDirectory) }
+                _ = try checkedRunWithRawTrailingArgument(
+                      ["cat", "--revision", "BASE"],
+                      rawTrailingArgument: replacement.versionedPath,
+                      outputDestinationURL: baseURL,
+                      at: path,
+                      credentials: credentials
+                  )
+                if try Self.filesHaveEqualContents(localURL, baseURL) {
+                    unchangedPaths.insert(replacement.versionedPath)
+                } else {
+                    modifiedPaths.insert(replacement.versionedPath)
+                }
+            } catch {
+                continue
+            }
+        }
+
+        return snapshot.resolvingCanonicalFileReplacements(
+            modifiedPaths: modifiedPaths,
+            unchangedPaths: unchangedPaths
+        )
     }
 
     public func repairCanonicalAliases(
@@ -437,6 +487,17 @@ public actor SVNClient {
             }
             return resolved
         }
+        let selectedReplacements = Self.selectedCanonicalFileReplacements(
+            in: snapshot,
+            selectedPaths: resolvedPaths
+        )
+        if !selectedReplacements.isEmpty {
+            snapshot = try await materializeCanonicalFileReplacements(
+                selectedReplacements,
+                at: path,
+                credentials: credentials
+            )
+        }
         let currentStatuses = snapshot.statuses
         var statusByPath: [String: SVNStatusKind] = [:]
         for status in currentStatuses {
@@ -517,6 +578,176 @@ public actor SVNClient {
         return commitOutput
     }
 
+    private func materializeCanonicalFileReplacements(
+        _ replacements: [SVNCanonicalFileReplacement],
+        at path: String,
+        credentials: SVNCredentials?
+    ) async throws -> SVNWorkingCopySnapshot {
+        let fileManager = FileManager.default
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        struct BackupRecord {
+            let replacement: SVNCanonicalFileReplacement
+            let localURL: URL
+            let versionedURL: URL
+            let directoryURL: URL
+            let backupURL: URL
+            var aliasWasRemoved: Bool
+        }
+        var backups: [BackupRecord] = []
+
+        do {
+            for replacement in replacements {
+                let localURL = root.appendingPathComponent(replacement.localAliasPath)
+                let versionedURL = root.appendingPathComponent(replacement.versionedPath)
+                let localValues = try localURL.resourceValues(
+                    forKeys: [.isRegularFileKey, .isSymbolicLinkKey]
+                )
+                guard localValues.isRegularFile == true,
+                      localValues.isSymbolicLink != true else {
+                    throw SVNError.pathAliasRepairFailed(paths: [replacement.versionedPath])
+                }
+                let backupDirectory = fileManager.temporaryDirectory
+                    .appendingPathComponent(
+                        "svn-mac-file-replacement-backup-\(UUID().uuidString)",
+                        isDirectory: true
+                    )
+                try fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: false)
+                let backupURL = backupDirectory.appendingPathComponent("replacement", isDirectory: false)
+                backups.append(BackupRecord(
+                    replacement: replacement,
+                    localURL: localURL,
+                    versionedURL: versionedURL,
+                    directoryURL: backupDirectory,
+                    backupURL: backupURL,
+                    aliasWasRemoved: false
+                ))
+                try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: backupDirectory.path)
+                try fileManager.copyItem(at: localURL, to: backupURL)
+                guard try Self.filesHaveEqualContents(localURL, backupURL) else {
+                    throw SVNError.pathAliasRepairFailed(paths: [replacement.versionedPath])
+                }
+
+                let preRemovalValues = try localURL.resourceValues(
+                    forKeys: [.isRegularFileKey, .isSymbolicLinkKey]
+                )
+                guard preRemovalValues.isRegularFile == true,
+                      preRemovalValues.isSymbolicLink != true,
+                      try Self.filesHaveEqualContents(localURL, backupURL) else {
+                    throw SVNError.pathAliasRepairFailed(paths: [replacement.versionedPath])
+                }
+                try fileManager.removeItem(at: localURL)
+                backups[backups.count - 1].aliasWasRemoved = true
+                _ = try checkedRunWithTargets(
+                    ["revert", "--depth", "empty"],
+                    targets: [replacement.versionedPath],
+                    at: path,
+                    credentials: credentials
+                )
+                try Self.overwriteFile(at: versionedURL, withContentsOf: backupURL)
+            }
+
+            let refreshed = try await workingCopySnapshot(at: path, credentials: credentials)
+            let statusByPath = Dictionary(
+                uniqueKeysWithValues: refreshed.statuses.map {
+                    ($0.path.precomposedStringWithCanonicalMapping, $0.item)
+                }
+            )
+            let invalidPaths = replacements.compactMap { replacement -> String? in
+                statusByPath[replacement.versionedPath.precomposedStringWithCanonicalMapping] == .modified
+                    ? nil
+                    : replacement.versionedPath
+            }
+            guard invalidPaths.isEmpty else {
+                throw SVNError.pathAliasRepairFailed(paths: invalidPaths)
+            }
+            for backup in backups {
+                try? fileManager.removeItem(at: backup.directoryURL)
+            }
+            return refreshed
+        } catch {
+            var failedRestores: [BackupRecord] = []
+            for backup in backups.reversed() {
+                guard backup.aliasWasRemoved else {
+                    try? fileManager.removeItem(at: backup.directoryURL)
+                    continue
+                }
+                do {
+                    if fileManager.fileExists(atPath: backup.versionedURL.path) {
+                        try fileManager.removeItem(at: backup.versionedURL)
+                    }
+                    try fileManager.copyItem(at: backup.backupURL, to: backup.localURL)
+                    guard try Self.filesHaveEqualContents(backup.backupURL, backup.localURL) else {
+                        throw SVNError.pathAliasRepairFailed(paths: [backup.replacement.versionedPath])
+                    }
+                    try? fileManager.removeItem(at: backup.directoryURL)
+                } catch {
+                    failedRestores.append(backup)
+                }
+            }
+            guard failedRestores.isEmpty else {
+                throw SVNError.fileReplacementRecoveryFailed(
+                    paths: failedRestores.map(\.replacement.versionedPath),
+                    backupPaths: failedRestores.map(\.backupURL.path)
+                )
+            }
+            throw error
+        }
+    }
+
+    private static func overwriteFile(at destination: URL, withContentsOf source: URL) throws {
+        let input = try FileHandle(forReadingFrom: source)
+        let output = try FileHandle(forWritingTo: destination)
+        defer {
+            try? input.close()
+            try? output.close()
+        }
+        try output.truncate(atOffset: 0)
+        while let chunk = try input.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+            try output.write(contentsOf: chunk)
+        }
+        try output.synchronize()
+    }
+
+    private static func filesHaveEqualContents(_ lhs: URL, _ rhs: URL) throws -> Bool {
+        let keys: Set<URLResourceKey> = [.fileSizeKey, .isRegularFileKey]
+        let lhsValues = try lhs.resourceValues(forKeys: keys)
+        let rhsValues = try rhs.resourceValues(forKeys: keys)
+        guard lhsValues.isRegularFile == true,
+              rhsValues.isRegularFile == true,
+              lhsValues.fileSize == rhsValues.fileSize else {
+            return false
+        }
+        let lhsHandle = try FileHandle(forReadingFrom: lhs)
+        let rhsHandle = try FileHandle(forReadingFrom: rhs)
+        defer {
+            try? lhsHandle.close()
+            try? rhsHandle.close()
+        }
+        while true {
+            let lhsChunk = try lhsHandle.read(upToCount: 1024 * 1024) ?? Data()
+            let rhsChunk = try rhsHandle.read(upToCount: 1024 * 1024) ?? Data()
+            guard lhsChunk == rhsChunk else { return false }
+            if lhsChunk.isEmpty { return true }
+        }
+    }
+
+    private static func selectedCanonicalFileReplacements(
+        in snapshot: SVNWorkingCopySnapshot,
+        selectedPaths: [String]
+    ) -> [SVNCanonicalFileReplacement] {
+        let modifiedPaths = Set(snapshot.statuses.compactMap { entry in
+            entry.item == .modified ? entry.path.precomposedStringWithCanonicalMapping : nil
+        })
+        let selectedKeys = selectedPaths.map { $0.precomposedStringWithCanonicalMapping }
+        return snapshot.canonicalFileReplacements.filter { replacement in
+            let path = replacement.versionedPath.precomposedStringWithCanonicalMapping
+            guard modifiedPaths.contains(path) else { return false }
+            return selectedKeys.contains { selected in
+                selected == "." || path == selected || path.hasPrefix(selected + "/")
+            }
+        }
+    }
+
     static func additionRollbackRoots(
         _ additions: [String],
         versionedPathsByCanonicalKey: [String: [String]]
@@ -566,8 +797,7 @@ public actor SVNClient {
         defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
         let targetsURL = temporaryDirectory.appendingPathComponent("targets", isDirectory: false)
-        let contents = targets.joined(separator: "\n") + "\n"
-        try Data(contents.utf8).write(to: targetsURL, options: .atomic)
+        try Self.targetsFileContents(targets).write(to: targetsURL, options: .atomic)
 
         return try checkedRun(
             arguments + ["--targets", targetsURL.path],
@@ -575,6 +805,50 @@ public actor SVNClient {
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
+    }
+
+    /// Foundation `Process.arguments`가 macOS 파일 경로를 NFD로 변환하는 경우에도
+    /// SVN 관리 경로의 원문 UTF-8 바이트를 그대로 마지막 인자로 전달합니다.
+    private func checkedRunWithRawTrailingArgument(
+        _ arguments: [String],
+        rawTrailingArgument: String,
+        outputDestinationURL: URL? = nil,
+        at path: String,
+        credentials: SVNCredentials? = nil
+    ) throws -> SVNCommandResult {
+        let unsafePaths = Self.pathsUnsafeForLineDelimitedTransport([rawTrailingArgument])
+        guard unsafePaths.isEmpty else { throw SVNError.unsupportedTargetPath(paths: unsafePaths) }
+        let result = try run(
+            arguments,
+            rawTrailingArgument: Self.escapedPegTarget(rawTrailingArgument),
+            outputDestinationURL: outputDestinationURL,
+            at: path,
+            credentials: credentials
+        )
+        guard result.exitCode == 0 else {
+            let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw SVNError.commandFailed(
+                command: "svn \(arguments.first ?? "")",
+                message: detail.isEmpty ? result.output : detail
+            )
+        }
+        return result
+    }
+
+    static func escapedPegTarget(_ path: String) -> String {
+        path.contains("@") ? path + "@" : path
+    }
+
+    static func targetsFileContents(_ targets: [String]) throws -> Data {
+        let unsafePaths = pathsUnsafeForLineDelimitedTransport(targets)
+        guard unsafePaths.isEmpty else { throw SVNError.unsupportedTargetPath(paths: unsafePaths) }
+        return Data((targets.map(escapedPegTarget).joined(separator: "\n") + "\n").utf8)
+    }
+
+    private static func pathsUnsafeForLineDelimitedTransport(_ paths: [String]) -> [String] {
+        paths.filter { path in
+            path.unicodeScalars.contains { $0.value == 0 || $0.value == 10 || $0.value == 13 }
+        }
     }
 
     private func ignorePatterns(at path: String, directory: String, credentials: SVNCredentials?) throws -> [String] {
@@ -608,12 +882,14 @@ public actor SVNClient {
 
     private func run(
         _ arguments: [String],
+        rawTrailingArgument: String? = nil,
+        outputDestinationURL: URL? = nil,
         at path: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) throws -> SVNCommandResult {
         let process = Process()
-        process.executableURL = try svnExecutableURL()
+        let svnExecutable = try svnExecutableURL()
         // Finder/Dock에서 실행한 GUI 앱은 LANG/LC_ALL이 없을 수 있습니다.
         // SVN은 명령행 인자를 현재 로케일에서 UTF-8로 변환하므로, 로케일이
         // 비어 있으면 한글 커밋 메시지가 mojibake 상태로 저장될 수 있습니다.
@@ -634,7 +910,32 @@ public actor SVNClient {
                 password = storedPassword
             }
         }
-        process.arguments = globalArguments + arguments
+        var rawArgumentDirectory: URL?
+        if let rawTrailingArgument {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("svn-mac-raw-argument-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            rawArgumentDirectory = directory
+            let argumentURL = directory.appendingPathComponent("argument", isDirectory: false)
+            try (Data(rawTrailingArgument.utf8) + Data([0x0A])).write(to: argumentURL)
+
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = [
+                "-c",
+                "target_file=$1; svn_executable=$2; shift 2; IFS= read -r raw_target < \"$target_file\"; exec \"$svn_executable\" \"$@\" -- \"$raw_target\"",
+                "svn-mac-raw-argument",
+                argumentURL.path,
+                svnExecutable.path,
+            ] + globalArguments + arguments
+        } else {
+            process.executableURL = svnExecutable
+            process.arguments = globalArguments + arguments
+        }
+        defer {
+            if let rawArgumentDirectory {
+                try? FileManager.default.removeItem(at: rawArgumentDirectory)
+            }
+        }
         process.currentDirectoryURL = URL(fileURLWithPath: path)
 
         // stdout/stderr를 Pipe로 계속 읽지 않으면 출력이 큰 명령에서 버퍼가 차
@@ -645,7 +946,8 @@ public actor SVNClient {
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
-        let outputURL = temporaryDirectory.appendingPathComponent("stdout")
+        let outputURL = outputDestinationURL
+            ?? temporaryDirectory.appendingPathComponent("stdout")
         let errorURL = temporaryDirectory.appendingPathComponent("stderr")
         FileManager.default.createFile(atPath: outputURL.path, contents: nil)
         FileManager.default.createFile(atPath: errorURL.path, contents: nil)
@@ -673,9 +975,15 @@ public actor SVNClient {
             throw error
         }
 
-        let output = String(decoding: try Data(contentsOf: outputURL), as: UTF8.self)
+        let output = outputDestinationURL == nil
+            ? String(decoding: try Data(contentsOf: outputURL), as: UTF8.self)
+            : ""
         let error = String(decoding: try Data(contentsOf: errorURL), as: UTF8.self)
-        return SVNCommandResult(output: output, error: error, exitCode: process.terminationStatus)
+        return SVNCommandResult(
+            output: output,
+            error: error,
+            exitCode: process.terminationStatus
+        )
     }
 
     private func svnExecutableURL() throws -> URL {

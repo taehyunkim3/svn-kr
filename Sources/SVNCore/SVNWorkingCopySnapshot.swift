@@ -41,12 +41,28 @@ public struct SVNPathCollision: Identifiable, Hashable, Sendable {
     }
 }
 
+/// SVN 관리 경로와 파일 시스템 경로의 정규화 표현만 달라, 하나의 파일 대치로
+/// 해석할 수 있는 일대일 후보입니다. 실제 파일 종류와 내용 비교는 SVNClient가
+/// 작업 복사본과 BASE 바이트에 접근해 판정합니다.
+public struct SVNCanonicalFileReplacement: Hashable, Sendable {
+    public let versionedPath: String
+    public let localAliasPath: String
+    public let revision: String
+
+    public init(versionedPath: String, localAliasPath: String, revision: String) {
+        self.versionedPath = versionedPath
+        self.localAliasPath = localAliasPath
+        self.revision = revision
+    }
+}
+
 public struct SVNWorkingCopySnapshot: Sendable {
     public let statuses: [SVNStatusEntry]
     public let revision: SVNWorkingCopyRevision
     public let collisions: [SVNPathCollision]
     public let versionedPathsByCanonicalKey: [String: [String]]
     public let canonicalAliasRepairTargets: [String]
+    public let canonicalFileReplacements: [SVNCanonicalFileReplacement]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
     public var repairableAliasPaths: [String] {
@@ -61,7 +77,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
         revision: SVNWorkingCopyRevision,
         collisions: [SVNPathCollision],
         versionedPathsByCanonicalKey: [String: [String]],
-        canonicalAliasRepairTargets: [String]? = nil
+        canonicalAliasRepairTargets: [String]? = nil,
+        canonicalFileReplacements: [SVNCanonicalFileReplacement] = []
     ) {
         self.statuses = statuses
         self.revision = revision
@@ -69,6 +86,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
         self.versionedPathsByCanonicalKey = versionedPathsByCanonicalKey
         self.canonicalAliasRepairTargets = canonicalAliasRepairTargets
             ?? collisions.compactMap(\.repairableRawPath)
+        self.canonicalFileReplacements = canonicalFileReplacements
     }
 
     init(entries: [SVNWorkingCopyEntry]) throws {
@@ -112,6 +130,10 @@ public struct SVNWorkingCopySnapshot: Sendable {
             entries: entries,
             rawRoots: collisions.compactMap(\.repairableRawPath)
         )
+        canonicalFileReplacements = Self.canonicalFileReplacements(
+            entries: entries,
+            versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
+        )
         statuses = Self.visibleStatuses(
             from: entries,
             orphanedRoots: orphanedRoots.map(\.canonicalPath),
@@ -139,6 +161,27 @@ public struct SVNWorkingCopySnapshot: Sendable {
             return suffix.isEmpty ? ancestors[0] : ancestors[0] + "/" + suffix
         }
         return canonicalPath
+    }
+
+    func resolvingCanonicalFileReplacements(
+        modifiedPaths: Set<String>,
+        unchangedPaths: Set<String>
+    ) -> SVNWorkingCopySnapshot {
+        let resolvedStatuses = statuses.compactMap { entry -> SVNStatusEntry? in
+            if unchangedPaths.contains(entry.path) { return nil }
+            if modifiedPaths.contains(entry.path) {
+                return SVNStatusEntry(path: entry.path, item: .modified, revision: entry.revision)
+            }
+            return entry
+        }
+        return SVNWorkingCopySnapshot(
+            statuses: resolvedStatuses,
+            revision: revision,
+            collisions: collisions,
+            versionedPathsByCanonicalKey: versionedPathsByCanonicalKey,
+            canonicalAliasRepairTargets: canonicalAliasRepairTargets,
+            canonicalFileReplacements: canonicalFileReplacements
+        )
     }
 
     private struct OrphanedRoot {
@@ -258,6 +301,36 @@ public struct SVNWorkingCopySnapshot: Sendable {
             if lhsDepth != rhsDepth { return lhsDepth > rhsDepth }
             return Data(lhs.utf8).lexicographicallyPrecedes(Data(rhs.utf8))
         }
+    }
+
+    private static func canonicalFileReplacements(
+        entries: [SVNWorkingCopyEntry],
+        versionedPathsByCanonicalKey: [String: [String]]
+    ) -> [SVNCanonicalFileReplacement] {
+        let entriesByKey = Dictionary(grouping: entries, by: { canonicalKey($0.path) })
+        return entriesByKey.keys
+            .sorted()
+            .compactMap { key in
+                guard versionedPathsByCanonicalKey[key]?.count == 1,
+                      let group = entriesByKey[key] else {
+                    return nil
+                }
+                let missing = group.filter {
+                    $0.status == "missing" && $0.revision.flatMap(Int.init).map { $0 >= 0 } == true
+                }
+                let aliases = distinctRawPaths(group.filter { $0.status == "unversioned" }.map(\.path))
+                guard missing.count == 1,
+                      aliases.count == 1,
+                      let revision = missing[0].revision,
+                      Data(missing[0].path.utf8) != Data(aliases[0].utf8) else {
+                    return nil
+                }
+                return SVNCanonicalFileReplacement(
+                    versionedPath: missing[0].path,
+                    localAliasPath: aliases[0],
+                    revision: revision
+                )
+            }
     }
 
     private static func mergeCollisions(_ collisions: [SVNPathCollision]) -> [SVNPathCollision] {

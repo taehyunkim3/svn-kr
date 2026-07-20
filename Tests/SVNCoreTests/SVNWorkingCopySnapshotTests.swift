@@ -46,6 +46,40 @@ struct SVNWorkingCopySnapshotTests {
         ])
     }
 
+    @Test func exposesOneToOneMissingFileAliasAsReplacementCandidate() throws {
+        let composed = "00 사업관리/주간보고서.hwp"
+        let decomposed = composed.decomposedStringWithCanonicalMapping
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13304"),
+            ("00 사업관리", "normal", "13304"),
+            (composed, "missing", "13304"),
+            (decomposed, "unversioned", nil),
+        ]))
+
+        #expect(snapshot.canonicalFileReplacements == [
+            SVNCanonicalFileReplacement(
+                versionedPath: composed,
+                localAliasPath: decomposed,
+                revision: "13304"
+            ),
+        ])
+    }
+
+    @Test func doesNotExposeAmbiguousUnversionedAliasesAsReplacementCandidate() throws {
+        let composed = "reports/\u{1EB9}\u{301}.hwp"
+        let decomposed = "reports/e\u{323}\u{301}.hwp"
+        let secondRawAlias = "reports/e\u{301}\u{323}.hwp"
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13304"),
+            ("reports", "normal", "13304"),
+            (composed, "missing", "13304"),
+            (decomposed, "unversioned", nil),
+            (secondRawAlias, "unversioned", nil),
+        ]))
+
+        #expect(snapshot.canonicalFileReplacements.isEmpty)
+    }
+
     @Test func reportsAmbiguousCanonicalVersionedPaths() throws {
         let composed = "04 구현"
         let decomposed = composed.decomposedStringWithCanonicalMapping

@@ -46,8 +46,13 @@ import Testing
 
     let composedRoot = "04 구현"
     let decomposedRoot = composedRoot.decomposedStringWithCanonicalMapping
+    let replacementRoot = "00 사업관리"
+    let replacementFile = "주간보고서.hwp"
+    let decomposedReplacementFile = replacementFile.decomposedStringWithCanonicalMapping
+    let replacementPath = "\(replacementRoot)/\(replacementFile)"
     let modifiedBytes = Data([0xAA, 0x00, 0xFF, 0x42])
     let unversionedBytes = Data([0x99, 0x88, 0x00, 0x77])
+    let replacementBytes = Data("replacement-v2".utf8)
 
     _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
     let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
@@ -55,11 +60,14 @@ import Testing
     try Data("""
     #!/bin/zsh
     set -euo pipefail
-    "\(svnPath)" mkdir "\(repositoryURL)\(composedRoot)" -m initial >/dev/null
+    "\(svnPath)" mkdir "\(repositoryURL)\(composedRoot)" "\(repositoryURL)\(replacementRoot)" -m initial >/dev/null
     "\(svnPath)" checkout "\(repositoryURL)" "\(caseSensitiveWorkingCopy.path)" >/dev/null
     touch "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin"
-    "\(svnPath)" add "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" >/dev/null
-    "\(svnPath)" commit "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" -m tracked >/dev/null
+    printf 'base-v1' > "\(caseSensitiveWorkingCopy.path)/\(replacementPath)"
+    "\(svnPath)" add "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" "\(caseSensitiveWorkingCopy.path)/\(replacementPath)" >/dev/null
+    "\(svnPath)" commit "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" "\(caseSensitiveWorkingCopy.path)/\(replacementPath)" -m tracked >/dev/null
+    rm "\(caseSensitiveWorkingCopy.path)/\(replacementPath)"
+    printf 'replacement-v2' > "\(caseSensitiveWorkingCopy.path)/\(replacementRoot)/\(decomposedReplacementFile)"
     mkdir -p "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)"
     touch "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)/scheduled.bin"
     "\(svnPath)" add "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)" >/dev/null
@@ -75,8 +83,12 @@ import Testing
     try createRawDirectory(atPath: physicalRootPath)
     let normalTrackedPath = physicalRootPath + "/tracked.bin"
     let normalUnversionedPath = physicalRootPath + "/unversioned.bin"
+    let physicalReplacementRootPath = normalWorkingCopy.path + "/" + replacementRoot
+    try createRawDirectory(atPath: physicalReplacementRootPath)
+    let normalReplacementPath = physicalReplacementRootPath + "/" + decomposedReplacementFile
     try writeRawFile(modifiedBytes, atPath: normalTrackedPath)
     try writeRawFile(unversionedBytes, atPath: normalUnversionedPath)
+    try writeRawFile(replacementBytes, atPath: normalReplacementPath)
 
     _ = try runIntegrationCommand(hdiutilPath, ["detach", mount.path])
     mounted = false
@@ -110,11 +122,13 @@ import Testing
     let preservedPaths = Set([
         "\(composedRoot)/tracked.bin",
         "\(composedRoot)/unversioned.bin",
+        replacementPath,
     ])
     let beforeStatuses = before.statuses.filter { preservedPaths.contains($0.path) }
 
     #expect(before.repairableAliasPaths.map { Data($0.utf8) } == [Data(decomposedRoot.utf8)])
     #expect(beforeStatuses == [
+        SVNStatusEntry(path: replacementPath, item: .modified, revision: "2"),
         SVNStatusEntry(path: "\(composedRoot)/tracked.bin", item: .modified, revision: "2"),
         SVNStatusEntry(path: "\(composedRoot)/unversioned.bin", item: .unversioned),
     ])
@@ -136,6 +150,21 @@ import Testing
             + "TARGET:\(decomposedRoot)\n").utf8
     )
     #expect(logData.range(of: exactTargetBlock) != nil)
+
+    _ = try await client.commit(
+        at: normalWorkingCopy.path,
+        paths: [replacementPath],
+        message: "canonical file replacement"
+    )
+    let encodedReplacementURL = try #require(
+        URL(string: repositoryURL + replacementPath)?.absoluteString
+    )
+    let repositoryContents = try runIntegrationCommand(svnPath, ["cat", encodedReplacementURL])
+    let committedSnapshot = try await client.workingCopySnapshot(at: normalWorkingCopy.path)
+
+    #expect(repositoryContents == "replacement-v2")
+    #expect(try Data(contentsOf: URL(fileURLWithPath: normalReplacementPath)) == replacementBytes)
+    #expect(!committedSnapshot.statuses.contains { $0.path == replacementPath })
 }
 
 private func firstExecutable(at paths: [String]) -> String? {
