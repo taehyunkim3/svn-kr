@@ -200,6 +200,20 @@ import Testing
 }
 
 @MainActor
+@Test func checksConflictsInLargeSelection() {
+    let statuses = (0..<20_000).map {
+        SVNStatusEntry(path: "Sources/file-\($0).swift", item: .modified)
+    } + [SVNStatusEntry(path: "Sources/conflict.swift", item: .conflicted)]
+    let allowed = Set(statuses.dropLast().map(\.path))
+
+    #expect(!ProjectStore.containsSelectedConflict(selectedPaths: allowed, statuses: statuses))
+    #expect(ProjectStore.containsSelectedConflict(
+        selectedPaths: ["Sources/conflict.swift"],
+        statuses: statuses
+    ))
+}
+
+@MainActor
 @Test func checkoutRemainsSuccessfulWhenCredentialPersistenceFails() async {
     let client = StubSVNClient(checkoutResult: "Checked out revision 10.")
     let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)

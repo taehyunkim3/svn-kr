@@ -401,7 +401,7 @@ final class ProjectStore: ObservableObject {
     func commit(message: String) async -> Bool {
         guard let project = selectedProject, !selectedPaths.isEmpty else { return false }
         let paths = selectedPaths.sorted()
-        guard !paths.contains(where: { path in statuses.first(where: { $0.path == path })?.item == .conflicted }) else {
+        guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
             errorMessage = AppLanguage.current.text("충돌 파일은 해결 완료 처리 후 커밋할 수 있습니다.", "Resolve conflicted files before committing.")
             return false
         }
@@ -428,6 +428,14 @@ final class ProjectStore: ObservableObject {
             }
             return false
         }
+    }
+
+    static func containsSelectedConflict(
+        selectedPaths: Set<String>,
+        statuses: [SVNStatusEntry]
+    ) -> Bool {
+        let conflictedPaths = Set(statuses.lazy.filter { $0.item == .conflicted }.map(\.path))
+        return !selectedPaths.isDisjoint(with: conflictedPaths)
     }
 
     func hasSavedPassword(for projectID: UUID) -> Bool {
