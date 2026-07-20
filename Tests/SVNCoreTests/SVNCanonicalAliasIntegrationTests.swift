@@ -121,7 +121,8 @@ import Testing
 
     let after = try await client.repairCanonicalAliases(at: normalWorkingCopy.path)
     let afterStatuses = after.statuses.filter { preservedPaths.contains($0.path) }
-    let log = try String(contentsOf: commandLog, encoding: .utf8)
+    let logData = try Data(contentsOf: commandLog)
+    let log = try #require(String(data: logData, encoding: .utf8))
 
     #expect(try Data(contentsOf: URL(fileURLWithPath: normalTrackedPath)) == modifiedBytes)
     #expect(try Data(contentsOf: URL(fileURLWithPath: normalUnversionedPath)) == unversionedBytes)
@@ -129,11 +130,12 @@ import Testing
     #expect(after.collisions.isEmpty)
     #expect(log.contains("ARG:revert\nARG:--depth\nARG:empty\n"))
     #expect(!log.contains("ARG:--remove-added\n"))
-    #expect(log.contains(
-        "TARGET:\(decomposedRoot)/scheduled.bin\n"
+    let exactTargetBlock = Data(
+        ("TARGET:\(decomposedRoot)/scheduled.bin\n"
             + "TARGET:\(decomposedRoot)/tracked.bin\n"
-            + "TARGET:\(decomposedRoot)\n"
-    ))
+            + "TARGET:\(decomposedRoot)\n").utf8
+    )
+    #expect(logData.range(of: exactTargetBlock) != nil)
 }
 
 private func firstExecutable(at paths: [String]) -> String? {

@@ -97,7 +97,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
         let orphanedCollisions = orphanedRoots.map { root in
             let affected = entries.filter { entry in
                 Self.isAtOrBelow(canonicalKey(entry.path), root: root.canonicalPath)
-                    && Self.isMissingScheduledAddition(entry)
+                    && Self.isCanonicalAliasSchedulingNode(entry)
             }
             return SVNPathCollision(
                 canonicalPath: root.canonicalPath,
@@ -236,13 +236,17 @@ public struct SVNWorkingCopySnapshot: Sendable {
         entry.status == "missing" && (entry.revision == nil || entry.revision == "-1")
     }
 
+    private static func isCanonicalAliasSchedulingNode(_ entry: SVNWorkingCopyEntry) -> Bool {
+        (entry.status == "missing" || entry.status == "added")
+            && (entry.revision == nil || entry.revision == "-1")
+    }
+
     private static func canonicalAliasRepairTargets(
         entries: [SVNWorkingCopyEntry],
         rawRoots: [String]
     ) -> [String] {
         distinctRawPaths(entries.compactMap { entry in
-            guard entry.status == "missing" || entry.status == "added",
-                  entry.revision == nil || entry.revision == "-1",
+            guard isCanonicalAliasSchedulingNode(entry),
                   rawRoots.contains(where: { isRawAtOrBelow(entry.path, root: $0) }) else {
                 return nil
             }

@@ -80,6 +80,7 @@ struct SVNWorkingCopySnapshotTests {
             Data("\(nfdRoot)/하위".utf8),
             Data(nfdRoot.utf8),
         ])
+        #expect(snapshot.collisions.first?.affectedEntryCount == 4)
         #expect(!snapshot.hasUnrepairablePathCollisions)
     }
 
