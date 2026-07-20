@@ -198,6 +198,38 @@ import Testing
     #expect(resultData.range(of: Data("테스트.png".utf8)) == nil)
 }
 
+@Test func revisionDiffPreservesNFCRepositoryPathBytes() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-revision-nfc-path-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    printf '%s\n' "$*"
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let nfcFileName = "주간보고서.hwp"
+    let result = try await client.revisionDiff(
+        at: directory.path,
+        revision: "13306",
+        repositoryPath: "/한글/project/주간보고/\(nfcFileName)",
+        workingCopyRepositoryPath: "/%ED%95%9C%EA%B8%80/project",
+        pegRevision: "13306"
+    )
+
+    let resultData = Data(result.utf8)
+    #expect(resultData.range(of: Data("^/%ED%95%9C%EA%B8%80/project/주간보고/\(nfcFileName)@13306".utf8)) != nil)
+    #expect(resultData.range(of: Data("주간보고서.hwp".decomposedStringWithCanonicalMapping.utf8)) == nil)
+}
+
 @Test func revisionDiffKeepsRepositoryPathOutsideWorkingCopyRoot() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-revision-outside-root-test-\(UUID().uuidString)", isDirectory: true)

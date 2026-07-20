@@ -2,18 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key><string>ko</string>
-    <key>CFBundleExecutable</key><string>SVNMac</string>
-    <key>CFBundleIdentifier</key><string>com.mrdevello.svnmac</string>
-    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>SVN Mac</string>
-    <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.5.4</string>
-    <key>CFBundleVersion</key><string>15</string>
-    <key>ITSAppUsesNonExemptEncryption</key><false/>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
-    <key>NSHighResolutionCapable</key><true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ko</string>
+	<key>CFBundleExecutable</key>
+	<string>SVNMac</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.mrdevello.svnmac</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>SVN Mac</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.5.5</string>
+	<key>CFBundleVersion</key>
+	<string>16</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 </dict>
 </plist>

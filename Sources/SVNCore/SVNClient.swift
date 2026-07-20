@@ -335,8 +335,10 @@ public actor SVNClient {
             workingCopyRepositoryPath: workingCopyRepositoryPath
         )
         let target = "^\(targetPath)@\(pegRevision)"
-        return try checkedRun(
-            ["diff", "--change", revision, "--", target],
+        return try checkedRunWithRawTrailingArgument(
+            ["diff", "--change", revision],
+            rawTrailingArgument: target,
+            escapePegSyntax: false,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
@@ -812,18 +814,23 @@ public actor SVNClient {
     private func checkedRunWithRawTrailingArgument(
         _ arguments: [String],
         rawTrailingArgument: String,
+        escapePegSyntax: Bool = true,
         outputDestinationURL: URL? = nil,
         at path: String,
-        credentials: SVNCredentials? = nil
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
     ) throws -> SVNCommandResult {
         let unsafePaths = Self.pathsUnsafeForLineDelimitedTransport([rawTrailingArgument])
         guard unsafePaths.isEmpty else { throw SVNError.unsupportedTargetPath(paths: unsafePaths) }
         let result = try run(
             arguments,
-            rawTrailingArgument: Self.escapedPegTarget(rawTrailingArgument),
+            rawTrailingArgument: escapePegSyntax
+                ? Self.escapedPegTarget(rawTrailingArgument)
+                : rawTrailingArgument,
             outputDestinationURL: outputDestinationURL,
             at: path,
-            credentials: credentials
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
