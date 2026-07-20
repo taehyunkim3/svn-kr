@@ -336,6 +336,7 @@ public enum SVNError: LocalizedError, Sendable {
     case malformedResponse
     case pathNormalizationCollision(paths: [String])
     case pathAliasRepairFailed(paths: [String])
+    case commitSucceededWithValidationWarning(output: String, details: String)
     case recoveryBlocked(paths: [String])
     case recoveryDestinationNotEmpty
     case recoveryValidationFailed(paths: [String])
@@ -353,6 +354,8 @@ public enum SVNError: LocalizedError, Sendable {
             "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))"
         case let .pathAliasRepairFailed(paths):
             "한글 경로 별칭 정리를 검증하지 못했습니다: \(paths.joined(separator: ", "))"
+        case let .commitSucceededWithValidationWarning(_, details):
+            "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: \(details)"
         case let .recoveryBlocked(paths):
             "자동 복구할 수 없는 변경이 있습니다: \(paths.joined(separator: ", "))"
         case .recoveryDestinationNotEmpty:

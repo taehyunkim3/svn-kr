@@ -169,16 +169,22 @@ struct ChangesView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if collision.id == store.pathCollisions.first?.id {
-                if collision.repairableRawPath != nil {
+                if store.canRepairCanonicalAliases {
                     Button(appLanguage.text("동일 한글 경로 정리", "Clean Up Equivalent Path")) {
                         Task { await store.repairCanonicalAliases() }
                     }
                     .disabled(store.isWorking)
                 } else {
-                    Button(appLanguage.text("경로 자동 복구…", "Recover Paths…")) {
-                        Task { await store.beginPathRecovery() }
-                    }
-                    .disabled(store.isWorking)
+                    Text(appLanguage.text(
+                        "서버 중복 경로 수동 정리 필요",
+                        "Resolve Duplicate Server Paths Manually"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help(appLanguage.text(
+                        "정규화하면 같은 서버 경로가 둘 이상이어서 앱이 기준 경로를 선택할 수 없습니다.",
+                        "Multiple canonically equivalent server paths exist, so the app cannot choose one safely."
+                    ))
                 }
             }
         }

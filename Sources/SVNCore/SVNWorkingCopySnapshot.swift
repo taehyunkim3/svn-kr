@@ -46,6 +46,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     public let revision: SVNWorkingCopyRevision
     public let collisions: [SVNPathCollision]
     public let versionedPathsByCanonicalKey: [String: [String]]
+    public let canonicalAliasRepairTargets: [String]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
     public var repairableAliasPaths: [String] {
@@ -59,12 +60,15 @@ public struct SVNWorkingCopySnapshot: Sendable {
         statuses: [SVNStatusEntry],
         revision: SVNWorkingCopyRevision,
         collisions: [SVNPathCollision],
-        versionedPathsByCanonicalKey: [String: [String]]
+        versionedPathsByCanonicalKey: [String: [String]],
+        canonicalAliasRepairTargets: [String]? = nil
     ) {
         self.statuses = statuses
         self.revision = revision
         self.collisions = collisions
         self.versionedPathsByCanonicalKey = versionedPathsByCanonicalKey
+        self.canonicalAliasRepairTargets = canonicalAliasRepairTargets
+            ?? collisions.compactMap(\.repairableRawPath)
     }
 
     init(entries: [SVNWorkingCopyEntry]) throws {
@@ -104,6 +108,10 @@ public struct SVNWorkingCopySnapshot: Sendable {
         }
 
         collisions = Self.mergeCollisions(ambiguousVersionedCollisions + orphanedCollisions)
+        canonicalAliasRepairTargets = Self.canonicalAliasRepairTargets(
+            entries: entries,
+            rawRoots: collisions.compactMap(\.repairableRawPath)
+        )
         statuses = Self.visibleStatuses(
             from: entries,
             orphanedRoots: orphanedRoots.map(\.canonicalPath),
@@ -228,6 +236,26 @@ public struct SVNWorkingCopySnapshot: Sendable {
         entry.status == "missing" && (entry.revision == nil || entry.revision == "-1")
     }
 
+    private static func canonicalAliasRepairTargets(
+        entries: [SVNWorkingCopyEntry],
+        rawRoots: [String]
+    ) -> [String] {
+        distinctRawPaths(entries.compactMap { entry in
+            guard entry.status == "missing" || entry.status == "added",
+                  entry.revision == nil || entry.revision == "-1",
+                  rawRoots.contains(where: { isRawAtOrBelow(entry.path, root: $0) }) else {
+                return nil
+            }
+            return entry.path
+        })
+        .sorted { lhs, rhs in
+            let lhsDepth = pathComponents(lhs).count
+            let rhsDepth = pathComponents(rhs).count
+            if lhsDepth != rhsDepth { return lhsDepth > rhsDepth }
+            return Data(lhs.utf8).lexicographicallyPrecedes(Data(rhs.utf8))
+        }
+    }
+
     private static func mergeCollisions(_ collisions: [SVNPathCollision]) -> [SVNPathCollision] {
         Dictionary(grouping: collisions, by: \.canonicalPath)
             .map { key, values in
@@ -243,6 +271,12 @@ public struct SVNWorkingCopySnapshot: Sendable {
 
     private static func isAtOrBelow(_ path: String, root: String) -> Bool {
         path == root || path.hasPrefix(root + "/")
+    }
+
+    private static func isRawAtOrBelow(_ path: String, root: String) -> Bool {
+        let pathBytes = Data(path.utf8)
+        let rootBytes = Data(root.utf8)
+        return pathBytes == rootBytes || pathBytes.starts(with: rootBytes + Data([0x2F]))
     }
 }
 

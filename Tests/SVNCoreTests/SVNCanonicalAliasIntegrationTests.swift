@@ -1,0 +1,217 @@
+import Darwin
+import Foundation
+import Testing
+@testable import SVNCore
+
+@Test func realSVNCanonicalAliasRepairPreservesBytesAndNonAliasStatuses() async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn",
+        "/usr/local/bin/svn",
+        "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin",
+        "/usr/local/bin/svnadmin",
+        "/usr/bin/svnadmin",
+    ]))
+    let hdiutilPath = "/usr/bin/hdiutil"
+    #expect(fileManager.isExecutableFile(atPath: hdiutilPath))
+
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-alias-repair-\(UUID().uuidString)", isDirectory: true)
+    let image = fixture.appendingPathComponent("case-sensitive.dmg")
+    let mount = fixture.appendingPathComponent("case-sensitive", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let caseSensitiveWorkingCopy = mount.appendingPathComponent("wc", isDirectory: true)
+    let normalWorkingCopy = fixture.appendingPathComponent("normal-wc", isDirectory: true)
+    var mounted = false
+
+    try fileManager.createDirectory(at: mount, withIntermediateDirectories: true)
+    defer {
+        if mounted {
+            _ = try? runIntegrationCommand(hdiutilPath, ["detach", mount.path])
+        }
+        try? fileManager.removeItem(at: fixture)
+    }
+
+    _ = try runIntegrationCommand(hdiutilPath, [
+        "create", "-size", "32m", "-fs", "Case-sensitive APFS",
+        "-volname", "SVNCanonicalAliasFixture", "-ov", image.path,
+    ])
+    _ = try runIntegrationCommand(hdiutilPath, [
+        "attach", "-nobrowse", "-mountpoint", mount.path, image.path,
+    ])
+    mounted = true
+
+    let composedRoot = "04 구현"
+    let decomposedRoot = composedRoot.decomposedStringWithCanonicalMapping
+    let modifiedBytes = Data([0xAA, 0x00, 0xFF, 0x42])
+    let unversionedBytes = Data([0x99, 0x88, 0x00, 0x77])
+
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    let repositorySetupScript = fixture.appendingPathComponent("create-composed-repository-path.zsh")
+    try Data("""
+    #!/bin/zsh
+    set -euo pipefail
+    "\(svnPath)" mkdir "\(repositoryURL)\(composedRoot)" -m initial >/dev/null
+    "\(svnPath)" checkout "\(repositoryURL)" "\(caseSensitiveWorkingCopy.path)" >/dev/null
+    touch "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin"
+    "\(svnPath)" add "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" >/dev/null
+    "\(svnPath)" commit "\(caseSensitiveWorkingCopy.path)/\(composedRoot)/tracked.bin" -m tracked >/dev/null
+    mkdir -p "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)"
+    touch "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)/scheduled.bin"
+    "\(svnPath)" add "\(caseSensitiveWorkingCopy.path)/\(decomposedRoot)" >/dev/null
+    """.utf8).write(to: repositorySetupScript)
+    _ = try runIntegrationCommand("/bin/zsh", [repositorySetupScript.path])
+
+    try fileManager.createDirectory(at: normalWorkingCopy, withIntermediateDirectories: true)
+    try fileManager.copyItem(
+        at: caseSensitiveWorkingCopy.appendingPathComponent(".svn", isDirectory: true),
+        to: normalWorkingCopy.appendingPathComponent(".svn", isDirectory: true)
+    )
+    let physicalRootPath = normalWorkingCopy.path + "/" + composedRoot
+    try createRawDirectory(atPath: physicalRootPath)
+    let normalTrackedPath = physicalRootPath + "/tracked.bin"
+    let normalUnversionedPath = physicalRootPath + "/unversioned.bin"
+    try writeRawFile(modifiedBytes, atPath: normalTrackedPath)
+    try writeRawFile(unversionedBytes, atPath: normalUnversionedPath)
+
+    _ = try runIntegrationCommand(hdiutilPath, ["detach", mount.path])
+    mounted = false
+
+    let commandLog = fixture.appendingPathComponent("svn-command-log")
+    let wrapper = fixture.appendingPathComponent("logging-svn")
+    let wrapperScript = """
+    #!/bin/sh
+    expect_targets=0
+    for argument in "$@"; do
+      printf 'ARG:%s\\n' "$argument" >> "\(commandLog.path)"
+      if [ "$expect_targets" = 1 ]; then
+        while IFS= read -r target || [ -n "$target" ]; do
+          printf 'TARGET:%s\\n' "$target" >> "\(commandLog.path)"
+        done < "$argument"
+        expect_targets=0
+      elif [ "$argument" = --targets ]; then
+        expect_targets=1
+      fi
+    done
+    exec "\(svnPath)" "$@"
+    """
+    try Data(wrapperScript.utf8).write(to: wrapper)
+    try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: wrapper.path)
+
+    let client = SVNClient(
+        executablePath: wrapper.path,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+    let before = try await client.workingCopySnapshot(at: normalWorkingCopy.path)
+    let preservedPaths = Set([
+        "\(composedRoot)/tracked.bin",
+        "\(composedRoot)/unversioned.bin",
+    ])
+    let beforeStatuses = before.statuses.filter { preservedPaths.contains($0.path) }
+
+    #expect(before.repairableAliasPaths.map { Data($0.utf8) } == [Data(decomposedRoot.utf8)])
+    #expect(beforeStatuses == [
+        SVNStatusEntry(path: "\(composedRoot)/tracked.bin", item: .modified, revision: "2"),
+        SVNStatusEntry(path: "\(composedRoot)/unversioned.bin", item: .unversioned),
+    ])
+
+    let after = try await client.repairCanonicalAliases(at: normalWorkingCopy.path)
+    let afterStatuses = after.statuses.filter { preservedPaths.contains($0.path) }
+    let log = try String(contentsOf: commandLog, encoding: .utf8)
+
+    #expect(try Data(contentsOf: URL(fileURLWithPath: normalTrackedPath)) == modifiedBytes)
+    #expect(try Data(contentsOf: URL(fileURLWithPath: normalUnversionedPath)) == unversionedBytes)
+    #expect(afterStatuses == beforeStatuses)
+    #expect(after.collisions.isEmpty)
+    #expect(log.contains("ARG:revert\nARG:--depth\nARG:empty\n"))
+    #expect(!log.contains("ARG:--remove-added\n"))
+    #expect(log.contains(
+        "TARGET:\(decomposedRoot)/scheduled.bin\n"
+            + "TARGET:\(decomposedRoot)/tracked.bin\n"
+            + "TARGET:\(decomposedRoot)\n"
+    ))
+}
+
+private func firstExecutable(at paths: [String]) -> String? {
+    paths.first(where: FileManager.default.isExecutableFile(atPath:))
+}
+
+private func createRawDirectory(atPath path: String) throws {
+    let result = path.withCString { Darwin.mkdir($0, 0o755) }
+    guard result == 0 else {
+        throw IntegrationPOSIXError(operation: "mkdir", path: path, code: errno)
+    }
+}
+
+private func writeRawFile(_ data: Data, atPath path: String) throws {
+    let descriptor = path.withCString {
+        Darwin.open($0, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)
+    }
+    guard descriptor >= 0 else {
+        throw IntegrationPOSIXError(operation: "open", path: path, code: errno)
+    }
+    defer { Darwin.close(descriptor) }
+
+    try data.withUnsafeBytes { bytes in
+        guard let baseAddress = bytes.baseAddress else { return }
+        var offset = 0
+        while offset < bytes.count {
+            let written = Darwin.write(
+                descriptor,
+                baseAddress.advanced(by: offset),
+                bytes.count - offset
+            )
+            guard written > 0 else {
+                throw IntegrationPOSIXError(operation: "write", path: path, code: errno)
+            }
+            offset += written
+        }
+    }
+}
+
+@discardableResult
+private func runIntegrationCommand(
+    _ executablePath: String,
+    _ arguments: [String]
+) throws -> String {
+    let process = Process()
+    let output = Pipe()
+    process.executableURL = URL(fileURLWithPath: executablePath)
+    process.arguments = arguments
+    process.standardOutput = output
+    process.standardError = output
+    try process.run()
+    process.waitUntilExit()
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    let text = String(decoding: data, as: UTF8.self)
+    guard process.terminationStatus == 0 else {
+        throw IntegrationCommandError(
+            command: ([executablePath] + arguments).joined(separator: " "),
+            output: text
+        )
+    }
+    return text
+}
+
+private struct IntegrationCommandError: LocalizedError {
+    let command: String
+    let output: String
+
+    var errorDescription: String? {
+        "Integration command failed: \(command)\n\(output)"
+    }
+}
+
+private struct IntegrationPOSIXError: LocalizedError {
+    let operation: String
+    let path: String
+    let code: Int32
+
+    var errorDescription: String? {
+        "\(operation) failed for \(path) with errno \(code)"
+    }
+}

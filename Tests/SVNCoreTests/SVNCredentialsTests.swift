@@ -460,7 +460,7 @@ import Testing
     let commands = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
         .split(whereSeparator: \.isNewline)
         .map(String.init)
-    #expect(commands == ["status", "revert", "status", "add", "commit"])
+    #expect(commands == ["status", "revert", "status", "add", "commit", "status"])
 
     let targets = try Data(contentsOf: directory.appendingPathComponent("target-log"))
     #expect(targets.range(of: Data("revert:\(nfdRoot)\n".utf8)) != nil)
@@ -677,7 +677,64 @@ import Testing
     #expect(result.contains("target=한글.txt"))
 }
 
-@Test func repairCanonicalAliasesRevertsExactMissingNFDTargetWithoutChangingLocalFiles() async throws {
+@Test func commitValidatesAfterRepositorySuccessWithoutRollingBackScheduling() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-post-commit-validation-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composedRoot = "04 구현"
+    let nfdRoot = composedRoot.decomposedStringWithCanonicalMapping
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|add|commit|revert) command=$argument ;;
+      esac
+    done
+    printf '%s\n' "$command" >> command-log
+    if [ "$command" = status ]; then
+      if [ ! -f committed ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="새 파일.bin"><wc-status item="unversioned"/></entry></target></status>'
+      else
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="2"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="2"/></entry><entry path="\(nfdRoot)"><wc-status item="normal" revision="2"/></entry></target></status>'
+      fi
+      exit 0
+    fi
+    if [ "$command" = commit ]; then
+      : > committed
+      printf 'Committed revision 2.\n'
+      exit 0
+    fi
+    exit 0
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    do {
+        _ = try await client.commit(at: directory.path, paths: ["새 파일.bin"], message: "검증")
+        Issue.record("커밋 뒤 충돌은 완료 경고로 반환되어야 합니다.")
+    } catch let SVNError.commitSucceededWithValidationWarning(output, details) {
+        #expect(output == "Committed revision 2.\n")
+        #expect(details.contains(composedRoot))
+    } catch {
+        Issue.record("예상하지 못한 오류: \(error)")
+    }
+
+    let commands = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
+        .split(whereSeparator: \.isNewline)
+        .map(String.init)
+    #expect(commands == ["status", "add", "commit", "status"])
+    #expect(!commands.contains("revert"))
+}
+
+@Test func repairCanonicalAliasesRevertsExactScheduledNFDEntriesWithEmptyDepth() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-alias-repair-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -709,7 +766,7 @@ import Testing
     if [ "$command" = status ]; then
       if [ ! -f status-count ]; then
         : > status-count
-        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(nfdRoot)"><wc-status item="missing" revision="-1"/></entry></target></status>'
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(nfdRoot)"><wc-status item="missing" revision="-1"/></entry><entry path="\(nfdRoot)/하위.bin"><wc-status item="added" revision="-1"/></entry></target></status>'
       else
         printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry></target></status>'
       fi
@@ -734,11 +791,59 @@ import Testing
 
     let rawTargets = try Data(contentsOf: directory.appendingPathComponent("revert-targets"))
     let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
-    #expect(rawTargets.range(of: Data(nfdRoot.utf8)) != nil)
-    #expect(log.contains("revert --depth infinity"))
+    #expect(rawTargets == Data("\(nfdRoot)/하위.bin\n\(nfdRoot)\n".utf8))
+    #expect(log.contains("revert --depth empty"))
     #expect(!log.contains("--remove-added"))
     #expect(try Data(contentsOf: localFile) == originalData)
     #expect(snapshot.repairableAliasPaths.isEmpty)
+}
+
+@Test func repairCanonicalAliasesRejectsNewAmbiguityFoundByPostcheck() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-new-ambiguity-repair-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composedRoot = "04 구현"
+    let nfdRoot = composedRoot.decomposedStringWithCanonicalMapping
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|revert) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      if [ ! -f repaired ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(nfdRoot)"><wc-status item="missing" revision="-1"/></entry></target></status>'
+      else
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(nfdRoot)"><wc-status item="normal" revision="1"/></entry></target></status>'
+      fi
+      exit 0
+    fi
+    if [ "$command" = revert ]; then
+      : > repaired
+      exit 0
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    do {
+        _ = try await client.repairCanonicalAliases(at: directory.path)
+        Issue.record("정리 뒤 새로 확인된 모호한 경로는 성공으로 처리하면 안 됩니다.")
+    } catch let SVNError.pathNormalizationCollision(paths) {
+        #expect(paths == [composedRoot])
+    } catch {
+        Issue.record("예상하지 못한 오류: \(error)")
+    }
 }
 
 @Test func repairCanonicalAliasesRejectsAmbiguousVersionedAliasesBeforeRevert() async throws {

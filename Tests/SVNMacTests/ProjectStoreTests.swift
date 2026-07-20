@@ -156,6 +156,72 @@ import Testing
 }
 
 @MainActor
+@Test func repairablePathCollisionsKeepAutomaticCommitRepairReachable() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/repairable-commit")])
+    store.statuses = [SVNStatusEntry(path: "04 구현/수정.bin", item: .modified)]
+    store.selectedPaths = ["04 구현/수정.bin"]
+    store.pathCollisions = [makePathCollision(path: "04 구현", repairable: true)]
+
+    #expect(store.canRepairCanonicalAliases)
+    #expect(store.canCommitSelectedPaths)
+}
+
+@MainActor
+@Test func ambiguousPathCollisionsBlockCommitAndAutomaticCleanup() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/ambiguous-commit")])
+    store.statuses = [SVNStatusEntry(path: "04 구현/수정.bin", item: .modified)]
+    store.selectedPaths = ["04 구현/수정.bin"]
+    store.pathCollisions = [makePathCollision(path: "04 구현", repairable: false)]
+
+    #expect(!store.canRepairCanonicalAliases)
+    #expect(!store.canCommitSelectedPaths)
+}
+
+@MainActor
+@Test func mixedPathCollisionsBlockCommitAndGuaranteedFailCleanup() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/mixed-commit")])
+    store.statuses = [SVNStatusEntry(path: "04 구현/수정.bin", item: .modified)]
+    store.selectedPaths = ["04 구현/수정.bin"]
+    store.pathCollisions = [
+        makePathCollision(path: "04 구현", repairable: true),
+        makePathCollision(path: "05 배포", repairable: false),
+    ]
+
+    #expect(!store.canRepairCanonicalAliases)
+    #expect(!store.canCommitSelectedPaths)
+}
+
+@MainActor
+@Test func completedCommitWarningClearsSelectionRefreshesAndPreventsRetry() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/post-commit-warning")
+    let client = StubSVNClient(
+        snapshotsByPath: [
+            project.path: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "2", maximum: "2"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+        ],
+        commitCompletedWarning: (
+            output: "Committed revision 2.\n",
+            details: "04 구현"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [SVNStatusEntry(path: "새 파일.bin", item: .unversioned)]
+    store.selectedPaths = ["새 파일.bin"]
+
+    let succeeded = await store.commit(message: "완료 후 검증")
+
+    #expect(succeeded)
+    #expect(store.selectedPaths.isEmpty)
+    #expect(store.lastCompletedCommitMessage == "완료 후 검증")
+    #expect(store.notice?.contains("다시 커밋하지") == true)
+    #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
 @Test func repairCanonicalAliasesRepairsInPlaceAndDoesNotOpenPathRecovery() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/repairable-unicode-collision")
     let collision = SVNPathCollision(
@@ -407,6 +473,15 @@ private func makeLog(revision: String) -> SVNLogEntry {
     SVNLogEntry(revision: revision, author: "tester", date: nil, message: "test")
 }
 
+private func makePathCollision(path: String, repairable: Bool) -> SVNPathCollision {
+    SVNPathCollision(
+        canonicalPath: path,
+        rawPaths: [path, path.decomposedStringWithCanonicalMapping],
+        affectedEntryCount: 2,
+        repairableRawPath: repairable ? path.decomposedStringWithCanonicalMapping : nil
+    )
+}
+
 private enum TestError: Error {
     case credentialWriteFailed
 }
@@ -428,10 +503,12 @@ private actor StubSVNClient: SVNClientServing {
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
+    let commitCompletedWarning: (output: String, details: String)?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var recoveryPaths: [String] = []
     private var canonicalAliasRepairRequests = 0
+    private var snapshotRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -444,7 +521,8 @@ private actor StubSVNClient: SVNClientServing {
         recoveryPreview: SVNRecoveryPreview = SVNRecoveryPreview(
             mappings: [], ignoredAliasCount: 0, blockingPaths: []
         ),
-        recoveryResult: SVNRecoveryResult? = nil
+        recoveryResult: SVNRecoveryResult? = nil,
+        commitCompletedWarning: (output: String, details: String)? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -453,6 +531,7 @@ private actor StubSVNClient: SVNClientServing {
         self.lockInfoByPath = lockInfoByPath
         self.snapshotsByPath = snapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
+        self.commitCompletedWarning = commitCompletedWarning
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -478,6 +557,7 @@ private actor StubSVNClient: SVNClientServing {
     }
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
+        snapshotRequests += 1
         await delay(for: path)
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
@@ -489,6 +569,7 @@ private actor StubSVNClient: SVNClientServing {
             versionedPathsByCanonicalKey: [:]
         )
     }
+    func snapshotRequestCount() -> Int { snapshotRequests }
     func repairCanonicalAliases(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         canonicalAliasRepairRequests += 1
         if let repairedSnapshot = repairedSnapshotsByPath[path] { return repairedSnapshot }
@@ -546,7 +627,15 @@ private actor StubSVNClient: SVNClientServing {
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String { "reverted" }
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] { [] }
-    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "committed" }
+    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        if let commitCompletedWarning {
+            throw SVNError.commitSucceededWithValidationWarning(
+                output: commitCompletedWarning.output,
+                details: commitCompletedWarning.details
+            )
+        }
+        return "committed"
+    }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {

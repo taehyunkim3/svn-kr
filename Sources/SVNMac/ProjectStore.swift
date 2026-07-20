@@ -176,8 +176,16 @@ final class ProjectStore: ObservableObject {
         Set(statuses.lazy.filter(\.isSelectableForCommit).map(\.path))
     }
 
+    var canRepairCanonicalAliases: Bool {
+        !pathCollisions.isEmpty && pathCollisions.allSatisfy { $0.repairableRawPath != nil }
+    }
+
+    var hasUnrepairablePathCollisions: Bool {
+        pathCollisions.contains { $0.repairableRawPath == nil }
+    }
+
     var canCommitSelectedPaths: Bool {
-        pathCollisions.isEmpty
+        !hasUnrepairablePathCollisions
             && !selectedPaths.isEmpty
             && selectedPaths.isSubset(of: selectableStatusPaths)
     }
@@ -443,6 +451,16 @@ final class ProjectStore: ObservableObject {
             lastCompletedCommitMessage = message
             await refresh()
             return true
+        } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
+            guard selectedProjectID == project.id else { return true }
+            selectedPaths.subtract(paths)
+            lastCompletedCommitMessage = message
+            await refresh()
+            notice = localizedError(SVNError.commitSucceededWithValidationWarning(
+                output: "",
+                details: details
+            ))
+            return true
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .commit(message: message))
@@ -628,6 +646,8 @@ final class ProjectStore: ObservableObject {
             return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
         case let .pathAliasRepairFailed(paths):
             return "Korean path alias repair could not be validated: \(paths.joined(separator: ", "))"
+        case let .commitSucceededWithValidationWarning(_, details):
+            return "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: \(details)"
         case let .recoveryBlocked(paths):
             return "Some changes cannot be recovered automatically: \(paths.joined(separator: ", "))"
         case .recoveryDestinationNotEmpty:

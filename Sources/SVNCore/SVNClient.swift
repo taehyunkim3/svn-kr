@@ -121,17 +121,20 @@ public actor SVNClient {
         guard !before.hasUnrepairablePathCollisions else {
             throw SVNError.pathNormalizationCollision(paths: before.collisions.map(\.displayPath))
         }
-        let targets = before.repairableAliasPaths
+        let targets = before.canonicalAliasRepairTargets
         if !targets.isEmpty {
             _ = try checkedRunWithTargets(
-                ["revert", "--depth", "infinity"],
+                ["revert", "--depth", "empty"],
                 targets: targets,
                 at: path,
                 credentials: credentials
             )
         }
         let after = try await workingCopySnapshot(at: path, credentials: credentials)
-        guard after.repairableAliasPaths.isEmpty else {
+        guard !after.hasUnrepairablePathCollisions else {
+            throw SVNError.pathNormalizationCollision(paths: after.collisions.map(\.displayPath))
+        }
+        guard !after.hasPathCollisions else {
             throw SVNError.pathAliasRepairFailed(paths: after.collisions.map(\.displayPath))
         }
         return after
@@ -449,6 +452,7 @@ public actor SVNClient {
         })
 
         var scheduledByThisCommit: [String] = []
+        let commitOutput: String
         do {
             if !additions.isEmpty {
                 scheduledByThisCommit.append(contentsOf: Self.additionRollbackRoots(
@@ -472,7 +476,7 @@ public actor SVNClient {
                 )
             }
 
-            return try checkedRunWithTargets(
+            commitOutput = try checkedRunWithTargets(
                 ["commit", "--message", message],
                 targets: normalizedPaths,
                 at: path,
@@ -491,6 +495,26 @@ public actor SVNClient {
             }
             throw error
         }
+
+        // 저장소 커밋이 성공한 뒤의 검증 실패는 add/delete 예약 롤백 범위 밖입니다.
+        // 이 시점에 revert하면 이미 서버에 올라간 변경을 사용자가 재시도하게 만들 수
+        // 있으므로, 완료 사실과 검증 경고를 함께 전달합니다.
+        let committedSnapshot: SVNWorkingCopySnapshot
+        do {
+            committedSnapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        } catch {
+            throw SVNError.commitSucceededWithValidationWarning(
+                output: commitOutput,
+                details: error.localizedDescription
+            )
+        }
+        guard !committedSnapshot.hasPathCollisions else {
+            throw SVNError.commitSucceededWithValidationWarning(
+                output: commitOutput,
+                details: committedSnapshot.collisions.map(\.displayPath).joined(separator: ", ")
+            )
+        }
+        return commitOutput
     }
 
     static func additionRollbackRoots(

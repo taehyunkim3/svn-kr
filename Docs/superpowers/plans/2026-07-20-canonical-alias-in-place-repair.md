@@ -96,11 +96,11 @@ git commit -m "정규화 동일 경로 제자리 복구 대상 분류"
 
 - [ ] **Step 1: Write failing command-log tests**
 
-Create a fake SVN executable whose first verbose status contains an NFC managed path plus an exact NFD `missing revision=-1` alias and whose second status is clean. Assert that repair runs one revert with the exact NFD bytes, `--depth infinity`, and no `--remove-added`. Keep a real temporary file under the root and assert its `Data` is unchanged.
+Create a fake SVN executable whose first verbose status contains an NFC managed path plus exact NFD `missing/added revision=-1` alias entries and whose second status is clean. Assert that repair runs one revert with deepest-first exact NFD bytes, `--depth empty`, and no `--remove-added`. Keep a real temporary file under the root and assert its `Data` is unchanged.
 
 ```swift
 #expect(rawTargets.contains(Data(nfdRoot.utf8)))
-#expect(log.contains("revert --depth infinity"))
+#expect(log.contains("revert --depth empty"))
 #expect(!log.contains("--remove-added"))
 #expect(try Data(contentsOf: localFile) == originalData)
 ```
@@ -248,9 +248,7 @@ if collision.repairableRawPath != nil {
         Task { await store.repairCanonicalAliases() }
     }
 } else {
-    Button(appLanguage.text("경로 자동 복구…", "Recover Paths…")) {
-        Task { await store.beginPathRecovery() }
-    }
+            Text(appLanguage.text("서버 중복 경로 수동 정리 필요", "Resolve Duplicate Server Paths Manually"))
 }
 ```
 

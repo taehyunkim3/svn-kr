@@ -68,11 +68,18 @@ struct SVNWorkingCopySnapshotTests {
             (nfdRoot, "missing", "-1"),
             ("\(nfdRoot)/하위", "missing", "-1"),
             ("\(nfdRoot)/하위/파일.txt", "missing", "-1"),
+            ("\(nfdRoot)/실제수정.bin", "added", "-1"),
             (nfdRoot, "unversioned", nil),
             ("\(nfdRoot)/하위/새파일.txt", "unversioned", nil),
         ]))
 
         #expect(snapshot.repairableAliasPaths.map { Data($0.utf8) } == [Data(nfdRoot.utf8)])
+        #expect(snapshot.canonicalAliasRepairTargets.map { Data($0.utf8) } == [
+            Data("\(nfdRoot)/하위/파일.txt".utf8),
+            Data("\(nfdRoot)/실제수정.bin".utf8),
+            Data("\(nfdRoot)/하위".utf8),
+            Data(nfdRoot.utf8),
+        ])
         #expect(!snapshot.hasUnrepairablePathCollisions)
     }
 
