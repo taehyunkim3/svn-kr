@@ -63,6 +63,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     public let versionedPathsByCanonicalKey: [String: [String]]
     public let canonicalAliasRepairTargets: [String]
     public let canonicalFileReplacements: [SVNCanonicalFileReplacement]
+    public let missingScheduledAdditionCleanupTargets: [String]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
     public var repairableAliasPaths: [String] {
@@ -78,7 +79,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
         collisions: [SVNPathCollision],
         versionedPathsByCanonicalKey: [String: [String]],
         canonicalAliasRepairTargets: [String]? = nil,
-        canonicalFileReplacements: [SVNCanonicalFileReplacement] = []
+        canonicalFileReplacements: [SVNCanonicalFileReplacement] = [],
+        missingScheduledAdditionCleanupTargets: [String] = []
     ) {
         self.statuses = statuses
         self.revision = revision
@@ -87,6 +89,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
         self.canonicalAliasRepairTargets = canonicalAliasRepairTargets
             ?? collisions.compactMap(\.repairableRawPath)
         self.canonicalFileReplacements = canonicalFileReplacements
+        self.missingScheduledAdditionCleanupTargets = missingScheduledAdditionCleanupTargets
     }
 
     init(entries: [SVNWorkingCopyEntry]) throws {
@@ -134,9 +137,16 @@ public struct SVNWorkingCopySnapshot: Sendable {
             entries: entries,
             versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
         )
+        let missingScheduledAdditionRoots = Self.missingScheduledAdditionRoots(entries: entries)
+        missingScheduledAdditionCleanupTargets = Self.missingScheduledAdditionCleanupTargets(
+            entries: entries,
+            roots: missingScheduledAdditionRoots,
+            versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
+        )
         statuses = Self.visibleStatuses(
             from: entries,
             orphanedRoots: orphanedRoots.map(\.canonicalPath),
+            missingScheduledAdditionRoots: missingScheduledAdditionRoots,
             versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
         )
     }
@@ -179,7 +189,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
             collisions: collisions,
             versionedPathsByCanonicalKey: versionedPathsByCanonicalKey,
             canonicalAliasRepairTargets: canonicalAliasRepairTargets,
-            canonicalFileReplacements: canonicalFileReplacements
+            canonicalFileReplacements: canonicalFileReplacements,
+            missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets
         )
     }
 
@@ -216,6 +227,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     private static func visibleStatuses(
         from entries: [SVNWorkingCopyEntry],
         orphanedRoots: [String],
+        missingScheduledAdditionRoots: [String],
         versionedPathsByCanonicalKey: [String: [String]]
     ) -> [SVNStatusEntry] {
         let changed = entries.filter { entry in
@@ -224,6 +236,13 @@ public struct SVNWorkingCopySnapshot: Sendable {
         let filtered = changed.filter { entry in
             let key = canonicalKey(entry.path)
             if isMissingScheduledAddition(entry), orphanedRoots.contains(where: { isAtOrBelow(key, root: $0) }) {
+                return false
+            }
+            if isMissingScheduledAddition(entry),
+               let root = missingScheduledAdditionRoots.first(where: {
+                   isRawAtOrBelow(entry.path, root: $0)
+               }),
+               Data(entry.path.utf8) != Data(root.utf8) {
                 return false
             }
             if entry.status == "unversioned", versionedPathsByCanonicalKey[key]?.isEmpty == false {
@@ -275,6 +294,39 @@ public struct SVNWorkingCopySnapshot: Sendable {
 
     private static func isMissingScheduledAddition(_ entry: SVNWorkingCopyEntry) -> Bool {
         entry.status == "missing" && (entry.revision == nil || entry.revision == "-1")
+    }
+
+    private static func missingScheduledAdditionRoots(entries: [SVNWorkingCopyEntry]) -> [String] {
+        let candidates = distinctRawPaths(entries.compactMap { entry in
+            isMissingScheduledAddition(entry) ? entry.path : nil
+        })
+        .sorted { lhs, rhs in
+            let lhsDepth = pathComponents(lhs).count
+            let rhsDepth = pathComponents(rhs).count
+            return lhsDepth == rhsDepth
+                ? Data(lhs.utf8).lexicographicallyPrecedes(Data(rhs.utf8))
+                : lhsDepth < rhsDepth
+        }
+
+        var roots: [String] = []
+        for candidate in candidates where !roots.contains(where: {
+            isRawAtOrBelow(candidate, root: $0)
+        }) {
+            roots.append(candidate)
+        }
+        return roots
+    }
+
+    private static func missingScheduledAdditionCleanupTargets(
+        entries: [SVNWorkingCopyEntry],
+        roots: [String],
+        versionedPathsByCanonicalKey: [String: [String]]
+    ) -> [String] {
+        roots.filter { root in
+            guard versionedPathsByCanonicalKey[canonicalKey(root)] == nil else { return false }
+            let affected = entries.filter { isRawAtOrBelow($0.path, root: root) }
+            return !affected.isEmpty && affected.allSatisfy(isCanonicalAliasSchedulingNode)
+        }
     }
 
     private static func isCanonicalAliasSchedulingNode(_ entry: SVNWorkingCopyEntry) -> Bool {

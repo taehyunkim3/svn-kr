@@ -44,11 +44,11 @@
 - Produces: `SVNWorkingCopySnapshot.missingScheduledAdditionCleanupTargets: [String]`
 - Produces: 누락 추가 트리를 최상위 `SVNStatusEntry(item: .missing, revision: "-1")` 한 건으로 접은 `statuses`
 
-- [ ] 단일 누락 파일과 누락 디렉터리 트리가 최상위 후보 한 건이 되는 실패 테스트를 작성한다.
-- [ ] NFC/NFD 동등 unversioned 경로, 충돌, revision이 있는 관리 항목이 섞이면 후보가 되지 않는 실패 테스트를 작성한다.
-- [ ] 가장 짧은 누락 추가 루트를 계산하고, 그 아래 모든 상태가 추가 예약 계열일 때만 cleanup target으로 노출한다.
-- [ ] 표시 상태에서는 누락 추가 하위 항목을 제거하고 후보 또는 예외의 최상위 한 줄만 남긴다.
-- [ ] 관련 스냅샷 테스트를 실행한다.
+- [x] 단일 누락 파일과 누락 디렉터리 트리가 최상위 후보 한 건이 되는 실패 테스트를 작성한다.
+- [x] NFC/NFD 동등 unversioned 경로, 충돌, revision이 있는 관리 항목이 섞이면 후보가 되지 않는 실패 테스트를 작성한다.
+- [x] 가장 짧은 누락 추가 루트를 계산하고, 그 아래 모든 상태가 추가 예약 계열일 때만 cleanup target으로 노출한다.
+- [x] 표시 상태에서는 누락 추가 하위 항목을 제거하고 후보 또는 예외의 최상위 한 줄만 남긴다.
+- [x] 관련 스냅샷 테스트를 실행한다.
 
 ### Task 3: 상태 조회 중 자동 정리와 실패 보존
 

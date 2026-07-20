@@ -4,6 +4,39 @@ import Testing
 
 @Suite("SVNWorkingCopySnapshotTests")
 struct SVNWorkingCopySnapshotTests {
+    @Test func exposesShortestStandaloneMissingAdditionRootForCleanup() throws {
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13302"),
+            ("새 폴더", "missing", "-1"),
+            ("새 폴더/하위", "missing", "-1"),
+            ("새 폴더/하위/문서.pdf", "missing", "-1"),
+        ]))
+
+        #expect(snapshot.missingScheduledAdditionCleanupTargets == ["새 폴더"])
+        #expect(snapshot.statuses == [
+            SVNStatusEntry(path: "새 폴더", item: .missing, revision: "-1"),
+        ])
+    }
+
+    @Test func excludesUnsafeMissingAdditionsFromAutomaticCleanup() throws {
+        let composedAlias = "별칭 폴더"
+        let decomposedAlias = composedAlias.decomposedStringWithCanonicalMapping
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13302"),
+            (composedAlias, "normal", "13302"),
+            (decomposedAlias, "missing", "-1"),
+            (decomposedAlias, "unversioned", nil),
+            ("혼합 폴더", "missing", "-1"),
+            ("혼합 폴더/관리.txt", "modified", "13302"),
+        ]))
+
+        #expect(snapshot.missingScheduledAdditionCleanupTargets.isEmpty)
+        #expect(snapshot.statuses == [
+            SVNStatusEntry(path: "혼합 폴더", item: .missing, revision: "-1"),
+            SVNStatusEntry(path: "혼합 폴더/관리.txt", item: .modified, revision: "13302"),
+        ])
+    }
+
     @Test func resolvesDecomposedNewChildAgainstComposedVersionedAncestor() throws {
         let decomposedAncestor = "00 사업관리".decomposedStringWithCanonicalMapping
         let decomposedSuffix = "0720 기획서".decomposedStringWithCanonicalMapping
