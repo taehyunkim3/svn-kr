@@ -125,6 +125,25 @@ import Testing
     #expect(details?.serverRevision == "3")
 }
 
+@Test func parsesTreeConflictFromRealSVNInfoShape() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="file" path="tree.txt" revision="2">
+      <tree-conflict kind="file" reason="edit" victim="tree.txt" action="delete" operation="update">
+        <version kind="file" revision="2" side="source-left"/>
+        <version kind="none" revision="3" side="source-right"/>
+      </tree-conflict>
+    </entry></info>
+    """
+
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+
+    #expect(details?.path == "tree.txt")
+    #expect(details?.type == "tree")
+    #expect(details?.operation == "update")
+    #expect(details?.previousRevision == "2")
+    #expect(details?.serverRevision == "3")
+}
+
 @Test func detectsActualRemoteWorkingCopyChanges() throws {
     let upToDateXML = """
     <?xml version="1.0"?><status><target path=".">

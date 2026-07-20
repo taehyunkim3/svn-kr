@@ -1,16 +1,7 @@
 import SwiftUI
 import SVNCore
 
-enum ConflictResolutionCopy {
-    static func backupAlertMessage(for language: AppLanguage) -> String {
-        language.text(
-            "백업 폴더에는 내 버전과 서버 버전의 비교용 복사본이 보관됩니다. 이 복사본을 편집해도 현재 작업 파일은 바뀌지 않습니다.",
-            "The backup folder keeps comparison copies of your version and the server version. Editing those copies does not change the current working file."
-        )
-    }
-}
-
-/// 텍스트 충돌과 병합이 어려운 문서 충돌을 서로 다른 안전한 흐름으로 안내합니다.
+/// 파일 내용 충돌의 두 비교 버전 중 하나를 안전하게 선택하도록 안내합니다.
 struct ConflictResolutionView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
@@ -30,12 +21,14 @@ struct ConflictResolutionView: View {
         }
         .padding()
         .appSheetFrame(minimumSize: AppLayout.conflictResolutionSheetMinimumSize)
+        .interactiveDismissDisabled(store.isResolvingConflict)
         .alert(
             confirmationTitle,
             isPresented: Binding(get: { pendingChoice != nil }, set: { if !$0 { pendingChoice = nil } })
         ) {
             Button(confirmationActionTitle, role: .destructive) {
                 guard let choice = pendingChoice else { return }
+                pendingChoice = nil
                 Task { await store.resolveActiveConflict(using: choice) }
             }
             Button(appLanguage.text("취소", "Cancel"), role: .cancel) { pendingChoice = nil }
@@ -52,7 +45,6 @@ struct ConflictResolutionView: View {
                 .font(.title2.bold())
                 .foregroundStyle(.orange)
             Spacer()
-            Button(appLanguage.text("닫기", "Close")) { dismiss() }.keyboardShortcut(.cancelAction)
         }
     }
 
@@ -60,22 +52,31 @@ struct ConflictResolutionView: View {
     private func conflictBody(_ session: ConflictResolutionSession) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                Label(
-                    appLanguage.text(
-                        "내 파일과 서버 파일은 백업 폴더에 복사되었습니다. 열어 수정해도 실제 작업 파일에는 반영되지 않습니다.",
-                        "Both versions were copied to a backup folder. Editing these copies does not change the working file."
-                    ),
-                    systemImage: "externaldrive.badge.checkmark"
-                )
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(
+                        appLanguage.text(
+                            "내 파일과 서버 파일은 백업 폴더에 복사되었습니다. 열어 수정해도 실제 작업 파일에는 반영되지 않습니다.",
+                            "Both versions were copied to a backup folder. Editing these copies does not change the working file."
+                        ),
+                        systemImage: "externaldrive.badge.checkmark"
+                    )
+                    Text(appLanguage.text(
+                        "버전을 선택하는 순간의 현재 작업 파일은 별도의 숨김 복구본으로 보존됩니다.",
+                        "When you choose a version, the current working file is preserved separately as a hidden recovery copy."
+                    ))
+                    .font(.caption)
+                }
                 .foregroundStyle(.secondary)
                 Spacer()
                 Button(appLanguage.text("백업 폴더 열기", "Open Backup Folder"), systemImage: "folder") {
                     store.openConflictBackupFolder()
                 }
+                .disabled(store.isResolvingConflict)
             }
 
             versionCard(
                 title: appLanguage.text("내 파일", "My File"),
+                originalPath: session.details.path,
                 version: session.mine,
                 openTitle: appLanguage.text("내 파일 열기", "Open My File"),
                 useTitle: appLanguage.text("내 파일 사용", "Use My File"),
@@ -84,6 +85,7 @@ struct ConflictResolutionView: View {
 
             versionCard(
                 title: appLanguage.text("서버 파일", "Server File"),
+                originalPath: session.details.path,
                 version: session.server,
                 openTitle: appLanguage.text("서버 파일 열기", "Open Server File"),
                 useTitle: appLanguage.text("서버 파일 사용", "Use Server File"),
@@ -94,6 +96,7 @@ struct ConflictResolutionView: View {
 
     private func versionCard(
         title: String,
+        originalPath: String,
         version: ConflictVersionBackup,
         openTitle: String,
         useTitle: String,
@@ -101,6 +104,9 @@ struct ConflictResolutionView: View {
     ) -> some View {
         GroupBox(title) {
             VStack(alignment: .leading, spacing: 10) {
+                Text(originalPath.precomposedStringWithCanonicalMapping)
+                    .lineLimit(1)
+                    .textSelection(.enabled)
                 Text(version.url.lastPathComponent)
                     .lineLimit(1)
                     .textSelection(.enabled)
@@ -112,11 +118,13 @@ struct ConflictResolutionView: View {
                     Button(openTitle) {
                         store.openConflictVersion(choice)
                     }
+                    .disabled(store.isResolvingConflict)
                     Spacer()
                     Button(useTitle) {
                         pendingChoice = choice
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(store.isResolvingConflict)
                 }
             }
             .padding(.vertical, 4)
@@ -183,6 +191,9 @@ struct ConflictResolutionView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
+            Button(appLanguage.text("취소", "Cancel")) { dismiss() }
+                .keyboardShortcut(.cancelAction)
+                .disabled(store.isResolvingConflict)
         }
     }
 }

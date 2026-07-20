@@ -99,11 +99,12 @@ public struct SVNWorkingCopySnapshot: Sendable {
         _ kindsByRawPath: [SVNPathIdentity: SVNNodeKind]
     ) -> SVNWorkingCopySnapshot {
         let annotated = statuses.map { entry in
-            SVNStatusEntry(
+            let mappedKind = kindsByRawPath[SVNPathIdentity(rawPath: entry.path)]
+            return SVNStatusEntry(
                 path: entry.path,
                 item: entry.item,
                 revision: entry.revision,
-                nodeKind: kindsByRawPath[SVNPathIdentity(rawPath: entry.path)]
+                nodeKind: mappedKind ?? entry.nodeKind
             )
         }
         return SVNWorkingCopySnapshot(

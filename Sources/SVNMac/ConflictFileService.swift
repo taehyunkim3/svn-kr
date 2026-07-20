@@ -14,30 +14,23 @@ struct ConflictResolutionSession: Identifiable, Hashable {
     let directoryURL: URL
     let mine: ConflictVersionBackup
     let server: ConflictVersionBackup
+    let mineResolveSourceURL: URL?
 }
 
-enum ConflictFileError: LocalizedError {
+enum ConflictFileError: Error {
     case unsupportedType(String)
     case missingMine
     case missingServer
+    case missingWorkingFile
     case sourceOutsideWorkingCopy
     case backupRootInsideWorkingCopy
     case unsafeMineSource
     case unsafeServerSource
+    case unsafeWorkingFile
+    case workingRecoveryVerificationFailed
+    case workingRestoreVerificationFailed
     case cleanupFailed(String)
 
-    var errorDescription: String? {
-        switch self {
-        case let .unsupportedType(type): "지원하지 않는 충돌 유형입니다: \(type)"
-        case .missingMine: "내 파일 버전을 찾을 수 없습니다."
-        case .missingServer: "서버 파일 버전을 찾을 수 없습니다."
-        case .sourceOutsideWorkingCopy: "충돌 파일 경로가 작업 사본 밖을 가리킵니다."
-        case .backupRootInsideWorkingCopy: "충돌 백업 위치는 작업 사본 밖에 있어야 합니다."
-        case .unsafeMineSource: "내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
-        case .unsafeServerSource: "서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
-        case let .cleanupFailed(message): "불완전한 충돌 백업 정리에 실패했습니다: \(message)"
-        }
-    }
 }
 
 /// SVN이 만든 충돌 보조 파일을 보존하고 사용자가 비교하기 쉬운 이름으로 복사합니다.
@@ -64,7 +57,10 @@ struct ConflictFileService {
         workingCopyPath: String
     ) throws -> ConflictResolutionSession {
         guard details.type == "text" else { throw ConflictFileError.unsupportedType(details.type) }
-        guard let myFile = details.myFile else { throw ConflictFileError.missingMine }
+        // Real SVN binary conflicts may omit prev-wc-file because the working file itself
+        // remains the mine version. Snapshot that file into the comparison session.
+        let usesWorkingFileAsMine = details.myFile == nil
+        let myFile = details.myFile ?? details.path
         guard let serverFile = details.serverFile else { throw ConflictFileError.missingServer }
 
         let supportRoot = try backupRootURL ?? fileManager.url(
@@ -112,6 +108,7 @@ struct ConflictFileService {
         let serverFileName = fileName(revisionSuffix)
         let stagedMineURL = stagingDirectory.appendingPathComponent(mineFileName)
         let stagedServerURL = stagingDirectory.appendingPathComponent(serverFileName)
+        let stagedMineResolveSourceURL = stagingDirectory.appendingPathComponent(".mine-resolve-source")
 
         func backup(_ url: URL, revision: String?) throws -> ConflictVersionBackup {
             let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
@@ -126,6 +123,9 @@ struct ConflictFileService {
         do {
             try copyItem(mineSource, stagedMineURL)
             try copyItem(serverSource, stagedServerURL)
+            if usesWorkingFileAsMine {
+                try copyItem(stagedMineURL, stagedMineResolveSourceURL)
+            }
             let mine = try backup(stagedMineURL, revision: nil)
             let server = try backup(stagedServerURL, revision: details.serverRevision)
             try fileManager.createDirectory(at: directory.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -145,7 +145,10 @@ struct ConflictFileService {
                     byteCount: server.byteCount,
                     modificationDate: server.modificationDate,
                     revision: server.revision
-                )
+                ),
+                mineResolveSourceURL: usesWorkingFileAsMine
+                    ? directory.appendingPathComponent(stagedMineResolveSourceURL.lastPathComponent)
+                    : nil
             )
         } catch {
             do {
@@ -155,6 +158,76 @@ struct ConflictFileService {
             }
             throw error
         }
+    }
+
+    /// 선택 시점의 실제 작업 파일을 숨김 복구본으로 보존한 뒤에만 resolve를 허용합니다.
+    /// 비교 카드에 노출되는 mine/server 복사본과 달리 이 파일은 데이터 복구 전용입니다.
+    func preserveWorkingFile(
+        for session: ConflictResolutionSession,
+        workingCopyPath: String
+    ) throws -> URL {
+        let workingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
+        let source = try sourceURL(
+            session.details.path,
+            workingCopy: workingCopy,
+            missingError: .missingWorkingFile,
+            unsafeError: .unsafeWorkingFile
+        )
+        let destination = session.directoryURL.appendingPathComponent(".working-file-recovery")
+        let staging = session.directoryURL.appendingPathComponent(
+            ".working-file-recovery-\(UUID().uuidString).staging"
+        )
+        var stagingExists = false
+        defer {
+            if stagingExists {
+                try? fileManager.removeItem(at: staging)
+            }
+        }
+
+        try copyItem(source, staging)
+        stagingExists = true
+        guard try filesHaveEqualContents(source, staging) else {
+            throw ConflictFileError.workingRecoveryVerificationFailed
+        }
+
+        if fileManager.fileExists(atPath: destination.path) {
+            _ = try fileManager.replaceItemAt(
+                destination,
+                withItemAt: staging,
+                backupItemName: nil,
+                options: [.usingNewMetadataOnly]
+            )
+        } else {
+            try fileManager.moveItem(at: staging, to: destination)
+        }
+        stagingExists = false
+        return destination
+    }
+
+    /// resolve 전 최신 작업 파일을 복구용으로 보존하고, SVN이 별도 binary mine
+    /// artifact를 제공하지 않은 경우에는 준비 시점의 숨김 원본을 작업 파일에 복원합니다.
+    func prepareWorkingFileForResolve(
+        for session: ConflictResolutionSession,
+        choice: SVNConflictChoice,
+        workingCopyPath: String
+    ) throws -> URL {
+        let recoveryURL = try preserveWorkingFile(for: session, workingCopyPath: workingCopyPath)
+        guard case .mineFull = choice, let mineSource = session.mineResolveSourceURL else {
+            return recoveryURL
+        }
+        let workingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
+        let workingFile = try sourceURL(
+            session.details.path,
+            workingCopy: workingCopy,
+            missingError: .missingWorkingFile,
+            unsafeError: .unsafeWorkingFile
+        )
+        try replaceFileAtomically(
+            at: workingFile,
+            with: mineSource,
+            verificationError: .workingRestoreVerificationFailed
+        )
+        return recoveryURL
     }
 
     private func sourceURL(
@@ -167,7 +240,7 @@ struct ConflictFileService {
         let candidate = (isAbsolute ? URL(fileURLWithPath: path) : workingCopy.appendingPathComponent(path))
             .standardizedFileURL
         let resolved = resolvedURL(candidate)
-        if !isAbsolute, !isAtOrBelow(resolved, root: workingCopy) {
+        if !isAtOrBelow(resolved, root: workingCopy) {
             throw ConflictFileError.sourceOutsideWorkingCopy
         }
         let attributes: [FileAttributeKey: Any]
@@ -196,6 +269,49 @@ struct ConflictFileService {
             return nil
         }
         return revision
+    }
+
+    private func filesHaveEqualContents(_ first: URL, _ second: URL) throws -> Bool {
+        let firstHandle = try FileHandle(forReadingFrom: first)
+        let secondHandle = try FileHandle(forReadingFrom: second)
+        defer {
+            try? firstHandle.close()
+            try? secondHandle.close()
+        }
+        let chunkSize = 64 * 1_024
+        while true {
+            let firstData = try firstHandle.read(upToCount: chunkSize) ?? Data()
+            let secondData = try secondHandle.read(upToCount: chunkSize) ?? Data()
+            guard firstData == secondData else { return false }
+            if firstData.isEmpty { return true }
+        }
+    }
+
+    private func replaceFileAtomically(
+        at destination: URL,
+        with source: URL,
+        verificationError: ConflictFileError
+    ) throws {
+        let staging = destination.deletingLastPathComponent().appendingPathComponent(
+            ".svn-mac-conflict-restore-\(UUID().uuidString)"
+        )
+        var stagingExists = false
+        defer {
+            if stagingExists {
+                try? fileManager.removeItem(at: staging)
+            }
+        }
+        try copyItem(source, staging)
+        stagingExists = true
+        guard try filesHaveEqualContents(source, staging) else { throw verificationError }
+        _ = try fileManager.replaceItemAt(
+            destination,
+            withItemAt: staging,
+            backupItemName: nil,
+            options: [.usingNewMetadataOnly]
+        )
+        stagingExists = false
+        guard try filesHaveEqualContents(source, destination) else { throw verificationError }
     }
 
 }

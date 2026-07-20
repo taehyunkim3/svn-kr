@@ -119,6 +119,8 @@ final class ProjectStore: ObservableObject {
     @Published var pathRecoveryPreview: SVNRecoveryPreview?
     @Published var documentOpenRequest: DocumentOpenRequest?
     @Published var activeConflictSession: ConflictResolutionSession?
+    @Published var resolvingConflictSessionID: ConflictResolutionSession.ID?
+    @Published var resolvingConflictProjectID: SVNProject.ID?
     @Published var revertRequest: RevertRequest?
     @Published var authenticationRequest: SVNAuthenticationRequest?
     @Published var lastCompletedCommitMessage: String?
@@ -144,12 +146,17 @@ final class ProjectStore: ObservableObject {
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
     private var diffRequestID: UUID?
     var fileTreeRequestID: UUID?
+    var conflictPreparationRequestID: UUID?
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
     }
 
     var isWorking: Bool { !activeOperations.isEmpty }
+
+    var isResolvingConflict: Bool {
+        resolvingConflictSessionID != nil && resolvingConflictProjectID != nil
+    }
 
     var isHistoryLoading: Bool {
         guard let projectID = selectedProjectID else { return false }
@@ -631,8 +638,11 @@ final class ProjectStore: ObservableObject {
         }
     }
 
-    func localizedError(_ error: Error) -> String {
-        guard AppLanguage.current == .english, let svnError = error as? SVNError else {
+    func localizedError(_ error: Error, language: AppLanguage = .current) -> String {
+        if let conflictError = error as? ConflictFileError {
+            return localizedConflictFileError(conflictError, language: language)
+        }
+        guard language == .english, let svnError = error as? SVNError else {
             return error.localizedDescription
         }
         switch svnError {
@@ -660,6 +670,38 @@ final class ProjectStore: ObservableObject {
             return "The recovered working copy did not pass validation: \(paths.joined(separator: ", "))"
         case .svnExecutableNotFound:
             return "The bundled SVN executable could not be found. Reinstall the app."
+        }
+    }
+
+    private func localizedConflictFileError(
+        _ error: ConflictFileError,
+        language: AppLanguage
+    ) -> String {
+        switch error {
+        case let .unsupportedType(type):
+            return language.text("지원하지 않는 충돌 유형입니다: \(type)", "Unsupported conflict type: \(type)")
+        case .missingMine:
+            return language.text("내 파일 버전을 찾을 수 없습니다.", "Your file version could not be found.")
+        case .missingServer:
+            return language.text("서버 파일 버전을 찾을 수 없습니다.", "The server file version could not be found.")
+        case .missingWorkingFile:
+            return language.text("현재 작업 파일을 찾을 수 없습니다.", "The current working file could not be found.")
+        case .sourceOutsideWorkingCopy:
+            return language.text("충돌 파일 경로가 작업 사본 밖을 가리킵니다.", "A conflict file path points outside the working copy.")
+        case .backupRootInsideWorkingCopy:
+            return language.text("충돌 백업 위치는 작업 사본 밖에 있어야 합니다.", "Conflict backups must be stored outside the working copy.")
+        case .unsafeMineSource:
+            return language.text("내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "Your file version must be a regular file, not a symbolic link.")
+        case .unsafeServerSource:
+            return language.text("서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The server file version must be a regular file, not a symbolic link.")
+        case .unsafeWorkingFile:
+            return language.text("현재 작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The current working file must be a regular file, not a symbolic link.")
+        case .workingRecoveryVerificationFailed:
+            return language.text("현재 작업 파일의 복구 백업을 검증하지 못했습니다.", "The recovery backup of the current working file could not be verified.")
+        case .workingRestoreVerificationFailed:
+            return language.text("선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다.", "The selected version of your file could not be restored to the working file.")
+        case let .cleanupFailed(message):
+            return language.text("불완전한 충돌 백업 정리에 실패했습니다: \(message)", "Failed to remove an incomplete conflict backup: \(message)")
         }
     }
 
@@ -711,6 +753,7 @@ final class ProjectStore: ObservableObject {
         refreshRequestID = nil
         diffRequestID = nil
         fileTreeRequestID = nil
+        conflictPreparationRequestID = nil
         statuses = []
         pathCollisions = []
         ignoredStatuses = []
@@ -724,6 +767,8 @@ final class ProjectStore: ObservableObject {
         showsIgnoredFiles = false
         documentOpenRequest = nil
         activeConflictSession = nil
+        resolvingConflictSessionID = nil
+        resolvingConflictProjectID = nil
         revertRequest = nil
         logs = []
         selectedHistoryRevision = nil

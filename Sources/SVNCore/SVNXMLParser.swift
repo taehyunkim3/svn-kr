@@ -113,14 +113,16 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
     private var previousRevision: String?
     private var serverRevision: String?
     private var inConflict = false
+    private var conflictElementName = ""
     private var text = ""
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
         if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
-        if elementName == "conflict" {
+        if elementName == "conflict" || elementName == "tree-conflict" {
             inConflict = true
-            type = attributeDict["type"] ?? "unknown"
+            conflictElementName = elementName
+            type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
             operation = attributeDict["operation"] ?? "unknown"
         } else if elementName == "version", inConflict {
             if attributeDict["side"] == "source-left" { previousRevision = attributeDict["revision"] }
@@ -136,7 +138,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
         case "prev-base-file": previousBaseFile = text
         case "prev-wc-file": myFile = text
         case "cur-base-file": serverFile = text
-        case "conflict":
+        case conflictElementName:
             details = SVNConflictDetails(
                 path: entryPath,
                 type: type,
@@ -148,6 +150,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
                 serverRevision: serverRevision
             )
             inConflict = false
+            conflictElementName = ""
         default: break
         }
         text = ""

@@ -5,8 +5,15 @@ extension ProjectStore {
     func prepareConflictResolution(for relativePath: String) async {
         guard let project = selectedProject else { return }
         let projectID = project.id
+        let requestID = UUID()
+        conflictPreparationRequestID = requestID
         let operationID = beginOperation(.resolveConflict(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            endOperation(operationID)
+            if conflictPreparationRequestID == requestID {
+                conflictPreparationRequestID = nil
+            }
+        }
         do {
             guard let details = try await client.conflictDetails(
                 at: project.path,
@@ -15,22 +22,22 @@ extension ProjectStore {
             ) else {
                 throw ConflictFileError.unsupportedType("unknown")
             }
-            guard selectedProjectID == projectID else { return }
+            guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
             let session = try conflictFileService.prepareSession(
                 details,
                 projectID: projectID,
                 workingCopyPath: project.path
             )
-            guard selectedProjectID == projectID else { return }
+            guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
             activeConflictSession = session
         } catch {
-            guard selectedProjectID == projectID else { return }
+            guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
         }
     }
 
     func openConflictVersion(_ choice: SVNConflictChoice) {
-        guard let session = activeConflictSession else { return }
+        guard !isResolvingConflict, let session = activeConflictSession else { return }
         let url: URL
         switch choice {
         case .mineFull: url = session.mine.url
@@ -41,30 +48,69 @@ extension ProjectStore {
     }
 
     func openConflictBackupFolder() {
-        guard let directory = activeConflictSession?.directoryURL else { return }
+        guard !isResolvingConflict, let directory = activeConflictSession?.directoryURL else { return }
         openWorkspaceURL(directory)
     }
 
     func resolveActiveConflict(using choice: SVNConflictChoice) async {
-        guard let project = selectedProject, let session = activeConflictSession else { return }
+        guard !isResolvingConflict,
+              let project = selectedProject,
+              let session = activeConflictSession else { return }
         switch choice {
         case .mineFull, .theirsFull:
             break
         case .working:
             return
         }
-        let operationID = beginOperation(.resolveConflict(project.id))
-        defer { endOperation(operationID) }
+        let projectID = project.id
+        let sessionID = session.id
+        resolvingConflictProjectID = projectID
+        resolvingConflictSessionID = sessionID
+        let operationID = beginOperation(.resolveConflict(projectID))
+        defer {
+            endOperation(operationID)
+            if resolvingConflictProjectID == projectID,
+               resolvingConflictSessionID == sessionID {
+                resolvingConflictProjectID = nil
+                resolvingConflictSessionID = nil
+            }
+        }
         do {
+            _ = try conflictFileService.prepareWorkingFileForResolve(
+                for: session,
+                choice: choice,
+                workingCopyPath: project.path
+            )
             _ = try await client.resolveConflict(
                 at: project.path,
                 relativePath: session.details.path,
                 choice: choice,
                 credentials: nil
             )
+            guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             activeConflictSession = nil
             notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
             await refresh()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
+            errorMessage = localizedError(error)
+        }
+    }
+
+    private func canApplyConflictPreparation(
+        _ requestID: UUID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        conflictPreparationRequestID == requestID && selectedProjectID == projectID
+    }
+
+    private func canApplyConflictResolution(
+        _ sessionID: ConflictResolutionSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && activeConflictSession?.id == sessionID
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
     }
 }

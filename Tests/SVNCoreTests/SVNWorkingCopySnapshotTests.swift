@@ -4,6 +4,25 @@ import Testing
 
 @Suite("SVNWorkingCopySnapshotTests")
 struct SVNWorkingCopySnapshotTests {
+    @Test func annotatingNodeKindsKeepsExistingKindWhenNoNewKindIsMapped() {
+        let snapshot = SVNWorkingCopySnapshot(
+            statuses: [
+                SVNStatusEntry(path: "existing.txt", item: .modified, revision: "7", nodeKind: .file),
+                SVNStatusEntry(path: "new", item: .unversioned, nodeKind: .directory),
+            ],
+            revision: SVNWorkingCopyRevision(minimum: "7", maximum: "7"),
+            collisions: [],
+            versionedPathsByCanonicalKey: [:]
+        )
+
+        let annotated = snapshot.annotatingNodeKinds([
+            SVNPathIdentity(rawPath: "new"): .file,
+        ])
+
+        #expect(annotated.statuses[0].nodeKind == .file)
+        #expect(annotated.statuses[1].nodeKind == .file)
+    }
+
     @Test func exposesShortestStandaloneMissingAdditionRootForCleanup() throws {
         let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
             (".", "normal", "13302"),
