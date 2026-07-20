@@ -23,13 +23,18 @@ struct HistoryView: View {
                 historySummary
                 historyList(timeline: timeline)
             }
+            .overlay {
+                if store.logs.isEmpty, store.isHistoryLoading {
+                    ProgressView(appLanguage.text("커밋 기록 불러오는 중…", "Loading commit history…"))
+                } else if store.logs.isEmpty {
+                    ContentUnavailableView(
+                        appLanguage.text("커밋 기록 없음", "No Commit History"),
+                        systemImage: "clock"
+                    )
+                }
+            }
         } detail: {
             HistoryRevisionDiffView()
-        }
-        .overlay {
-            if store.logs.isEmpty {
-                ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No Commit History"), systemImage: "clock")
-            }
         }
     }
 
@@ -89,7 +94,7 @@ struct HistoryView: View {
                 workingCopyMarkerRow(revision: revision, isBeforeLoadedHistory: true)
             }
 
-            if searchText.isEmpty, store.hasMoreHistory {
+            if searchText.isEmpty, !store.logs.isEmpty, store.hasMoreHistory {
                 HStack {
                     Spacer()
                     Button(appLanguage.text("이전 기록 50개 더 불러오기", "Load 50 More")) {

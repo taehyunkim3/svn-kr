@@ -147,6 +147,13 @@ final class ProjectStore: ObservableObject {
 
     var isWorking: Bool { !activeOperations.isEmpty }
 
+    var isHistoryLoading: Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { operation in
+            operation.kind == .refresh(projectID) || operation.kind == .refreshHistory(projectID)
+        }
+    }
+
     init(
         client: any SVNClientServing = SVNClient(),
         credentialStore: any CredentialStoring = KeychainCredentialStore(),

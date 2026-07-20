@@ -42,7 +42,9 @@ struct HistoryRevisionDiffView: View {
         }
         .opacity(selectedEntry == nil ? 0 : 1)
         .overlay {
-            if store.selectedHistoryRevision == nil {
+            if store.logs.isEmpty, store.isHistoryLoading {
+                ProgressView(appLanguage.text("커밋 기록 불러오는 중…", "Loading commit history…"))
+            } else if store.selectedHistoryRevision == nil {
                 ContentUnavailableView(
                     appLanguage.text("커밋을 선택하세요", "Select a Commit"),
                     systemImage: "clock.arrow.circlepath",

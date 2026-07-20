@@ -150,6 +150,31 @@ import Testing
 }
 
 @MainActor
+@Test func historyLoadingTracksOnlySelectedProjectsHistoryOperations() {
+    let selectedProject = SVNProject(name: "선택 프로젝트", path: "/tmp/selected")
+    let otherProject = SVNProject(name: "다른 프로젝트", path: "/tmp/other")
+    let store = makeStore(projects: [selectedProject, otherProject])
+
+    #expect(!store.isHistoryLoading)
+
+    let refreshID = store.beginOperation(.refresh(selectedProject.id))
+    #expect(store.isHistoryLoading)
+    store.endOperation(refreshID)
+
+    let historyID = store.beginOperation(.refreshHistory(selectedProject.id))
+    #expect(store.isHistoryLoading)
+    store.endOperation(historyID)
+
+    let otherProjectID = store.beginOperation(.refresh(otherProject.id))
+    #expect(!store.isHistoryLoading)
+    store.endOperation(otherProjectID)
+
+    let diffID = store.beginOperation(.revisionDiff(selectedProject.id))
+    #expect(!store.isHistoryLoading)
+    store.endOperation(diffID)
+}
+
+@MainActor
 @Test func checkoutRemainsSuccessfulWhenCredentialPersistenceFails() async {
     let client = StubSVNClient(checkoutResult: "Checked out revision 10.")
     let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
