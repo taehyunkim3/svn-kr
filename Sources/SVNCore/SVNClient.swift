@@ -106,6 +106,18 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil
     ) async throws -> SVNWorkingCopySnapshot {
         let before = try await workingCopySnapshot(at: path, credentials: credentials)
+        return try await repairCanonicalAliases(
+            in: before,
+            at: path,
+            credentials: credentials
+        )
+    }
+
+    private func repairCanonicalAliases(
+        in before: SVNWorkingCopySnapshot,
+        at path: String,
+        credentials: SVNCredentials?
+    ) async throws -> SVNWorkingCopySnapshot {
         guard !before.hasUnrepairablePathCollisions else {
             throw SVNError.pathNormalizationCollision(paths: before.collisions.map(\.displayPath))
         }
@@ -402,8 +414,15 @@ public actor SVNClient {
         // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
         // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
         // 별도 추가 트리로 예약되는 일을 막습니다.
-        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
-        guard !snapshot.hasPathCollisions else {
+        var snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        if !snapshot.repairableAliasPaths.isEmpty {
+            snapshot = try await repairCanonicalAliases(
+                in: snapshot,
+                at: path,
+                credentials: credentials
+            )
+        }
+        guard !snapshot.hasUnrepairablePathCollisions else {
             throw SVNError.pathNormalizationCollision(paths: snapshot.collisions.map(\.displayPath))
         }
 

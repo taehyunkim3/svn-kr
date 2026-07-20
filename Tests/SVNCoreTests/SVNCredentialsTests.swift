@@ -395,6 +395,82 @@ import Testing
     #expect(!rawLines.contains(Data("add:\(decomposedDirectory)/새 파일.txt".utf8)))
 }
 
+@Test func commitRepairsCanonicalAliasesBeforeScheduling() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-commit-alias-repair-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composedRoot = "00 사업관리"
+    let nfdRoot = composedRoot.decomposedStringWithCanonicalMapping
+    let nfdNewFile = "\(nfdRoot)/새 파일.hwp"
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then
+        targets=$argument
+        expects_targets=0
+        continue
+      fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|revert|add|delete|commit) command=$argument ;;
+      esac
+    done
+    printf '%s\n' "$command" >> command-log
+    if [ "$command" = status ]; then
+      if [ ! -f alias-repaired ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(nfdRoot)"><wc-status item="missing" revision="-1"/></entry><entry path="\(composedRoot)/기존 파일.hwp"><wc-status item="modified" revision="1"/></entry><entry path="\(nfdNewFile)"><wc-status item="unversioned"/></entry></target></status>'
+      else
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)"><wc-status item="normal" revision="1"/></entry><entry path="\(composedRoot)/기존 파일.hwp"><wc-status item="modified" revision="1"/></entry><entry path="\(nfdNewFile)"><wc-status item="unversioned"/></entry></target></status>'
+      fi
+      exit 0
+    fi
+    if [ -n "$targets" ]; then
+      while IFS= read -r target || [ -n "$target" ]; do
+        printf '%s:%s\n' "$command" "$target" >> target-log
+      done < "$targets"
+    fi
+    if [ "$command" = revert ]; then
+      : > alias-repaired
+      exit 0
+    fi
+    if [ "$command" = commit ]; then
+      printf 'committed\n'
+    fi
+    exit 0
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    _ = try await client.commit(
+        at: directory.path,
+        paths: ["\(composedRoot)/기존 파일.hwp", nfdNewFile],
+        message: "별칭 복구"
+    )
+
+    let commands = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
+        .split(whereSeparator: \.isNewline)
+        .map(String.init)
+    #expect(commands == ["status", "revert", "status", "add", "commit"])
+
+    let targets = try Data(contentsOf: directory.appendingPathComponent("target-log"))
+    #expect(targets.range(of: Data("revert:\(nfdRoot)\n".utf8)) != nil)
+    #expect(targets.range(of: Data("add:\(composedRoot)/새 파일.hwp\n".utf8)) != nil)
+    #expect(targets.range(of: Data("commit:\(composedRoot)/새 파일.hwp\n".utf8)) != nil)
+    #expect(targets.range(of: Data("commit:\(composedRoot)/기존 파일.hwp\n".utf8)) != nil)
+    #expect(targets.range(of: Data("add:\(nfdNewFile)\n".utf8)) == nil)
+    #expect(targets.range(of: Data("commit:\(nfdNewFile)\n".utf8)) == nil)
+}
+
 @Test func commitFailureRevertsOnlySchedulingPerformedByCommit() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-commit-rollback-test-\(UUID().uuidString)", isDirectory: true)
