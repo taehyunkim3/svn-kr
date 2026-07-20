@@ -39,7 +39,7 @@ struct ChangesView: View {
             RepositoryLocksView()
                 .environmentObject(store)
         }
-        .sheet(item: $store.activeConflict) { _ in
+        .sheet(item: $store.activeConflictSession) { _ in
             ConflictResolutionView()
                 .environmentObject(store)
         }

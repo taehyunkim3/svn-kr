@@ -12,8 +12,8 @@ struct ConflictResolutionView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             Divider()
-            if let conflict = store.activeConflict {
-                conflictBody(conflict)
+            if let session = store.activeConflictSession {
+                conflictBody(session)
             }
             Spacer()
             Divider()
@@ -46,7 +46,8 @@ struct ConflictResolutionView: View {
     }
 
     @ViewBuilder
-    private func conflictBody(_ conflict: SVNConflictDetails) -> some View {
+    private func conflictBody(_ session: ConflictResolutionSession) -> some View {
+        let conflict = session.details
         Text(conflict.path).font(.body.monospaced()).textSelection(.enabled)
         if DocumentFilePolicy.recommendsLock(for: conflict.path) {
             Label(
@@ -58,8 +59,8 @@ struct ConflictResolutionView: View {
                 "Preserve both versions, compare them in Word, PowerPoint, or the original editor, and create the final file."
             ))
             .foregroundStyle(.secondary)
-            Button(appLanguage.text("두 버전 모두 원본 옆에 보관", "Preserve Both Versions Next to Original"), systemImage: "doc.on.doc") {
-                store.preserveConflictVersions()
+            Button(appLanguage.text("백업 폴더 열기", "Open Backup Folder"), systemImage: "folder") {
+                store.openConflictBackupFolder()
             }
             .buttonStyle(.borderedProminent)
         } else {
@@ -70,8 +71,11 @@ struct ConflictResolutionView: View {
         }
 
         HStack {
-            Button(appLanguage.text("현재 파일 열기", "Open Working File"), systemImage: "arrow.up.forward.app") {
-                store.openActiveConflictFile()
+            Button(appLanguage.text("내 버전 열기", "Open My Version"), systemImage: "arrow.up.forward.app") {
+                store.openConflictVersion(.mineFull)
+            }
+            Button(appLanguage.text("서버 버전 열기", "Open Server Version"), systemImage: "arrow.up.forward.app") {
+                store.openConflictVersion(.theirsFull)
             }
             Button(appLanguage.text("내 버전 전체 사용", "Use My Entire Version")) { pendingChoice = .mineFull }
             Button(appLanguage.text("서버 버전 전체 사용", "Use Entire Server Version")) { pendingChoice = .theirsFull }

@@ -118,7 +118,7 @@ final class ProjectStore: ObservableObject {
     @Published var isShowingPathRecovery = false
     @Published var pathRecoveryPreview: SVNRecoveryPreview?
     @Published var documentOpenRequest: DocumentOpenRequest?
-    @Published var activeConflict: SVNConflictDetails?
+    @Published var activeConflictSession: ConflictResolutionSession?
     @Published var revertRequest: RevertRequest?
     @Published var authenticationRequest: SVNAuthenticationRequest?
     @Published var lastCompletedCommitMessage: String?
@@ -671,6 +671,13 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    func openWorkspaceURL(_ url: URL) {
+        guard workspaceOpener.open(url) else {
+            errorMessage = AppLanguage.current.text("파일을 열 수 없습니다.", "Could not open the file.")
+            return
+        }
+    }
+
     private func save() {
         // 프로젝트 목록 변경마다 즉시 저장해 앱이 비정상 종료되어도 최근 등록 및
         // 삭제 상태를 최대한 보존합니다. 인코딩 실패 시 기존 저장값은 유지합니다.
@@ -716,7 +723,7 @@ final class ProjectStore: ObservableObject {
         fileHistoryPath = nil
         showsIgnoredFiles = false
         documentOpenRequest = nil
-        activeConflict = nil
+        activeConflictSession = nil
         revertRequest = nil
         logs = []
         selectedHistoryRevision = nil

@@ -4,6 +4,106 @@ import Testing
 @testable import SVNMac
 
 @MainActor
+@Test func preparesBackupsOpensOnlyCopiesAndResolvesSelectedWholeVersion() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient(conflictDetailsValue: fixture.details)
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot),
+        workspaceOpener: opener
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+    let session = try #require(store.activeConflictSession)
+    store.openConflictVersion(.mineFull)
+    store.openConflictVersion(.theirsFull)
+    store.openConflictBackupFolder()
+
+    #expect(opener.openedURLs == [session.mine.url, session.server.url, session.directoryURL])
+    #expect(await client.lastConflictChoice() == nil)
+    await store.resolveActiveConflict(using: .theirsFull)
+
+    #expect(await client.lastConflictChoice() == .theirsFull)
+    #expect(store.activeConflictSession == nil)
+}
+
+@MainActor
+@Test func unsupportedConflictDoesNotCreateResolutionSession() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+}
+
+@MainActor
+@Test func failedBackupDoesNotCreateResolutionSession() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details)
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(
+            backupRootURL: fixture.backupRoot,
+            copyItem: { _, _ in throw TestError.backupFailed }
+        )
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+}
+
+@MainActor
+@Test func switchingProjectsClearsActiveConflictSession() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let otherProject = SVNProject(name: "다른 프로젝트", path: fixture.root.appendingPathComponent("other").path)
+    let client = StubSVNClient(conflictDetailsValue: fixture.details)
+    let store = makeStore(
+        projects: [fixture.project, otherProject],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+    #expect(store.activeConflictSession != nil)
+    store.selectedProjectID = otherProject.id
+
+    #expect(store.activeConflictSession == nil)
+}
+
+@MainActor
+@Test func failedResolveKeepsConflictSession() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details, resolveError: TestError.resolveConflictFailed)
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+    let session = try #require(store.activeConflictSession)
+    await store.resolveActiveConflict(using: .mineFull)
+
+    #expect(store.activeConflictSession == session)
+    #expect(await client.lastConflictChoice() == .mineFull)
+}
+
+@MainActor
 @Test func changingProjectClearsProjectSpecificViewState() {
     let first = SVNProject(name: "첫 번째", path: "/tmp/first")
     let second = SVNProject(name: "두 번째", path: "/tmp/second")
@@ -457,6 +557,7 @@ private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient(),
     fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
+    conflictFileService: ConflictFileService = ConflictFileService(),
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener()
 ) -> ProjectStore {
     ProjectStore(
@@ -464,6 +565,7 @@ private func makeStore(
         credentialStore: StubCredentialStore(),
         persistence: MemoryProjectPersistence(projects: projects),
         projectAccessManager: StubProjectAccessManager(),
+        conflictFileService: conflictFileService,
         workingCopyFileService: fileService,
         workspaceOpener: workspaceOpener
     )
@@ -484,6 +586,53 @@ private func makePathCollision(path: String, repairable: Bool) -> SVNPathCollisi
 
 private enum TestError: Error {
     case credentialWriteFailed
+    case backupFailed
+    case resolveConflictFailed
+}
+
+private final class ProjectStoreConflictFixture {
+    let root: URL
+    let project: SVNProject
+    let backupRoot: URL
+    let details: SVNConflictDetails
+
+    init() throws {
+        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let workingCopy = root.appendingPathComponent("working-copy", isDirectory: true)
+        backupRoot = root.appendingPathComponent("backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: workingCopy, withIntermediateDirectories: true)
+
+        let mine = workingCopy.appendingPathComponent("conflicts/document.mine")
+        let server = workingCopy.appendingPathComponent("conflicts/document.server")
+        try FileManager.default.createDirectory(at: mine.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("mine".utf8).write(to: mine)
+        try Data("server".utf8).write(to: server)
+
+        project = SVNProject(name: "충돌 프로젝트", path: workingCopy.path)
+        details = SVNConflictDetails(
+            path: "Documents/document.txt",
+            type: "text",
+            operation: "update",
+            myFile: "conflicts/document.mine",
+            serverFile: "conflicts/document.server",
+            serverRevision: "42"
+        )
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    func details(replacingTypeWith type: String) -> SVNConflictDetails {
+        SVNConflictDetails(
+            path: details.path,
+            type: type,
+            operation: details.operation,
+            myFile: details.myFile,
+            serverFile: details.serverFile,
+            serverRevision: details.serverRevision
+        )
+    }
 }
 
 private struct RevisionDiffRequest: Equatable, Sendable {
@@ -504,11 +653,14 @@ private actor StubSVNClient: SVNClientServing {
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
     let commitCompletedWarning: (output: String, details: String)?
+    let conflictDetailsValue: SVNConflictDetails?
+    let resolveError: Error?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var recoveryPaths: [String] = []
     private var canonicalAliasRepairRequests = 0
     private var snapshotRequests = 0
+    private var conflictChoices: [SVNConflictChoice] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -522,7 +674,9 @@ private actor StubSVNClient: SVNClientServing {
             mappings: [], ignoredAliasCount: 0, blockingPaths: []
         ),
         recoveryResult: SVNRecoveryResult? = nil,
-        commitCompletedWarning: (output: String, details: String)? = nil
+        commitCompletedWarning: (output: String, details: String)? = nil,
+        conflictDetailsValue: SVNConflictDetails? = nil,
+        resolveError: Error? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -532,6 +686,8 @@ private actor StubSVNClient: SVNClientServing {
         self.snapshotsByPath = snapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
         self.commitCompletedWarning = commitCompletedWarning
+        self.conflictDetailsValue = conflictDetailsValue
+        self.resolveError = resolveError
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -596,8 +752,13 @@ private actor StubSVNClient: SVNClientServing {
     func lockInfoRequestCount() -> Int { lockInfoRequests }
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "locked" }
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
-    func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? { nil }
-    func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String { "resolved" }
+    func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? { conflictDetailsValue }
+    func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String {
+        conflictChoices.append(choice)
+        if let resolveError { throw resolveError }
+        return "resolved"
+    }
+    func lastConflictChoice() -> SVNConflictChoice? { conflictChoices.last }
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
