@@ -3,6 +3,78 @@ import Foundation
 import Testing
 @testable import SVNCore
 
+@Test func realSVNCleansMissingAdditionAndRecursivelyCommitsRawNFDDirectory() async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn",
+        "/usr/local/bin/svn",
+        "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin",
+        "/usr/local/bin/svnadmin",
+        "/usr/bin/svnadmin",
+    ]))
+    let svnlookPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnlook",
+        "/usr/local/bin/svnlook",
+        "/usr/bin/svnlook",
+    ]))
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-missing-addition-cleanup-\(UUID().uuidString)", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let workingCopy = fixture.appendingPathComponent("wc", isDirectory: true)
+    defer { try? fileManager.removeItem(at: fixture) }
+
+    try fileManager.createDirectory(at: fixture, withIntermediateDirectories: true)
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    _ = try runIntegrationCommand(svnPath, ["mkdir", repositoryURL + "plans", "-m", "initial"])
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL, workingCopy.path])
+
+    let staleRoot = workingCopy.appendingPathComponent("stale-added", isDirectory: true)
+    try fileManager.createDirectory(at: staleRoot, withIntermediateDirectories: false)
+    try Data("stale".utf8).write(to: staleRoot.appendingPathComponent("old.txt"))
+    _ = try runIntegrationCommand(svnPath, ["add", staleRoot.path])
+    try fileManager.removeItem(at: staleRoot)
+
+    let client = SVNClient(
+        executablePath: svnPath,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+    let cleaned = try await client.workingCopySnapshot(at: workingCopy.path)
+    #expect(cleaned.statuses.isEmpty)
+    #expect(try runIntegrationCommand(svnPath, ["status", workingCopy.path]).isEmpty)
+
+    let rawDirectory = "0720 기획서".decomposedStringWithCanonicalMapping
+    let rawFile = "기획 문서.pdf".decomposedStringWithCanonicalMapping
+    let relativeDirectory = "plans/\(rawDirectory)"
+    let relativeFile = "\(relativeDirectory)/\(rawFile)"
+    let physicalDirectory = workingCopy.path + "/" + relativeDirectory
+    let physicalFile = workingCopy.path + "/" + relativeFile
+    let expectedBytes = Data([0x25, 0x50, 0x44, 0x46, 0x00, 0xFF])
+    try createRawDirectory(atPath: physicalDirectory)
+    try writeRawFile(expectedBytes, atPath: physicalFile)
+
+    let beforeCommit = try await client.workingCopySnapshot(at: workingCopy.path)
+    let selected = try #require(beforeCommit.statuses.first(where: { $0.item == .unversioned }))
+    #expect(Data(selected.path.utf8) == Data(relativeDirectory.utf8))
+    _ = try await client.commit(
+        at: workingCopy.path,
+        paths: [selected.path],
+        message: "recursive raw path"
+    )
+
+    let repositoryTree = try runIntegrationCommand(svnlookPath, ["tree", "--full-paths", repository.path])
+    let committedBytes = try runIntegrationCommandData(
+        svnlookPath,
+        ["cat", repository.path, relativeFile]
+    )
+    #expect(Data(repositoryTree.utf8).range(of: Data("\(relativeDirectory)/\n".utf8)) != nil)
+    #expect(Data(repositoryTree.utf8).range(of: Data("\(relativeFile)\n".utf8)) != nil)
+    #expect(committedBytes == expectedBytes)
+}
+
 @Test func realSVNCanonicalAliasRepairPreservesBytesAndNonAliasStatuses() async throws {
     let fileManager = FileManager.default
     let svnPath = try #require(firstExecutable(at: [
@@ -226,6 +298,30 @@ private func runIntegrationCommand(
         )
     }
     return text
+}
+
+private func runIntegrationCommandData(
+    _ executablePath: String,
+    _ arguments: [String]
+) throws -> Data {
+    let process = Process()
+    let output = Pipe()
+    let error = Pipe()
+    process.executableURL = URL(fileURLWithPath: executablePath)
+    process.arguments = arguments
+    process.standardOutput = output
+    process.standardError = error
+    try process.run()
+    process.waitUntilExit()
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    let errorData = error.fileHandleForReading.readDataToEndOfFile()
+    guard process.terminationStatus == 0 else {
+        throw IntegrationCommandError(
+            command: ([executablePath] + arguments).joined(separator: " "),
+            output: String(decoding: errorData, as: UTF8.self)
+        )
+    }
+    return data
 }
 
 private struct IntegrationCommandError: LocalizedError {
