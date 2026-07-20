@@ -101,6 +101,30 @@ public actor SVNClient {
         return try SVNXMLParser.workingCopySnapshot(from: Data(result.output.utf8))
     }
 
+    public func repairCanonicalAliases(
+        at path: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> SVNWorkingCopySnapshot {
+        let before = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard !before.hasUnrepairablePathCollisions else {
+            throw SVNError.pathNormalizationCollision(paths: before.collisions.map(\.displayPath))
+        }
+        let targets = before.repairableAliasPaths
+        if !targets.isEmpty {
+            _ = try checkedRunWithTargets(
+                ["revert", "--depth", "infinity"],
+                targets: targets,
+                at: path,
+                credentials: credentials
+            )
+        }
+        let after = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard after.repairableAliasPaths.isEmpty else {
+            throw SVNError.pathAliasRepairFailed(paths: after.collisions.map(\.displayPath))
+        }
+        return after
+    }
+
     public func ignoredStatus(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
         let result = try checkedRun(["status", "--no-ignore", "--xml"], at: path, credentials: credentials)
         return try SVNXMLParser.statuses(from: Data(result.output.utf8)).filter { $0.item == .ignored }

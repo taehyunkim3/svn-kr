@@ -626,6 +626,8 @@ final class ProjectStore: ObservableObject {
             return "The SVN response could not be read."
         case let .pathNormalizationCollision(paths):
             return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
+        case let .pathAliasRepairFailed(paths):
+            return "Korean path alias repair could not be validated: \(paths.joined(separator: ", "))"
         case let .recoveryBlocked(paths):
             return "Some changes cannot be recovered automatically: \(paths.joined(separator: ", "))"
         case .recoveryDestinationNotEmpty:

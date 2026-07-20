@@ -335,6 +335,7 @@ public enum SVNError: LocalizedError, Sendable {
     case invalidWorkingCopy
     case malformedResponse
     case pathNormalizationCollision(paths: [String])
+    case pathAliasRepairFailed(paths: [String])
     case recoveryBlocked(paths: [String])
     case recoveryDestinationNotEmpty
     case recoveryValidationFailed(paths: [String])
@@ -350,6 +351,8 @@ public enum SVNError: LocalizedError, Sendable {
             "SVN 응답을 읽지 못했습니다."
         case let .pathNormalizationCollision(paths):
             "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))"
+        case let .pathAliasRepairFailed(paths):
+            "한글 경로 별칭 정리를 검증하지 못했습니다: \(paths.joined(separator: ", "))"
         case let .recoveryBlocked(paths):
             "자동 복구할 수 없는 변경이 있습니다: \(paths.joined(separator: ", "))"
         case .recoveryDestinationNotEmpty:
