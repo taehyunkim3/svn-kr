@@ -326,23 +326,83 @@ public actor SVNClient {
         // 선택 커밋 전에 SVN 관리 대상이 아닌 파일과 디스크에서 사라진 파일을
         // 각각 add/delete 예약해 사용자가 별도 명령을 실행하지 않아도 되게 합니다.
         let currentStatuses = try await status(at: path, credentials: credentials)
-        for item in paths {
-            let status = currentStatuses.first(where: { $0.path == item })
-            if status?.item == .unversioned {
-                _ = try checkedRun(["add", "--parents", "--", item], at: path, credentials: credentials)
-            } else if status?.item == .missing {
-                _ = try checkedRun(["delete", "--force", "--", item], at: path, credentials: credentials)
-            }
+        var statusByPath: [String: SVNStatusKind] = [:]
+        for status in currentStatuses {
+            statusByPath[status.path] = status.item
         }
-        return try checkedRun(
-            ["commit", "--message", message, "--"] + paths,
+
+        let normalizedPaths = Self.normalizedCommitPaths(paths)
+        let additions = Self.normalizedCommitPaths(paths.filter { statusByPath[$0] == .unversioned })
+        let deletions = Self.normalizedCommitPaths(paths.filter { statusByPath[$0] == .missing })
+
+        if !additions.isEmpty {
+            _ = try checkedRunWithTargets(
+                ["add", "--parents"],
+                targets: additions,
+                at: path,
+                credentials: credentials
+            )
+        }
+        if !deletions.isEmpty {
+            _ = try checkedRunWithTargets(
+                ["delete", "--force"],
+                targets: deletions,
+                at: path,
+                credentials: credentials
+            )
+        }
+
+        return try checkedRunWithTargets(
+            ["commit", "--message", message],
+            targets: normalizedPaths,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         ).output
     }
 
+    static func normalizedCommitPaths(_ paths: [String]) -> [String] {
+        let selectedPaths = Set(paths)
+        if selectedPaths.contains(".") { return ["."] }
+
+        return selectedPaths.filter { path in
+            var searchEnd = path.endIndex
+            while let separator = path[..<searchEnd].lastIndex(of: "/") {
+                if selectedPaths.contains(String(path[..<separator])) {
+                    return false
+                }
+                searchEnd = separator
+            }
+            return true
+        }
+        .sorted()
+    }
+
     // MARK: - 공통 명령 실행
+
+    private func checkedRunWithTargets(
+        _ arguments: [String],
+        targets: [String],
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) throws -> SVNCommandResult {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-targets-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+
+        let targetsURL = temporaryDirectory.appendingPathComponent("targets", isDirectory: false)
+        let contents = targets.joined(separator: "\n") + "\n"
+        try Data(contents.utf8).write(to: targetsURL, options: .atomic)
+
+        return try checkedRun(
+            arguments + ["--targets", targetsURL.path],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
 
     private func ignorePatterns(at path: String, directory: String, credentials: SVNCredentials?) throws -> [String] {
         let result = try run(["propget", "svn:ignore", "--strict", "--", directory], at: path, credentials: credentials)
