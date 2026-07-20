@@ -86,6 +86,7 @@ final class ProjectStore: ObservableObject {
         }
     }
     @Published var statuses: [SVNStatusEntry] = []
+    @Published var pathCollisions: [SVNPathCollision] = []
     @Published var ignoredStatuses: [SVNStatusEntry] = []
     @Published var ignoreRules: [SVNIgnoreRule] = []
     @Published var repositoryLocks: [SVNLockInfo] = []
@@ -161,6 +162,16 @@ final class ProjectStore: ObservableObject {
 
     var showsGlobalProgress: Bool {
         isWorking && !isCommittingSelectedProject
+    }
+
+    var selectableStatusPaths: Set<String> {
+        Set(statuses.lazy.filter(\.isSelectableForCommit).map(\.path))
+    }
+
+    var canCommitSelectedPaths: Bool {
+        pathCollisions.isEmpty
+            && !selectedPaths.isEmpty
+            && selectedPaths.isSubset(of: selectableStatusPaths)
     }
 
     init(
@@ -326,20 +337,19 @@ final class ProjectStore: ObservableObject {
         defer { endOperation(operationID) }
         isWorkingCopyOutOfDate = nil
         do {
-            async let newStatuses = client.status(at: project.path, credentials: nil)
-            async let newWorkingCopyRevision = client.workingCopyRevision(at: project.path, credentials: nil)
+            async let newSnapshot = client.workingCopySnapshot(at: project.path, credentials: nil)
             async let newWorkingCopyRepositoryPath = client.workingCopyRepositoryPath(at: project.path, credentials: nil)
-            let (statuses, workingCopyRevision, workingCopyRepositoryPath) = try await (
-                newStatuses,
-                newWorkingCopyRevision,
+            let (snapshot, workingCopyRepositoryPath) = try await (
+                newSnapshot,
                 newWorkingCopyRepositoryPath
             )
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
-            self.statuses = statuses
-            self.workingCopyRevision = workingCopyRevision
+            statuses = snapshot.statuses
+            workingCopyRevision = snapshot.revision
+            pathCollisions = snapshot.collisions
             self.workingCopyRepositoryPath = workingCopyRepositoryPath
-            selectedPaths.formIntersection(Set(statuses.filter { $0.item != .conflicted }.map(\.path)))
-            updateLocalSummary(for: project.id, statuses: statuses)
+            selectedPaths.formIntersection(selectableStatusPaths)
+            updateLocalSummary(for: project.id, statuses: snapshot.statuses)
             notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -650,6 +660,7 @@ final class ProjectStore: ObservableObject {
         diffRequestID = nil
         fileTreeRequestID = nil
         statuses = []
+        pathCollisions = []
         ignoredStatuses = []
         ignoreRules = []
         repositoryLocks = []

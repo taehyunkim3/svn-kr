@@ -176,6 +176,16 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     }
 }
 
+public extension SVNStatusEntry {
+    var isMissingScheduledAddition: Bool {
+        item == .missing && (revision == nil || revision == "-1")
+    }
+
+    var isSelectableForCommit: Bool {
+        !isMissingScheduledAddition && item != .ignored && item != .conflicted
+    }
+}
+
 /// 전체 작업 복사본 탐색기에서 사용하는 경로 상태입니다.
 ///
 /// 기존 `SVNStatusEntry`는 변경된 경로만 표현합니다. 이 모델은

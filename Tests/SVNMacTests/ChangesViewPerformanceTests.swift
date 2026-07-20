@@ -21,6 +21,20 @@ struct ChangesViewPerformanceTests {
         #expect(changesView.contains("ForEach(store.ignoredStatuses)"))
     }
 
+    @Test func changesViewDistinguishesMissingStatesAndSummarizesUnicodeCollisions() throws {
+        let sources = try svnMacSources()
+        let changesView = try source(named: "ChangesView.swift", in: sources)
+        let commitControls = try source(named: "CommitControlsView.swift", in: sources)
+
+        #expect(changesView.contains("삭제"))
+        #expect(changesView.contains("로컬 누락"))
+        #expect(changesView.contains("추가 취소됨"))
+        #expect(changesView.contains("한글 경로 충돌"))
+        #expect(changesView.contains("entry.isSelectableForCommit"))
+        #expect(commitControls.contains("store.selectableStatusPaths"))
+        #expect(commitControls.contains("store.canCommitSelectedPaths"))
+    }
+
     private func svnMacSources() throws -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

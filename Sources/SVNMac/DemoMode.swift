@@ -158,6 +158,14 @@ private struct DemoSVNClient: SVNClientServing {
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
     func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { DemoData.statuses }
     func workingCopyEntries(at _: String, credentials _: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
+    func workingCopySnapshot(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
+        SVNWorkingCopySnapshot(
+            statuses: DemoData.statuses,
+            revision: SVNWorkingCopyRevision(minimum: "1842", maximum: "1842"),
+            collisions: [],
+            versionedPathsByCanonicalKey: [:]
+        )
+    }
     func ignoredStatus(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { [SVNStatusEntry(path: ".build/", item: .ignored)] }
     func ignoreRules(at _: String, credentials _: SVNCredentials?) async throws -> [SVNIgnoreRule] { [SVNIgnoreRule(directory: ".", pattern: ".build")] }
     func addIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}

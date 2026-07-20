@@ -126,6 +126,36 @@ import Testing
 }
 
 @MainActor
+@Test func refreshPublishesPathCollisionAndDropsUnsafeSelection() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/unicode-collision")
+    let collision = SVNPathCollision(
+        canonicalPath: "04 구현",
+        rawPaths: ["04 구현", "04 구현".decomposedStringWithCanonicalMapping],
+        affectedEntryCount: 17_361
+    )
+    let snapshot = SVNWorkingCopySnapshot(
+        statuses: [
+            SVNStatusEntry(path: "00 사업관리/보고서.hwp", item: .modified, revision: "13302"),
+            SVNStatusEntry(path: "04 구현/취소된추가", item: .missing, revision: "-1"),
+        ],
+        revision: SVNWorkingCopyRevision(minimum: "13302", maximum: "13302"),
+        collisions: [collision],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(snapshotsByPath: [project.path: snapshot])
+    let store = makeStore(projects: [project], client: client)
+    store.selectedPaths = ["00 사업관리/보고서.hwp", "04 구현/취소된추가"]
+
+    await store.refresh()
+
+    #expect(store.statuses.map(\.path) == ["00 사업관리/보고서.hwp", "04 구현/취소된추가"])
+    #expect(store.pathCollisions.map(\.displayPath) == ["04 구현"])
+    #expect(store.selectedPaths == ["00 사업관리/보고서.hwp"])
+    #expect(store.selectableStatusPaths == ["00 사업관리/보고서.hwp"])
+    #expect(!store.canCommitSelectedPaths)
+}
+
+@MainActor
 @Test func overlappingOperationsKeepBusyStateUntilAllFinish() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient(
@@ -310,6 +340,7 @@ private actor StubSVNClient: SVNClientServing {
     let delaysByPath: [String: Duration]
     let checkoutResult: String
     let lockInfoByPath: [String: SVNLockInfo]
+    let snapshotsByPath: [String: SVNWorkingCopySnapshot]
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
 
@@ -318,13 +349,15 @@ private actor StubSVNClient: SVNClientServing {
         revisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
         checkoutResult: String = "checked out",
-        lockInfoByPath: [String: SVNLockInfo] = [:]
+        lockInfoByPath: [String: SVNLockInfo] = [:],
+        snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:]
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
         self.delaysByPath = delaysByPath
         self.checkoutResult = checkoutResult
         self.lockInfoByPath = lockInfoByPath
+        self.snapshotsByPath = snapshotsByPath
     }
 
     private func delay(for path: String) async {
@@ -338,6 +371,17 @@ private actor StubSVNClient: SVNClientServing {
         return statusesByPath[path] ?? []
     }
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
+    func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
+        await delay(for: path)
+        if let snapshot = snapshotsByPath[path] { return snapshot }
+        let revision = revisionsByPath[path] ?? "0"
+        return SVNWorkingCopySnapshot(
+            statuses: statusesByPath[path] ?? [],
+            revision: SVNWorkingCopyRevision(minimum: revision, maximum: revision),
+            collisions: [],
+            versionedPathsByCanonicalKey: [:]
+        )
+    }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { [] }
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}

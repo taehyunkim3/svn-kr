@@ -55,6 +55,9 @@ struct ChangesView: View {
 
     private var changedFileList: some View {
         List {
+            ForEach(store.pathCollisions) { collision in
+                collisionRow(collision)
+            }
             ForEach(store.statuses) { entry in
                 changedFileRow(entry)
             }
@@ -65,7 +68,7 @@ struct ChangesView: View {
             }
         }
         .overlay {
-            if store.statuses.isEmpty && (!store.showsIgnoredFiles || store.ignoredStatuses.isEmpty) {
+            if store.pathCollisions.isEmpty && store.statuses.isEmpty && (!store.showsIgnoredFiles || store.ignoredStatuses.isEmpty) {
                 ContentUnavailableView(
                     appLanguage.text("변경 사항 없음", "No Changes"),
                     systemImage: "checkmark.circle",
@@ -77,7 +80,7 @@ struct ChangesView: View {
 
     private func changedFileRow(_ entry: SVNStatusEntry) -> some View {
         HStack {
-            if entry.item != .ignored && entry.item != .conflicted {
+            if entry.isSelectableForCommit {
                 Toggle("", isOn: Binding(
                     get: { store.selectedPaths.contains(entry.path) },
                     set: { checked in
@@ -90,8 +93,8 @@ struct ChangesView: View {
             } else {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
-            statusBadge(entry.item)
-            Text(entry.path).lineLimit(1)
+            statusBadge(entry)
+            Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
             Spacer()
         }
         .contentShape(Rectangle())
@@ -145,6 +148,25 @@ struct ChangesView: View {
         }
     }
 
+    private func collisionRow(_ collision: SVNPathCollision) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .frame(width: 18)
+            Text(appLanguage.text("한글 경로 충돌", "Unicode Path Conflict"))
+                .font(.caption2.bold())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(.orange, in: Capsule())
+            Text(collision.displayPath).lineLimit(1)
+            Spacer()
+            Text(appLanguage.text("\(collision.affectedEntryCount)개 영향", "\(collision.affectedEntryCount) affected"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var changesToolbar: some View {
         HStack {
             Toggle(appLanguage.text("무시된 파일 보기", "Show Ignored Files"), isOn: Binding(
@@ -173,20 +195,22 @@ struct ChangesView: View {
 
     // MARK: - 변경 상태 배지
 
-    private func statusBadge(_ item: SVNStatusKind) -> some View {
-        Text(statusLabel(item))
+    private func statusBadge(_ entry: SVNStatusEntry) -> some View {
+        Text(statusLabel(entry))
             .font(.caption2.bold())
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(statusColor(item), in: Capsule())
+            .background(statusColor(entry), in: Capsule())
     }
 
-    private func statusLabel(_ item: SVNStatusKind) -> String {
-        switch item {
+    private func statusLabel(_ entry: SVNStatusEntry) -> String {
+        switch entry.item {
         case .modified: appLanguage.text("수정", "Modified")
         case .added: appLanguage.text("추가", "Added")
-        case .deleted, .missing: appLanguage.text("삭제", "Deleted")
+        case .deleted: appLanguage.text("삭제", "Deleted")
+        case .missing where entry.isMissingScheduledAddition: appLanguage.text("추가 취소됨", "Addition Missing")
+        case .missing: appLanguage.text("로컬 누락", "Locally Missing")
         case .unversioned: appLanguage.text("미추적", "Unversioned")
         case .ignored: appLanguage.text("무시됨", "Ignored")
         case .conflicted: appLanguage.text("충돌", "Conflict")
@@ -195,11 +219,12 @@ struct ChangesView: View {
         }
     }
 
-    private func statusColor(_ item: SVNStatusKind) -> Color {
-        switch item {
+    private func statusColor(_ entry: SVNStatusEntry) -> Color {
+        switch entry.item {
         case .modified: .orange
         case .added, .unversioned: .blue
         case .ignored: .gray
+        case .missing where entry.isMissingScheduledAddition: .gray
         case .deleted, .missing, .conflicted: .red
         default: .gray
         }

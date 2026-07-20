@@ -11,6 +11,7 @@ protocol SVNClientServing: Sendable {
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
+    func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws

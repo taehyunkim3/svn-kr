@@ -15,7 +15,7 @@ struct CommitControlsView: View {
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
                 Button(appLanguage.text("전체 선택", "Select All")) {
-                    store.selectedPaths = Set(store.statuses.map(\.path))
+                    store.selectedPaths = store.selectableStatusPaths
                 }
                 .help(appLanguage.text("현재 변경된 파일을 모두 커밋 대상으로 선택합니다.", "Select all currently changed files for commit."))
                 Button(appLanguage.text("선택 해제", "Clear Selection")) { store.selectedPaths.removeAll() }
@@ -34,7 +34,7 @@ struct CommitControlsView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(store.selectedPaths.isEmpty || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+                .disabled(!store.canCommitSelectedPaths || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
                 .help(appLanguage.text("선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.", "Commit the selected files to the SVN server with the entered message."))
             }
         }

@@ -42,6 +42,18 @@ public struct SVNWorkingCopySnapshot: Sendable {
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
 
+    public init(
+        statuses: [SVNStatusEntry],
+        revision: SVNWorkingCopyRevision,
+        collisions: [SVNPathCollision],
+        versionedPathsByCanonicalKey: [String: [String]]
+    ) {
+        self.statuses = statuses
+        self.revision = revision
+        self.collisions = collisions
+        self.versionedPathsByCanonicalKey = versionedPathsByCanonicalKey
+    }
+
     init(entries: [SVNWorkingCopyEntry]) throws {
         let revisions = entries.compactMap(\.revision).compactMap(Int.init).filter { $0 >= 0 }
         guard let minimum = revisions.min(), let maximum = revisions.max() else {
