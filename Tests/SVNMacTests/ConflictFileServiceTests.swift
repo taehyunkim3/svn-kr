@@ -115,7 +115,10 @@ import Testing
         backupRootURL: fixture.backupRoot,
         copyItem: { source, destination in
             copyCount += 1
-            if copyCount == 3 { throw FixtureCopyError.failed }
+            if copyCount == 3 {
+                try Data("partial recovery".utf8).write(to: destination)
+                throw FixtureCopyError.failed
+            }
             try FileManager.default.copyItem(at: source, to: destination)
         }
     )

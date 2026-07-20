@@ -173,34 +173,25 @@ struct ConflictFileService {
             missingError: .missingWorkingFile,
             unsafeError: .unsafeWorkingFile
         )
-        let destination = session.directoryURL.appendingPathComponent(".working-file-recovery")
-        let staging = session.directoryURL.appendingPathComponent(
-            ".working-file-recovery-\(UUID().uuidString).staging"
+        let recoveryID = UUID().uuidString
+        let destination = session.directoryURL.appendingPathComponent(
+            ".working-file-recovery-\(recoveryID)"
         )
-        var stagingExists = false
+        let staging = session.directoryURL.appendingPathComponent(
+            ".working-file-recovery-\(recoveryID).staging"
+        )
         defer {
-            if stagingExists {
+            if fileManager.fileExists(atPath: staging.path) {
                 try? fileManager.removeItem(at: staging)
             }
         }
 
         try copyItem(source, staging)
-        stagingExists = true
         guard try filesHaveEqualContents(source, staging) else {
             throw ConflictFileError.workingRecoveryVerificationFailed
         }
 
-        if fileManager.fileExists(atPath: destination.path) {
-            _ = try fileManager.replaceItemAt(
-                destination,
-                withItemAt: staging,
-                backupItemName: nil,
-                options: [.usingNewMetadataOnly]
-            )
-        } else {
-            try fileManager.moveItem(at: staging, to: destination)
-        }
-        stagingExists = false
+        try fileManager.moveItem(at: staging, to: destination)
         return destination
     }
 

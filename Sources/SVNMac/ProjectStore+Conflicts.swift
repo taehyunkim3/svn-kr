@@ -89,8 +89,9 @@ extension ProjectStore {
             )
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             activeConflictSession = nil
-            notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
             await refresh()
+            guard canApplyCompletedConflictResolution(sessionID, projectID: projectID) else { return }
+            notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
         } catch {
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
@@ -110,6 +111,16 @@ extension ProjectStore {
     ) -> Bool {
         selectedProjectID == projectID
             && activeConflictSession?.id == sessionID
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
+    }
+
+    private func canApplyCompletedConflictResolution(
+        _ sessionID: ConflictResolutionSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && activeConflictSession == nil
             && resolvingConflictSessionID == sessionID
             && resolvingConflictProjectID == projectID
     }

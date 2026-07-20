@@ -56,9 +56,76 @@ import Testing
 
     await store.resolveActiveConflict(using: .mineFull)
 
-    let recoveryURL = session.directoryURL.appendingPathComponent(".working-file-recovery")
+    let recoveryURLs = try workingRecoveryURLs(in: session.directoryURL)
+    #expect(recoveryURLs.count == 1)
+    let recoveryURL = try #require(recoveryURLs.first)
     #expect(try Data(contentsOf: recoveryURL) == latestBytes)
     #expect(await client.lastConflictChoice() == .mineFull)
+}
+
+@MainActor
+@Test func binaryMineResolveFailureRetryKeepsFirstUserRecovery() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let binaryMineBytes = Data([0x42, 0x49, 0x4E, 0x00, 0xFF])
+    try binaryMineBytes.write(to: fixture.workingFileURL)
+    let details = SVNConflictDetails(
+        path: fixture.details.path,
+        type: fixture.details.type,
+        operation: fixture.details.operation,
+        myFile: nil,
+        serverFile: fixture.details.serverFile,
+        serverRevision: fixture.details.serverRevision
+    )
+    let client = StubSVNClient(
+        conflictDetailsValue: details,
+        resolveError: TestError.resolveConflictFailed
+    )
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+    await store.prepareConflictResolution(for: details.path)
+    let session = try #require(store.activeConflictSession)
+    let latestUserBytes = Data([0x55, 0x53, 0x45, 0x52, 0x00, 0xFE])
+    try latestUserBytes.write(to: fixture.workingFileURL)
+
+    await store.resolveActiveConflict(using: .mineFull)
+    let firstRecoveryURLs = try workingRecoveryURLs(in: session.directoryURL)
+    #expect(firstRecoveryURLs.count == 1)
+    let firstRecoveryURL = try #require(firstRecoveryURLs.first)
+    #expect(try Data(contentsOf: firstRecoveryURL) == latestUserBytes)
+
+    await store.resolveActiveConflict(using: .mineFull)
+
+    let recoveryURLs = try workingRecoveryURLs(in: session.directoryURL)
+    #expect(recoveryURLs.count == 2)
+    #expect(FileManager.default.fileExists(atPath: firstRecoveryURL.path))
+    #expect(try Data(contentsOf: firstRecoveryURL) == latestUserBytes)
+    #expect(try recoveryURLs.map { try Data(contentsOf: $0) }.contains(binaryMineBytes))
+    #expect(store.activeConflictSession == session)
+    #expect(await client.conflictChoiceCount() == 2)
+}
+
+@MainActor
+@Test func successfulConflictResolveKeepsResolutionNoticeAfterRefresh() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details)
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveConflict(using: .theirsFull)
+
+    #expect(store.notice == AppLanguage.current.text(
+        "충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.",
+        "The conflict is marked resolved. Review the diff before committing."
+    ))
 }
 
 @MainActor
@@ -867,19 +934,31 @@ private actor AsyncTestGate {
 }
 
 private func waitForConflictDetailsRequest(_ client: StubSVNClient, path: String) async {
-    for _ in 0..<10_000 {
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
         if await client.conflictDetailsRequestCount(for: path) > 0 { return }
-        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(1))
     }
     Issue.record("충돌 상세 요청이 시작되지 않았습니다: \(path)")
 }
 
 private func waitForResolveRequest(_ client: StubSVNClient) async {
-    for _ in 0..<10_000 {
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
         if await client.conflictChoiceCount() > 0 { return }
-        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(1))
     }
     Issue.record("충돌 해결 요청이 시작되지 않았습니다.")
+}
+
+private func workingRecoveryURLs(in directory: URL) throws -> [URL] {
+    try FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil
+    ).filter {
+        $0.lastPathComponent.hasPrefix(".working-file-recovery")
+            && !$0.lastPathComponent.hasSuffix(".staging")
+    }
 }
 
 private final class ProjectStoreConflictFixture {
