@@ -241,7 +241,7 @@ struct HistoryView: View {
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
         if store.workingCopyRevision?.isMixed == true {
-            return appLanguage.text("내 로컬 최고", "My local maximum")
+            return appLanguage.text("내 로컬 최상위", "Highest local revision")
         }
         return entryRevision == store.workingCopyRevision?.timelineRevision
             ? appLanguage.text("내 로컬 기준", "My local base")
@@ -282,7 +282,7 @@ struct HistoryView: View {
 
     private var localRevisionLegendLabel: String {
         store.workingCopyRevision?.isMixed == true
-            ? appLanguage.text("내 로컬 최고", "My local maximum")
+            ? appLanguage.text("내 로컬 최상위", "Highest local revision")
             : appLanguage.text("내 로컬 기준", "My local base")
     }
 
@@ -293,8 +293,8 @@ struct HistoryView: View {
     private var historyGraphHelp: String {
         if store.workingCopyRevision?.isMixed == true {
             return appLanguage.text(
-                "파란 점은 서버 커밋, 초록 테두리는 내 로컬의 최고 리비전, 주황 가지는 미커밋 변경을 뜻합니다.",
-                "Blue dots are server commits, the green ring is your local maximum revision, and the orange branch is uncommitted work."
+                "파란 점은 서버 커밋, 초록 테두리는 내 로컬의 최상위 리비전, 주황 가지는 미커밋 변경을 뜻합니다.",
+                "Blue dots are server commits, the green ring is your highest local revision, and the orange branch is uncommitted work."
             )
         }
         return appLanguage.text(
@@ -306,8 +306,8 @@ struct HistoryView: View {
     private func localRevisionMarkerDescription(isBeforeLoadedHistory: Bool) -> String {
         if let revision = store.workingCopyRevision, revision.isMixed {
             return appLanguage.text(
-                "작업 복사본은 r\(revision.displayValue) 혼합 리비전이며 이 위치는 최고 리비전입니다.",
-                "The working copy contains mixed revisions r\(revision.displayValue); this marker shows the maximum."
+                "작업 복사본은 r\(revision.displayValue) 혼합 리비전이며 이 위치는 최상위 리비전입니다.",
+                "The working copy contains mixed revisions r\(revision.displayValue); this marker shows the highest revision."
             )
         }
         return isBeforeLoadedHistory
