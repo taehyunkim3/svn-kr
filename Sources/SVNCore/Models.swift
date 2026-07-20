@@ -334,6 +334,7 @@ public enum SVNError: LocalizedError, Sendable {
     case commandFailed(command: String, message: String)
     case invalidWorkingCopy
     case malformedResponse
+    case pathNormalizationCollision(paths: [String])
     case svnExecutableNotFound
 
     public var errorDescription: String? {
@@ -344,6 +345,8 @@ public enum SVNError: LocalizedError, Sendable {
             "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다."
         case .malformedResponse:
             "SVN 응답을 읽지 못했습니다."
+        case let .pathNormalizationCollision(paths):
+            "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))"
         case .svnExecutableNotFound:
             "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
         }

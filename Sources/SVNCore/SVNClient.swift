@@ -328,42 +328,96 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        // 선택 커밋 전에 SVN 관리 대상이 아닌 파일과 디스크에서 사라진 파일을
-        // 각각 add/delete 예약해 사용자가 별도 명령을 실행하지 않아도 되게 합니다.
-        let currentStatuses = try await status(at: path, credentials: credentials)
+        // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
+        // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
+        // 별도 추가 트리로 예약되는 일을 막습니다.
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard !snapshot.hasPathCollisions else {
+            throw SVNError.pathNormalizationCollision(paths: snapshot.collisions.map(\.displayPath))
+        }
+
+        let resolvedPaths = try paths.map { selectedPath -> String in
+            guard let resolved = snapshot.resolvedPath(for: selectedPath) else {
+                throw SVNError.pathNormalizationCollision(
+                    paths: [selectedPath.precomposedStringWithCanonicalMapping]
+                )
+            }
+            return resolved
+        }
+        let currentStatuses = snapshot.statuses
         var statusByPath: [String: SVNStatusKind] = [:]
         for status in currentStatuses {
-            statusByPath[status.path] = status.item
+            statusByPath[status.path.precomposedStringWithCanonicalMapping] = status.item
         }
 
-        let normalizedPaths = Self.normalizedCommitPaths(paths)
-        let additions = Self.normalizedCommitPaths(paths.filter { statusByPath[$0] == .unversioned })
-        let deletions = Self.normalizedCommitPaths(paths.filter { statusByPath[$0] == .missing })
+        let normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
+        let additions = Self.normalizedCommitPaths(resolvedPaths.filter {
+            statusByPath[$0.precomposedStringWithCanonicalMapping] == .unversioned
+        })
+        let deletions = Self.normalizedCommitPaths(resolvedPaths.filter {
+            statusByPath[$0.precomposedStringWithCanonicalMapping] == .missing
+        })
 
-        if !additions.isEmpty {
-            _ = try checkedRunWithTargets(
-                ["add", "--parents"],
-                targets: additions,
+        var scheduledByThisCommit: [String] = []
+        do {
+            if !additions.isEmpty {
+                scheduledByThisCommit.append(contentsOf: Self.additionRollbackRoots(
+                    additions,
+                    versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+                ))
+                _ = try checkedRunWithTargets(
+                    ["add", "--parents"],
+                    targets: additions,
+                    at: path,
+                    credentials: credentials
+                )
+            }
+            if !deletions.isEmpty {
+                scheduledByThisCommit.append(contentsOf: deletions)
+                _ = try checkedRunWithTargets(
+                    ["delete", "--force"],
+                    targets: deletions,
+                    at: path,
+                    credentials: credentials
+                )
+            }
+
+            return try checkedRunWithTargets(
+                ["commit", "--message", message],
+                targets: normalizedPaths,
                 at: path,
-                credentials: credentials
-            )
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            ).output
+        } catch {
+            let rollbackTargets = Self.normalizedCommitPaths(scheduledByThisCommit)
+            if !rollbackTargets.isEmpty {
+                _ = try? checkedRunWithTargets(
+                    ["revert", "--depth", "infinity"],
+                    targets: rollbackTargets,
+                    at: path,
+                    credentials: credentials
+                )
+            }
+            throw error
         }
-        if !deletions.isEmpty {
-            _ = try checkedRunWithTargets(
-                ["delete", "--force"],
-                targets: deletions,
-                at: path,
-                credentials: credentials
-            )
-        }
+    }
 
-        return try checkedRunWithTargets(
-            ["commit", "--message", message],
-            targets: normalizedPaths,
-            at: path,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
-        ).output
+    static func additionRollbackRoots(
+        _ additions: [String],
+        versionedPathsByCanonicalKey: [String: [String]]
+    ) -> [String] {
+        let roots = additions.map { path -> String in
+            let components = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+            guard !components.isEmpty else { return path }
+            for length in 1...components.count {
+                let prefix = components.prefix(length).joined(separator: "/")
+                let key = prefix.precomposedStringWithCanonicalMapping
+                if versionedPathsByCanonicalKey[key] == nil { return prefix }
+            }
+            return path
+        }
+        return normalizedCommitPaths(roots)
     }
 
     static func normalizedCommitPaths(_ paths: [String]) -> [String] {

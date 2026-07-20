@@ -613,6 +613,8 @@ final class ProjectStore: ObservableObject {
             return "The selected folder is not an SVN local working folder."
         case .malformedResponse:
             return "The SVN response could not be read."
+        case let .pathNormalizationCollision(paths):
+            return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
         case .svnExecutableNotFound:
             return "The bundled SVN executable could not be found. Reinstall the app."
         }

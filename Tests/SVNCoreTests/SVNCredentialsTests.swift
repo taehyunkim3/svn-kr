@@ -337,6 +337,164 @@ import Testing
     #expect(lines.contains("commit:Old"))
 }
 
+@Test func commitMapsDecomposedSelectionToExistingPrecomposedAncestor() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-normalized-commit-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let precomposedDirectory = "구현"
+    let decomposedDirectory = precomposedDirectory.decomposedStringWithCanonicalMapping
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then
+        targets=$argument
+        expects_targets=0
+        continue
+      fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|add|commit) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(precomposedDirectory)"><wc-status item="normal" revision="1"/></entry><entry path="\(decomposedDirectory)/새 파일.txt"><wc-status item="unversioned"/></entry></target></status>'
+      exit 0
+    fi
+    if [ -n "$targets" ]; then
+      while IFS= read -r target || [ -n "$target" ]; do
+        printf '%s:%s\n' "$command" "$target" >> command-log
+      done < "$targets"
+    fi
+    [ "$command" = commit ] && printf 'committed\n'
+    exit 0
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    _ = try await client.commit(
+        at: directory.path,
+        paths: ["\(decomposedDirectory)/새 파일.txt"],
+        message: "정규화 경로"
+    )
+
+    let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
+    #expect(log.contains("add:\(precomposedDirectory)/새 파일.txt"))
+    #expect(log.contains("commit:\(precomposedDirectory)/새 파일.txt"))
+    let rawLines = log.split(whereSeparator: \.isNewline).map { Data($0.utf8) }
+    #expect(rawLines.contains(Data("add:\(precomposedDirectory)/새 파일.txt".utf8)))
+    #expect(!rawLines.contains(Data("add:\(decomposedDirectory)/새 파일.txt".utf8)))
+}
+
+@Test func commitFailureRevertsOnlySchedulingPerformedByCommit() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-commit-rollback-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then
+        targets=$argument
+        expects_targets=0
+        continue
+      fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|add|commit|revert) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="새 파일.txt"><wc-status item="unversioned"/></entry><entry path="기존.txt"><wc-status item="modified" revision="1"/></entry></target></status>'
+      exit 0
+    fi
+    if [ -n "$targets" ]; then
+      while IFS= read -r target || [ -n "$target" ]; do
+        printf '%s:%s\n' "$command" "$target" >> command-log
+      done < "$targets"
+    fi
+    if [ "$command" = commit ]; then
+      printf 'commit failed\n' >&2
+      exit 1
+    fi
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    await #expect(throws: SVNError.self) {
+        _ = try await client.commit(
+            at: directory.path,
+            paths: ["새 파일.txt", "기존.txt"],
+            message: "실패"
+        )
+    }
+
+    let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
+    #expect(log.contains("add:새 파일.txt"))
+    #expect(log.contains("revert:새 파일.txt"))
+    #expect(!log.contains("revert:기존.txt"))
+}
+
+@Test func commitRejectsCanonicalPathCollisionBeforeMutation() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-collision-commit-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let precomposed = "구현"
+    let decomposed = precomposed.decomposedStringWithCanonicalMapping
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|add|delete|commit|revert) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(precomposed)"><wc-status item="normal" revision="1"/></entry><entry path="\(decomposed)"><wc-status item="normal" revision="1"/></entry></target></status>'
+      exit 0
+    fi
+    printf '%s\n' "$command" >> mutation-log
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    do {
+        _ = try await client.commit(at: directory.path, paths: [precomposed], message: "충돌")
+        Issue.record("경로 충돌 커밋이 거부되어야 합니다.")
+    } catch let SVNError.pathNormalizationCollision(paths) {
+        #expect(paths == [precomposed])
+    } catch {
+        Issue.record("예상하지 못한 오류: \(error)")
+    }
+
+    #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("mutation-log").path))
+}
+
 @Test func commitsTwentyThousandPathsThroughTargetsFile() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-large-targets-test-\(UUID().uuidString)", isDirectory: true)
@@ -361,7 +519,7 @@ import Testing
       esac
     done
     if [ "$command" = status ]; then
-      printf '<?xml version="1.0"?><status><target path="."></target></status>'
+      printf '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry></target></status>'
       exit 0
     fi
     count=0
@@ -398,7 +556,7 @@ import Testing
     let script = """
     #!/bin/sh
     case "$*" in
-      *"status --xml"*)
+      *"status --verbose --no-ignore --xml"*)
         printf '<?xml version="1.0"?><status><target path="."><entry path="한글.txt"><wc-status item="modified" revision="1"/></entry></target></status>'
         ;;
       *"commit --message"*)
