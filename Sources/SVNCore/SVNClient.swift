@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
 ///
@@ -97,13 +98,57 @@ public actor SVNClient {
     }
 
     public func workingCopySnapshot(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopySnapshot {
-        let result = try checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
-        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(result.output.utf8))
-        return resolveCanonicalFileReplacements(
+        let snapshot = try readWorkingCopySnapshot(at: path, credentials: credentials)
+        let cleanedSnapshot = cleanupMissingScheduledAdditions(
             in: snapshot,
             at: path,
             credentials: credentials
         )
+        return resolveCanonicalFileReplacements(
+            in: cleanedSnapshot,
+            at: path,
+            credentials: credentials
+        )
+    }
+
+    private func readWorkingCopySnapshot(
+        at path: String,
+        credentials: SVNCredentials?
+    ) throws -> SVNWorkingCopySnapshot {
+        let result = try checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
+        return try SVNXMLParser.workingCopySnapshot(from: Data(result.output.utf8))
+    }
+
+    private func cleanupMissingScheduledAdditions(
+        in snapshot: SVNWorkingCopySnapshot,
+        at path: String,
+        credentials: SVNCredentials?
+    ) -> SVNWorkingCopySnapshot {
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        let targets = snapshot.missingScheduledAdditionCleanupTargets.filter { target in
+            !Self.pathEntryExists(at: root.appendingPathComponent(target))
+        }
+        guard !targets.isEmpty else { return snapshot }
+
+        do {
+            _ = try checkedRunWithTargets(
+                ["revert", "--depth", "infinity"],
+                targets: targets,
+                at: path,
+                credentials: credentials
+            )
+            return try readWorkingCopySnapshot(at: path, credentials: credentials)
+        } catch {
+            return snapshot
+        }
+    }
+
+    private static func pathEntryExists(at url: URL) -> Bool {
+        url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return true }
+            var information = stat()
+            return Darwin.lstat(path, &information) == 0
+        }
     }
 
     private func resolveCanonicalFileReplacements(

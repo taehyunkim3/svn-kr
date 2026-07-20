@@ -62,12 +62,12 @@
 - Consumes: `missingScheduledAdditionCleanupTargets`
 - Produces: 정리 성공 후 다시 읽은 `SVNWorkingCopySnapshot`; 실패 시 접힌 원래 스냅샷
 
-- [ ] 가짜 SVN에서 첫 status가 누락 추가 트리, revert 뒤 status가 정상인 실패 테스트를 작성한다.
-- [ ] 실제 경로 또는 심볼릭 링크가 존재하면 revert를 호출하지 않는 실패 테스트를 작성한다.
-- [ ] `workingCopySnapshot`에서 각 후보의 경로가 없음을 확인하고 `revert --depth infinity`를 원문 targets 파일로 실행한 뒤 상태를 다시 읽는다.
-- [ ] revert 또는 사후 검증 실패 시 오류를 전파하지 않고 접힌 원래 상태를 반환한다.
-- [ ] 남은 회색 배지 문구를 `정리 필요` / `Cleanup Needed`로 변경한다.
-- [ ] 관련 코어 및 UI 테스트를 실행한다.
+- [x] 가짜 SVN에서 첫 status가 누락 추가 트리, revert 뒤 status가 정상인 실패 테스트를 작성한다.
+- [x] 실제 경로 또는 심볼릭 링크가 존재하면 revert를 호출하지 않는 안전성 테스트를 작성한다.
+- [x] `workingCopySnapshot`에서 각 후보의 경로가 없음을 확인하고 `revert --depth infinity`를 원문 targets 파일로 실행한 뒤 상태를 다시 읽는다.
+- [x] revert 또는 사후 검증 실패 시 오류를 전파하지 않고 접힌 원래 상태를 반환한다.
+- [x] 남은 회색 배지 문구를 `정리 필요` / `Cleanup Needed`로 변경한다.
+- [x] 관련 코어 및 UI 테스트를 실행한다.
 
 ### Task 4: 실제 SVN 및 전체 회귀 검증
 

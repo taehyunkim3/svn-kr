@@ -28,7 +28,9 @@ struct ChangesViewPerformanceTests {
 
         #expect(changesView.contains("삭제"))
         #expect(changesView.contains("로컬 누락"))
-        #expect(changesView.contains("추가 취소됨"))
+        #expect(changesView.contains("정리 필요"))
+        #expect(changesView.contains("Cleanup Needed"))
+        #expect(!changesView.contains("추가 취소됨"))
         #expect(changesView.contains("한글 경로 충돌"))
         #expect(changesView.contains("entry.isSelectableForCommit"))
         #expect(commitControls.contains("store.selectableStatusPaths"))

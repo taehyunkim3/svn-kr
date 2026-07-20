@@ -409,6 +409,124 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     #expect(snapshot.statuses.isEmpty)
 }
 
+@Test func workingCopySnapshotAutomaticallyCleansMissingScheduledAddition() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-missing-addition-cleanup-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let missingRoot = "새 폴더".decomposedStringWithCanonicalMapping
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then targets=$argument; expects_targets=0; continue; fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|revert) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      if [ -f cleaned ]; then
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry></target></status>'
+      else
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="\(missingRoot)"><wc-status item="missing" revision="-1"/></entry><entry path="\(missingRoot)/문서.pdf"><wc-status item="missing" revision="-1"/></entry></target></status>'
+      fi
+      exit 0
+    fi
+    if [ "$command" = revert ]; then
+      cp "$targets" cleanup-targets
+      printf '%s\n' "$*" > cleanup-command
+      : > cleaned
+      exit 0
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(snapshot.statuses.isEmpty)
+    #expect(snapshot.missingScheduledAdditionCleanupTargets.isEmpty)
+    #expect(try Data(contentsOf: directory.appendingPathComponent("cleanup-targets")) == Data("\(missingRoot)\n".utf8))
+    #expect(try String(contentsOf: directory.appendingPathComponent("cleanup-command"), encoding: .utf8).contains("revert --depth infinity"))
+}
+
+@Test func failedMissingAdditionCleanupLeavesOneVisibleRoot() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-missing-addition-cleanup-failure-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case " $* " in
+      *" status "*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="사라진 폴더"><wc-status item="missing" revision="-1"/></entry><entry path="사라진 폴더/문서.pdf"><wc-status item="missing" revision="-1"/></entry></target></status>'
+        exit 0 ;;
+      *" revert "*) : > cleanup-attempted; printf 'revert failed\n' >&2; exit 1 ;;
+    esac
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("cleanup-attempted").path))
+    #expect(snapshot.statuses == [
+        SVNStatusEntry(path: "사라진 폴더", item: .missing, revision: "-1"),
+    ])
+}
+
+@Test func existingPathsAndSymlinksAreNeverAutomaticallyCleaned() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-existing-addition-cleanup-guard-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    try FileManager.default.createDirectory(at: directory.appendingPathComponent("존재하는 폴더"), withIntermediateDirectories: false)
+    try FileManager.default.createSymbolicLink(
+        at: directory.appendingPathComponent("끊긴 링크"),
+        withDestinationURL: directory.appendingPathComponent("없는 대상")
+    )
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case " $* " in
+      *" status "*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="1"/></entry><entry path="존재하는 폴더"><wc-status item="missing" revision="-1"/></entry><entry path="끊긴 링크"><wc-status item="missing" revision="-1"/></entry></target></status>'
+        exit 0 ;;
+      *" revert "*) : > unsafe-cleanup-attempted; exit 0 ;;
+    esac
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("unsafe-cleanup-attempted").path))
+    #expect(snapshot.statuses.count == 2)
+}
+
 @Test func workingCopySnapshotDoesNotTreatCanonicalAliasDirectoryAsFileReplacement() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-file-replacement-directory-test-\(UUID().uuidString)", isDirectory: true)

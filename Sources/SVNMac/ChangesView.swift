@@ -232,7 +232,7 @@ struct ChangesView: View {
         case .modified: appLanguage.text("수정", "Modified")
         case .added: appLanguage.text("추가", "Added")
         case .deleted: appLanguage.text("삭제", "Deleted")
-        case .missing where entry.isMissingScheduledAddition: appLanguage.text("추가 취소됨", "Addition Missing")
+        case .missing where entry.isMissingScheduledAddition: appLanguage.text("정리 필요", "Cleanup Needed")
         case .missing: appLanguage.text("로컬 누락", "Locally Missing")
         case .unversioned: appLanguage.text("미추적", "Unversioned")
         case .ignored: appLanguage.text("무시됨", "Ignored")
