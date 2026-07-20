@@ -37,6 +37,13 @@ struct ChangesViewPerformanceTests {
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
     }
 
+    @Test func unversionedDirectoryExplainsRecursiveCommit() throws {
+        let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
+
+        #expect(changesView.contains("하위 파일이 함께 추가됩니다."))
+        #expect(changesView.contains("entry.item == .unversioned && entry.nodeKind == .directory"))
+    }
+
     @Test func collisionActionsUseAggregateRepairabilityAndManualServerGuidance() throws {
         let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
 

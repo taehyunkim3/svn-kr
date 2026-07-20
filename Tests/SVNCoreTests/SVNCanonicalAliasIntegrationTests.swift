@@ -202,7 +202,7 @@ import Testing
     #expect(beforeStatuses == [
         SVNStatusEntry(path: replacementPath, item: .modified, revision: "2"),
         SVNStatusEntry(path: "\(composedRoot)/tracked.bin", item: .modified, revision: "2"),
-        SVNStatusEntry(path: "\(composedRoot)/unversioned.bin", item: .unversioned),
+        SVNStatusEntry(path: "\(composedRoot)/unversioned.bin", item: .unversioned, nodeKind: .file),
     ])
 
     let after = try await client.repairCanonicalAliases(at: normalWorkingCopy.path)

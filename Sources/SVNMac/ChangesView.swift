@@ -98,7 +98,17 @@ struct ChangesView: View {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
             statusBadge(entry)
-            Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
+                if entry.item == .unversioned && entry.nodeKind == .directory {
+                    Text(appLanguage.text(
+                        "하위 파일이 함께 추가됩니다.",
+                        "Files inside this folder will be added together."
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
             Spacer()
         }
         .contentShape(Rectangle())

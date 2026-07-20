@@ -95,6 +95,29 @@ public struct SVNWorkingCopySnapshot: Sendable {
         self.scheduledAdditionPaths = scheduledAdditionPaths
     }
 
+    func annotatingNodeKinds(
+        _ kindsByRawPath: [SVNPathIdentity: SVNNodeKind]
+    ) -> SVNWorkingCopySnapshot {
+        let annotated = statuses.map { entry in
+            SVNStatusEntry(
+                path: entry.path,
+                item: entry.item,
+                revision: entry.revision,
+                nodeKind: kindsByRawPath[SVNPathIdentity(rawPath: entry.path)]
+            )
+        }
+        return SVNWorkingCopySnapshot(
+            statuses: annotated,
+            revision: revision,
+            collisions: collisions,
+            versionedPathsByCanonicalKey: versionedPathsByCanonicalKey,
+            canonicalAliasRepairTargets: canonicalAliasRepairTargets,
+            canonicalFileReplacements: canonicalFileReplacements,
+            missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets,
+            scheduledAdditionPaths: scheduledAdditionPaths
+        )
+    }
+
     init(entries: [SVNWorkingCopyEntry]) throws {
         let revisions = entries.compactMap(\.revision).compactMap(Int.init).filter { $0 >= 0 }
         guard let minimum = revisions.min(), let maximum = revisions.max() else {

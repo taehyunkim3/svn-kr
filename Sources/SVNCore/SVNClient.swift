@@ -104,11 +104,12 @@ public actor SVNClient {
             at: path,
             credentials: credentials
         )
-        return resolveCanonicalFileReplacements(
+        let resolvedSnapshot = resolveCanonicalFileReplacements(
             in: cleanedSnapshot,
             at: path,
             credentials: credentials
         )
+        return Self.annotateLocalNodeKinds(in: resolvedSnapshot, at: path)
     }
 
     private func readWorkingCopySnapshot(
@@ -155,6 +156,34 @@ public actor SVNClient {
             var information = stat()
             return Darwin.lstat(path, &information) == 0
         }
+    }
+
+    private static func nodeKind(at url: URL) -> SVNNodeKind? {
+        url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return nil }
+            var information = stat()
+            guard Darwin.lstat(path, &information) == 0 else { return nil }
+            switch information.st_mode & S_IFMT {
+            case S_IFREG: return .file
+            case S_IFDIR: return .directory
+            default: return nil
+            }
+        }
+    }
+
+    private static func annotateLocalNodeKinds(
+        in snapshot: SVNWorkingCopySnapshot,
+        at workingCopyPath: String
+    ) -> SVNWorkingCopySnapshot {
+        let root = URL(fileURLWithPath: workingCopyPath, isDirectory: true)
+        let kinds: [SVNPathIdentity: SVNNodeKind] = Dictionary(
+            uniqueKeysWithValues: snapshot.statuses.compactMap { entry in
+                guard entry.item == .unversioned,
+                      let kind = nodeKind(at: root.appendingPathComponent(entry.path)) else { return nil }
+                return (SVNPathIdentity(rawPath: entry.path), kind)
+            }
+        )
+        return snapshot.annotatingNodeKinds(kinds)
     }
 
     private func resolveCanonicalFileReplacements(

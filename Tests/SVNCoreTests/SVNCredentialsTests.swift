@@ -377,6 +377,41 @@ import Testing
     ])
 }
 
+@Test func workingCopySnapshotAnnotatesUnversionedNodeKinds() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-unversioned-node-kind-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let folder = directory.appendingPathComponent("새 폴더", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try Data().write(to: folder.appendingPathComponent("문서.pdf"))
+    try Data().write(to: directory.appendingPathComponent("새 파일.pdf"))
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="새 폴더"><wc-status item="unversioned"/></entry><entry path="새 파일.pdf"><wc-status item="unversioned"/></entry></target></status>'
+        ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+    let byPath = Dictionary(uniqueKeysWithValues: snapshot.statuses.map { ($0.path, $0) })
+
+    #expect(byPath["새 폴더"]?.nodeKind == .directory)
+    #expect(byPath["새 파일.pdf"]?.nodeKind == .file)
+}
+
 private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throws {
     let descriptor = path.withCString {
         Darwin.open($0, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)

@@ -166,13 +166,20 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     public let path: String
     public let item: SVNStatusKind
     public let revision: String?
+    public let nodeKind: SVNNodeKind?
 
     public var id: String { path }
 
-    public init(path: String, item: SVNStatusKind, revision: String? = nil) {
+    public init(
+        path: String,
+        item: SVNStatusKind,
+        revision: String? = nil,
+        nodeKind: SVNNodeKind? = nil
+    ) {
         self.path = path
         self.item = item
         self.revision = revision
+        self.nodeKind = nodeKind
     }
 }
 
