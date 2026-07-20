@@ -23,14 +23,21 @@ public struct SVNPathCollision: Identifiable, Hashable, Sendable {
     public let canonicalPath: String
     public let rawPaths: [String]
     public let affectedEntryCount: Int
+    public let repairableRawPath: String?
 
     public var id: String { canonicalPath }
     public var displayPath: String { canonicalPath }
 
-    public init(canonicalPath: String, rawPaths: [String], affectedEntryCount: Int) {
+    public init(
+        canonicalPath: String,
+        rawPaths: [String],
+        affectedEntryCount: Int,
+        repairableRawPath: String? = nil
+    ) {
         self.canonicalPath = canonicalPath
         self.rawPaths = rawPaths
         self.affectedEntryCount = affectedEntryCount
+        self.repairableRawPath = repairableRawPath
     }
 }
 
@@ -41,6 +48,12 @@ public struct SVNWorkingCopySnapshot: Sendable {
     public let versionedPathsByCanonicalKey: [String: [String]]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
+    public var repairableAliasPaths: [String] {
+        collisions.compactMap(\.repairableRawPath)
+    }
+    public var hasUnrepairablePathCollisions: Bool {
+        collisions.contains { $0.repairableRawPath == nil }
+    }
 
     public init(
         statuses: [SVNStatusEntry],
@@ -85,7 +98,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
             return SVNPathCollision(
                 canonicalPath: root.canonicalPath,
                 rawPaths: distinctRawPaths(root.rawPaths + affected.map(\.path)),
-                affectedEntryCount: affected.count
+                affectedEntryCount: affected.count,
+                repairableRawPath: root.repairableRawPath
             )
         }
 
@@ -122,6 +136,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
     private struct OrphanedRoot {
         let canonicalPath: String
         let rawPaths: [String]
+        let repairableRawPath: String?
     }
 
     private static func orphanedAdditionRoots(
@@ -133,7 +148,11 @@ public struct SVNWorkingCopySnapshot: Sendable {
             let key = canonicalKey(entry.path)
             guard let versionedPaths = versionedPathsByCanonicalKey[key], !versionedPaths.isEmpty else { return nil }
             guard versionedPaths.contains(where: { Data($0.utf8) != Data(entry.path.utf8) }) else { return nil }
-            return OrphanedRoot(canonicalPath: key, rawPaths: versionedPaths + [entry.path])
+            return OrphanedRoot(
+                canonicalPath: key,
+                rawPaths: versionedPaths + [entry.path],
+                repairableRawPath: versionedPaths.count == 1 ? entry.path : nil
+            )
         }
         .sorted { pathComponents($0.canonicalPath).count < pathComponents($1.canonicalPath).count }
 
@@ -215,7 +234,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
                 SVNPathCollision(
                     canonicalPath: key,
                     rawPaths: distinctRawPaths(values.flatMap(\.rawPaths)),
-                    affectedEntryCount: values.map(\.affectedEntryCount).max() ?? 0
+                    affectedEntryCount: values.map(\.affectedEntryCount).max() ?? 0,
+                    repairableRawPath: values.count == 1 ? values[0].repairableRawPath : nil
                 )
             }
             .sorted { $0.canonicalPath < $1.canonicalPath }

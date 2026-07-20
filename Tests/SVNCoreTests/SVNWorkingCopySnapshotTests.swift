@@ -59,6 +59,37 @@ struct SVNWorkingCopySnapshotTests {
         #expect(snapshot.resolvedPath(for: composed) == nil)
     }
 
+    @Test func exposesShortestMissingAliasRootAsRepairableDespiteEquivalentUnversionedEntries() throws {
+        let composedRoot = "04 구현"
+        let nfdRoot = composedRoot.decomposedStringWithCanonicalMapping
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13302"),
+            (composedRoot, "normal", "13302"),
+            (nfdRoot, "missing", "-1"),
+            ("\(nfdRoot)/하위", "missing", "-1"),
+            ("\(nfdRoot)/하위/파일.txt", "missing", "-1"),
+            (nfdRoot, "unversioned", nil),
+            ("\(nfdRoot)/하위/새파일.txt", "unversioned", nil),
+        ]))
+
+        #expect(snapshot.repairableAliasPaths.map { Data($0.utf8) } == [Data(nfdRoot.utf8)])
+        #expect(!snapshot.hasUnrepairablePathCollisions)
+    }
+
+    @Test func reportsAmbiguousVersionedAliasRootAsUnrepairable() throws {
+        let composedRoot = "04 구현"
+        let nfdRoot = composedRoot.decomposedStringWithCanonicalMapping
+        let ambiguous = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
+            (".", "normal", "13302"),
+            (composedRoot, "normal", "13302"),
+            (nfdRoot, "normal", "13301"),
+            (nfdRoot, "missing", "-1"),
+        ]))
+
+        #expect(ambiguous.repairableAliasPaths.isEmpty)
+        #expect(ambiguous.hasUnrepairablePathCollisions)
+    }
+
     private func snapshotData(entries: [(path: String, item: String, revision: String?)]) -> Data {
         let body = entries.map { entry in
             let revision = entry.revision.map { " revision=\"\($0)\"" } ?? ""
