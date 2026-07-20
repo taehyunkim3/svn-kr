@@ -154,6 +154,15 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    var isCommittingSelectedProject: Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { $0.kind == .commit(projectID) }
+    }
+
+    var showsGlobalProgress: Bool {
+        isWorking && !isCommittingSelectedProject
+    }
+
     init(
         client: any SVNClientServing = SVNClient(),
         credentialStore: any CredentialStoring = KeychainCredentialStore(),

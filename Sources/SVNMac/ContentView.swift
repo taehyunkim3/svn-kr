@@ -84,7 +84,11 @@ struct ContentView: View {
             Button(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle") { Task { await store.previewUpdate() } }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
-            if store.isWorking { ProgressView().controlSize(.small) }
+            if store.showsGlobalProgress {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 16, height: 16)
+            }
         }
         .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }
         .onChange(of: scenePhase) { _, phase in

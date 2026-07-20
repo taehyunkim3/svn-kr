@@ -175,6 +175,31 @@ import Testing
 }
 
 @MainActor
+@Test func commitProgressTracksOnlySelectedProjectsCommit() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let other = SVNProject(name: "다른", path: "/tmp/other")
+    let store = makeStore(projects: [selected, other])
+
+    #expect(!store.isCommittingSelectedProject)
+    #expect(!store.showsGlobalProgress)
+
+    let refreshID = store.beginOperation(.refresh(selected.id))
+    #expect(!store.isCommittingSelectedProject)
+    #expect(store.showsGlobalProgress)
+    store.endOperation(refreshID)
+
+    let otherCommitID = store.beginOperation(.commit(other.id))
+    #expect(!store.isCommittingSelectedProject)
+    #expect(store.showsGlobalProgress)
+    store.endOperation(otherCommitID)
+
+    let commitID = store.beginOperation(.commit(selected.id))
+    #expect(store.isCommittingSelectedProject)
+    #expect(!store.showsGlobalProgress)
+    store.endOperation(commitID)
+}
+
+@MainActor
 @Test func checkoutRemainsSuccessfulWhenCredentialPersistenceFails() async {
     let client = StubSVNClient(checkoutResult: "Checked out revision 10.")
     let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)

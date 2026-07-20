@@ -191,7 +191,16 @@ struct ChangesView: View {
                 Spacer()
                 Text(appLanguage.text("\(store.selectedPaths.count)개 선택", "\(store.selectedPaths.count) selected"))
                     .foregroundStyle(.secondary)
-                Button(appLanguage.text("선택 항목 커밋", "Commit Selected")) { submitCommitAfterEndingTextInput() }
+                Button(action: submitCommitAfterEndingTextInput) {
+                    HStack(spacing: 6) {
+                        if store.isCommittingSelectedProject {
+                            ProgressView().controlSize(.small)
+                        }
+                        Text(store.isCommittingSelectedProject
+                            ? appLanguage.text("커밋 중…", "Committing…")
+                            : appLanguage.text("선택 항목 커밋", "Commit Selected"))
+                    }
+                }
                     .buttonStyle(.borderedProminent)
                     .disabled(store.selectedPaths.isEmpty || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
                     .help(appLanguage.text("선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.", "Commit the selected files to the SVN server with the entered message."))
