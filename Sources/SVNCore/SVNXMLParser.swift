@@ -28,6 +28,17 @@ public enum SVNXMLParser {
         return delegate.entries
     }
 
+    /// 전체 버전 관리 항목의 기준 리비전 범위를 계산합니다.
+    /// 미추적·무시 항목처럼 리비전이 없는 경로는 범위에서 제외합니다.
+    public static func workingCopyRevision(from data: Data) throws -> SVNWorkingCopyRevision {
+        let entries = try workingCopyEntries(from: data)
+        let revisions = entries.compactMap(\.revision).compactMap(Int.init)
+        guard let minimum = revisions.min(), let maximum = revisions.max() else {
+            throw SVNError.malformedResponse
+        }
+        return SVNWorkingCopyRevision(minimum: String(minimum), maximum: String(maximum))
+    }
+
     public static func logs(from data: Data) throws -> [SVNLogEntry] {
         let delegate = LogDelegate()
         let parser = XMLParser(data: data)

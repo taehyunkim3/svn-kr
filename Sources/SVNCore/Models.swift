@@ -198,6 +198,24 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     }
 }
 
+/// 한 작업 복사본에 포함된 버전 관리 항목의 최소·최대 기준 리비전입니다.
+///
+/// SVN은 일부 항목만 커밋하면 작업 복사본을 혼합 리비전으로 유지하므로,
+/// 루트 디렉터리의 단일 리비전만으로는 현재 상태를 정확히 설명할 수 없습니다.
+public struct SVNWorkingCopyRevision: Equatable, Sendable {
+    public let minimum: String
+    public let maximum: String
+
+    public var isMixed: Bool { minimum != maximum }
+    public var displayValue: String { isMixed ? "\(minimum)–\(maximum)" : maximum }
+    public var timelineRevision: String { maximum }
+
+    public init(minimum: String, maximum: String) {
+        self.minimum = minimum
+        self.maximum = maximum
+    }
+}
+
 /// 서버의 커밋 한 건과 그 커밋에 포함된 상세 변경 정보를 표현합니다.
 public struct SVNLogEntry: Identifiable, Hashable, Sendable {
     public let revision: String

@@ -28,6 +28,48 @@ import Testing
     #expect(entries.map(\.isVersioned) == [true, true, false])
 }
 
+@Test func parsesSingleWorkingCopyRevision() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="13295"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="13295"/></entry>
+    </target></status>
+    """
+    let revision = try SVNXMLParser.workingCopyRevision(from: Data(xml.utf8))
+    #expect(revision.minimum == "13295")
+    #expect(revision.maximum == "13295")
+    #expect(revision.displayValue == "13295")
+    #expect(revision.timelineRevision == "13295")
+    #expect(!revision.isMixed)
+}
+
+@Test func parsesMixedWorkingCopyRevisionRange() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="13292"/></entry>
+      <entry path="Sources/App.swift"><wc-status item="normal" revision="13295"/></entry>
+      <entry path="draft.txt"><wc-status item="unversioned"/></entry>
+    </target></status>
+    """
+    let revision = try SVNXMLParser.workingCopyRevision(from: Data(xml.utf8))
+    #expect(revision.minimum == "13292")
+    #expect(revision.maximum == "13295")
+    #expect(revision.displayValue == "13292–13295")
+    #expect(revision.timelineRevision == "13295")
+    #expect(revision.isMixed)
+}
+
+@Test func rejectsWorkingCopyRevisionWithoutVersionedEntries() {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="draft.txt"><wc-status item="unversioned"/></entry>
+    </target></status>
+    """
+    #expect(throws: SVNError.self) {
+        try SVNXMLParser.workingCopyRevision(from: Data(xml.utf8))
+    }
+}
+
 @Test func parsesRecursiveIgnoreRules() throws {
     let xml = """
     <?xml version="1.0"?><properties>
