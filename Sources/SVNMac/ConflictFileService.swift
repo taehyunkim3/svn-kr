@@ -20,12 +20,22 @@ enum ConflictFileError: LocalizedError {
     case unsupportedType(String)
     case missingMine
     case missingServer
+    case sourceOutsideWorkingCopy
+    case backupRootInsideWorkingCopy
+    case unsafeMineSource
+    case unsafeServerSource
+    case cleanupFailed(String)
 
     var errorDescription: String? {
         switch self {
         case let .unsupportedType(type): "지원하지 않는 충돌 유형입니다: \(type)"
         case .missingMine: "내 파일 버전을 찾을 수 없습니다."
         case .missingServer: "서버 파일 버전을 찾을 수 없습니다."
+        case .sourceOutsideWorkingCopy: "충돌 파일 경로가 작업 사본 밖을 가리킵니다."
+        case .backupRootInsideWorkingCopy: "충돌 백업 위치는 작업 사본 밖에 있어야 합니다."
+        case .unsafeMineSource: "내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+        case .unsafeServerSource: "서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+        case let .cleanupFailed(message): "불완전한 충돌 백업 정리에 실패했습니다: \(message)"
         }
     }
 }
@@ -34,10 +44,18 @@ enum ConflictFileError: LocalizedError {
 struct ConflictFileService {
     private let fileManager: FileManager
     private let backupRootURL: URL?
+    private let copyItem: (URL, URL) throws -> Void
 
-    init(fileManager: FileManager = .default, backupRootURL: URL? = nil) {
+    init(
+        fileManager: FileManager = .default,
+        backupRootURL: URL? = nil,
+        copyItem: ((URL, URL) throws -> Void)? = nil
+    ) {
         self.fileManager = fileManager
         self.backupRootURL = backupRootURL
+        self.copyItem = copyItem ?? { source, destination in
+            try fileManager.copyItem(at: source, to: destination)
+        }
     }
 
     func prepareSession(
@@ -55,28 +73,32 @@ struct ConflictFileService {
             appropriateFor: nil,
             create: true
         ).appendingPathComponent("SVN Mac/Conflict Backups", isDirectory: true)
-        let directory = supportRoot
+        let standardizedWorkingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
+        let standardizedBackupRoot = resolvedURL(supportRoot)
+        guard !isAtOrBelow(standardizedBackupRoot, root: standardizedWorkingCopy) else {
+            throw ConflictFileError.backupRootInsideWorkingCopy
+        }
+
+        let mineSource = try sourceURL(
+            myFile,
+            workingCopy: standardizedWorkingCopy,
+            missingError: .missingMine,
+            unsafeError: .unsafeMineSource
+        )
+        let serverSource = try sourceURL(
+            serverFile,
+            workingCopy: standardizedWorkingCopy,
+            missingError: .missingServer,
+            unsafeError: .unsafeServerSource
+        )
+
+        let directory = standardizedBackupRoot
             .appendingPathComponent(projectID.uuidString, isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        var completed = false
-        defer {
-            if !completed {
-                try? fileManager.removeItem(at: directory)
-            }
-        }
-
-        func sourceURL(_ path: String) -> URL {
-            if (path as NSString).isAbsolutePath {
-                return URL(fileURLWithPath: path)
-            }
-            return URL(fileURLWithPath: workingCopyPath, isDirectory: true).appendingPathComponent(path)
-        }
-
-        let mineSource = sourceURL(myFile)
-        let serverSource = sourceURL(serverFile)
-        guard fileManager.fileExists(atPath: mineSource.path) else { throw ConflictFileError.missingMine }
-        guard fileManager.fileExists(atPath: serverSource.path) else { throw ConflictFileError.missingServer }
+        let stagingDirectory = standardizedBackupRoot
+            .appendingPathComponent(".staging", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
 
         let original = URL(fileURLWithPath: details.path)
         let base = original.deletingPathExtension().lastPathComponent
@@ -85,11 +107,11 @@ struct ConflictFileService {
             ext.isEmpty ? "\(base)_\(suffix)" : "\(base)_\(suffix).\(ext)"
         }
 
-        let mineURL = directory.appendingPathComponent(fileName("내파일"))
+        let mineFileName = fileName("내파일")
         let revisionSuffix = details.serverRevision.map { "서버파일_r\($0)" } ?? "서버파일"
-        let serverURL = directory.appendingPathComponent(fileName(revisionSuffix))
-        try fileManager.copyItem(at: mineSource, to: mineURL)
-        try fileManager.copyItem(at: serverSource, to: serverURL)
+        let serverFileName = fileName(revisionSuffix)
+        let stagedMineURL = stagingDirectory.appendingPathComponent(mineFileName)
+        let stagedServerURL = stagingDirectory.appendingPathComponent(serverFileName)
 
         func backup(_ url: URL, revision: String?) throws -> ConflictVersionBackup {
             let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
@@ -101,15 +123,38 @@ struct ConflictFileService {
             )
         }
 
-        let session = try ConflictResolutionSession(
-            id: UUID(),
-            details: details,
-            directoryURL: directory,
-            mine: backup(mineURL, revision: nil),
-            server: backup(serverURL, revision: details.serverRevision)
-        )
-        completed = true
-        return session
+        do {
+            try copyItem(mineSource, stagedMineURL)
+            try copyItem(serverSource, stagedServerURL)
+            let mine = try backup(stagedMineURL, revision: nil)
+            let server = try backup(stagedServerURL, revision: details.serverRevision)
+            try fileManager.createDirectory(at: directory.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try fileManager.moveItem(at: stagingDirectory, to: directory)
+            return ConflictResolutionSession(
+                id: UUID(),
+                details: details,
+                directoryURL: directory,
+                mine: ConflictVersionBackup(
+                    url: directory.appendingPathComponent(mineFileName),
+                    byteCount: mine.byteCount,
+                    modificationDate: mine.modificationDate,
+                    revision: mine.revision
+                ),
+                server: ConflictVersionBackup(
+                    url: directory.appendingPathComponent(serverFileName),
+                    byteCount: server.byteCount,
+                    modificationDate: server.modificationDate,
+                    revision: server.revision
+                )
+            )
+        } catch {
+            do {
+                try fileManager.removeItem(at: stagingDirectory)
+            } catch {
+                throw ConflictFileError.cleanupFailed(error.localizedDescription)
+            }
+            throw error
+        }
     }
 
     func backup(_ details: SVNConflictDetails, projectID: UUID, workingCopyPath: String) throws -> URL {
@@ -159,6 +204,39 @@ struct ConflictFileService {
 
     private func suffixedName(baseName: String, suffix: String, fileExtension: String) -> String {
         fileExtension.isEmpty ? baseName + suffix : "\(baseName)\(suffix).\(fileExtension)"
+    }
+
+    private func sourceURL(
+        _ path: String,
+        workingCopy: URL,
+        missingError: ConflictFileError,
+        unsafeError: ConflictFileError
+    ) throws -> URL {
+        let isAbsolute = (path as NSString).isAbsolutePath
+        let candidate = (isAbsolute ? URL(fileURLWithPath: path) : workingCopy.appendingPathComponent(path))
+            .standardizedFileURL
+        let resolved = resolvedURL(candidate)
+        if !isAbsolute, !isAtOrBelow(resolved, root: workingCopy) {
+            throw ConflictFileError.sourceOutsideWorkingCopy
+        }
+        let attributes: [FileAttributeKey: Any]
+        do {
+            attributes = try fileManager.attributesOfItem(atPath: candidate.path)
+        } catch {
+            throw missingError
+        }
+        guard attributes[.type] as? FileAttributeType == .typeRegular else {
+            throw unsafeError
+        }
+        return resolved
+    }
+
+    private func resolvedURL(_ url: URL) -> URL {
+        url.standardizedFileURL.resolvingSymlinksInPath().standardizedFileURL
+    }
+
+    private func isAtOrBelow(_ candidate: URL, root: URL) -> Bool {
+        candidate.path == root.path || candidate.path.hasPrefix(root.path + "/")
     }
 
     private func uniqueURL(in directory: URL, named name: String) -> URL {
