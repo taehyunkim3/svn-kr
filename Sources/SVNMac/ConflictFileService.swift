@@ -108,7 +108,7 @@ struct ConflictFileService {
         }
 
         let mineFileName = fileName("내파일")
-        let revisionSuffix = details.serverRevision.map { "서버파일_r\($0)" } ?? "서버파일"
+        let revisionSuffix = validRevision(details.serverRevision).map { "서버파일_r\($0)" } ?? "서버파일"
         let serverFileName = fileName(revisionSuffix)
         let stagedMineURL = stagingDirectory.appendingPathComponent(mineFileName)
         let stagedServerURL = stagingDirectory.appendingPathComponent(serverFileName)
@@ -237,6 +237,14 @@ struct ConflictFileService {
 
     private func isAtOrBelow(_ candidate: URL, root: URL) -> Bool {
         candidate.path == root.path || candidate.path.hasPrefix(root.path + "/")
+    }
+
+    private func validRevision(_ revision: String?) -> String? {
+        guard let revision, !revision.isEmpty,
+              revision.unicodeScalars.allSatisfy({ (48...57).contains($0.value) }) else {
+            return nil
+        }
+        return revision
     }
 
     private func uniqueURL(in directory: URL, named name: String) -> URL {

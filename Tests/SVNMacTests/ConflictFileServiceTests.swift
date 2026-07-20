@@ -142,6 +142,24 @@ import Testing
     #expect(try fixture.sessionDirectories().isEmpty)
 }
 
+@Test func omitsUnsafeServerRevisionFromBackupFilename() throws {
+    let fixture = try ConflictFixture()
+    defer { fixture.remove() }
+    let service = ConflictFileService(backupRootURL: fixture.backupRoot)
+
+    for revision in ["42/../outside", "../outside"] {
+        let session = try service.prepareSession(
+            fixture.details(replacingServerRevisionWith: revision),
+            projectID: fixture.projectID,
+            workingCopyPath: fixture.workingCopy.path
+        )
+
+        #expect(session.server.url.deletingLastPathComponent() == session.directoryURL)
+        #expect(session.server.url.lastPathComponent == "document_서버파일.txt")
+        #expect(!FileManager.default.fileExists(atPath: fixture.root.appendingPathComponent("outside").path))
+    }
+}
+
 private final class ConflictFixture {
     let root: URL
     let workingCopy: URL
@@ -180,14 +198,18 @@ private final class ConflictFixture {
         try? FileManager.default.removeItem(at: root)
     }
 
-    func details(replacingMineFileWith mineFile: String? = nil, replacingServerFileWith serverFile: String? = nil) -> SVNConflictDetails {
+    func details(
+        replacingMineFileWith mineFile: String? = nil,
+        replacingServerFileWith serverFile: String? = nil,
+        replacingServerRevisionWith serverRevision: String? = nil
+    ) -> SVNConflictDetails {
         SVNConflictDetails(
             path: details.path,
             type: details.type,
             operation: details.operation,
             myFile: mineFile ?? details.myFile,
             serverFile: serverFile ?? details.serverFile,
-            serverRevision: details.serverRevision
+            serverRevision: serverRevision ?? details.serverRevision
         )
     }
 
