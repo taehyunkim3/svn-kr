@@ -28,6 +28,12 @@ public enum SVNXMLParser {
         return delegate.entries
     }
 
+    /// 한 번의 verbose status 응답에서 변경 목록, 리비전 범위와 정규화 충돌을
+    /// 함께 계산해 서로 다른 시점의 SVN 상태가 섞이지 않게 합니다.
+    public static func workingCopySnapshot(from data: Data) throws -> SVNWorkingCopySnapshot {
+        try SVNWorkingCopySnapshot(entries: workingCopyEntries(from: data))
+    }
+
     /// 전체 버전 관리 항목의 기준 리비전 범위를 계산합니다.
     /// 미추적·무시 항목처럼 리비전이 없는 경로는 범위에서 제외합니다.
     public static func workingCopyRevision(from data: Data) throws -> SVNWorkingCopyRevision {
