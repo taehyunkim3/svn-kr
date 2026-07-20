@@ -166,6 +166,9 @@ private struct DemoSVNClient: SVNClientServing {
             versionedPathsByCanonicalKey: [:]
         )
     }
+    func repairCanonicalAliases(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
+        try await workingCopySnapshot(at: path, credentials: credentials)
+    }
     func recoveryPreview(at _: String, credentials _: SVNCredentials?) async throws -> SVNRecoveryPreview {
         SVNRecoveryPreview(mappings: [], ignoredAliasCount: 0, blockingPaths: [])
     }

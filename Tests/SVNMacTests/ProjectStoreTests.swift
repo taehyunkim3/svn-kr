@@ -156,6 +156,42 @@ import Testing
 }
 
 @MainActor
+@Test func repairCanonicalAliasesRepairsInPlaceAndDoesNotOpenPathRecovery() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/repairable-unicode-collision")
+    let collision = SVNPathCollision(
+        canonicalPath: "04 구현",
+        rawPaths: ["04 구현", "04 구현".decomposedStringWithCanonicalMapping],
+        affectedEntryCount: 17_361,
+        repairableRawPath: "04 구현".decomposedStringWithCanonicalMapping
+    )
+    let repairableSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: "04 구현/취소된추가", item: .missing)],
+        revision: SVNWorkingCopyRevision(minimum: "13302", maximum: "13302"),
+        collisions: [collision],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let repairedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: "04 구현/정상파일", item: .modified)],
+        revision: SVNWorkingCopyRevision(minimum: "13302", maximum: "13302"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [project.path: repairableSnapshot],
+        repairedSnapshotsByPath: [project.path: repairedSnapshot]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.refresh()
+    await store.repairCanonicalAliases()
+
+    #expect(await client.repairRequestCount() == 1)
+    #expect(store.statuses.map(\.path) == ["04 구현/정상파일"])
+    #expect(!store.isShowingPathRecovery)
+    #expect(store.pathCollisions.isEmpty)
+}
+
+@MainActor
 @Test func overlappingOperationsKeepBusyStateUntilAllFinish() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient(
@@ -389,11 +425,13 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutResult: String
     let lockInfoByPath: [String: SVNLockInfo]
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
+    let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var recoveryPaths: [String] = []
+    private var canonicalAliasRepairRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -402,6 +440,7 @@ private actor StubSVNClient: SVNClientServing {
         checkoutResult: String = "checked out",
         lockInfoByPath: [String: SVNLockInfo] = [:],
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
+        repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         recoveryPreview: SVNRecoveryPreview = SVNRecoveryPreview(
             mappings: [], ignoredAliasCount: 0, blockingPaths: []
         ),
@@ -413,6 +452,7 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutResult = checkoutResult
         self.lockInfoByPath = lockInfoByPath
         self.snapshotsByPath = snapshotsByPath
+        self.repairedSnapshotsByPath = repairedSnapshotsByPath
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -439,6 +479,7 @@ private actor StubSVNClient: SVNClientServing {
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         await delay(for: path)
+        if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
         let revision = revisionsByPath[path] ?? "0"
         return SVNWorkingCopySnapshot(
@@ -448,6 +489,12 @@ private actor StubSVNClient: SVNClientServing {
             versionedPathsByCanonicalKey: [:]
         )
     }
+    func repairCanonicalAliases(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
+        canonicalAliasRepairRequests += 1
+        if let repairedSnapshot = repairedSnapshotsByPath[path] { return repairedSnapshot }
+        return try await workingCopySnapshot(at: path, credentials: credentials)
+    }
+    func repairRequestCount() -> Int { canonicalAliasRepairRequests }
     func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview {
         recoveryPreviewValue
     }

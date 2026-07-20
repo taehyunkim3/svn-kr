@@ -35,6 +35,15 @@ struct ChangesViewPerformanceTests {
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
     }
 
+    @Test func repairableUnicodeCollisionsUseOneClickInPlaceRepair() throws {
+        let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
+
+        #expect(changesView.contains("동일 한글 경로 정리"))
+        #expect(changesView.contains("if collision.repairableRawPath != nil"))
+        #expect(changesView.contains("await store.repairCanonicalAliases()"))
+        #expect(changesView.contains("await store.beginPathRecovery()"))
+    }
+
     private func svnMacSources() throws -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

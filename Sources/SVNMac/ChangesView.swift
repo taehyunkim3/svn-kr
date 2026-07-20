@@ -169,10 +169,17 @@ struct ChangesView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if collision.id == store.pathCollisions.first?.id {
-                Button(appLanguage.text("경로 자동 복구…", "Recover Paths…")) {
-                    Task { await store.beginPathRecovery() }
+                if collision.repairableRawPath != nil {
+                    Button(appLanguage.text("동일 한글 경로 정리", "Clean Up Equivalent Path")) {
+                        Task { await store.repairCanonicalAliases() }
+                    }
+                    .disabled(store.isWorking)
+                } else {
+                    Button(appLanguage.text("경로 자동 복구…", "Recover Paths…")) {
+                        Task { await store.beginPathRecovery() }
+                    }
+                    .disabled(store.isWorking)
                 }
-                .disabled(store.isWorking)
             }
         }
     }

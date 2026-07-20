@@ -2,6 +2,24 @@ import Foundation
 import SVNCore
 
 extension ProjectStore {
+    func repairCanonicalAliases() async {
+        guard let project = selectedProject else { return }
+        errorMessage = nil
+        let operationID = beginOperation(.recover(project.id))
+        defer { endOperation(operationID) }
+        do {
+            _ = try await client.repairCanonicalAliases(
+                at: project.path,
+                credentials: try credentials(for: project)
+            )
+            guard selectedProjectID == project.id else { return }
+            await refresh()
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
+    }
+
     func beginPathRecovery() async {
         guard let project = selectedProject else { return }
         errorMessage = nil
