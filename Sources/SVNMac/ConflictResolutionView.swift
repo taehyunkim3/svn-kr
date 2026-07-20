@@ -1,6 +1,15 @@
 import SwiftUI
 import SVNCore
 
+enum ConflictResolutionCopy {
+    static func backupAlertMessage(for language: AppLanguage) -> String {
+        language.text(
+            "백업 폴더에는 내 버전과 서버 버전의 비교용 복사본이 보관됩니다. 이 복사본을 편집해도 현재 작업 파일은 바뀌지 않습니다.",
+            "The backup folder keeps comparison copies of your version and the server version. Editing those copies does not change the current working file."
+        )
+    }
+}
+
 /// 텍스트 충돌과 병합이 어려운 문서 충돌을 서로 다른 안전한 흐름으로 안내합니다.
 struct ConflictResolutionView: View {
     @EnvironmentObject private var store: ProjectStore
@@ -31,7 +40,7 @@ struct ConflictResolutionView: View {
             }
             Button(appLanguage.text("취소", "Cancel"), role: .cancel) { pendingChoice = nil }
         } message: {
-            Text(appLanguage.text("현재 파일은 앱 지원 폴더에 먼저 백업됩니다. 교체 후 diff를 다시 확인하세요.", "The current file is backed up in Application Support first. Review the diff after replacement."))
+            Text(ConflictResolutionCopy.backupAlertMessage(for: appLanguage))
         }
     }
 
@@ -89,11 +98,6 @@ struct ConflictResolutionView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(appLanguage.text("현재 파일로 충돌 해결 완료", "Mark Resolved Using Working File")) {
-                Task { await store.resolveActiveConflict(using: .working) }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(store.isWorking)
         }
     }
 }

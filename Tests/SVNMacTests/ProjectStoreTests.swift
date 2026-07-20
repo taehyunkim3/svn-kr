@@ -3,6 +3,11 @@ import SVNCore
 import Testing
 @testable import SVNMac
 
+@Test func conflictResolutionBackupAlertDescribesOnlyComparisonCopies() {
+    #expect(ConflictResolutionCopy.backupAlertMessage(for: .korean) == "백업 폴더에는 내 버전과 서버 버전의 비교용 복사본이 보관됩니다. 이 복사본을 편집해도 현재 작업 파일은 바뀌지 않습니다.")
+    #expect(ConflictResolutionCopy.backupAlertMessage(for: .english) == "The backup folder keeps comparison copies of your version and the server version. Editing those copies does not change the current working file.")
+}
+
 @MainActor
 @Test func preparesBackupsOpensOnlyCopiesAndResolvesSelectedWholeVersion() async throws {
     let fixture = try ProjectStoreConflictFixture()
@@ -101,6 +106,53 @@ import Testing
 
     #expect(store.activeConflictSession == session)
     #expect(await client.lastConflictChoice() == .mineFull)
+    #expect(FileManager.default.fileExists(atPath: session.mine.url.path))
+    #expect(FileManager.default.fileExists(atPath: session.server.url.path))
+}
+
+@MainActor
+@Test func workingChoiceDoesNotResolveOrDiscardConflictSession() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details)
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+    let session = try #require(store.activeConflictSession)
+    await store.resolveActiveConflict(using: .working)
+
+    #expect(store.activeConflictSession == session)
+    #expect(await client.lastConflictChoice() == nil)
+}
+
+@MainActor
+@Test func delayedConflictPreparationDoesNotAssignSessionAfterProjectSwitch() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let otherProject = SVNProject(name: "다른 프로젝트", path: fixture.root.appendingPathComponent("other").path)
+    let client = StubSVNClient(
+        delaysByPath: [fixture.project.path: .milliseconds(150)],
+        conflictDetailsValue: fixture.details
+    )
+    let store = makeStore(
+        projects: [fixture.project, otherProject],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    let preparation = Task { await store.prepareConflictResolution(for: fixture.details.path) }
+    try await Task.sleep(for: .milliseconds(20))
+    store.selectedProjectID = otherProject.id
+    await preparation.value
+    await store.resolveActiveConflict(using: .mineFull)
+
+    #expect(store.selectedProjectID == otherProject.id)
+    #expect(store.activeConflictSession == nil)
+    #expect(await client.lastConflictChoice() == nil)
 }
 
 @MainActor
@@ -752,7 +804,10 @@ private actor StubSVNClient: SVNClientServing {
     func lockInfoRequestCount() -> Int { lockInfoRequests }
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "locked" }
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
-    func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? { conflictDetailsValue }
+    func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? {
+        await delay(for: path)
+        return conflictDetailsValue
+    }
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String {
         conflictChoices.append(choice)
         if let resolveError { throw resolveError }

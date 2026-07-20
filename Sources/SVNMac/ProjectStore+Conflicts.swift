@@ -4,6 +4,7 @@ import SVNCore
 extension ProjectStore {
     func prepareConflictResolution(for relativePath: String) async {
         guard let project = selectedProject else { return }
+        let projectID = project.id
         let operationID = beginOperation(.resolveConflict(project.id))
         defer { endOperation(operationID) }
         do {
@@ -14,12 +15,18 @@ extension ProjectStore {
             ) else {
                 throw ConflictFileError.unsupportedType("unknown")
             }
-            activeConflictSession = try conflictFileService.prepareSession(
+            guard selectedProjectID == projectID else { return }
+            let session = try conflictFileService.prepareSession(
                 details,
-                projectID: project.id,
+                projectID: projectID,
                 workingCopyPath: project.path
             )
-        } catch { errorMessage = localizedError(error) }
+            guard selectedProjectID == projectID else { return }
+            activeConflictSession = session
+        } catch {
+            guard selectedProjectID == projectID else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func openConflictVersion(_ choice: SVNConflictChoice) {
@@ -40,6 +47,12 @@ extension ProjectStore {
 
     func resolveActiveConflict(using choice: SVNConflictChoice) async {
         guard let project = selectedProject, let session = activeConflictSession else { return }
+        switch choice {
+        case .mineFull, .theirsFull:
+            break
+        case .working:
+            return
+        }
         let operationID = beginOperation(.resolveConflict(project.id))
         defer { endOperation(operationID) }
         do {
