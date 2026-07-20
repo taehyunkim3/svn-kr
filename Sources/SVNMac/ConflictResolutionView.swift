@@ -31,16 +31,18 @@ struct ConflictResolutionView: View {
         .padding()
         .appSheetFrame(minimumSize: AppLayout.conflictResolutionSheetMinimumSize)
         .alert(
-            appLanguage.text("이 버전으로 파일 전체를 교체할까요?", "Replace the Entire File with This Version?"),
+            confirmationTitle,
             isPresented: Binding(get: { pendingChoice != nil }, set: { if !$0 { pendingChoice = nil } })
         ) {
-            Button(appLanguage.text("교체하고 해결", "Replace and Resolve"), role: .destructive) {
+            Button(confirmationActionTitle, role: .destructive) {
                 guard let choice = pendingChoice else { return }
                 Task { await store.resolveActiveConflict(using: choice) }
             }
             Button(appLanguage.text("취소", "Cancel"), role: .cancel) { pendingChoice = nil }
         } message: {
-            Text(ConflictResolutionCopy.backupAlertMessage(for: appLanguage))
+            if let choice = pendingChoice {
+                Text(confirmationMessage(for: choice))
+            }
         }
     }
 
@@ -56,40 +58,123 @@ struct ConflictResolutionView: View {
 
     @ViewBuilder
     private func conflictBody(_ session: ConflictResolutionSession) -> some View {
-        let conflict = session.details
-        Text(conflict.path).font(.body.monospaced()).textSelection(.enabled)
-        if DocumentFilePolicy.recommendsLock(for: conflict.path) {
-            Label(
-                appLanguage.text("문서·이미지 파일은 줄 단위 자동 병합이 안전하지 않습니다.", "Line-by-line automatic merging is unsafe for documents and images."),
-                systemImage: "doc.richtext"
-            )
-            Text(appLanguage.text(
-                "내 버전과 서버 버전을 모두 보관한 뒤 Word, PowerPoint 또는 원래 편집 프로그램에서 비교해 최종 파일을 만드세요.",
-                "Preserve both versions, compare them in Word, PowerPoint, or the original editor, and create the final file."
-            ))
-            .foregroundStyle(.secondary)
-            Button(appLanguage.text("백업 폴더 열기", "Open Backup Folder"), systemImage: "folder") {
-                store.openConflictBackupFolder()
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                Label(
+                    appLanguage.text(
+                        "내 파일과 서버 파일은 백업 폴더에 복사되었습니다. 열어 수정해도 실제 작업 파일에는 반영되지 않습니다.",
+                        "Both versions were copied to a backup folder. Editing these copies does not change the working file."
+                    ),
+                    systemImage: "externaldrive.badge.checkmark"
+                )
+                .foregroundStyle(.secondary)
+                Spacer()
+                Button(appLanguage.text("백업 폴더 열기", "Open Backup Folder"), systemImage: "folder") {
+                    store.openConflictBackupFolder()
+                }
             }
-            .buttonStyle(.borderedProminent)
-        } else {
-            Label(
-                appLanguage.text("외부 편집기에서 충돌 표시를 병합한 뒤 현재 파일을 유지하세요.", "Merge the conflict markers in an external editor, then keep the working file."),
-                systemImage: "chevron.left.forwardslash.chevron.right"
-            )
-        }
 
-        HStack {
-            Button(appLanguage.text("내 버전 열기", "Open My Version"), systemImage: "arrow.up.forward.app") {
-                store.openConflictVersion(.mineFull)
-            }
-            Button(appLanguage.text("서버 버전 열기", "Open Server Version"), systemImage: "arrow.up.forward.app") {
-                store.openConflictVersion(.theirsFull)
-            }
-            Button(appLanguage.text("내 버전 전체 사용", "Use My Entire Version")) { pendingChoice = .mineFull }
-            Button(appLanguage.text("서버 버전 전체 사용", "Use Entire Server Version")) { pendingChoice = .theirsFull }
+            versionCard(
+                title: appLanguage.text("내 파일", "My File"),
+                version: session.mine,
+                openTitle: appLanguage.text("내 파일 열기", "Open My File"),
+                useTitle: appLanguage.text("내 파일 사용", "Use My File"),
+                choice: .mineFull
+            )
+
+            versionCard(
+                title: appLanguage.text("서버 파일", "Server File"),
+                version: session.server,
+                openTitle: appLanguage.text("서버 파일 열기", "Open Server File"),
+                useTitle: appLanguage.text("서버 파일 사용", "Use Server File"),
+                choice: .theirsFull
+            )
         }
-        .buttonStyle(.bordered)
+    }
+
+    private func versionCard(
+        title: String,
+        version: ConflictVersionBackup,
+        openTitle: String,
+        useTitle: String,
+        choice: SVNConflictChoice
+    ) -> some View {
+        GroupBox(title) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(version.url.lastPathComponent)
+                    .lineLimit(1)
+                    .textSelection(.enabled)
+                Text(ByteCountFormatter.string(fromByteCount: version.byteCount, countStyle: .file))
+                    .foregroundStyle(.secondary)
+                Text(versionMetadata(for: version))
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button(openTitle) {
+                        store.openConflictVersion(choice)
+                    }
+                    Spacer()
+                    Button(useTitle) {
+                        pendingChoice = choice
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private var confirmationTitle: String {
+        guard let choice = pendingChoice else { return "" }
+        switch choice {
+        case .mineFull:
+            return appLanguage.text("내 파일을 사용할까요?", "Use My File?")
+        case .theirsFull:
+            return appLanguage.text("서버 파일을 사용할까요?", "Use Server File?")
+        case .working:
+            return ""
+        }
+    }
+
+    private var confirmationActionTitle: String {
+        guard let choice = pendingChoice else { return "" }
+        switch choice {
+        case .mineFull:
+            return appLanguage.text("내 파일 사용", "Use My File")
+        case .theirsFull:
+            return appLanguage.text("서버 파일 사용", "Use Server File")
+        case .working:
+            return ""
+        }
+    }
+
+    private func confirmationMessage(for choice: SVNConflictChoice) -> String {
+        switch choice {
+        case .mineFull:
+            appLanguage.text(
+                "내 파일을 유지합니다. 이후 커밋하면 서버 파일이 이 내용으로 변경됩니다.",
+                "Keep your file. A later commit will replace the repository file with this content."
+            )
+        case .theirsFull:
+            appLanguage.text(
+                "서버 파일로 교체합니다. 작업 중이던 내 변경 내용은 작업 폴더에서 사라집니다. 내 원본은 백업 폴더에 보관됩니다.",
+                "Replace with the server file. Your local edits leave the working copy but remain in the backup folder."
+            )
+        case .working:
+            ""
+        }
+    }
+
+    private func versionMetadata(for version: ConflictVersionBackup) -> String {
+        if let revision = version.revision {
+            return appLanguage.text("서버 리비전 \(revision)", "Server revision \(revision)")
+        }
+        if let modificationDate = version.modificationDate {
+            return appLanguage.text(
+                "수정 시각 \(modificationDate.formatted(date: .abbreviated, time: .shortened))",
+                "Modified \(modificationDate.formatted(date: .abbreviated, time: .shortened))"
+            )
+        }
+        return appLanguage.text("수정 시각을 알 수 없음", "Modification date unavailable")
     }
 
     private var footer: some View {

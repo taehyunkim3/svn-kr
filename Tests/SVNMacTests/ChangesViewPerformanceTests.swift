@@ -55,6 +55,19 @@ struct ChangesViewPerformanceTests {
         #expect(!changesView.contains("await store.beginPathRecovery()"))
     }
 
+    @Test func conflictResolutionOffersOnlyTwoBackedUpWholeVersions() throws {
+        let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
+
+        #expect(view.contains("내 파일 열기"))
+        #expect(view.contains("서버 파일 열기"))
+        #expect(view.contains("내 파일 사용"))
+        #expect(view.contains("서버 파일 사용"))
+        #expect(view.contains("백업 폴더 열기"))
+        #expect(view.contains("수정해도 실제 작업 파일에는 반영되지 않습니다"))
+        #expect(!view.contains("두 버전 모두 원본 옆에 보관"))
+        #expect(!view.contains("현재 파일로 충돌 해결 완료"))
+    }
+
     private func svnMacSources() throws -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
