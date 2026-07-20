@@ -259,6 +259,10 @@ import Testing
 
     let newerThanHead = SVNHistoryTimeline(logs: logs, workingCopyRevision: "51")
     #expect(newerThanHead.graphEntryRevision == "50")
+
+    let mixed = SVNWorkingCopyRevision(minimum: "47", maximum: "50")
+    let mixedTimeline = SVNHistoryTimeline(logs: logs, workingCopyRevision: mixed.timelineRevision)
+    #expect(mixedTimeline.graphEntryRevision == "50")
 }
 
 @Test func preservesUnknownSVNValuesForForwardCompatibility() throws {

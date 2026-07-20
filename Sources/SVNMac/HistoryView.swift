@@ -51,6 +51,9 @@ struct HistoryView: View {
                     Label(appLanguage.text("서버 최신 r\(headRevision)", "Server latest r\(headRevision)"), systemImage: "cloud")
                     if let workingCopyRevision = store.workingCopyRevision {
                         Label(appLanguage.text("내 로컬 폴더 r\(workingCopyRevision.displayValue)", "My local folder r\(workingCopyRevision.displayValue)"), systemImage: "macbook")
+                        if workingCopyRevision.isMixed {
+                            historyBadge(appLanguage.text("혼합 리비전", "Mixed revisions"), color: .gray)
+                        }
                         if store.isWorkingCopyOutOfDate == true {
                             Text(appLanguage.text("업데이트 필요", "Update required")).foregroundStyle(.orange)
                         } else if store.isWorkingCopyOutOfDate == false {
@@ -62,7 +65,7 @@ struct HistoryView: View {
 
                 HStack(spacing: 14) {
                     historyLegend(color: .blue, label: appLanguage.text("서버 커밋", "Server commit"))
-                    historyLegend(color: .green, label: appLanguage.text("내 로컬 기준", "My local base"))
+                    historyLegend(color: .green, label: localRevisionLegendLabel)
                     if !store.statuses.isEmpty {
                         historyLegend(color: .orange, label: appLanguage.text("미커밋 변경 \(store.statuses.count)개", "\(store.statuses.count) uncommitted changes"))
                     }
@@ -132,10 +135,7 @@ struct HistoryView: View {
                 hasLocalChanges: isWorkingCopyEntry && !store.statuses.isEmpty
             )
             .frame(width: 76)
-            .help(appLanguage.text(
-                "파란 점은 서버 커밋, 초록 테두리는 내 로컬 기준, 주황 가지는 미커밋 변경을 뜻합니다.",
-                "Blue dots are server commits, the green ring is your local base, and the orange branch is uncommitted work."
-            ))
+            .help(historyGraphHelp)
 
             VStack(alignment: .leading, spacing: 9) {
                 historyEntryHeader(entry, isWorkingCopyEntry: isWorkingCopyEntry)
@@ -240,7 +240,10 @@ struct HistoryView: View {
     // MARK: - 타임라인 표현 도우미
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
-        entryRevision == store.workingCopyRevision?.timelineRevision
+        if store.workingCopyRevision?.isMixed == true {
+            return appLanguage.text("내 로컬 최고", "My local maximum")
+        }
+        return entryRevision == store.workingCopyRevision?.timelineRevision
             ? appLanguage.text("내 로컬 기준", "My local base")
             : appLanguage.text("내 로컬에 포함", "Included locally")
     }
@@ -262,14 +265,12 @@ struct HistoryView: View {
                 }
                 HStack {
                     Text("r\(revision)").font(.headline.monospacedDigit())
-                    historyBadge(appLanguage.text("내 로컬 기준", "My local base"), color: .green)
+                    historyBadge(localRevisionMarkerLabel, color: .green)
                     if !store.statuses.isEmpty {
                         historyBadge(appLanguage.text("로컬 변경 \(store.statuses.count)개", "\(store.statuses.count) local changes"), color: .orange)
                     }
                 }
-                Text(isBeforeLoadedHistory
-                     ? appLanguage.text("내 로컬 기준 리비전이 최근 50개 서버 기록보다 이전입니다.", "Your local base revision is earlier than the latest 50 server records.")
-                     : appLanguage.text("두 서버 커밋 사이의 내 로컬 갱신 기준입니다.", "Your local update base falls between two server commits."))
+                Text(localRevisionMarkerDescription(isBeforeLoadedHistory: isBeforeLoadedHistory))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -277,6 +278,41 @@ struct HistoryView: View {
         }
         .listRowInsets(EdgeInsets())
         .listRowSeparator(.hidden)
+    }
+
+    private var localRevisionLegendLabel: String {
+        store.workingCopyRevision?.isMixed == true
+            ? appLanguage.text("내 로컬 최고", "My local maximum")
+            : appLanguage.text("내 로컬 기준", "My local base")
+    }
+
+    private var localRevisionMarkerLabel: String {
+        localRevisionLegendLabel
+    }
+
+    private var historyGraphHelp: String {
+        if store.workingCopyRevision?.isMixed == true {
+            return appLanguage.text(
+                "파란 점은 서버 커밋, 초록 테두리는 내 로컬의 최고 리비전, 주황 가지는 미커밋 변경을 뜻합니다.",
+                "Blue dots are server commits, the green ring is your local maximum revision, and the orange branch is uncommitted work."
+            )
+        }
+        return appLanguage.text(
+            "파란 점은 서버 커밋, 초록 테두리는 내 로컬 기준, 주황 가지는 미커밋 변경을 뜻합니다.",
+            "Blue dots are server commits, the green ring is your local base, and the orange branch is uncommitted work."
+        )
+    }
+
+    private func localRevisionMarkerDescription(isBeforeLoadedHistory: Bool) -> String {
+        if let revision = store.workingCopyRevision, revision.isMixed {
+            return appLanguage.text(
+                "작업 복사본은 r\(revision.displayValue) 혼합 리비전이며 이 위치는 최고 리비전입니다.",
+                "The working copy contains mixed revisions r\(revision.displayValue); this marker shows the maximum."
+            )
+        }
+        return isBeforeLoadedHistory
+            ? appLanguage.text("내 로컬 기준 리비전이 최근 50개 서버 기록보다 이전입니다.", "Your local base revision is earlier than the latest 50 server records.")
+            : appLanguage.text("두 서버 커밋 사이의 내 로컬 갱신 기준입니다.", "Your local update base falls between two server commits.")
     }
 
     private func historyLegend(color: Color, label: String) -> some View {
