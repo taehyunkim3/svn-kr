@@ -203,22 +203,29 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     public let status: String
     public let revision: String?
     public let treeConflicted: Bool
+    public let repositoryPath: String?
 
     public var id: String { path }
+    public var repositoryRelativePath: String { repositoryPath ?? path }
     public var isVersioned: Bool {
-        status != "unversioned" && status != "ignored" && status != "external"
+        status != "unversioned"
+            && status != "ignored"
+            && status != "external"
+            && revision.flatMap(Int.init).map { $0 >= 0 } == true
     }
 
     public init(
         path: String,
         status: String,
         revision: String? = nil,
-        treeConflicted: Bool = false
+        treeConflicted: Bool = false,
+        repositoryPath: String? = nil
     ) {
         self.path = path
         self.status = status
         self.revision = revision
         self.treeConflicted = treeConflicted
+        self.repositoryPath = repositoryPath
     }
 }
 

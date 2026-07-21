@@ -113,7 +113,18 @@ public actor SVNClient {
 
     public func workingCopyEntries(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNWorkingCopyEntry] {
         let result = try checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
-        return try SVNXMLParser.workingCopyEntries(from: Data(result.output.utf8))
+        let entries = try SVNXMLParser.workingCopyEntries(from: Data(result.output.utf8))
+        let snapshot = try SVNWorkingCopySnapshot(entries: entries)
+        let resolution = canonicalFileReplacementResolution(
+            in: snapshot,
+            at: path,
+            credentials: credentials
+        )
+        return Self.resolvedWorkingCopyEntries(
+            entries,
+            replacements: snapshot.canonicalFileReplacements,
+            resolution: resolution
+        )
     }
 
     public func workingCopySnapshot(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopySnapshot {
@@ -197,8 +208,7 @@ public actor SVNClient {
         let root = URL(fileURLWithPath: workingCopyPath, isDirectory: true)
         let kinds: [SVNPathIdentity: SVNNodeKind] = Dictionary(
             uniqueKeysWithValues: snapshot.statuses.compactMap { entry in
-                guard entry.item == .unversioned,
-                      let kind = nodeKind(at: root.appendingPathComponent(entry.path)) else { return nil }
+                guard let kind = nodeKind(at: root.appendingPathComponent(entry.path)) else { return nil }
                 return (SVNPathIdentity(rawPath: entry.path), kind)
             }
         )
@@ -210,9 +220,29 @@ public actor SVNClient {
         at path: String,
         credentials: SVNCredentials?
     ) -> SVNWorkingCopySnapshot {
+        let resolution = canonicalFileReplacementResolution(
+            in: snapshot,
+            at: path,
+            credentials: credentials
+        )
+        return snapshot.resolvingCanonicalFileReplacements(
+            modifiedPaths: Set(resolution.modified.map(\.rawPath)),
+            unchangedPaths: Set(resolution.unchanged.map(\.rawPath))
+        )
+    }
+
+    private struct CanonicalFileReplacementResolution {
+        var modified: Set<SVNPathIdentity> = []
+        var unchanged: Set<SVNPathIdentity> = []
+    }
+
+    private func canonicalFileReplacementResolution(
+        in snapshot: SVNWorkingCopySnapshot,
+        at path: String,
+        credentials: SVNCredentials?
+    ) -> CanonicalFileReplacementResolution {
         let root = URL(fileURLWithPath: path, isDirectory: true)
-        var modifiedPaths: Set<String> = []
-        var unchangedPaths: Set<String> = []
+        var resolution = CanonicalFileReplacementResolution()
 
         for replacement in snapshot.canonicalFileReplacements {
             let localURL = root.appendingPathComponent(replacement.localAliasPath)
@@ -234,20 +264,55 @@ public actor SVNClient {
                       at: path,
                       credentials: credentials
                   )
+                let versionedIdentity = SVNPathIdentity(rawPath: replacement.versionedPath)
                 if try Self.filesHaveEqualContents(localURL, baseURL) {
-                    unchangedPaths.insert(replacement.versionedPath)
+                    resolution.unchanged.insert(versionedIdentity)
                 } else {
-                    modifiedPaths.insert(replacement.versionedPath)
+                    resolution.modified.insert(versionedIdentity)
                 }
             } catch {
                 continue
             }
         }
 
-        return snapshot.resolvingCanonicalFileReplacements(
-            modifiedPaths: modifiedPaths,
-            unchangedPaths: unchangedPaths
-        )
+        return resolution
+    }
+
+    private static func resolvedWorkingCopyEntries(
+        _ entries: [SVNWorkingCopyEntry],
+        replacements: [SVNCanonicalFileReplacement],
+        resolution: CanonicalFileReplacementResolution
+    ) -> [SVNWorkingCopyEntry] {
+        let resolvedVersioned = resolution.modified.union(resolution.unchanged)
+        let resolvedReplacements = replacements.filter {
+            resolvedVersioned.contains(SVNPathIdentity(rawPath: $0.versionedPath))
+        }
+        let versionedIdentities = Set(resolvedReplacements.map {
+            SVNPathIdentity(rawPath: $0.versionedPath)
+        })
+        let replacementsByLocalAlias = Dictionary(uniqueKeysWithValues: resolvedReplacements.map {
+            (SVNPathIdentity(rawPath: $0.localAliasPath), $0)
+        })
+
+        return entries.compactMap { entry in
+            let identity = SVNPathIdentity(rawPath: entry.path)
+            if versionedIdentities.contains(identity) {
+                return nil
+            }
+            guard let replacement = replacementsByLocalAlias[identity] else {
+                return entry
+            }
+            let status = resolution.modified.contains(
+                SVNPathIdentity(rawPath: replacement.versionedPath)
+            ) ? "modified" : "normal"
+            return SVNWorkingCopyEntry(
+                path: entry.path,
+                status: status,
+                revision: replacement.revision,
+                treeConflicted: entry.treeConflicted,
+                repositoryPath: replacement.versionedPath
+            )
+        }
     }
 
     public func repairCanonicalAliases(

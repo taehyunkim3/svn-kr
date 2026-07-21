@@ -60,12 +60,26 @@ struct WorkingCopyBrowserView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             guard !node.isDirectory else { return }
-            Task { await store.prepareToOpen(path: node.relativePath, isVersioned: node.isVersioned) }
+            Task {
+                await store.prepareToOpen(
+                    path: node.relativePath,
+                    repositoryPath: node.repositoryRelativePath,
+                    isVersioned: node.isVersioned,
+                    isRegularFile: node.isRegularFile
+                )
+            }
         }
         .contextMenu {
             if !node.isDirectory {
                 Button(appLanguage.text("파일 열기", "Open File")) {
-                    Task { await store.prepareToOpen(path: node.relativePath, isVersioned: node.isVersioned) }
+                    Task {
+                        await store.prepareToOpen(
+                            path: node.relativePath,
+                            repositoryPath: node.repositoryRelativePath,
+                            isVersioned: node.isVersioned,
+                            isRegularFile: node.isRegularFile
+                        )
+                    }
                 }
                 if let lock = lockInfo(for: node),
                    lock.owner == store.selectedProject?.username {
@@ -84,7 +98,7 @@ struct WorkingCopyBrowserView: View {
             if !node.isDirectory, node.isVersioned {
                 Divider()
                 Button(appLanguage.text("이 파일의 커밋 기록", "File Commit History")) {
-                    Task { await store.loadFileHistory(for: node.relativePath) }
+                    Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
                 }
             }
         }
@@ -126,7 +140,7 @@ struct WorkingCopyBrowserView: View {
     }
 
     private func lockInfo(for node: WorkingCopyFileNode) -> SVNLockInfo? {
-        store.repositoryLocks.first { $0.path == node.relativePath }
+        store.repositoryLocks.first { node.matchesRepositoryPath($0.path) }
     }
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
@@ -148,6 +162,7 @@ private extension WorkingCopyFileNode {
             relativePath: relativePath,
             isDirectory: isDirectory,
             isSymbolicLink: isSymbolicLink,
+            isRegularFile: isRegularFile,
             svnEntry: svnEntry,
             children: filteredChildren
         )

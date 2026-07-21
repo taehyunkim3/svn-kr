@@ -200,8 +200,8 @@ import Testing
 
     #expect(before.repairableAliasPaths.map { Data($0.utf8) } == [Data(decomposedRoot.utf8)])
     #expect(beforeStatuses == [
-        SVNStatusEntry(path: replacementPath, item: .modified, revision: "2"),
-        SVNStatusEntry(path: "\(composedRoot)/tracked.bin", item: .modified, revision: "2"),
+        SVNStatusEntry(path: replacementPath, item: .modified, revision: "2", nodeKind: .file),
+        SVNStatusEntry(path: "\(composedRoot)/tracked.bin", item: .modified, revision: "2", nodeKind: .file),
         SVNStatusEntry(path: "\(composedRoot)/unversioned.bin", item: .unversioned, nodeKind: .file),
     ])
 

@@ -493,17 +493,54 @@ import Testing
 }
 
 @MainActor
-@Test func versionedDocumentOffersLockBeforeOpening() async {
+@Test func versionedFileOffersLockBeforeOpeningRegardlessOfExtension() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let opener = StubWorkspaceOpener()
     let client = StubSVNClient()
     let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
 
-    await store.prepareToOpen(path: "plan.pptx", isVersioned: true)
+    await store.prepareToOpen(path: "README.txt", isVersioned: true)
 
     #expect(opener.openedURLs.isEmpty)
-    #expect(store.documentOpenRequest?.relativePath == "plan.pptx")
+    #expect(store.documentOpenRequest?.relativePath == "README.txt")
     #expect(await client.lockInfoRequestCount() == 1)
+}
+
+@MainActor
+@Test func canonicalAliasUsesRepositoryPathForLockAndLocalPathForOpen() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+    let repositoryPath = "주간보고서.hwp"
+    let localPath = repositoryPath.decomposedStringWithCanonicalMapping
+
+    await store.prepareToOpen(
+        path: localPath,
+        repositoryPath: repositoryPath,
+        isVersioned: true,
+        isRegularFile: true
+    )
+    let request = try #require(store.documentOpenRequest)
+    await store.lockAndOpen(request)
+
+    #expect(await client.requestedLockInfoPaths() == [repositoryPath])
+    #expect(await client.requestedLockPaths() == [repositoryPath])
+    #expect(opener.openedURLs.map { Data($0.lastPathComponent.utf8) } == [Data(localPath.utf8)])
+}
+
+@MainActor
+@Test func versionedNonRegularItemOpensWithoutRequestingALock() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+
+    await store.prepareToOpen(path: "Assets.bundle", isVersioned: true, isRegularFile: false)
+
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["Assets.bundle"])
+    #expect(store.documentOpenRequest == nil)
+    #expect(await client.lockInfoRequestCount() == 0)
 }
 
 @MainActor
@@ -1093,6 +1130,8 @@ private actor StubSVNClient: SVNClientServing {
     let resolveGate: AsyncTestGate?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
+    private var lockInfoPaths: [String] = []
+    private var lockPaths: [String] = []
     private var recoveryPaths: [String] = []
     private var canonicalAliasRepairRequests = 0
     private var snapshotRequests = 0
@@ -1196,10 +1235,16 @@ private actor StubSVNClient: SVNClientServing {
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] { [] }
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
         lockInfoRequests += 1
+        lockInfoPaths.append(relativePath)
         return lockInfoByPath[relativePath]
     }
     func lockInfoRequestCount() -> Int { lockInfoRequests }
-    func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "locked" }
+    func requestedLockInfoPaths() -> [String] { lockInfoPaths }
+    func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        lockPaths.append(relativePath)
+        return "locked"
+    }
+    func requestedLockPaths() -> [String] { lockPaths }
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? {
         conflictDetailsRequestCounts[relativePath, default: 0] += 1
