@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="${0:A:h:h}"
 cd "$ROOT"
+source "$ROOT/scripts/svn-runtime-manifest.sh"
 
 CACHE_ROOT="${TMPDIR:-/tmp}/svn-mac-build-cache"
 export CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-$CACHE_ROOT/clang}"
@@ -38,6 +39,25 @@ function build_app_bundle() {
   cp "$ROOT/Resources/Credits.rtf" "$APP/Contents/Resources/Credits.rtf"
   cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
   "$ROOT/scripts/embed-svn.sh" "$APP"
+}
+
+function validate_app_bundle_runtime() {
+  local binary minos dependency
+  for binary in "$APP/Contents/MacOS/SVNMac" "$APP/Contents/Helpers/svn" "$APP"/Contents/Frameworks/*.dylib(N); do
+    minos="$(vtool -show-build "$binary" | awk '/minos/ {print $2; exit}')"
+    [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
+      print -u2 "Packaged binary requires macOS ${minos:-unknown}, expected $SVN_RUNTIME_DEPLOYMENT_TARGET or lower: $binary"
+      return 1
+    }
+
+    while IFS= read -r dependency; do
+      [[ -z "$dependency" ]] && continue
+      if is_forbidden_runtime_dependency "$dependency"; then
+        print -u2 "Packaged binary contains a build-machine dependency: $dependency"
+        return 1
+      fi
+    done < <(otool -L "$binary" | awk 'NR > 1 {print $1}')
+  done
 }
 
 # MARK: - 서명 설정
@@ -134,6 +154,7 @@ function create_app_store_package() {
 }
 
 build_app_bundle
+validate_app_bundle_runtime
 configure_signing
 prepare_app_store_entitlements
 sign_app_bundle

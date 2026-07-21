@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.7 (2026-07-21)
+
+- Built SVN 1.14.5 and its non-system dependencies from checksum-pinned sources for a macOS 14 arm64 deployment target.
+- Statically linked SQLite 3.51.0, Serf, OpenSSL, APR, APR-util, Expat, LZ4, and utf8proc so packaging no longer inherits Homebrew versions or load paths.
+- Made release packaging accept only a validated runtime with an immutable source manifest.
+
 ## 0.5.6 (2026-07-21)
 
 - Bundled the exact SQLite runtime expected by the packaged SVN helper instead of loading a potentially different system SQLite version.

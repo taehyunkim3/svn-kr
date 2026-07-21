@@ -41,11 +41,12 @@ swift run SVNMac
 
 ```bash
 swift test
+./scripts/build-svn-runtime.sh
 ./scripts/package-app.sh
 open 'dist/SVN Mac.app'
 ```
 
-생성된 앱은 `dist/SVN Mac.app`, 공유용 압축 파일은 `dist/SVN-Mac-버전-아키텍처.zip`에 있습니다. 패키징 스크립트는 빌드 Mac에 설치된 SVN, 비시스템 동적 라이브러리, SVN의 컴파일 버전과 일치하는 SQLite 런타임을 앱 내부에 포함하고 라이선스 파일도 함께 복사합니다. SQLite 소스는 고정된 공식 URL과 SHA-256으로 검증하며, 반복 또는 오프라인 빌드에서는 `SQLITE_SOURCE_ARCHIVE=/path/to/sqlite-amalgamation-3510000.zip`으로 이미 검증된 소스를 지정할 수 있습니다. 현재 기본값은 로컬 실행용 ad-hoc 서명입니다.
+생성된 앱은 `dist/SVN Mac.app`, 공유용 압축 파일은 `dist/SVN-Mac-버전-아키텍처.zip`에 있습니다. 런타임 빌더는 SVN 1.14.5와 SQLite 3.51.0을 포함한 의존성을 고정된 공식 소스와 SHA-256으로 검증한 뒤 macOS 14 arm64 대상으로 정적 링크합니다. 패키징 스크립트는 `.build/svn-runtime/macos-14-arm64`의 검증된 결과만 앱에 포함하므로 빌드 Mac의 Homebrew SVN·SQLite·OpenSSL 버전에 영향을 받지 않습니다. 반복 또는 오프라인 빌드에서는 `SVN_RUNTIME_CACHE=/path/to/cache`로 검증된 소스 아카이브 캐시를 지정할 수 있습니다. 현재 기본값은 로컬 실행용 ad-hoc 서명입니다.
 
 Developer ID가 있다면 다음처럼 서명할 수 있습니다. 이후 `notarytool`로 공증하고 티켓을 첨부해야 일반 사용자가 별도 보안 예외 없이 실행할 수 있습니다.
 
@@ -53,7 +54,7 @@ Developer ID가 있다면 다음처럼 서명할 수 있습니다. 이후 `notar
 CODE_SIGN_IDENTITY='Developer ID Application: 회사명 (TEAMID)' ./scripts/package-app.sh
 ```
 
-현재 패키지는 빌드 Mac과 동일한 CPU 아키텍처용입니다. Apple Silicon에서 빌드하면 Apple Silicon용 SVN이 포함됩니다. 내장 SQLite는 macOS 14 대상으로 빌드되지만, 앱 전체가 실행 가능한 최소 macOS 버전은 `SVN_EXECUTABLE`로 지정하거나 빌드 Mac에 설치한 SVN 및 그 의존 라이브러리의 최소 버전에도 영향을 받습니다.
+현재 패키지는 Apple Silicon용입니다. 앱과 내장 SVN 런타임 모두 최소 macOS 14를 대상으로 하며, 런타임의 비시스템 의존성은 정적으로 포함됩니다.
 
 Mac App Store 제출용 패키지는 Apple Distribution 인증서, Mac App Store 프로비저닝
 프로파일, Mac Installer Distribution 인증서가 준비된 Mac에서 다음처럼 생성합니다.

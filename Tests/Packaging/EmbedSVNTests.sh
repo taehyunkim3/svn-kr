@@ -15,37 +15,21 @@ function assert_equal() {
   fi
 }
 
-svn_version_output=$'System information:\n* linked dependencies:\n  - SQLite 3.50.4 (compiled with 3.51.0)\n'
-assert_equal "3.51.0" "$(extract_compiled_sqlite_version "$svn_version_output")" \
-  "extracts the SQLite compile-time version"
+svn_version_output=$'System information:\n* linked dependencies:\n  - SQLite 3.51.0 (static)\n'
+assert_equal "3.51.0" "$(extract_static_sqlite_version "$svn_version_output")" \
+  "extracts the statically linked SQLite version"
 
-assert_equal \
-  "https://www.sqlite.org/2025/sqlite-amalgamation-3510000.zip" \
-  "$(sqlite_archive_url 3.51.0)" \
-  "uses the pinned SQLite source URL"
+assert_equal "true" "$(is_allowed_runtime_dependency /usr/lib/libSystem.B.dylib)" \
+  "allows stable system libraries"
+assert_equal "true" "$(is_allowed_runtime_dependency /System/Library/Frameworks/Security.framework/Versions/A/Security)" \
+  "allows system frameworks"
+assert_equal "false" "$(is_allowed_runtime_dependency /opt/homebrew/lib/libssl.3.dylib)" \
+  "rejects Homebrew dependencies"
+assert_equal "false" "$(is_allowed_runtime_dependency @rpath/libsqlite3.dylib)" \
+  "rejects unresolved bundled dependencies"
 
-assert_equal \
-  "1caf7116f2910600d04473ad69d37ec538fa62fa36adccd37b5e0e43647c98be" \
-  "$(sqlite_archive_sha256 3.51.0)" \
-  "uses the verified SQLite archive checksum"
-
-assert_equal "true" "$(is_sqlite_dependency /usr/lib/libsqlite3.dylib)" \
-  "recognizes the system SQLite load path"
-assert_equal "false" "$(is_sqlite_dependency /usr/lib/libz.1.dylib)" \
-  "does not special-case unrelated system libraries"
-
-checksum_fixture="$(mktemp "${TMPDIR:-/tmp}/svn-mac-checksum.XXXXXX")"
-trap 'rm -f "$checksum_fixture"' EXIT
-verify_archive_sha256 \
-  "$checksum_fixture" \
-  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-if verify_archive_sha256 "$checksum_fixture" "invalid" >/dev/null 2>&1; then
-  print -u2 "a mismatched SQLite source checksum must be rejected"
-  exit 1
-fi
-
-if sqlite_archive_url 3.50.4 >/dev/null 2>&1; then
-  print -u2 "unsupported SQLite versions must be rejected"
+if version_is_at_most "26.0" "14.0"; then
+  print -u2 "a macOS 26 runtime must not pass the macOS 14 deployment check"
   exit 1
 fi
 
