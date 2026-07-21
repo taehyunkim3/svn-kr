@@ -373,8 +373,19 @@ import Testing
     #expect(commandLogData.range(of: Data(composed.utf8)) != nil)
     #expect(commandLogData.range(of: Data(decomposed.utf8)) == nil)
     #expect(snapshot.statuses == [
-        SVNStatusEntry(path: composed, item: .modified, revision: "7"),
+        SVNStatusEntry(path: composed, item: .modified, revision: "7", nodeKind: .file),
     ])
+
+    let browserEntries = try await client.workingCopyEntries(at: directory.path)
+    let browserEntry = try #require(browserEntries.first {
+        Data($0.path.utf8) == Data(decomposed.utf8)
+    })
+    #expect(browserEntry.status == "modified")
+    #expect(browserEntry.revision == "7")
+    #expect(Data(browserEntry.repositoryRelativePath.utf8) == Data(composed.utf8))
+    #expect(!browserEntries.contains {
+        Data($0.path.utf8) == Data(composed.utf8) && $0.status == "missing"
+    })
 }
 
 @Test func workingCopySnapshotAnnotatesUnversionedNodeKinds() async throws {
@@ -461,6 +472,17 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     let snapshot = try await client.workingCopySnapshot(at: directory.path)
 
     #expect(snapshot.statuses.isEmpty)
+
+    let browserEntries = try await client.workingCopyEntries(at: directory.path)
+    let browserEntry = try #require(browserEntries.first {
+        Data($0.path.utf8) == Data(decomposed.utf8)
+    })
+    #expect(browserEntry.status == "normal")
+    #expect(browserEntry.revision == "7")
+    #expect(Data(browserEntry.repositoryRelativePath.utf8) == Data(composed.utf8))
+    #expect(!browserEntries.contains {
+        Data($0.path.utf8) == Data(composed.utf8) && $0.status == "missing"
+    })
 }
 
 @Test func workingCopySnapshotAutomaticallyCleansMissingScheduledAddition() async throws {
@@ -663,7 +685,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     let snapshot = try await client.workingCopySnapshot(at: directory.path)
 
     #expect(snapshot.statuses == [
-        SVNStatusEntry(path: composed, item: .missing, revision: "7"),
+        SVNStatusEntry(path: composed, item: .missing, revision: "7", nodeKind: .directory),
     ])
 }
 

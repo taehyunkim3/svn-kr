@@ -121,7 +121,8 @@ struct ChangesView: View {
                         path: entry.path,
                         isVersioned: entry.item != .unversioned
                             && entry.item != .ignored
-                            && entry.item != .added
+                            && entry.item != .added,
+                        isRegularFile: entry.nodeKind == .file
                     )
                 }
             }

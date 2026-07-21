@@ -6,11 +6,35 @@ struct WorkingCopyFileNode: Identifiable, Hashable, Sendable {
     let relativePath: String
     let isDirectory: Bool
     let isSymbolicLink: Bool
+    let isRegularFile: Bool
     let svnEntry: SVNWorkingCopyEntry?
     let children: [WorkingCopyFileNode]?
 
     var id: String { relativePath }
     var isVersioned: Bool { svnEntry?.isVersioned == true }
+    var repositoryRelativePath: String { svnEntry?.repositoryRelativePath ?? relativePath }
+
+    func matchesRepositoryPath(_ path: String) -> Bool {
+        Data(repositoryRelativePath.utf8) == Data(path.utf8)
+    }
+
+    init(
+        name: String,
+        relativePath: String,
+        isDirectory: Bool,
+        isSymbolicLink: Bool,
+        isRegularFile: Bool? = nil,
+        svnEntry: SVNWorkingCopyEntry?,
+        children: [WorkingCopyFileNode]?
+    ) {
+        self.name = name
+        self.relativePath = relativePath
+        self.isDirectory = isDirectory
+        self.isSymbolicLink = isSymbolicLink
+        self.isRegularFile = isRegularFile ?? (!isDirectory && !isSymbolicLink)
+        self.svnEntry = svnEntry
+        self.children = children
+    }
 }
 
 protocol WorkingCopyFileListing: Sendable {
@@ -21,8 +45,8 @@ protocol WorkingCopyFileListing: Sendable {
 actor WorkingCopyFileService: WorkingCopyFileListing {
     func tree(at rootPath: String, svnEntries: [SVNWorkingCopyEntry]) throws -> [WorkingCopyFileNode] {
         let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
-        let entriesByPath = svnEntries.reduce(into: [String: SVNWorkingCopyEntry]()) { result, entry in
-            result[entry.path] = entry
+        let entriesByPath = svnEntries.reduce(into: [SVNPathIdentity: SVNWorkingCopyEntry]()) { result, entry in
+            result[SVNPathIdentity(rawPath: entry.path)] = entry
         }
         return try children(of: rootURL, relativeDirectory: "", entriesByPath: entriesByPath)
     }
@@ -30,9 +54,9 @@ actor WorkingCopyFileService: WorkingCopyFileListing {
     private func children(
         of directoryURL: URL,
         relativeDirectory: String,
-        entriesByPath: [String: SVNWorkingCopyEntry]
+        entriesByPath: [SVNPathIdentity: SVNWorkingCopyEntry]
     ) throws -> [WorkingCopyFileNode] {
-        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .isPackageKey]
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey, .isPackageKey]
         let urls = try FileManager.default.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: Array(keys),
@@ -57,7 +81,8 @@ actor WorkingCopyFileService: WorkingCopyFileListing {
                 relativePath: relativePath,
                 isDirectory: isDirectory,
                 isSymbolicLink: isSymbolicLink,
-                svnEntry: entriesByPath[relativePath],
+                isRegularFile: values.isRegularFile == true && !isSymbolicLink && values.isPackage != true,
+                svnEntry: entriesByPath[SVNPathIdentity(rawPath: relativePath)],
                 children: nestedChildren
             )
         }

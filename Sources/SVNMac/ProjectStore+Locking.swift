@@ -1,19 +1,32 @@
 import Foundation
 import SVNCore
 
+struct DocumentOpenRequest: Identifiable, Equatable {
+    let id = UUID()
+    let relativePath: String
+    let repositoryRelativePath: String
+    let existingLock: SVNLockInfo?
+}
+
 extension ProjectStore {
-    func prepareToOpen(path relativePath: String, isVersioned: Bool = true) async {
+    func prepareToOpen(
+        path relativePath: String,
+        repositoryPath: String? = nil,
+        isVersioned: Bool = true,
+        isRegularFile: Bool = true
+    ) async {
         guard let project = selectedProject else { return }
-        guard isVersioned, DocumentFilePolicy.recommendsLock(for: relativePath) else {
+        guard isVersioned, isRegularFile else {
             openFile(relativePath, in: project)
             return
         }
+        let repositoryRelativePath = repositoryPath ?? relativePath
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
             let existingLock = try await client.lockInfo(
                 at: project.path,
-                relativePath: relativePath,
+                relativePath: repositoryRelativePath,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
@@ -29,7 +42,11 @@ extension ProjectStore {
                 openFile(relativePath, in: project)
                 return
             }
-            documentOpenRequest = DocumentOpenRequest(relativePath: relativePath, existingLock: existingLock)
+            documentOpenRequest = DocumentOpenRequest(
+                relativePath: relativePath,
+                repositoryRelativePath: repositoryRelativePath,
+                existingLock: existingLock
+            )
         } catch { errorMessage = localizedError(error) }
     }
 
@@ -42,7 +59,7 @@ extension ProjectStore {
             let comment = AppLanguage.current.text("SVN Mac에서 문서 편집 중", "Editing document in SVN Mac")
             _ = try await client.lock(
                 at: project.path,
-                relativePath: request.relativePath,
+                relativePath: request.repositoryRelativePath,
                 comment: comment,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
