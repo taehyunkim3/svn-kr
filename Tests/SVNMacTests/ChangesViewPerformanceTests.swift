@@ -55,20 +55,24 @@ struct ChangesViewPerformanceTests {
         #expect(!changesView.contains("await store.beginPathRecovery()"))
     }
 
-    @Test func conflictResolutionOffersOnlyTwoBackedUpWholeVersions() throws {
+    @Test func conflictResolutionOffersThreeSafeBinaryChoicesAndPathNotice() throws {
         let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
 
         #expect(view.contains("내 파일 열기"))
         #expect(view.contains("서버 파일 열기"))
         #expect(view.contains("내 파일 사용"))
         #expect(view.contains("서버 파일 사용"))
+        #expect(view.contains("현재 작업 파일 사용"))
+        #expect(view.contains("pendingChoice = .working"))
+        #expect(view.contains("session.wasCanonicallyResolved"))
+        #expect(view.contains("실제 SVN 관리 경로로 자동 보정했습니다"))
         #expect(view.contains("백업 폴더 열기"))
         #expect(view.contains("session.details.path"))
         #expect(view.contains("선택하는 순간의 현재 작업 파일은 별도의 숨김 복구본으로 보존됩니다"))
         #expect(view.contains("interactiveDismissDisabled(store.isResolvingConflict)"))
         #expect(view.contains("store.isResolvingConflict"))
         #expect(view.contains("취소"))
-        #expect(view.components(separatedBy: ".disabled(store.isResolvingConflict)").count - 1 == 4)
+        #expect(view.components(separatedBy: ".disabled(store.isResolvingConflict)").count - 1 == 5)
         #expect(!view.contains("닫기"))
         #expect(view.contains("수정해도 실제 작업 파일에는 반영되지 않습니다"))
         #expect(!view.contains("enum ConflictResolutionCopy"))

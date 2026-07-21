@@ -32,6 +32,7 @@ enum ConflictFileError: Error {
     case unsafeWorkingFile
     case workingRecoveryVerificationFailed
     case workingRestoreVerificationFailed
+    case conflictResolutionVerificationFailed
     case cleanupFailed(String)
 
 }

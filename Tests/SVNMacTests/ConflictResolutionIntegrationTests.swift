@@ -8,9 +8,17 @@ import Testing
     defer { fixture.remove() }
 
     for conflict in fixture.contentConflicts {
+        let requestedPath = conflict.choice == .working
+            ? conflict.path.decomposedStringWithCanonicalMapping
+            : conflict.path
+        let snapshot = try await fixture.client.workingCopySnapshot(at: fixture.conflictedWorkingCopy.path)
+        let resolvedPath = try #require(snapshot.resolvedPath(for: requestedPath))
+        let versionedPath = conflict.choice == .working
+            ? resolvedPath.precomposedStringWithCanonicalMapping
+            : resolvedPath
         let details = try #require(try await fixture.client.conflictDetails(
             at: fixture.conflictedWorkingCopy.path,
-            relativePath: conflict.path
+            relativePath: versionedPath
         ))
         #expect(details.type == "text")
         #expect((details.myFile != nil) == !conflict.isBinary)
@@ -19,8 +27,11 @@ import Testing
         let session = try fixture.service.prepareSession(
             details,
             projectID: fixture.projectID,
-            workingCopyPath: fixture.conflictedWorkingCopy.path
+            workingCopyPath: fixture.conflictedWorkingCopy.path,
+            requestedPath: requestedPath,
+            versionedPath: versionedPath
         )
+        #expect(session.wasCanonicallyResolved == (conflict.choice == .working))
         #expect(try Data(contentsOf: session.mine.url) == conflict.mineBytes)
         #expect(try Data(contentsOf: session.server.url) == conflict.serverBytes)
 
@@ -35,7 +46,7 @@ import Testing
 
         _ = try await fixture.client.resolveConflict(
             at: fixture.conflictedWorkingCopy.path,
-            relativePath: conflict.path,
+            relativePath: session.versionedPath,
             choice: conflict.choice
         )
 
@@ -43,7 +54,7 @@ import Testing
         switch conflict.choice {
         case .mineFull: selectedBytes = conflict.mineBytes
         case .theirsFull: selectedBytes = conflict.serverBytes
-        case .working: selectedBytes = Data()
+        case .working: selectedBytes = latestWorkingBytes
         }
         #expect(try Data(contentsOf: workingURL) == selectedBytes)
         #expect(try Data(contentsOf: recoveryURL) == latestWorkingBytes)
@@ -148,6 +159,13 @@ private final class RealSVNConflictFixture {
             choice: .theirsFull,
             isBinary: true
         ),
+        RealContentConflict(
+            path: "주간보고서.hwp",
+            mineBytes: Data([0x48, 0x57, 0x50, 0x2D, 0x4D, 0x49, 0x4E, 0x45, 0x00, 0xFB]),
+            serverBytes: Data([0x48, 0x57, 0x50, 0x2D, 0x53, 0x45, 0x52, 0x56, 0x00, 0xFA]),
+            choice: .working,
+            isBinary: true
+        ),
     ]
 
     init() throws {
@@ -181,7 +199,7 @@ private final class RealSVNConflictFixture {
         _ = try Self.run(svnPath, ["mkdir", trunkURL, "-m", "create trunk"])
         _ = try Self.run(svnPath, ["checkout", trunkURL, publishingWorkingCopy.path])
 
-        for conflict in contentConflicts {
+        for conflict in contentConflicts where conflict.choice != .working {
             let base = conflict.isBinary
                 ? Data([0x42, 0x41, 0x53, 0x45, 0x00, UInt8(conflict.path.count)])
                 : Data("base \(conflict.path)\n".utf8)
@@ -189,13 +207,15 @@ private final class RealSVNConflictFixture {
         }
         try Data("property base\n".utf8).write(to: publishingWorkingCopy.appendingPathComponent(propertyConflictPath))
         try Data("tree base\n".utf8).write(to: publishingWorkingCopy.appendingPathComponent(treeConflictPath))
-        let initialPaths = contentConflicts.map { publishingWorkingCopy.appendingPathComponent($0.path).path }
+        let initialPaths = contentConflicts
+            .filter { $0.choice != .working }
+            .map { publishingWorkingCopy.appendingPathComponent($0.path).path }
             + [
                 publishingWorkingCopy.appendingPathComponent(propertyConflictPath).path,
                 publishingWorkingCopy.appendingPathComponent(treeConflictPath).path,
             ]
         _ = try Self.run(svnPath, ["add"] + initialPaths)
-        for conflict in contentConflicts where conflict.isBinary {
+        for conflict in contentConflicts where conflict.isBinary && conflict.choice != .working {
             _ = try Self.run(svnPath, [
                 "propset", "svn:mime-type", "application/octet-stream",
                 publishingWorkingCopy.appendingPathComponent(conflict.path).path,
@@ -206,6 +226,18 @@ private final class RealSVNConflictFixture {
             publishingWorkingCopy.appendingPathComponent(propertyConflictPath).path,
         ])
         _ = try Self.run(svnPath, ["commit", publishingWorkingCopy.path, "-m", "initial files"])
+        for conflict in contentConflicts where conflict.choice == .working {
+            let importSource = root.appendingPathComponent("working-choice-base.bin")
+            try Data([0x48, 0x57, 0x50, 0x2D, 0x42, 0x41, 0x53, 0x45, 0x00]).write(to: importSource)
+            let encodedPath = try #require(
+                conflict.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+            )
+            _ = try Self.run(svnPath, [
+                "import", importSource.path, "\(trunkURL)/\(encodedPath)",
+                "-m", "import NFC conflict path",
+            ])
+        }
+        _ = try Self.run(svnPath, ["update", publishingWorkingCopy.path])
         _ = try Self.run(svnPath, ["checkout", trunkURL, conflictedWorkingCopy.path])
 
         for conflict in contentConflicts {
@@ -242,11 +274,16 @@ private final class RealSVNConflictFixture {
     }
 
     @discardableResult
-    private static func run(_ executablePath: String, _ arguments: [String]) throws -> String {
+    private static func run(
+        _ executablePath: String,
+        _ arguments: [String],
+        at directory: URL? = nil
+    ) throws -> String {
         let process = Process()
         let output = Pipe()
         process.executableURL = URL(fileURLWithPath: executablePath)
         process.arguments = arguments
+        process.currentDirectoryURL = directory
         process.standardOutput = output
         process.standardError = output
         try process.run()

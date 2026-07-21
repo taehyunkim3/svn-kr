@@ -17,15 +17,16 @@ extension ProjectStore {
         do {
             let snapshot = try await client.workingCopySnapshot(at: project.path, credentials: nil)
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
-            guard let versionedPath = snapshot.resolvedPath(for: relativePath) else {
+            guard let resolvedPath = snapshot.resolvedPath(for: relativePath) else {
                 throw SVNError.pathNormalizationCollision(
                     paths: [relativePath.precomposedStringWithCanonicalMapping]
                 )
             }
-            guard let details = try await client.conflictDetails(
+            guard let (details, versionedPath) = try await conflictDetails(
                 at: project.path,
-                relativePath: versionedPath,
-                credentials: nil
+                resolvedPath: resolvedPath,
+                requestID: requestID,
+                projectID: projectID
             ) else {
                 throw ConflictFileError.unsupportedType("unknown")
             }
@@ -66,10 +67,8 @@ extension ProjectStore {
               let project = selectedProject,
               let session = activeConflictSession else { return }
         switch choice {
-        case .mineFull, .theirsFull:
+        case .mineFull, .theirsFull, .working:
             break
-        case .working:
-            return
         }
         let projectID = project.id
         let sessionID = session.id
@@ -97,10 +96,25 @@ extension ProjectStore {
                 credentials: nil
             )
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
+            let verifiedSnapshot = try await client.workingCopySnapshot(
+                at: project.path,
+                credentials: nil
+            )
+            guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
+            let canonicalVersionedPath = session.versionedPath.precomposedStringWithCanonicalMapping
+            guard !verifiedSnapshot.statuses.contains(where: { entry in
+                entry.item == .conflicted
+                    && entry.path.precomposedStringWithCanonicalMapping == canonicalVersionedPath
+            }) else {
+                throw ConflictFileError.conflictResolutionVerificationFailed
+            }
             activeConflictSession = nil
             await refresh()
             guard canApplyCompletedConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.text("충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.", "The conflict is marked resolved. Review the diff before committing.")
+            notice = AppLanguage.current.text(
+                "충돌을 해결했습니다. 파일을 확인한 뒤 커밋하세요.",
+                "The conflict was resolved. Review the file before committing."
+            )
         } catch {
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
@@ -112,6 +126,39 @@ extension ProjectStore {
         projectID: SVNProject.ID
     ) -> Bool {
         conflictPreparationRequestID == requestID && selectedProjectID == projectID
+    }
+
+    private func conflictDetails(
+        at projectPath: String,
+        resolvedPath: String,
+        requestID: UUID,
+        projectID: SVNProject.ID
+    ) async throws -> (SVNConflictDetails, String)? {
+        let candidates = distinctRawPaths([
+            resolvedPath.precomposedStringWithCanonicalMapping,
+            resolvedPath,
+        ])
+        var lastError: Error?
+        for candidate in candidates {
+            do {
+                let details = try await client.conflictDetails(
+                    at: projectPath,
+                    relativePath: candidate,
+                    credentials: nil
+                )
+                guard canApplyConflictPreparation(requestID, projectID: projectID) else { return nil }
+                if let details { return (details, candidate) }
+            } catch {
+                lastError = error
+            }
+        }
+        if let lastError { throw lastError }
+        return nil
+    }
+
+    private func distinctRawPaths(_ paths: [String]) -> [String] {
+        var seen: Set<Data> = []
+        return paths.filter { seen.insert(Data($0.utf8)).inserted }
     }
 
     private func canApplyConflictResolution(

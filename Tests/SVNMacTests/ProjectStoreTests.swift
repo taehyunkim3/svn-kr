@@ -52,8 +52,15 @@ import Testing
         collisions: [],
         versionedPathsByCanonicalKey: [versionedPath: [versionedPath]]
     )
+    let resolvedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [],
+        revision: snapshot.revision,
+        collisions: [],
+        versionedPathsByCanonicalKey: [versionedPath: [versionedPath]]
+    )
     let client = StubSVNClient(
         snapshotsByPath: [fixture.project.path: snapshot],
+        postResolveSnapshotsByPath: [fixture.project.path: resolvedSnapshot],
         conflictDetailsByRelativePath: [versionedPath: details]
     )
     let store = makeStore(
@@ -157,9 +164,39 @@ import Testing
     await store.resolveActiveConflict(using: .theirsFull)
 
     #expect(store.notice == AppLanguage.current.text(
-        "충돌을 해결 상태로 표시했습니다. diff를 확인한 뒤 커밋하세요.",
-        "The conflict is marked resolved. Review the diff before committing."
+        "충돌을 해결했습니다. 파일을 확인한 뒤 커밋하세요.",
+        "The conflict was resolved. Review the file before committing."
     ))
+}
+
+@MainActor
+@Test func resolveKeepsSessionWhenConflictRemainsAfterCommandSuccess() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let conflictedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: fixture.details.path, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [fixture.details.path: [fixture.details.path]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        postResolveSnapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        conflictDetailsValue: fixture.details
+    )
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+    await store.prepareConflictResolution(for: fixture.details.path)
+    let session = try #require(store.activeConflictSession)
+
+    await store.resolveActiveConflict(using: .theirsFull)
+
+    #expect(store.activeConflictSession == session)
+    #expect(store.errorMessage != nil)
+    #expect(store.notice == nil)
 }
 
 @MainActor
@@ -266,7 +303,7 @@ import Testing
 }
 
 @MainActor
-@Test func workingChoiceDoesNotResolveOrDiscardConflictSession() async throws {
+@Test func workingChoicePreservesLatestBytesAndResolvesConflict() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
     let client = StubSVNClient(conflictDetailsValue: fixture.details)
@@ -278,10 +315,14 @@ import Testing
 
     await store.prepareConflictResolution(for: fixture.details.path)
     let session = try #require(store.activeConflictSession)
+    let latestBytes = Data([0x48, 0x57, 0x50, 0x00, 0xFE])
+    try latestBytes.write(to: fixture.workingFileURL)
     await store.resolveActiveConflict(using: .working)
 
-    #expect(store.activeConflictSession == session)
-    #expect(await client.lastConflictChoice() == nil)
+    let recoveryURLs = try workingRecoveryURLs(in: session.directoryURL)
+    #expect(store.activeConflictSession == nil)
+    #expect(await client.lastConflictChoice() == .working)
+    #expect(try recoveryURLs.map { try Data(contentsOf: $0) }.contains(latestBytes))
 }
 
 @MainActor
@@ -1156,6 +1197,7 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutProgress: [String]
     let lockInfoByPath: [String: SVNLockInfo]
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
+    let postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
@@ -1185,6 +1227,7 @@ private actor StubSVNClient: SVNClientServing {
         checkoutProgress: [String] = [],
         lockInfoByPath: [String: SVNLockInfo] = [:],
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
+        postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         recoveryPreview: SVNRecoveryPreview = SVNRecoveryPreview(
             mappings: [], ignoredAliasCount: 0, blockingPaths: []
@@ -1204,6 +1247,7 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutProgress = checkoutProgress
         self.lockInfoByPath = lockInfoByPath
         self.snapshotsByPath = snapshotsByPath
+        self.postResolveSnapshotsByPath = postResolveSnapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
         self.commitCompletedWarning = commitCompletedWarning
         self.conflictDetailsValue = conflictDetailsValue
@@ -1242,6 +1286,7 @@ private actor StubSVNClient: SVNClientServing {
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
         await delay(for: path)
+        if !conflictChoices.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
         let revision = revisionsByPath[path] ?? "0"
