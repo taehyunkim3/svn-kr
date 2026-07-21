@@ -13,6 +13,35 @@ import Testing
 }
 
 @MainActor
+@Test func confirmRevertUsesCapturedRequestAfterPresentationStateClears() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/revert-race")
+    let entry = SVNStatusEntry(path: "00 사업관리/보고서.hwp", item: .modified)
+    let client = StubSVNClient(
+        snapshotsByPath: [
+            project.path: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "10", maximum: "10"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+        ]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [entry]
+    store.selectedPaths = [entry.path]
+    let request = RevertRequest(entry: entry)
+    store.revertRequest = nil
+
+    await store.confirmRevert(request)
+
+    #expect(await client.requestedReverts() == [
+        RevertCall(workingCopyPath: project.path, relativePath: entry.path),
+    ])
+    #expect(store.statuses.isEmpty)
+    #expect(store.selectedPaths.isEmpty)
+}
+
+@MainActor
 @Test func preparesBackupsOpensOnlyCopiesAndResolvesSelectedWholeVersion() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
@@ -1104,6 +1133,11 @@ private final class ProjectStoreConflictFixture {
     }
 }
 
+private struct RevertCall: Equatable, Sendable {
+    let workingCopyPath: String
+    let relativePath: String
+}
+
 private struct RevisionDiffRequest: Equatable, Sendable {
     let revision: String
     let repositoryPath: String
@@ -1137,6 +1171,7 @@ private actor StubSVNClient: SVNClientServing {
     private var snapshotRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
+    private var revertCalls: [RevertCall] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -1288,7 +1323,11 @@ private actor StubSVNClient: SVNClientServing {
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] { [] }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "updated" }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
-    func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String { "reverted" }
+    func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
+        revertCalls.append(RevertCall(workingCopyPath: path, relativePath: relativePath))
+        return "reverted"
+    }
+    func requestedReverts() -> [RevertCall] { revertCalls }
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] { [] }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
         if let commitCompletedWarning {

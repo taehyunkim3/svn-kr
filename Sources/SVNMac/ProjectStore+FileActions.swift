@@ -4,8 +4,8 @@ import SVNCore
 extension ProjectStore {
     func requestRevert(_ entry: SVNStatusEntry) { revertRequest = RevertRequest(entry: entry) }
 
-    func confirmRevert() async {
-        guard let project = selectedProject, let request = revertRequest else { return }
+    func confirmRevert(_ request: RevertRequest) async {
+        guard let project = selectedProject else { return }
         revertRequest = nil
         let operationID = beginOperation(.revert(project.id))
         defer { endOperation(operationID) }
