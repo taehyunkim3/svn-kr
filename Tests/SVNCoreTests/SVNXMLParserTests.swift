@@ -126,6 +126,27 @@ import Testing
     #expect(details?.serverRevision == "3")
 }
 
+@Test func hidesCanonicallyEquivalentConflictArtifacts() throws {
+    let conflicted = "00 사업관리/주간보고서.hwp"
+    let decomposed = conflicted.decomposedStringWithCanonicalMapping
+    let statusXML = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="\(conflicted)"><wc-status item="conflicted" revision="42" props="none"/></entry>
+      <entry path="\(decomposed).mine"><wc-status item="unversioned" props="none"/></entry>
+      <entry path="\(decomposed).r41"><wc-status item="unversioned" props="none"/></entry>
+      <entry path="\(decomposed).r42"><wc-status item="unversioned" props="none"/></entry>
+      <entry path="\(decomposed).review"><wc-status item="unversioned" props="none"/></entry>
+    </target></status>
+    """
+
+    let paths = try SVNXMLParser.statuses(from: Data(statusXML.utf8)).map(\.path)
+
+    #expect(paths.map { Data($0.utf8) } == [
+        Data(conflicted.utf8),
+        Data("\(decomposed).review".utf8),
+    ])
+}
+
 @Test func parsesTreeConflictFromRealSVNInfoShape() throws {
     let infoXML = """
     <?xml version="1.0"?><info><entry kind="file" path="tree.txt" revision="2">
