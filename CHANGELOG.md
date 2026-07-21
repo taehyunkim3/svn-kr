@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.6 (2026-07-21)
+
+- Bundled the exact SQLite runtime expected by the packaged SVN helper instead of loading a potentially different system SQLite version.
+- Added checksum, deployment-target, load-path, and runtime-version validation to SVN packaging.
+
 ## 0.5.1 (2026-07-18)
 
 - Prevented file and history searches from inserting duplicate macOS toolbar items when switching tabs.
