@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 
 @main
 struct SVNMacApp: App {
     // ProjectStore는 앱 창의 수명 동안 하나만 유지하며 모든 하위 화면이 공유합니다.
     @StateObject private var store: ProjectStore
+    @State private var isShowingContactSupport = false
     @AppStorage(AppSettings.languageKey)
     private var languageIdentifier = AppSettings.defaultLanguage
 
@@ -28,6 +30,17 @@ struct SVNMacApp: App {
                     minWidth: AppLayout.windowMinimumWidth,
                     minHeight: AppLayout.windowMinimumHeight
                 )
+                .alert(
+                    AppContactSupport.alertTitle(for: appLanguage),
+                    isPresented: $isShowingContactSupport
+                ) {
+                    Button(AppContactSupport.mailButtonTitle(for: appLanguage)) {
+                        NSWorkspace.shared.open(AppContactSupport.mailURL)
+                    }
+                    Button(AppContactSupport.closeButtonTitle(for: appLanguage), role: .cancel) {}
+                } message: {
+                    Text(AppContactSupport.message(for: appLanguage))
+                }
         }
         .defaultSize(
             width: AppLayout.windowDefaultWidth,
@@ -38,6 +51,11 @@ struct SVNMacApp: App {
             CommandGroup(after: .newItem) {
                 Button(appLanguage.text("저장소 URL 체크아웃…", "Check Out Repository URL…")) { store.isShowingAddRepository = true }
                     .keyboardShortcut("o", modifiers: [.command])
+            }
+            CommandGroup(replacing: .help) {
+                Button(AppContactSupport.menuTitle(for: appLanguage)) {
+                    isShowingContactSupport = true
+                }
             }
         }
 
