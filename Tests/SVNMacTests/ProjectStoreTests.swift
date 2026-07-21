@@ -797,6 +797,40 @@ import Testing
 }
 
 @MainActor
+@Test func checkoutPublishesReceivedProgress() async {
+    let client = StubSVNClient(
+        checkoutResult: "Checked out revision 10.\n",
+        checkoutProgress: [
+            "A    Sources/App.swift\n",
+            "A    Sources/ProjectStore.swift\n",
+            "Checked out revision 10.\n",
+        ]
+    )
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: StubProjectAccessManager()
+    )
+
+    let succeeded = await store.checkout(
+        repositoryURL: "https://example.test/svn/project",
+        destinationURL: URL(fileURLWithPath: "/tmp/checkout-progress", isDirectory: true),
+        username: "",
+        password: "",
+        allowsUntrustedServerCertificate: false
+    )
+
+    #expect(succeeded)
+    #expect(store.checkoutLog == """
+    A    Sources/App.swift
+    A    Sources/ProjectStore.swift
+    Checked out revision 10.
+
+    """)
+}
+
+@MainActor
 @Test func recoveryRegistersSideBySideProjectAndKeepsSource() async {
     let source = SVNProject(
         name: "손상 작업본",
@@ -1045,6 +1079,7 @@ private actor StubSVNClient: SVNClientServing {
     let revisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
     let checkoutResult: String
+    let checkoutProgress: [String]
     let lockInfoByPath: [String: SVNLockInfo]
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
@@ -1069,6 +1104,7 @@ private actor StubSVNClient: SVNClientServing {
         revisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
         checkoutResult: String = "checked out",
+        checkoutProgress: [String] = [],
         lockInfoByPath: [String: SVNLockInfo] = [:],
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
@@ -1087,6 +1123,7 @@ private actor StubSVNClient: SVNClientServing {
         self.revisionsByPath = revisionsByPath
         self.delaysByPath = delaysByPath
         self.checkoutResult = checkoutResult
+        self.checkoutProgress = checkoutProgress
         self.lockInfoByPath = lockInfoByPath
         self.snapshotsByPath = snapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
@@ -1114,6 +1151,10 @@ private actor StubSVNClient: SVNClientServing {
     }
 
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { checkoutResult }
+    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String {
+        for output in checkoutProgress { progress?(output) }
+        return checkoutResult
+    }
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws {}
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {
         await delay(for: path)

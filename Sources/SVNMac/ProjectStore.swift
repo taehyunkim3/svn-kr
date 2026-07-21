@@ -126,6 +126,7 @@ final class ProjectStore: ObservableObject {
     @Published var lastCompletedCommitMessage: String?
     @Published var notice: String?
     @Published var errorMessage: String?
+    @Published private(set) var checkoutLog = ""
 
     /// 소개 이미지 촬영용 실행에서는 실제 UserDefaults, Keychain, 파일 시스템과 SVN을 사용하지 않습니다.
     let isDemoMode: Bool
@@ -147,6 +148,7 @@ final class ProjectStore: ObservableObject {
     private var diffRequestID: UUID?
     var fileTreeRequestID: UUID?
     var conflictPreparationRequestID: UUID?
+    private var checkoutLogSessionID = UUID()
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
@@ -241,6 +243,9 @@ final class ProjectStore: ObservableObject {
         password: String,
         allowsUntrustedServerCertificate: Bool
     ) async -> Bool {
+        let checkoutLogSessionID = UUID()
+        self.checkoutLogSessionID = checkoutLogSessionID
+        checkoutLog = ""
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
@@ -267,6 +272,7 @@ final class ProjectStore: ObservableObject {
         let id = UUID()
         let bookmarkData: Data
         let checkoutNotice: String
+        let progressBuffer = CheckoutProgressBuffer()
         do {
             bookmarkData = try projectAccessManager.makeBookmark(for: destination)
             projectAccessManager.beginAccessing(destination, for: id)
@@ -275,10 +281,20 @@ final class ProjectStore: ObservableObject {
                 repositoryURL: repositoryURL,
                 destinationPath: destinationPath,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowsUntrustedServerCertificate
+                allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                progress: { [weak self] output in
+                    let accumulatedOutput = progressBuffer.append(output)
+                    Task { @MainActor [weak self] in
+                        guard self?.checkoutLogSessionID == checkoutLogSessionID,
+                              accumulatedOutput.utf8.count >= (self?.checkoutLog.utf8.count ?? 0) else { return }
+                        self?.checkoutLog = accumulatedOutput
+                    }
+                }
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            checkoutLog = progressBuffer.output
         } catch {
+            checkoutLog = progressBuffer.output
             projectAccessManager.endAccessing(url: destinationURL.standardizedFileURL)
             errorMessage = localizedError(error)
             return false
@@ -800,5 +816,21 @@ final class ProjectStore: ObservableObject {
     /// 비동기 결과를 화면 상태에 반영합니다.
     private func canApplyRefresh(_ requestID: UUID, projectID: SVNProject.ID) -> Bool {
         refreshRequestID == requestID && selectedProjectID == projectID
+    }
+}
+
+private final class CheckoutProgressBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedOutput = ""
+
+    var output: String {
+        lock.withLock { storedOutput }
+    }
+
+    func append(_ output: String) -> String {
+        lock.withLock {
+            storedOutput += output
+            return storedOutput
+        }
     }
 }

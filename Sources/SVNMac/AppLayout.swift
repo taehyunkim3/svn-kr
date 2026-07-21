@@ -24,6 +24,8 @@ enum AppLayout {
     /// 높이를 한곳에서 고정해 로딩/빈 화면/diff 상태 전환에도 아래 패널이 흔들리지 않게 합니다.
     static let historyChangedFilesHeight: CGFloat = 220
 
+    static let addRepositorySheetMinimumSize = CGSize(width: 700, height: 700)
+    static let checkoutLogHeight: CGFloat = 180
     static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
     static let ignoreRulesSheetMinimumSize = CGSize(width: 620, height: 420)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)

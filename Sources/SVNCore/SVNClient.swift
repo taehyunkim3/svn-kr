@@ -1,6 +1,8 @@
 import Foundation
 import Darwin
 
+public typealias SVNOutputHandler = @Sendable (String) -> Void
+
 /// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
 ///
 /// actor로 선언해 동일 클라이언트에서 update와 commit 같은 명령이 동시에
@@ -23,6 +25,22 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
+        try await checkout(
+            repositoryURL: repositoryURL,
+            destinationPath: destinationPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            progress: nil
+        )
+    }
+
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        progress: SVNOutputHandler?
+    ) async throws -> String {
         let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
         let repositoryURL = URL(string: normalizedRepositoryURL)?.absoluteString ?? normalizedRepositoryURL
         let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
@@ -31,7 +49,8 @@ public actor SVNClient {
             ["checkout", repositoryURL, "."],
             at: destination.path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            progress: progress
         ).output
     }
 
@@ -958,13 +977,15 @@ public actor SVNClient {
         _ arguments: [String],
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        progress: SVNOutputHandler? = nil
     ) throws -> SVNCommandResult {
         let result = try run(
             arguments,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            progress: progress
         )
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -979,7 +1000,8 @@ public actor SVNClient {
         outputDestinationURL: URL? = nil,
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        progress: SVNOutputHandler? = nil
     ) throws -> SVNCommandResult {
         let process = Process()
         let svnExecutable = try svnExecutableURL()
@@ -1048,6 +1070,12 @@ public actor SVNClient {
         let errorHandle = try FileHandle(forWritingTo: errorURL)
         process.standardOutput = outputHandle
         process.standardError = errorHandle
+        let outputProgressReader = try progress.map {
+            try SVNOutputProgressReader(url: outputURL, progress: $0)
+        }
+        let errorProgressReader = try progress.map {
+            try SVNOutputProgressReader(url: errorURL, progress: $0)
+        }
         // 비밀번호는 프로세스 인자에 넣지 않습니다. 명령행은 다른 프로세스에서
         // 조회될 수 있으므로 SVN의 --password-from-stdin 계약만 사용합니다.
         let input = password.map { _ in Pipe() }
@@ -1059,9 +1087,18 @@ public actor SVNClient {
                 input.fileHandleForWriting.write(Data((password + "\n").utf8))
                 try input.fileHandleForWriting.close()
             }
+            if progress != nil {
+                while process.isRunning {
+                    try outputProgressReader?.drain()
+                    try errorProgressReader?.drain()
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+            }
             process.waitUntilExit()
             try outputHandle.close()
             try errorHandle.close()
+            try outputProgressReader?.drain(isFinal: true)
+            try errorProgressReader?.drain(isFinal: true)
         } catch {
             try? outputHandle.close()
             try? errorHandle.close()
@@ -1128,5 +1165,39 @@ public actor SVNClient {
             .appendingPathComponent("Subversion", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
+    }
+}
+
+private final class SVNOutputProgressReader {
+    private static let readSize = 64 * 1024
+
+    private let handle: FileHandle
+    private let progress: SVNOutputHandler
+    private var pending = Data()
+
+    init(url: URL, progress: @escaping SVNOutputHandler) throws {
+        handle = try FileHandle(forReadingFrom: url)
+        self.progress = progress
+    }
+
+    deinit {
+        try? handle.close()
+    }
+
+    func drain(isFinal: Bool = false) throws {
+        while let data = try handle.read(upToCount: Self.readSize), !data.isEmpty {
+            pending.append(data)
+        }
+
+        while let newline = pending.firstIndex(of: 0x0A) {
+            let line = pending.prefix(through: newline)
+            progress(String(decoding: line, as: UTF8.self))
+            pending.removeSubrange(...newline)
+        }
+
+        if isFinal, !pending.isEmpty {
+            progress(String(decoding: pending, as: UTF8.self))
+            pending.removeAll(keepingCapacity: false)
+        }
     }
 }

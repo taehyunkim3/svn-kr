@@ -8,6 +8,7 @@ import SVNCore
 /// 테스트에서는 같은 계약을 구현한 가짜 클라이언트로 느린 응답과 실패를 재현합니다.
 protocol SVNClientServing: Sendable {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
@@ -36,6 +37,25 @@ protocol SVNClientServing: Sendable {
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+}
+
+extension SVNClientServing {
+    func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        credentials: SVNCredentials?,
+        allowUntrustedServerCertificate: Bool,
+        progress: SVNOutputHandler?
+    ) async throws -> String {
+        let output = try await checkout(
+            repositoryURL: repositoryURL,
+            destinationPath: destinationPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        progress?(output)
+        return output
+    }
 }
 
 extension SVNClient: SVNClientServing {}

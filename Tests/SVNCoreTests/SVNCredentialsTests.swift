@@ -125,6 +125,84 @@ import Testing
     #expect(result.contains("checkout https://example.test/svn/project ."))
 }
 
+@Test func streamsCheckoutOutputBeforeCommandCompletes() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-checkout-progress-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    : > checkout-started
+    printf 'A    Sources/App.swift\n'
+    while [ ! -f continue-checkout ]; do
+      sleep 0.02
+    done
+    printf 'Checked out revision 42.\n'
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let recorder = CheckoutOutputRecorder()
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+    let checkout = Task {
+        try await client.checkout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationPath: destination.path,
+            progress: { output in
+                recorder.append(output)
+            }
+        )
+    }
+
+    let processStarted = await waitUntil(timeout: .seconds(30)) {
+        FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
+    }
+    #expect(processStarted)
+    let receivedFirstPath = if processStarted {
+        await waitUntil { recorder.output.contains("A    Sources/App.swift") }
+    } else {
+        false
+    }
+    #expect(receivedFirstPath)
+    try Data().write(to: destination.appendingPathComponent("continue-checkout"))
+
+    let result = try await checkout.value
+    #expect(result.contains("Checked out revision 42."))
+    #expect(recorder.output.contains("Checked out revision 42."))
+}
+
+private func waitUntil(
+    timeout: Duration = .seconds(5),
+    condition: () -> Bool
+) async -> Bool {
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: timeout)
+    while clock.now < deadline {
+        if condition() { return true }
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+    return condition()
+}
+
+private final class CheckoutOutputRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedOutput = ""
+
+    var output: String {
+        lock.withLock { storedOutput }
+    }
+
+    func append(_ output: String) {
+        lock.withLock { storedOutput += output }
+    }
+}
+
 @Test func requestsRemoteLogFromHeadWithoutUpdatingWorkingCopy() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-remote-log-test-\(UUID().uuidString)", isDirectory: true)

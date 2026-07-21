@@ -25,6 +25,7 @@ import Testing
 
 @Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {
     let sheetSizes = [
+        AppLayout.addRepositorySheetMinimumSize,
         AppLayout.repositoryLocksSheetMinimumSize,
         AppLayout.ignoreRulesSheetMinimumSize,
         AppLayout.updatePreviewSheetMinimumSize,
@@ -39,4 +40,7 @@ import Testing
         #expect(size.width <= AppLayout.windowDefaultWidth)
         #expect(size.height <= AppLayout.windowDefaultHeight)
     }
+
+    #expect(AppLayout.checkoutLogHeight > 0)
+    #expect(AppLayout.checkoutLogHeight < AppLayout.addRepositorySheetMinimumSize.height)
 }

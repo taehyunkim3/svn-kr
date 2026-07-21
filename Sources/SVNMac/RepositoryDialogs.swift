@@ -190,23 +190,54 @@ struct AddRepositoryView: View {
                 .foregroundStyle(.secondary)
             }
 
-            if store.isWorking {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(appLanguage.text("체크아웃 중…", "Checking out…"))
+                    if store.isWorking {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(store.isWorking
+                        ? appLanguage.text("체크아웃 중…", "Checking out…")
+                        : appLanguage.text("체크아웃 진행 로그", "Checkout progress log"))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            } else if let errorMessage = store.errorMessage {
-                ScrollView {
-                    Text(errorMessage)
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(store.checkoutLog.isEmpty
+                                ? appLanguage.text(
+                                    "체크아웃을 시작하면 내려받는 파일이 여기에 표시됩니다.",
+                                    "Files being downloaded will appear here after checkout starts."
+                                )
+                                : store.checkoutLog)
+                                .foregroundStyle(store.checkoutLog.isEmpty ? .secondary : .primary)
+
+                            if let errorMessage = store.errorMessage {
+                                Divider()
+                                Text(errorMessage)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .font(.system(.caption, design: .monospaced))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
+                        .id("checkout-log-bottom")
+                    }
+                    .onChange(of: store.checkoutLog) { _, _ in
+                        proxy.scrollTo("checkout-log-bottom", anchor: .bottom)
+                    }
+                    .onChange(of: store.errorMessage) { _, _ in
+                        proxy.scrollTo("checkout-log-bottom", anchor: .bottom)
+                    }
                 }
-                .frame(maxHeight: 110)
+                .frame(height: AppLayout.checkoutLogHeight)
                 .padding(10)
-                .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-                .foregroundStyle(.red)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.2))
+                }
             }
 
             Divider()
@@ -240,7 +271,7 @@ struct AddRepositoryView: View {
             }
         }
         .padding(24)
-        .frame(width: 650)
+        .appSheetFrame(minimumSize: AppLayout.addRepositorySheetMinimumSize)
     }
 
     private func chooseDestination() {
