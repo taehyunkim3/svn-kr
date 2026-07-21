@@ -455,7 +455,12 @@ public actor SVNClient {
     }
 
     public func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> SVNConflictDetails? {
-        let result = try checkedRun(["info", "--xml", "--", relativePath], at: path, credentials: credentials)
+        let result = try checkedRunWithRawTrailingArgument(
+            ["info", "--xml"],
+            rawTrailingArgument: relativePath,
+            at: path,
+            credentials: credentials
+        )
         return try SVNXMLParser.conflictDetails(fromInfo: Data(result.output.utf8))
     }
 
@@ -465,7 +470,12 @@ public actor SVNClient {
         choice: SVNConflictChoice,
         credentials: SVNCredentials? = nil
     ) async throws -> String {
-        try checkedRun(["resolve", "--accept", choice.rawValue, "--", relativePath], at: path, credentials: credentials).output
+        try checkedRunWithRawTrailingArgument(
+            ["resolve", "--accept", choice.rawValue],
+            rawTrailingArgument: relativePath,
+            at: path,
+            credentials: credentials
+        ).output
     }
 
     public func log(

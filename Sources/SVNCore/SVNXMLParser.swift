@@ -8,15 +8,29 @@ public enum SVNXMLParser {
         let parser = XMLParser(data: data)
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
-        let conflictedPaths = delegate.entries.filter { $0.item == .conflicted }.map(\.path)
+        let conflictedCanonicalPaths = Set(
+            delegate.entries
+                .filter { $0.item == .conflicted }
+                .map { $0.path.precomposedStringWithCanonicalMapping }
+        )
         return delegate.entries.filter { entry in
-            !conflictedPaths.contains { conflictedPath in
-                entry.path == conflictedPath + ".mine" || entry.path.range(
-                    of: "^\(NSRegularExpression.escapedPattern(for: conflictedPath))\\.r[0-9]+$",
-                    options: .regularExpression
-                ) != nil
-            }
+            !isConflictArtifact(entry.path, for: conflictedCanonicalPaths)
         }
+    }
+
+    private static func isConflictArtifact(
+        _ path: String,
+        for conflictedCanonicalPaths: Set<String>
+    ) -> Bool {
+        let basePath: String
+        if path.hasSuffix(".mine") {
+            basePath = String(path.dropLast(".mine".count))
+        } else if let revisionSuffix = path.range(of: #"\.r[0-9]+$"#, options: .regularExpression) {
+            basePath = String(path[..<revisionSuffix.lowerBound])
+        } else {
+            return false
+        }
+        return conflictedCanonicalPaths.contains(basePath.precomposedStringWithCanonicalMapping)
     }
 
     /// 전체 파일 탐색용으로 정상 항목을 포함한 작업 복사본 경로를 읽습니다.

@@ -1,7 +1,7 @@
 import SwiftUI
 import SVNCore
 
-/// 파일 내용 충돌의 두 비교 버전 중 하나를 안전하게 선택하도록 안내합니다.
+/// 파일 내용 충돌의 두 비교 버전 또는 현재 작업 파일을 안전하게 선택하도록 안내합니다.
 struct ConflictResolutionView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
@@ -51,6 +51,18 @@ struct ConflictResolutionView: View {
     @ViewBuilder
     private func conflictBody(_ session: ConflictResolutionSession) -> some View {
         VStack(alignment: .leading, spacing: 14) {
+            if session.wasCanonicallyResolved {
+                Label(
+                    appLanguage.text(
+                        "macOS 한글 경로 표현을 실제 SVN 관리 경로로 자동 보정했습니다.",
+                        "The macOS Unicode path was matched to the actual SVN-managed path."
+                    ),
+                    systemImage: "checkmark.circle"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
@@ -91,6 +103,32 @@ struct ConflictResolutionView: View {
                 useTitle: appLanguage.text("서버 파일 사용", "Use Server File"),
                 choice: .theirsFull
             )
+
+            workingFileCard(session)
+        }
+    }
+
+    private func workingFileCard(_ session: ConflictResolutionSession) -> some View {
+        GroupBox(appLanguage.text("현재 작업 파일", "Current Working File")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(session.requestedPath.precomposedStringWithCanonicalMapping)
+                    .lineLimit(1)
+                    .textSelection(.enabled)
+                Text(appLanguage.text(
+                    "두 백업본을 확인한 뒤 실제 작업 파일을 직접 편집했다면, 현재 저장된 내용을 최종본으로 사용합니다.",
+                    "After reviewing both backups, keep the content currently saved in the working file."
+                ))
+                .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button(appLanguage.text("현재 작업 파일 사용", "Use Current Working File")) {
+                        pendingChoice = .working
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.isResolvingConflict)
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
 
@@ -139,7 +177,7 @@ struct ConflictResolutionView: View {
         case .theirsFull:
             return appLanguage.text("서버 파일을 사용할까요?", "Use Server File?")
         case .working:
-            return ""
+            return appLanguage.text("현재 작업 파일을 사용할까요?", "Use Current Working File?")
         }
     }
 
@@ -151,7 +189,7 @@ struct ConflictResolutionView: View {
         case .theirsFull:
             return appLanguage.text("서버 파일 사용", "Use Server File")
         case .working:
-            return ""
+            return appLanguage.text("현재 작업 파일 사용", "Use Current Working File")
         }
     }
 
@@ -168,7 +206,10 @@ struct ConflictResolutionView: View {
                 "Replace with the server file. Your local edits leave the working copy but remain in the backup folder."
             )
         case .working:
-            ""
+            appLanguage.text(
+                "현재 작업 폴더에 저장된 파일을 유지하고 충돌을 해결 상태로 표시합니다. 실행 직전 파일은 복구본으로 보관됩니다.",
+                "Keep the file currently saved in the working copy and mark the conflict resolved. The file is backed up immediately before resolving."
+            )
         }
     }
 

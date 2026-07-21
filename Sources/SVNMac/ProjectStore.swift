@@ -716,6 +716,11 @@ final class ProjectStore: ObservableObject {
             return language.text("현재 작업 파일의 복구 백업을 검증하지 못했습니다.", "The recovery backup of the current working file could not be verified.")
         case .workingRestoreVerificationFailed:
             return language.text("선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다.", "The selected version of your file could not be restored to the working file.")
+        case .conflictResolutionVerificationFailed:
+            return language.text(
+                "SVN 명령 이후에도 충돌 상태가 남아 있습니다. 백업을 확인한 뒤 다시 시도하세요.",
+                "The conflict remains after the SVN command. Review the backups and try again."
+            )
         case let .cleanupFailed(message):
             return language.text("불완전한 충돌 백업 정리에 실패했습니다: \(message)", "Failed to remove an incomplete conflict backup: \(message)")
         }

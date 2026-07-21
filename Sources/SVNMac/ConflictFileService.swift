@@ -11,6 +11,9 @@ struct ConflictVersionBackup: Hashable {
 struct ConflictResolutionSession: Identifiable, Hashable {
     let id: UUID
     let details: SVNConflictDetails
+    let requestedPath: String
+    let versionedPath: String
+    let wasCanonicallyResolved: Bool
     let directoryURL: URL
     let mine: ConflictVersionBackup
     let server: ConflictVersionBackup
@@ -29,6 +32,7 @@ enum ConflictFileError: Error {
     case unsafeWorkingFile
     case workingRecoveryVerificationFailed
     case workingRestoreVerificationFailed
+    case conflictResolutionVerificationFailed
     case cleanupFailed(String)
 
 }
@@ -54,7 +58,9 @@ struct ConflictFileService {
     func prepareSession(
         _ details: SVNConflictDetails,
         projectID: UUID,
-        workingCopyPath: String
+        workingCopyPath: String,
+        requestedPath: String? = nil,
+        versionedPath: String? = nil
     ) throws -> ConflictResolutionSession {
         guard details.type == "text" else { throw ConflictFileError.unsupportedType(details.type) }
         // Real SVN binary conflicts may omit prev-wc-file because the working file itself
@@ -133,6 +139,10 @@ struct ConflictFileService {
             return ConflictResolutionSession(
                 id: UUID(),
                 details: details,
+                requestedPath: requestedPath ?? details.path,
+                versionedPath: versionedPath ?? details.path,
+                wasCanonicallyResolved: Data((requestedPath ?? details.path).utf8)
+                    != Data((versionedPath ?? details.path).utf8),
                 directoryURL: directory,
                 mine: ConflictVersionBackup(
                     url: directory.appendingPathComponent(mineFileName),
