@@ -15,9 +15,16 @@ extension ProjectStore {
             }
         }
         do {
+            let snapshot = try await client.workingCopySnapshot(at: project.path, credentials: nil)
+            guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
+            guard let versionedPath = snapshot.resolvedPath(for: relativePath) else {
+                throw SVNError.pathNormalizationCollision(
+                    paths: [relativePath.precomposedStringWithCanonicalMapping]
+                )
+            }
             guard let details = try await client.conflictDetails(
                 at: project.path,
-                relativePath: relativePath,
+                relativePath: versionedPath,
                 credentials: nil
             ) else {
                 throw ConflictFileError.unsupportedType("unknown")
@@ -26,7 +33,9 @@ extension ProjectStore {
             let session = try conflictFileService.prepareSession(
                 details,
                 projectID: projectID,
-                workingCopyPath: project.path
+                workingCopyPath: project.path,
+                requestedPath: relativePath,
+                versionedPath: versionedPath
             )
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
             activeConflictSession = session
@@ -83,7 +92,7 @@ extension ProjectStore {
             )
             _ = try await client.resolveConflict(
                 at: project.path,
-                relativePath: session.details.path,
+                relativePath: session.versionedPath,
                 choice: choice,
                 credentials: nil
             )

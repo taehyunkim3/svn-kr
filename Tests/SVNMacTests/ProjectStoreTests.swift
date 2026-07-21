@@ -40,6 +40,40 @@ import Testing
 }
 
 @MainActor
+@Test func canonicalAliasConflictUsesExactVersionedPathForInfoAndResolve() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let versionedPath = "문서/주간보고서.hwp"
+    let selectedPath = versionedPath.decomposedStringWithCanonicalMapping
+    let details = try fixture.makeAdditionalConflict(path: versionedPath, stem: "weekly")
+    let snapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: versionedPath, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [versionedPath: [versionedPath]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: snapshot],
+        conflictDetailsByRelativePath: [versionedPath: details]
+    )
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: selectedPath)
+
+    #expect(await client.exactConflictDetailsRequestCount(for: versionedPath) == 1)
+    #expect(await client.exactConflictDetailsRequestCount(for: selectedPath) == 0)
+    #expect(store.activeConflictSession != nil)
+
+    await store.resolveActiveConflict(using: .theirsFull)
+
+    #expect(await client.lastResolvedPath().map { Data($0.utf8) } == Data(versionedPath.utf8))
+}
+
+@MainActor
 @Test func workingFileEditAfterPreparationIsBackedUpBeforeResolve() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
@@ -327,13 +361,14 @@ import Testing
     store.selectedProjectID = otherProject.id
     store.errorMessage = "new-project-error"
     store.notice = "new-project-notice"
+    let snapshotRequestsBeforeCompletion = await client.snapshotRequestCount()
     await resolveGate.release()
     await resolution.value
 
     #expect(store.selectedProjectID == otherProject.id)
     #expect(store.errorMessage == "new-project-error")
     #expect(store.notice == "new-project-notice")
-    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.snapshotRequestCount() == snapshotRequestsBeforeCompletion)
 }
 
 @MainActor
@@ -355,12 +390,13 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     #expect(newerSessionID != firstSessionID)
+    let snapshotRequestsBeforeCompletion = await client.snapshotRequestCount()
     await resolveGate.release()
     await oldResolution.value
 
     #expect(store.activeConflictSession?.id == newerSessionID)
     #expect(store.notice == nil)
-    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.snapshotRequestCount() == snapshotRequestsBeforeCompletion)
 }
 
 @MainActor
@@ -416,6 +452,7 @@ import Testing
     let newerSessionID = try #require(store.activeConflictSession?.id)
     store.errorMessage = "newer-error"
     store.notice = "newer-notice"
+    let snapshotRequestsBeforeCompletion = await client.snapshotRequestCount()
 
     await resolveGate.release()
     await oldResolution.value
@@ -423,7 +460,7 @@ import Testing
     #expect(store.activeConflictSession?.id == newerSessionID)
     #expect(store.errorMessage == "newer-error")
     #expect(store.notice == "newer-notice")
-    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.snapshotRequestCount() == snapshotRequestsBeforeCompletion)
 }
 
 @MainActor
@@ -1137,6 +1174,8 @@ private actor StubSVNClient: SVNClientServing {
     private var snapshotRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
+    private var conflictDetailsRequestRawPaths: [Data] = []
+    private var resolvedPaths: [String] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -1248,19 +1287,25 @@ private actor StubSVNClient: SVNClientServing {
     func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? {
         conflictDetailsRequestCounts[relativePath, default: 0] += 1
+        conflictDetailsRequestRawPaths.append(Data(relativePath.utf8))
         if let gate = conflictDetailsGatesByRelativePath[relativePath] { await gate.wait() }
         await delay(for: path)
         return conflictDetailsByRelativePath[relativePath] ?? conflictDetailsValue
     }
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String {
         conflictChoices.append(choice)
+        resolvedPaths.append(relativePath)
         if let resolveGate { await resolveGate.wait() }
         if let resolveError { throw resolveError }
         return "resolved"
     }
     func lastConflictChoice() -> SVNConflictChoice? { conflictChoices.last }
+    func lastResolvedPath() -> String? { resolvedPaths.last }
     func conflictChoiceCount() -> Int { conflictChoices.count }
     func conflictDetailsRequestCount(for path: String) -> Int { conflictDetailsRequestCounts[path, default: 0] }
+    func exactConflictDetailsRequestCount(for path: String) -> Int {
+        conflictDetailsRequestRawPaths.filter { $0 == Data(path.utf8) }.count
+    }
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
