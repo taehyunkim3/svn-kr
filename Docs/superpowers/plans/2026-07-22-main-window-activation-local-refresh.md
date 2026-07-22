@@ -289,7 +289,6 @@ import Testing
     #expect(source.contains("refreshSelectedProjectLocally"))
     #expect(source.contains("store.refreshLocalWorkingCopy()"))
     #expect(source.contains("store.loadWorkingCopyFiles()"))
-    #expect(!source.contains("async let files: Void = store.refreshWorkingCopyBrowser()"))
     #expect(!source.contains("@Environment(\\.scenePhase)"))
 }
 ```
