@@ -239,7 +239,10 @@ struct ChangesView: View {
     }
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {
-        switch entry.item {
+        if entry.isTemporaryFile {
+            return appLanguage.text("임시파일", "Temporary")
+        }
+        return switch entry.item {
         case .modified: appLanguage.text("수정", "Modified")
         case .added: appLanguage.text("추가", "Added")
         case .deleted: appLanguage.text("삭제", "Deleted")
@@ -254,7 +257,8 @@ struct ChangesView: View {
     }
 
     private func statusColor(_ entry: SVNStatusEntry) -> Color {
-        switch entry.item {
+        if entry.isTemporaryFile { return .gray }
+        return switch entry.item {
         case .modified: .orange
         case .added, .unversioned: .blue
         case .ignored: .gray

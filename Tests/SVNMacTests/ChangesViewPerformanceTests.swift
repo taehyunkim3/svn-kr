@@ -33,7 +33,7 @@ struct ChangesViewPerformanceTests {
         #expect(!changesView.contains("추가 취소됨"))
         #expect(changesView.contains("한글 경로 충돌"))
         #expect(changesView.contains("entry.isSelectableForCommit"))
-        #expect(commitControls.contains("store.selectableStatusPaths"))
+        #expect(commitControls.contains("store.selectAllStatusPaths"))
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
     }
 
@@ -42,6 +42,18 @@ struct ChangesViewPerformanceTests {
 
         #expect(changesView.contains("하위 파일이 함께 추가됩니다."))
         #expect(changesView.contains("entry.item == .unversioned && entry.nodeKind == .directory"))
+    }
+
+    @Test func temporaryFilesHaveDedicatedBadgeAndSelectAllPolicy() throws {
+        let sources = try svnMacSources()
+        let changesView = try source(named: "ChangesView.swift", in: sources)
+        let commitControls = try source(named: "CommitControlsView.swift", in: sources)
+
+        #expect(changesView.contains("entry.isTemporaryFile"))
+        #expect(changesView.contains("임시파일"))
+        #expect(changesView.contains("Temporary"))
+        #expect(commitControls.contains("store.selectAllStatusPaths"))
+        #expect(commitControls.contains("store.selectedPaths.removeAll()"))
     }
 
     @Test func collisionActionsUseAggregateRepairabilityAndManualServerGuidance() throws {
