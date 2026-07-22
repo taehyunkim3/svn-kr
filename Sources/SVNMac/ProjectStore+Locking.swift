@@ -47,7 +47,18 @@ extension ProjectStore {
                 repositoryRelativePath: repositoryRelativePath,
                 existingLock: existingLock
             )
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            notice = AppLanguage.current.text(
+                "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다.",
+                "Lock information could not be checked. You can open the file without locking it."
+            )
+            documentOpenRequest = DocumentOpenRequest(
+                relativePath: relativePath,
+                repositoryRelativePath: repositoryRelativePath,
+                existingLock: nil
+            )
+        }
     }
 
     func lockAndOpen(_ request: DocumentOpenRequest) async {

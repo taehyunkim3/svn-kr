@@ -666,6 +666,24 @@ import Testing
 }
 
 @MainActor
+@Test func lockInfoFailureStillOffersOpenWithoutLock() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient(lockInfoError: TestError.lockInfoFailed)
+    let store = makeStore(projects: [project], client: client, workspaceOpener: opener)
+
+    await store.prepareToOpen(path: "report.xlsx", isVersioned: true)
+
+    let request = try #require(store.documentOpenRequest)
+    #expect(store.errorMessage == nil)
+    #expect(store.notice == "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다.")
+
+    store.openWithoutLock(request)
+
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["report.xlsx"])
+}
+
+@MainActor
 @Test func staleRefreshDoesNotOverwriteNewlySelectedProject() async {
     let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow")
     let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast")
@@ -1089,6 +1107,7 @@ private enum TestError: Error {
     case credentialWriteFailed
     case backupFailed
     case resolveConflictFailed
+    case lockInfoFailed
 }
 
 private actor AsyncTestGate {
@@ -1230,6 +1249,7 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutResult: String
     let checkoutProgress: [String]
     let lockInfoByPath: [String: SVNLockInfo]
+    let lockInfoError: Error?
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
     let postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
@@ -1261,6 +1281,7 @@ private actor StubSVNClient: SVNClientServing {
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
         lockInfoByPath: [String: SVNLockInfo] = [:],
+        lockInfoError: Error? = nil,
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
@@ -1281,6 +1302,7 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
         self.lockInfoByPath = lockInfoByPath
+        self.lockInfoError = lockInfoError
         self.snapshotsByPath = snapshotsByPath
         self.postResolveSnapshotsByPath = postResolveSnapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
@@ -1355,6 +1377,7 @@ private actor StubSVNClient: SVNClientServing {
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
         lockInfoRequests += 1
         lockInfoPaths.append(relativePath)
+        if let lockInfoError { throw lockInfoError }
         return lockInfoByPath[relativePath]
     }
     func lockInfoRequestCount() -> Int { lockInfoRequests }
