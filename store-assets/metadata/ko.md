@@ -2,7 +2,7 @@
 
 ## 앱 이름
 
-SVN Mac
+SVN for Mac
 
 ## 부제
 
@@ -14,7 +14,7 @@ SVN Mac
 
 ## 설명
 
-SVN Mac은 여러 Subversion 작업 폴더를 한곳에서 관리하는 macOS 네이티브 클라이언트입니다.
+SVN for Mac은 여러 Subversion 작업 폴더를 한곳에서 관리하는 macOS 네이티브 클라이언트입니다.
 
 복잡한 명령을 외우지 않아도 로컬 변경 사항 확인부터 파일별 diff, 선택 커밋, 업데이트와 서버 커밋 기록 조회까지 일상적인 SVN 작업을 처리할 수 있습니다.
 

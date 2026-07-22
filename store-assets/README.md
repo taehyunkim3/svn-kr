@@ -1,4 +1,4 @@
-# SVN Mac App Store Assets
+# SVN for Mac App Store Assets
 
 ## 제출 파일
 
@@ -8,6 +8,7 @@
 • 한국어 Mac 스크린샷: `screenshots/ko/*.png` (2880×1800)
 • 한국어·영어 메타데이터: `metadata/ko.md`, `metadata/en.md`
 • 개인정보 처리방침 초안: `metadata/privacy-policy-*.md`
+• TestFlight 심사 안내와 답변 초안: `metadata/beta-review-en.md`
 
 ## 스크린샷 업로드 순서
 
@@ -22,7 +23,7 @@
 ./scripts/store-assets/build-screenshots.sh
 ```
 
-스크린샷은 실제 SVN Mac 화면으로 구성했으며 데모 저장소명과 데모 로컬 경로만 포함합니다.
+스크린샷은 실제 SVN for Mac 화면으로 구성했으며 데모 저장소명과 데모 로컬 경로만 포함합니다.
 
 영어 스크린샷은 영어 UI로 동일한 세 장을 다시 촬영한 뒤 별도 현지화 세트로 제작하는 것이 좋습니다. 한국어를 기본 언어로 먼저 제출하는 경우 현재 한국어 세트만으로 필수 스크린샷 요구사항을 충족합니다.
 

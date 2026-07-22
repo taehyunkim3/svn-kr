@@ -1,12 +1,12 @@
-# SVN Mac Privacy Policy
+# SVN for Mac Privacy Policy
 
 Last updated: July 16, 2026
 
-SVN Mac is a macOS application for managing SVN repositories and local working copies configured by the user.
+SVN for Mac is a macOS application for managing SVN repositories and local working copies configured by the user.
 
 ## Information Collection
 
-The developer of SVN Mac does not independently collect personal information, usage analytics, or advertising identifiers through the app.
+The developer of SVN for Mac does not independently collect personal information, usage analytics, or advertising identifiers through the app.
 
 An SVN username entered by the user may be stored in local app preferences. Passwords are stored in macOS Keychain and are not written to app preference files.
 
@@ -16,7 +16,7 @@ The app communicates with SVN servers configured directly by the user. Account i
 
 ## Data Sharing
 
-The developer of SVN Mac does not collect, sell, or share user data through the app.
+The developer of SVN for Mac does not collect, sell, or share user data through the app.
 
 ## Data Deletion
 

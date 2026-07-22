@@ -12,6 +12,16 @@ struct ContentView: View {
     @State private var selectedProjectTab: ProjectTab = .changes
     @State private var fileSearchText = ""
     @State private var historySearchText = ""
+    private let onBrowseDemo: () -> Void
+    private let onExitDemo: () -> Void
+
+    init(
+        onBrowseDemo: @escaping () -> Void = {},
+        onExitDemo: @escaping () -> Void = {}
+    ) {
+        self.onBrowseDemo = onBrowseDemo
+        self.onExitDemo = onExitDemo
+    }
 
     // MARK: - 최상위 화면 구성
 
@@ -77,6 +87,14 @@ struct ContentView: View {
             }
         }
         .toolbar {
+            if store.isDemoMode {
+                Button(appLanguage.text("데모 종료", "Exit Demo")) {
+                    onExitDemo()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .help(appLanguage.text("샘플 프로젝트를 닫고 일반 모드로 돌아갑니다.", "Close the sample project and return to normal mode."))
+            }
             Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") { Task { await refreshSelectedProject() } }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
@@ -102,7 +120,7 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $store.isShowingAddRepository) {
-            AddRepositoryView()
+            AddRepositoryView(onBrowseDemo: onBrowseDemo)
                 .environmentObject(store)
         }
         .sheet(isPresented: $store.isShowingCredentials) {

@@ -1,7 +1,8 @@
 import Foundation
 import SVNCore
 
-/// 앱 소개 이미지 촬영용 데이터입니다. `SVN_MAC_DEMO_MODE=1`일 때만 사용하며
+/// 앱 심사와 소개 이미지 촬영에 사용하는 샘플 데이터입니다.
+/// 앱의 샘플 프로젝트 버튼 또는 `SVN_MAC_DEMO_MODE=1`로 진입하며,
 /// 실제 프로젝트 목록, Keychain, 로컬 폴더와 SVN 서버에는 접근하지 않습니다.
 @MainActor
 extension ProjectStore {

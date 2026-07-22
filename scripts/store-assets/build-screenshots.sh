@@ -41,21 +41,21 @@ build_screenshot() {
 
 build_screenshot \
   "$SOURCE_DIR/history-overview-ko.png" \
-  '2555x1551+208+154' \
+  '2580x1570+150+110' \
   'SVN 작업을 한눈에' \
   '서버·로컬·미커밋 변경을 하나의 타임라인으로 확인하세요.' \
   "$OUTPUT_DIR/01-timeline-overview.png"
 
 build_screenshot \
   "$SOURCE_DIR/changes-ko.png" \
-  '2558x1554+200+153' \
+  '2620x1590+150+50' \
   '변경 파일만 골라 커밋' \
   '수정·미추적 파일을 확인하고 필요한 항목만 선택하세요.' \
   "$OUTPUT_DIR/02-selective-commit.png"
 
 build_screenshot \
   "$SOURCE_DIR/files-ko.png" \
-  '2546x1554+210+161' \
+  '2560x1558+135+93' \
   '프로젝트 파일을 빠르게 탐색' \
   '폴더 구조와 파일 상태를 한 화면에서 확인하고 검색하세요.' \
   "$OUTPUT_DIR/03-working-copy-files.png"

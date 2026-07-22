@@ -34,7 +34,7 @@ enum KeychainStore {
             kSecAttrAccount as String: projectID.uuidString,
         ]
         let attributes: [String: Any] = [
-            kSecAttrLabel as String: "SVN Mac - \(projectID.uuidString)",
+            kSecAttrLabel as String: "SVN for Mac - \(projectID.uuidString)",
             kSecValueData as String: Data(password.utf8),
         ]
         // 먼저 기존 항목 갱신을 시도하고, 없을 때만 새 항목을 추가합니다.

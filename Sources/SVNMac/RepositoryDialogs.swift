@@ -116,18 +116,45 @@ struct AddRepositoryView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var appLanguage
+    @AppStorage(AppSettings.languageKey)
+    private var languageIdentifier = AppSettings.defaultLanguage
     @State private var repositoryURL = ""
     @State private var destinationURL: URL?
     @State private var username = ""
     @State private var password = ""
     @State private var allowsUntrustedServerCertificate = false
+    private let onBrowseDemo: () -> Void
+
+    init(onBrowseDemo: @escaping () -> Void = {}) {
+        self.onBrowseDemo = onBrowseDemo
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.text("SVN 저장소 추가", "Add SVN Repository")).font(.title2.bold())
-                Text(appLanguage.text("저장소 URL을 체크아웃하고 로컬 작업 폴더 목록에 등록합니다.", "Check out a repository URL and add it to your local working folders."))
-                    .foregroundStyle(.secondary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(appLanguage.text("SVN 저장소 추가", "Add SVN Repository")).font(.title2.bold())
+                    Text(appLanguage.text("저장소 URL을 체크아웃하고 로컬 작업 폴더 목록에 등록합니다.", "Check out a repository URL and add it to your local working folders."))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Menu {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Button {
+                            languageIdentifier = language.rawValue
+                        } label: {
+                            if language.rawValue == languageIdentifier {
+                                Label(language.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(language.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    Label(appLanguage.text("언어", "Language"), systemImage: "globe")
+                }
+                .fixedSize()
+                .help(appLanguage.text("앱 화면에 사용할 언어를 선택합니다.", "Choose the language used in the app interface."))
             }
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
@@ -253,6 +280,14 @@ struct AddRepositoryView: View {
                 }
                 .help(appLanguage.text("이미 체크아웃된 SVN 로컬 작업 폴더를 앱 목록에 등록합니다.", "Register an existing SVN working folder in the app."))
                 Spacer()
+                Button(appLanguage.text("샘플 프로젝트 둘러보기", "Browse Sample Project")) {
+                    dismiss()
+                    onBrowseDemo()
+                }
+                .help(appLanguage.text(
+                    "서버 연결이나 계정 없이 샘플 데이터로 주요 기능을 둘러봅니다.",
+                    "Explore the main features with sample data and no server connection or account."
+                ))
                 Button(appLanguage.text("취소", "Cancel"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .help(appLanguage.text("저장소 추가를 취소하고 창을 닫습니다.", "Cancel adding the repository and close this window."))

@@ -31,6 +31,13 @@ enum AppLanguage: String, CaseIterable {
     case korean = "ko"
     case english = "en"
 
+    var displayName: String {
+        switch self {
+        case .korean: "한국어"
+        case .english: "English"
+        }
+    }
+
     static var current: AppLanguage {
         AppLanguage(rawValue: UserDefaults.standard.string(forKey: AppSettings.languageKey) ?? AppSettings.defaultLanguage) ?? .korean
     }

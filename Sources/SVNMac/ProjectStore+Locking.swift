@@ -67,7 +67,7 @@ extension ProjectStore {
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
-            let comment = AppLanguage.current.text("SVN Mac에서 문서 편집 중", "Editing document in SVN Mac")
+            let comment = AppLanguage.current.text("SVN for Mac에서 문서 편집 중", "Editing document in SVN for Mac")
             _ = try await client.lock(
                 at: project.path,
                 relativePath: request.repositoryRelativePath,

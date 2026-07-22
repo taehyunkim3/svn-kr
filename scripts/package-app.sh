@@ -9,7 +9,7 @@ CACHE_ROOT="${TMPDIR:-/tmp}/svn-mac-build-cache"
 export CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-$CACHE_ROOT/clang}"
 export SWIFTPM_MODULECACHE_OVERRIDE="${SWIFTPM_MODULECACHE_OVERRIDE:-$CACHE_ROOT/swiftpm}"
 
-APP="$ROOT/dist/SVN Mac.app"
+APP="$ROOT/dist/SVN for Mac.app"
 DISTRIBUTION="${DISTRIBUTION:-developer-id}"
 SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 STORE_ENTITLEMENTS_DIR=""
@@ -135,7 +135,7 @@ function sign_app_bundle() {
 function create_zip_archive() {
   local version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
   local architecture=$(uname -m)
-  ARCHIVE="$ROOT/dist/SVN-Mac-$version-$architecture.zip"
+  ARCHIVE="$ROOT/dist/SVN-for-Mac-$version-$architecture.zip"
   rm -f "$ARCHIVE"
   ditto -c -k --keepParent "$APP" "$ARCHIVE"
 }
@@ -144,7 +144,7 @@ function create_app_store_package() {
   [[ "$DISTRIBUTION" == "app-store" ]] || return 0
 
   local version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
-  PKG="$ROOT/dist/SVN-Mac-$version-app-store.pkg"
+  PKG="$ROOT/dist/SVN-for-Mac-$version-app-store.pkg"
   rm -f "$PKG"
   productbuild \
     --component "$APP" /Applications \

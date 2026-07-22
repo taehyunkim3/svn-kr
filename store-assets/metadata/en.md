@@ -2,7 +2,7 @@
 
 ## App Name
 
-SVN Mac
+SVN for Mac
 
 ## Subtitle
 
@@ -14,7 +14,7 @@ Review changes, inspect diffs, compare revisions, and browse commit history acro
 
 ## Description
 
-SVN Mac is a native macOS client for managing multiple Subversion working copies in one place.
+SVN for Mac is a native macOS client for managing multiple Subversion working copies in one place.
 
 Handle everyday SVN tasks without memorizing complex commands. Review local changes, inspect file diffs, commit selected files, update a working copy, and browse server history from a focused Mac interface.
 
@@ -32,7 +32,7 @@ Key features
 • Switch between Korean and English interfaces
 • Choose the time zone used for commit timestamps
 
-SVN Mac includes the command-line tools and libraries it needs, so users don't need to install Homebrew or SVN separately.
+SVN for Mac includes the command-line tools and libraries it needs, so users don't need to install Homebrew or SVN separately.
 
 Passwords are stored in macOS Keychain instead of app preference files. Repository connections go directly to the SVN server configured by the user.
 
