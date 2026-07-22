@@ -1071,6 +1071,55 @@ import Testing
     ))
 }
 
+@Test func recognizesOnlyConservativeUnversionedTemporaryFiles() {
+    let temporaryPaths = [
+        "문서/~$보고서.xlsx",
+        ".DS_Store",
+        "자료/._원본.pdf",
+        "코드/.main.swift.swp",
+        "코드/.main.swift.swo",
+        "메모.txt~",
+        "#메모.txt#",
+        ".#메모.txt",
+    ]
+
+    for path in temporaryPaths {
+        let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
+        #expect(entry.isTemporaryFile, "임시 파일로 분류되지 않음: \(path)")
+    }
+
+    let ordinaryPaths = ["보고서.xlsx", "cache.tmp", "cache.temp", "DS_Store"]
+    for path in ordinaryPaths {
+        let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
+        #expect(!entry.isTemporaryFile, "일반 파일이 임시 파일로 분류됨: \(path)")
+    }
+
+    #expect(!SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file).isTemporaryFile)
+    #expect(!SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory).isTemporaryFile)
+    #expect(!SVNStatusEntry(path: "~$종류미상", item: .unversioned).isTemporaryFile)
+}
+
+@MainActor
+@Test func selectAllExcludesTemporaryFilesWithoutBlockingManualSelection() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+    let modified = SVNStatusEntry(path: "보고서.xlsx", item: .modified, nodeKind: .file)
+    let unversioned = SVNStatusEntry(path: "새 문서.xlsx", item: .unversioned, nodeKind: .file)
+    let temporary = SVNStatusEntry(path: "~$보고서.xlsx", item: .unversioned, nodeKind: .file)
+    store.statuses = [modified, unversioned, temporary]
+
+    #expect(store.selectableStatusPaths == [modified.path, unversioned.path, temporary.path])
+    #expect(store.selectAllStatusPaths == [modified.path, unversioned.path])
+
+    store.selectedPaths.insert(temporary.path)
+    #expect(store.canCommitSelectedPaths)
+
+    store.selectedPaths = store.selectAllStatusPaths
+    #expect(store.selectedPaths == [modified.path, unversioned.path])
+
+    store.selectedPaths.removeAll()
+    #expect(store.selectedPaths.isEmpty)
+}
+
 @MainActor
 private func makeStore(
     projects: [SVNProject],

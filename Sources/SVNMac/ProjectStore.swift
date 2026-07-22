@@ -185,6 +185,10 @@ final class ProjectStore: ObservableObject {
         Set(statuses.lazy.filter(\.isSelectableForCommit).map(\.path))
     }
 
+    var selectAllStatusPaths: Set<String> {
+        Set(statuses.lazy.filter { $0.isSelectableForCommit && !$0.isTemporaryFile }.map(\.path))
+    }
+
     var canRepairCanonicalAliases: Bool {
         !pathCollisions.isEmpty && pathCollisions.allSatisfy { $0.repairableRawPath != nil }
     }

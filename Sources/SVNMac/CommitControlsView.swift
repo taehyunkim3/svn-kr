@@ -15,7 +15,7 @@ struct CommitControlsView: View {
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
                 Button(appLanguage.text("전체 선택", "Select All")) {
-                    store.selectedPaths = store.selectableStatusPaths
+                    store.selectedPaths = store.selectAllStatusPaths
                 }
                 .help(appLanguage.text("현재 변경된 파일을 모두 커밋 대상으로 선택합니다.", "Select all currently changed files for commit."))
                 Button(appLanguage.text("선택 해제", "Clear Selection")) { store.selectedPaths.removeAll() }
