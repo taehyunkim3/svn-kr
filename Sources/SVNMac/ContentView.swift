@@ -102,6 +102,7 @@ struct ContentView: View {
                     Image(systemName: "arrow.clockwise")
                     Text(appLanguage.text("새로고침", "Refresh"))
                 }
+                .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
@@ -112,6 +113,7 @@ struct ContentView: View {
                     Image(systemName: "arrow.down.circle")
                     Text(appLanguage.text("업데이트", "Update"))
                 }
+                .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
@@ -119,6 +121,7 @@ struct ContentView: View {
                 ProgressView()
                     .controlSize(.small)
                     .frame(width: 16, height: 16)
+                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
         }
         .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }

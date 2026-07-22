@@ -15,6 +15,9 @@ enum AppLayout {
     static let sidebarIdealWidth: CGFloat = 230
     static let sidebarMaximumWidth: CGFloat = 300
 
+    /// 툴바의 아이콘·텍스트와 진행 표시기가 버튼/창 가장자리에 붙지 않게 하는 여백입니다.
+    static let toolbarItemHorizontalPadding: CGFloat = 6
+
     static let changesPrimaryMinimumWidth: CGFloat = 380
     static let changesDetailMinimumWidth: CGFloat = 400
     static let historyPrimaryMinimumWidth: CGFloat = 520

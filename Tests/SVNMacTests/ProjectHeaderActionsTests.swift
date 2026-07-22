@@ -46,6 +46,7 @@ import Testing
     #expect(contentView.contains("Text(appLanguage.text(\"새로고침\", \"Refresh\"))"))
     #expect(contentView.contains("Image(systemName: \"arrow.down.circle\")"))
     #expect(contentView.contains("Text(appLanguage.text(\"업데이트\", \"Update\"))"))
+    #expect(contentView.components(separatedBy: ".padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)").count == 4)
     #expect(!contentView.contains("Button(appLanguage.text(\"새로고침\", \"Refresh\"), systemImage:"))
     #expect(!contentView.contains("Button(appLanguage.text(\"업데이트\", \"Update\"), systemImage:"))
 }

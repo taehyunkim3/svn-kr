@@ -21,6 +21,7 @@ import Testing
     #expect(AppLayout.sidebarIdealWidth <= AppLayout.sidebarMaximumWidth)
     #expect(AppLayout.windowMinimumWidth <= AppLayout.windowDefaultWidth)
     #expect(AppLayout.windowMinimumHeight <= AppLayout.windowDefaultHeight)
+    #expect(AppLayout.toolbarItemHorizontalPadding > 0)
 }
 
 @Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {
