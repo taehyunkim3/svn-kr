@@ -34,6 +34,22 @@ import Testing
     #expect(locksButton.lowerBound < finderButton.lowerBound)
 }
 
+@Test func frequentToolbarActionsKeepVisibleTextLabels() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+
+    #expect(contentView.contains("Image(systemName: \"arrow.clockwise\")"))
+    #expect(contentView.contains("Text(appLanguage.text(\"새로고침\", \"Refresh\"))"))
+    #expect(contentView.contains("Image(systemName: \"arrow.down.circle\")"))
+    #expect(contentView.contains("Text(appLanguage.text(\"업데이트\", \"Update\"))"))
+    #expect(!contentView.contains("Button(appLanguage.text(\"새로고침\", \"Refresh\"), systemImage:"))
+    #expect(!contentView.contains("Button(appLanguage.text(\"업데이트\", \"Update\"), systemImage:"))
+}
+
 private func source(named name: String, in directory: URL) throws -> String {
     try String(contentsOf: directory.appendingPathComponent(name), encoding: .utf8)
 }

@@ -69,7 +69,7 @@ struct AppReviewReadinessTests {
         let source = try repositorySource("ContentView.swift")
         let start = try #require(source.range(of: "Button(appLanguage.text(\"데모 종료\", \"Exit Demo\"))"))
         let end = try #require(source.range(
-            of: "Button(appLanguage.text(\"새로고침\"",
+            of: "Text(appLanguage.text(\"새로고침\", \"Refresh\"))",
             range: start.upperBound..<source.endIndex
         ))
         let demoButton = String(source[start.lowerBound..<end.lowerBound])

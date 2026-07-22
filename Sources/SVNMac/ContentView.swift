@@ -95,10 +95,24 @@ struct ContentView: View {
                 .tint(.orange)
                 .help(appLanguage.text("샘플 프로젝트를 닫고 일반 모드로 돌아갑니다.", "Close the sample project and return to normal mode."))
             }
-            Button(appLanguage.text("새로고침", "Refresh"), systemImage: "arrow.clockwise") { Task { await refreshSelectedProject() } }
+            Button {
+                Task { await refreshSelectedProject() }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise")
+                    Text(appLanguage.text("새로고침", "Refresh"))
+                }
+            }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
-            Button(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle") { Task { await store.previewUpdate() } }
+            Button {
+                Task { await store.previewUpdate() }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.down.circle")
+                    Text(appLanguage.text("업데이트", "Update"))
+                }
+            }
                 .disabled(store.selectedProject == nil || store.isWorking)
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
             if store.showsGlobalProgress {
