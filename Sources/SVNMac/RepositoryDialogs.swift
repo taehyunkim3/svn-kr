@@ -199,9 +199,13 @@ struct AddRepositoryView: View {
                     Text(store.isWorking
                         ? appLanguage.text("체크아웃 중…", "Checking out…")
                         : appLanguage.text("체크아웃 진행 로그", "Checkout progress log"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let errorMessage = store.errorMessage {
+                        ErrorCopyButton(message: errorMessage)
+                    }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
                 ScrollViewReader { proxy in
                     ScrollView {

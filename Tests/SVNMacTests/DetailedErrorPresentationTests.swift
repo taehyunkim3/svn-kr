@@ -55,6 +55,24 @@ import Testing
     }
 }
 
+@Test func checkoutAndRecoveryErrorsExposeCopyAndScrolling() throws {
+    let sources = svnMacSources()
+    let dialogs = try String(
+        contentsOf: sources.appendingPathComponent("RepositoryDialogs.swift"),
+        encoding: .utf8
+    )
+    let recovery = try String(
+        contentsOf: sources.appendingPathComponent("WorkingCopyRecoveryView.swift"),
+        encoding: .utf8
+    )
+
+    #expect(dialogs.contains("ErrorCopyButton(message: errorMessage)"))
+    #expect(dialogs.contains("store.checkoutLog"))
+    #expect(recovery.contains("ErrorDetailsText("))
+    #expect(recovery.contains("message: error"))
+    #expect(recovery.contains("ErrorCopyButton(message: error)"))
+}
+
 private func svnMacSources() -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
