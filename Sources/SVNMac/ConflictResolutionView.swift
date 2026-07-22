@@ -37,6 +37,7 @@ struct ConflictResolutionView: View {
                 Text(confirmationMessage(for: choice))
             }
         }
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 
     private var header: some View {

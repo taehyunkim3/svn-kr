@@ -54,5 +54,6 @@ struct IgnoreRulesView: View {
             .padding()
         }
         .appSheetFrame(minimumSize: AppLayout.ignoreRulesSheetMinimumSize)
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 }

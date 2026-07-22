@@ -23,6 +23,38 @@ import Testing
     #expect(source.contains("detailedErrorPresenter"))
 }
 
+@Test func applicationErrorHostsUseDetailedPresenterInsteadOfRootAlert() throws {
+    let sources = svnMacSources()
+    let content = try String(
+        contentsOf: sources.appendingPathComponent("ContentView.swift"),
+        encoding: .utf8
+    )
+    let expectedHosts = [
+        "UpdatePreviewView.swift",
+        "IgnoreRulesView.swift",
+        "RepositoryLocksView.swift",
+        "ConflictResolutionView.swift",
+        "FileHistoryView.swift",
+    ]
+
+    #expect(!content.contains(".alert(appLanguage.text(\"오류\", \"Error\")"))
+    #expect(content.contains(".detailedErrorPresenter(errorMessage: $store.errorMessage)"))
+
+    let dialogs = try String(
+        contentsOf: sources.appendingPathComponent("RepositoryDialogs.swift"),
+        encoding: .utf8
+    )
+    #expect(dialogs.components(separatedBy: ".detailedErrorPresenter(errorMessage: $store.errorMessage)").count - 1 == 2)
+
+    for file in expectedHosts {
+        let source = try String(contentsOf: sources.appendingPathComponent(file), encoding: .utf8)
+        #expect(
+            source.contains(".detailedErrorPresenter(errorMessage: $store.errorMessage)"),
+            "Missing presenter in \(file)"
+        )
+    }
+}
+
 private func svnMacSources() -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

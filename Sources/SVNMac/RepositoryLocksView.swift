@@ -48,5 +48,6 @@ struct RepositoryLocksView: View {
             }
         }
         .appSheetFrame(minimumSize: AppLayout.repositoryLocksSheetMinimumSize)
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 }

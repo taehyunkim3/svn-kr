@@ -75,6 +75,7 @@ struct AuthenticationRequiredView: View {
         .onAppear {
             username = store.projects.first(where: { $0.id == request.projectID })?.username ?? ""
         }
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 
     private var canSubmit: Bool {
@@ -396,5 +397,6 @@ struct CredentialsView: View {
         .padding(24)
         .frame(width: 560)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 }
