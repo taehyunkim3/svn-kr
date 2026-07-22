@@ -7,7 +7,6 @@ struct ContentView: View {
 
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
-    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
     @State private var selectedProjectTab: ProjectTab = .changes
@@ -91,9 +90,11 @@ struct ContentView: View {
             }
         }
         .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, store.selectedProject != nil, !store.isWorking else { return }
-            Task { await refreshSelectedProject() }
+        .background {
+            MainWindowActivationView {
+                Task { await store.refreshForMainWindowActivation() }
+            }
+            .frame(width: 0, height: 0)
         }
         .task {
             if store.projects.isEmpty {

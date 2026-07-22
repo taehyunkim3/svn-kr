@@ -372,37 +372,21 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - SVN 작업
 
+    func refreshLocalWorkingCopy() async {
+        guard let project = selectedProject else { return }
+        let requestID = registerRefreshRequest()
+        let operationID = beginOperation(.refreshLocal(project.id))
+        defer { endOperation(operationID) }
+        _ = await applyLocalWorkingCopyRefresh(for: project, requestID: requestID)
+    }
+
     func refresh() async {
         guard let project = selectedProject else { return }
-        let requestID = UUID()
-        refreshRequestID = requestID
+        let requestID = prepareRefreshRequest()
         let operationID = beginOperation(.refresh(project.id))
         defer { endOperation(operationID) }
-        isWorkingCopyOutOfDate = nil
-        isShowingPathRecovery = false
-        pathRecoveryPreview = nil
-        pathRecoverySourceProjectID = nil
-        do {
-            async let newSnapshot = client.workingCopySnapshot(at: project.path, credentials: nil)
-            async let newWorkingCopyRepositoryPath = client.workingCopyRepositoryPath(at: project.path, credentials: nil)
-            let (snapshot, workingCopyRepositoryPath) = try await (
-                newSnapshot,
-                newWorkingCopyRepositoryPath
-            )
-            guard canApplyRefresh(requestID, projectID: project.id) else { return }
-            statuses = snapshot.statuses
-            workingCopyRevision = snapshot.revision
-            pathCollisions = snapshot.collisions
-            self.workingCopyRepositoryPath = workingCopyRepositoryPath
-            selectedPaths.formIntersection(selectableStatusPaths)
-            updateLocalSummary(for: project.id, statuses: snapshot.statuses)
-            notice = AppLanguage.current.text("\(project.name) 로컬 변경 사항 확인 완료", "\(project.name) local changes refreshed")
-        } catch {
-            if canApplyRefresh(requestID, projectID: project.id) {
-                errorMessage = localizedError(error)
-            }
-            return
-        }
+
+        guard await applyLocalWorkingCopyRefresh(for: project, requestID: requestID) else { return }
 
         do {
             let projectCredentials = try credentials(for: project)
@@ -429,6 +413,55 @@ final class ProjectStore: ObservableObject {
             if canApplyRefresh(requestID, projectID: project.id) {
                 handleRemoteError(error, project: project, action: .refreshHistory)
             }
+        }
+    }
+
+    private func prepareRefreshRequest() -> UUID {
+        let requestID = registerRefreshRequest()
+        isWorkingCopyOutOfDate = nil
+        isShowingPathRecovery = false
+        pathRecoveryPreview = nil
+        pathRecoverySourceProjectID = nil
+        return requestID
+    }
+
+    private func registerRefreshRequest() -> UUID {
+        let requestID = UUID()
+        refreshRequestID = requestID
+        return requestID
+    }
+
+    private func applyLocalWorkingCopyRefresh(
+        for project: SVNProject,
+        requestID: UUID
+    ) async -> Bool {
+        do {
+            async let newSnapshot = client.workingCopySnapshot(at: project.path, credentials: nil)
+            async let newWorkingCopyRepositoryPath = client.workingCopyRepositoryPath(
+                at: project.path,
+                credentials: nil
+            )
+            let (snapshot, workingCopyRepositoryPath) = try await (
+                newSnapshot,
+                newWorkingCopyRepositoryPath
+            )
+            guard canApplyRefresh(requestID, projectID: project.id) else { return false }
+            statuses = snapshot.statuses
+            workingCopyRevision = snapshot.revision
+            pathCollisions = snapshot.collisions
+            self.workingCopyRepositoryPath = workingCopyRepositoryPath
+            selectedPaths.formIntersection(selectableStatusPaths)
+            updateLocalSummary(for: project.id, statuses: snapshot.statuses)
+            notice = AppLanguage.current.text(
+                "\(project.name) 로컬 변경 사항 확인 완료",
+                "\(project.name) local changes refreshed"
+            )
+            return true
+        } catch {
+            if canApplyRefresh(requestID, projectID: project.id) {
+                errorMessage = localizedError(error)
+            }
+            return false
         }
     }
 

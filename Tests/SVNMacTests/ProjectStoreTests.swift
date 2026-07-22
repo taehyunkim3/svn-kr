@@ -752,6 +752,89 @@ import Testing
 }
 
 @MainActor
+@Test func localWorkingCopyRefreshUpdatesStatusWithoutRemoteHistoryRequests() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/local-refresh")
+    let entry = SVNStatusEntry(path: "보고서.xlsx", item: .modified, revision: "12")
+    let revision = SVNWorkingCopyRevision(minimum: "12", maximum: "12")
+    let client = StubSVNClient(
+        snapshotsByPath: [
+            project.path: SVNWorkingCopySnapshot(
+                statuses: [entry],
+                revision: revision,
+                collisions: [],
+                versionedPathsByCanonicalKey: [entry.path: [entry.path]]
+            ),
+        ]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.isWorkingCopyOutOfDate = true
+    store.isShowingPathRecovery = true
+    store.pathRecoveryPreview = SVNRecoveryPreview(
+        mappings: [],
+        ignoredAliasCount: 7,
+        blockingPaths: ["중복 경로"]
+    )
+    store.pathRecoverySourceProjectID = project.id
+
+    await store.refreshLocalWorkingCopy()
+
+    #expect(store.statuses == [entry])
+    #expect(store.workingCopyRevision == revision)
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.isShowingPathRecovery)
+    #expect(store.pathRecoveryPreview?.ignoredAliasCount == 7)
+    #expect(store.pathRecoverySourceProjectID == project.id)
+    #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 0, outOfDate: 0))
+}
+
+@MainActor
+@Test func fullRefreshStillRequestsRemoteHistoryAndOutOfDateState() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/full-refresh")
+    let client = StubSVNClient(revisionsByPath: [project.path: "12"])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.refresh()
+
+    #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 1, outOfDate: 1))
+}
+
+@MainActor
+@Test func mainWindowActivationRefreshLoadsLocalStatusAndFilesWithoutRemoteRequests() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/window-activation")
+    let client = StubSVNClient(revisionsByPath: [project.path: "12"])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshForMainWindowActivation()
+
+    #expect(await client.snapshotRequestCount() == 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 0)
+    #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 0, outOfDate: 0))
+}
+
+@MainActor
+@Test func mainWindowActivationRefreshSkipsWhileAnotherOperationIsRunning() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/window-activation-busy")
+    let client = StubSVNClient(revisionsByPath: [project.path: "12"])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+    let operationID = store.beginOperation(.lock(project.id))
+
+    await store.refreshForMainWindowActivation()
+
+    store.endOperation(operationID)
+    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.workingCopyEntriesRequestCount() == 0)
+}
+
+@MainActor
 @Test func ambiguousPathCollisionsBlockCommitAndAutomaticCleanup() {
     let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/ambiguous-commit")])
     store.statuses = [SVNStatusEntry(path: "04 구현/수정.bin", item: .modified)]
@@ -881,6 +964,10 @@ import Testing
     let historyID = store.beginOperation(.refreshHistory(selectedProject.id))
     #expect(store.isHistoryLoading)
     store.endOperation(historyID)
+
+    let localRefreshID = store.beginOperation(.refreshLocal(selectedProject.id))
+    #expect(!store.isHistoryLoading)
+    store.endOperation(localRefreshID)
 
     let otherProjectID = store.beginOperation(.refresh(otherProject.id))
     #expect(!store.isHistoryLoading)
@@ -1284,6 +1371,11 @@ private struct RevertCall: Equatable, Sendable {
     let relativePath: String
 }
 
+private struct RemoteRefreshRequestCounts: Equatable, Sendable {
+    let log: Int
+    let outOfDate: Int
+}
+
 private struct RevisionDiffRequest: Equatable, Sendable {
     let revision: String
     let repositoryPath: String
@@ -1317,6 +1409,10 @@ private actor StubSVNClient: SVNClientServing {
     private var recoveryPaths: [String] = []
     private var canonicalAliasRepairRequests = 0
     private var snapshotRequests = 0
+    private var workingCopyEntriesRequests = 0
+    private var repositoryLocksRequests = 0
+    private var logRequests = 0
+    private var outOfDateRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
     private var revertCalls: [RevertCall] = []
@@ -1388,7 +1484,10 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return statusesByPath[path] ?? []
     }
-    func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
+    func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] {
+        workingCopyEntriesRequests += 1
+        return []
+    }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
         await delay(for: path)
@@ -1404,6 +1503,11 @@ private actor StubSVNClient: SVNClientServing {
         )
     }
     func snapshotRequestCount() -> Int { snapshotRequests }
+    func workingCopyEntriesRequestCount() -> Int { workingCopyEntriesRequests }
+    func repositoryLocksRequestCount() -> Int { repositoryLocksRequests }
+    func remoteRefreshRequestCounts() -> RemoteRefreshRequestCounts {
+        RemoteRefreshRequestCounts(log: logRequests, outOfDate: outOfDateRequests)
+    }
     func repairCanonicalAliases(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         canonicalAliasRepairRequests += 1
         if let repairedSnapshot = repairedSnapshotsByPath[path] { return repairedSnapshot }
@@ -1422,7 +1526,10 @@ private actor StubSVNClient: SVNClientServing {
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { [] }
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
     func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
-    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] { [] }
+    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
+        repositoryLocksRequests += 1
+        return []
+    }
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
         lockInfoRequests += 1
         lockInfoPaths.append(relativePath)
@@ -1459,6 +1566,7 @@ private actor StubSVNClient: SVNClientServing {
         conflictDetailsRequestRawPaths.filter { $0 == Data(path.utf8) }.count
     }
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+        logRequests += 1
         await delay(for: path)
         return [makeLog(revision: revisionsByPath[path] ?? "0")]
     }
@@ -1479,6 +1587,7 @@ private actor StubSVNClient: SVNClientServing {
     }
     func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String { "/trunk" }
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool {
+        outOfDateRequests += 1
         await delay(for: path)
         return false
     }
