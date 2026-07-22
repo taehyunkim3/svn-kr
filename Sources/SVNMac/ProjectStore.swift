@@ -370,7 +370,7 @@ final class ProjectStore: ObservableObject {
 
     func refreshLocalWorkingCopy() async {
         guard let project = selectedProject else { return }
-        let requestID = prepareRefreshRequest()
+        let requestID = registerRefreshRequest()
         let operationID = beginOperation(.refreshLocal(project.id))
         defer { endOperation(operationID) }
         _ = await applyLocalWorkingCopyRefresh(for: project, requestID: requestID)
@@ -413,12 +413,17 @@ final class ProjectStore: ObservableObject {
     }
 
     private func prepareRefreshRequest() -> UUID {
-        let requestID = UUID()
-        refreshRequestID = requestID
+        let requestID = registerRefreshRequest()
         isWorkingCopyOutOfDate = nil
         isShowingPathRecovery = false
         pathRecoveryPreview = nil
         pathRecoverySourceProjectID = nil
+        return requestID
+    }
+
+    private func registerRefreshRequest() -> UUID {
+        let requestID = UUID()
+        refreshRequestID = requestID
         return requestID
     }
 

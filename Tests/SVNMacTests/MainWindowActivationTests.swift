@@ -40,8 +40,6 @@ import Testing
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
 
     #expect(source.contains("MainWindowActivationView"))
-    #expect(source.contains("refreshSelectedProjectLocally"))
-    #expect(source.contains("store.refreshLocalWorkingCopy()"))
-    #expect(source.contains("store.loadWorkingCopyFiles()"))
+    #expect(source.contains("store.refreshForMainWindowActivation()"))
     #expect(!source.contains(#"@Environment(\.scenePhase)"#))
 }

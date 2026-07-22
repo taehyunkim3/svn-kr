@@ -1,6 +1,13 @@
 import Foundation
 
 extension ProjectStore {
+    func refreshForMainWindowActivation() async {
+        guard !isDemoMode, selectedProject != nil, !isWorking else { return }
+        async let changes: Void = refreshLocalWorkingCopy()
+        async let files: Void = loadWorkingCopyFiles()
+        _ = await (changes, files)
+    }
+
     func refreshWorkingCopyBrowser() async {
         guard let projectID = selectedProjectID,
               !activeOperations.contains(where: { $0.kind == .browseFiles(projectID) }) else { return }

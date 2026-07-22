@@ -96,7 +96,7 @@ Refactor `ProjectStore` to expose a local-only entry point and share snapshot ap
 ```swift
 func refreshLocalWorkingCopy() async {
     guard let project = selectedProject else { return }
-    let requestID = prepareRefreshRequest()
+    let requestID = registerRefreshRequest()
     let operationID = beginOperation(.refreshLocal(project.id))
     defer { endOperation(operationID) }
     _ = await applyLocalWorkingCopyRefresh(for: project, requestID: requestID)
@@ -141,12 +141,17 @@ func refresh() async {
 }
 
 private func prepareRefreshRequest() -> UUID {
-    let requestID = UUID()
-    refreshRequestID = requestID
+    let requestID = registerRefreshRequest()
     isWorkingCopyOutOfDate = nil
     isShowingPathRecovery = false
     pathRecoveryPreview = nil
     pathRecoverySourceProjectID = nil
+    return requestID
+}
+
+private func registerRefreshRequest() -> UUID {
+    let requestID = UUID()
+    refreshRequestID = requestID
     return requestID
 }
 
@@ -242,12 +247,14 @@ git commit -m "refactor: 로컬 작업 복사본 갱신 분리"
 
 **Files:**
 - Create: `Sources/SVNMac/MainWindowActivationView.swift`
+- Modify: `Sources/SVNMac/ProjectStore+FileBrowser.swift:3-12`
 - Modify: `Sources/SVNMac/ContentView.swift:1-110,170-180`
+- Modify: `Tests/SVNMacTests/ProjectStoreTests.swift`
 - Create: `Tests/SVNMacTests/MainWindowActivationTests.swift`
 
 **Interfaces:**
 - Consumes: `ProjectStore.refreshLocalWorkingCopy() async` from Task 1 and the local-only `ProjectStore.loadWorkingCopyFiles() async`.
-- Produces: `MainWindowActivationView(onActivation:)`, hosted by `ContentView`, and `MainWindowActivationMonitor.observe(_:)` for the AppKit window lifecycle.
+- Produces: `ProjectStore.refreshForMainWindowActivation() async`, `MainWindowActivationView(onActivation:)`, and `MainWindowActivationMonitor.observe(_:)`.
 
 - [ ] **Step 1: Write failing tests for window-specific observation and ContentView wiring**
 
@@ -286,9 +293,7 @@ import Testing
     let source = try String(contentsOf: sourceURL, encoding: .utf8)
 
     #expect(source.contains("MainWindowActivationView"))
-    #expect(source.contains("refreshSelectedProjectLocally"))
-    #expect(source.contains("store.refreshLocalWorkingCopy()"))
-    #expect(source.contains("store.loadWorkingCopyFiles()"))
+    #expect(source.contains("store.refreshForMainWindowActivation()"))
     #expect(!source.contains("@Environment(\\.scenePhase)"))
 }
 ```
@@ -388,14 +393,24 @@ Remove the `scenePhase` environment and its `.onChange`. Add a zero-size backgro
 ```swift
 .background {
     MainWindowActivationView {
-        guard store.selectedProject != nil, !store.isWorking else { return }
-        Task { await refreshSelectedProjectLocally() }
+        Task { await store.refreshForMainWindowActivation() }
     }
     .frame(width: 0, height: 0)
 }
 ```
 
-Add the local helper. Keep the existing `refreshSelectedProject()` method as written below for the toolbar and project selection:
+Add the behavior-tested local action to `ProjectStore+FileBrowser.swift`:
+
+```swift
+func refreshForMainWindowActivation() async {
+    guard !isDemoMode, selectedProject != nil, !isWorking else { return }
+    async let changes: Void = refreshLocalWorkingCopy()
+    async let files: Void = loadWorkingCopyFiles()
+    _ = await (changes, files)
+}
+```
+
+Keep the existing `refreshSelectedProject()` method as written below for the toolbar and project selection:
 
 ```swift
 private func refreshSelectedProject() async {
@@ -403,13 +418,6 @@ private func refreshSelectedProject() async {
     async let project: Void = store.refresh()
     async let files: Void = store.refreshWorkingCopyBrowser()
     _ = await (project, files)
-}
-
-private func refreshSelectedProjectLocally() async {
-    guard !store.isDemoMode else { return }
-    async let changes: Void = store.refreshLocalWorkingCopy()
-    async let files: Void = store.loadWorkingCopyFiles()
-    _ = await (changes, files)
 }
 ```
 

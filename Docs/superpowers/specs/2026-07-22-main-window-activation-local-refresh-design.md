@@ -16,7 +16,7 @@ SVN Mac의 메인 창이 key window가 될 때마다 선택된 작업 폴더의 
 
 `ContentView` 배경에 AppKit의 실제 호스트 창을 추적하는 작은 `NSViewRepresentable`을 추가한다. 감지기는 자신이 붙은 창의 `NSWindow.didBecomeKeyNotification`만 구독하고, 창이 바뀌거나 뷰가 해제되면 기존 구독을 정리한다.
 
-`ProjectStore.refresh()`의 로컬 스냅샷 적용 구간을 로컬 전용 메서드로 분리한다. 전체 새로고침은 이 메서드를 호출한 뒤 기존 원격 로그와 업데이트 여부 조회를 이어간다. 창 활성화 경로는 로컬 전용 메서드와 로컬 파일 트리 조회만 병렬로 실행한다. 서버 잠금 정보까지 함께 조회하는 `refreshWorkingCopyBrowser()`는 자동 활성화 경로에서 사용하지 않는다.
+`ProjectStore.refresh()`의 로컬 스냅샷 적용 구간을 로컬 전용 메서드로 분리한다. 전체 새로고침은 이 메서드를 호출한 뒤 기존 원격 로그와 업데이트 여부 조회를 이어간다. `refreshForMainWindowActivation()`은 로컬 전용 메서드와 로컬 파일 트리 조회만 병렬로 실행한다. 서버 잠금 정보까지 함께 조회하는 `refreshWorkingCopyBrowser()`는 자동 활성화 경로에서 사용하지 않는다. 로컬 전용 갱신은 기존 원격 업데이트 여부와 경로 복구 상태를 보존한다.
 
 ## 동작과 오류 처리
 

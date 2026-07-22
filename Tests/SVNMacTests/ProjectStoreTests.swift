@@ -767,11 +767,23 @@ import Testing
         ]
     )
     let store = makeStore(projects: [project], client: client)
+    store.isWorkingCopyOutOfDate = true
+    store.isShowingPathRecovery = true
+    store.pathRecoveryPreview = SVNRecoveryPreview(
+        mappings: [],
+        ignoredAliasCount: 7,
+        blockingPaths: ["중복 경로"]
+    )
+    store.pathRecoverySourceProjectID = project.id
 
     await store.refreshLocalWorkingCopy()
 
     #expect(store.statuses == [entry])
     #expect(store.workingCopyRevision == revision)
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.isShowingPathRecovery)
+    #expect(store.pathRecoveryPreview?.ignoredAliasCount == 7)
+    #expect(store.pathRecoverySourceProjectID == project.id)
     #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 0, outOfDate: 0))
 }
 
@@ -784,6 +796,42 @@ import Testing
     await store.refresh()
 
     #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 1, outOfDate: 1))
+}
+
+@MainActor
+@Test func mainWindowActivationRefreshLoadsLocalStatusAndFilesWithoutRemoteRequests() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/window-activation")
+    let client = StubSVNClient(revisionsByPath: [project.path: "12"])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshForMainWindowActivation()
+
+    #expect(await client.snapshotRequestCount() == 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 0)
+    #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 0, outOfDate: 0))
+}
+
+@MainActor
+@Test func mainWindowActivationRefreshSkipsWhileAnotherOperationIsRunning() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/window-activation-busy")
+    let client = StubSVNClient(revisionsByPath: [project.path: "12"])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+    let operationID = store.beginOperation(.lock(project.id))
+
+    await store.refreshForMainWindowActivation()
+
+    store.endOperation(operationID)
+    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.workingCopyEntriesRequestCount() == 0)
 }
 
 @MainActor
@@ -1312,6 +1360,8 @@ private actor StubSVNClient: SVNClientServing {
     private var recoveryPaths: [String] = []
     private var canonicalAliasRepairRequests = 0
     private var snapshotRequests = 0
+    private var workingCopyEntriesRequests = 0
+    private var repositoryLocksRequests = 0
     private var logRequests = 0
     private var outOfDateRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
@@ -1385,7 +1435,10 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return statusesByPath[path] ?? []
     }
-    func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
+    func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] {
+        workingCopyEntriesRequests += 1
+        return []
+    }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
         await delay(for: path)
@@ -1401,6 +1454,8 @@ private actor StubSVNClient: SVNClientServing {
         )
     }
     func snapshotRequestCount() -> Int { snapshotRequests }
+    func workingCopyEntriesRequestCount() -> Int { workingCopyEntriesRequests }
+    func repositoryLocksRequestCount() -> Int { repositoryLocksRequests }
     func remoteRefreshRequestCounts() -> RemoteRefreshRequestCounts {
         RemoteRefreshRequestCounts(log: logRequests, outOfDate: outOfDateRequests)
     }
@@ -1422,7 +1477,10 @@ private actor StubSVNClient: SVNClientServing {
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { [] }
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
     func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws {}
-    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] { [] }
+    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
+        repositoryLocksRequests += 1
+        return []
+    }
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
         lockInfoRequests += 1
         lockInfoPaths.append(relativePath)

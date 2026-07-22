@@ -92,8 +92,7 @@ struct ContentView: View {
         .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }
         .background {
             MainWindowActivationView {
-                guard store.selectedProject != nil, !store.isWorking else { return }
-                Task { await refreshSelectedProjectLocally() }
+                Task { await store.refreshForMainWindowActivation() }
             }
             .frame(width: 0, height: 0)
         }
@@ -178,13 +177,6 @@ struct ContentView: View {
         async let project: Void = store.refresh()
         async let files: Void = store.refreshWorkingCopyBrowser()
         _ = await (project, files)
-    }
-
-    private func refreshSelectedProjectLocally() async {
-        guard !store.isDemoMode else { return }
-        async let changes: Void = store.refreshLocalWorkingCopy()
-        async let files: Void = store.loadWorkingCopyFiles()
-        _ = await (changes, files)
     }
 
 }
