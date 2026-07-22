@@ -37,7 +37,7 @@ function fetch_source() {
   local source_name="$1"
   local archive="$CACHE_ROOT/$(runtime_source_archive_name "$source_name")"
   if [[ ! -f "$archive" ]]; then
-    print "Downloading $source_name $(runtime_source_version "$source_name")..."
+    print -u2 "Downloading $source_name $(runtime_source_version "$source_name")..."
     curl -L --fail --silent --show-error "$(runtime_source_url "$source_name")" -o "$archive"
   fi
   verify_source_archive "$source_name" "$archive"
