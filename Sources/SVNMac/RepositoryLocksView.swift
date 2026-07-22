@@ -18,6 +18,21 @@ struct RepositoryLocksView: View {
             .padding()
             Divider()
 
+            Label {
+                Text(appLanguage.text(
+                    "잠금 파일은 편집 중인 파일에 다른 사용자가 동시에 커밋하지 못하도록 SVN 서버에 표시한 파일입니다. 내가 잠근 파일은 커밋에 성공하면 자동으로 잠금이 해제됩니다.",
+                    "A locked file is marked on the SVN server to prevent another user from committing to it while it is being edited. Your lock is released automatically after a successful commit."
+                ))
+            } icon: {
+                Image(systemName: "info.circle")
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            Divider()
+
             List(store.repositoryLocks) { lock in
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {

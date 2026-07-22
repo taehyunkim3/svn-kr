@@ -115,6 +115,10 @@ struct ContentView: View {
             UpdatePreviewView()
                 .environmentObject(store)
         }
+        .sheet(isPresented: $store.isShowingLocks) {
+            RepositoryLocksView()
+                .environmentObject(store)
+        }
         .sheet(item: $store.authenticationRequest) { request in
             AuthenticationRequiredView(request: request)
                 .environmentObject(store)
@@ -133,6 +137,7 @@ struct ContentView: View {
                     Text(project.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 Spacer()
+                repositoryLocksButton
                 Button(appLanguage.text("Finder에서 열기", "Open in Finder"), systemImage: "folder") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
                 }
@@ -167,6 +172,33 @@ struct ContentView: View {
                 historyPrompt: appLanguage.text("작성자, 파일, 메시지, 리비전 검색", "Search author, file, message, or revision")
             ))
         }
+    }
+
+    /// 탭 바깥의 프로젝트 공통 머리글에 두어 어느 탭에서도 잠금 현황을 확인할 수 있게 합니다.
+    private var repositoryLocksButton: some View {
+        Button {
+            Task {
+                await store.loadRepositoryLocks()
+                store.isShowingLocks = true
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "lock")
+                Text(appLanguage.text("잠금 목록", "Locks"))
+                if !store.repositoryLocks.isEmpty {
+                    Text("\(store.repositoryLocks.count)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor, in: Capsule())
+                }
+            }
+        }
+        .help(appLanguage.text(
+            "현재 저장소에서 잠긴 파일 목록과 개수를 확인합니다.",
+            "View the locked files and their count in this repository."
+        ))
     }
 
     private func refreshSelectedProject() async {

@@ -35,10 +35,6 @@ struct ChangesView: View {
             IgnoreRulesView()
                 .environmentObject(store)
         }
-        .sheet(isPresented: $store.isShowingLocks) {
-            RepositoryLocksView()
-                .environmentObject(store)
-        }
         .sheet(item: $store.activeConflictSession) { _ in
             ConflictResolutionView()
                 .environmentObject(store)
@@ -214,12 +210,6 @@ struct ChangesView: View {
                 Task {
                     await store.loadIgnoreRules()
                     store.isShowingIgnoreRules = true
-                }
-            }
-            Button(appLanguage.text("잠금 목록", "Locks"), systemImage: "lock") {
-                Task {
-                    await store.loadRepositoryLocks()
-                    store.isShowingLocks = true
                 }
             }
         }
