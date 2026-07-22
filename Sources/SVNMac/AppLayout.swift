@@ -32,6 +32,8 @@ enum AppLayout {
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
     static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)
+    static let errorDetailsSheetMinimumSize = CGSize(width: 640, height: 380)
+    static let inlineErrorMaximumHeight: CGFloat = 160
 }
 
 extension View {

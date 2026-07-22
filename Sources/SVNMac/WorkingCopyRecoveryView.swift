@@ -68,9 +68,18 @@ struct WorkingCopyRecoveryView: View {
             }
 
             if let error = store.errorMessage {
-                Text(error)
-                    .foregroundStyle(.red)
-                    .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(appLanguage.text("오류", "Error"), systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    ErrorDetailsText(
+                        message: error,
+                        maximumHeight: AppLayout.inlineErrorMaximumHeight
+                    )
+                    HStack {
+                        Spacer()
+                        ErrorCopyButton(message: error)
+                    }
+                }
             }
 
             Spacer()

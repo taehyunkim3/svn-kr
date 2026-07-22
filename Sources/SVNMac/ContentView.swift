@@ -118,10 +118,7 @@ struct ContentView: View {
             AuthenticationRequiredView(request: request)
                 .environmentObject(store)
         }
-        .alert(appLanguage.text("오류", "Error"), isPresented: Binding(get: { !store.isShowingAddRepository && store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
-            Button(appLanguage.text("확인", "OK"), role: .cancel) { store.errorMessage = nil }
-                .help(appLanguage.text("오류 메시지를 닫습니다.", "Close the error message."))
-        } message: { Text(store.errorMessage ?? "") }
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 
     // MARK: - 선택 프로젝트 화면

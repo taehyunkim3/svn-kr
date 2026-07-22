@@ -47,6 +47,7 @@ struct UpdatePreviewView: View {
             .padding()
         }
         .appSheetFrame(minimumSize: AppLayout.updatePreviewSheetMinimumSize)
+        .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 
     private func remoteBadge(_ item: SVNStatusKind) -> some View {

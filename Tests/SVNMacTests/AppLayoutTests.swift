@@ -32,6 +32,7 @@ import Testing
         AppLayout.fileHistorySheetMinimumSize,
         AppLayout.conflictResolutionSheetMinimumSize,
         AppLayout.pathRecoverySheetMinimumSize,
+        AppLayout.errorDetailsSheetMinimumSize,
     ]
 
     for size in sheetSizes {
@@ -43,4 +44,6 @@ import Testing
 
     #expect(AppLayout.checkoutLogHeight > 0)
     #expect(AppLayout.checkoutLogHeight < AppLayout.addRepositorySheetMinimumSize.height)
+    #expect(AppLayout.inlineErrorMaximumHeight > 0)
+    #expect(AppLayout.inlineErrorMaximumHeight < AppLayout.pathRecoverySheetMinimumSize.height)
 }
