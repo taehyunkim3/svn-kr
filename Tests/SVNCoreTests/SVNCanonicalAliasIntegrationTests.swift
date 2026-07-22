@@ -3,6 +3,112 @@ import Foundation
 import Testing
 @testable import SVNCore
 
+@Test(arguments: [
+    "00 사업관리/000 보고관리",
+    "00 사업관리/000 보고관리".decomposedStringWithCanonicalMapping,
+    "00 사업관리/" + "000 보고관리".decomposedStringWithCanonicalMapping,
+])
+func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
+    repositoryDirectory: String
+) async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn",
+        "/usr/local/bin/svn",
+        "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin",
+        "/usr/local/bin/svnadmin",
+        "/usr/bin/svnadmin",
+    ]))
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-decomposed-project-\(UUID().uuidString)", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let workingCopy = fixture.appendingPathComponent("wc", isDirectory: true)
+    defer { try? fileManager.removeItem(at: fixture) }
+
+    try fileManager.createDirectory(at: fixture, withIntermediateDirectories: true)
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    let repositoryFile = "005 주간보고/주간보고서.hwp"
+    let setupScript = fixture.appendingPathComponent("create-composed-lock-target.zsh")
+    try Data("""
+    #!/bin/zsh
+    set -euo pipefail
+    "\(svnPath)" mkdir "\(repositoryURL)\(repositoryDirectory)/005 주간보고" --parents -m initial >/dev/null
+    "\(svnPath)" checkout "\(repositoryURL)" "\(workingCopy.path)" >/dev/null
+    printf report > "\(workingCopy.path)/\(repositoryDirectory)/\(repositoryFile)"
+    "\(svnPath)" add "\(workingCopy.path)/\(repositoryDirectory)/\(repositoryFile)" >/dev/null
+    "\(svnPath)" commit "\(workingCopy.path)/\(repositoryDirectory)/\(repositoryFile)" -m 'add report' >/dev/null
+    """.utf8).write(to: setupScript)
+    _ = try runIntegrationCommand("/bin/zsh", [setupScript.path])
+
+    let registeredPath = (workingCopy.path + "/" + repositoryDirectory)
+        .decomposedStringWithCanonicalMapping
+    let commandLog = fixture.appendingPathComponent("svn-lock-command-log")
+    let wrapper = fixture.appendingPathComponent("logging-svn")
+    let wrapperScript = """
+    #!/bin/sh
+    printf 'PWD:%s\\n' "$(/bin/pwd -P)" >> "\(commandLog.path)"
+    for argument in "$@"; do
+      printf 'ARG:%s\\n' "$argument" >> "\(commandLog.path)"
+    done
+    exec "\(svnPath)" "$@"
+    """
+    try Data(wrapperScript.utf8).write(to: wrapper)
+    try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: wrapper.path)
+    let client = SVNClient(
+        executablePath: wrapper.path,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+
+    let resolvedURL = try await client.workingCopyRepositoryURL(at: registeredPath)
+    let existingLock = try await client.lockInfo(
+        at: registeredPath,
+        relativePath: repositoryFile
+    )
+    _ = try await client.lock(
+        at: registeredPath,
+        relativePath: repositoryFile,
+        comment: "lock test"
+    )
+    _ = try await client.unlock(at: registeredPath, relativePath: repositoryFile)
+
+    let localFileURL = URL(fileURLWithPath: registeredPath, isDirectory: true)
+        .appendingPathComponent(repositoryFile)
+    try Data("changed report".utf8).write(to: localFileURL)
+    let fileDiff = try await client.diff(at: registeredPath, relativePath: repositoryFile)
+    let fileLogs = try await client.fileLog(at: registeredPath, relativePath: repositoryFile)
+    _ = try await client.revert(at: registeredPath, relativePath: repositoryFile)
+    try await client.addIgnoreRule(
+        at: registeredPath,
+        directory: "005 주간보고",
+        pattern: "*.tmp"
+    )
+    try await client.removeIgnoreRule(
+        at: registeredPath,
+        directory: "005 주간보고",
+        pattern: "*.tmp"
+    )
+    let logData = try Data(contentsOf: commandLog)
+    let expectedWorkingDirectorySuffix = Data("/\(workingCopy.lastPathComponent)\n".utf8)
+    let expectedTarget = Data("ARG:\(repositoryDirectory)/\(repositoryFile)\n".utf8)
+    let expectedTargetCount = logData.split(separator: 0x0A).count {
+        Data($0) == Data(expectedTarget.dropLast())
+    }
+
+    let decodedRepositoryURL = resolvedURL.removingPercentEncoding ?? resolvedURL
+    let resolvedRepositoryDirectory = decodedRepositoryURL.suffix(repositoryDirectory.count)
+    #expect(Data(resolvedRepositoryDirectory.utf8) == Data(repositoryDirectory.utf8))
+    #expect(existingLock == nil)
+    #expect(fileDiff.contains("changed report"))
+    #expect(!fileLogs.isEmpty)
+    #expect(try Data(contentsOf: localFileURL) == Data("report".utf8))
+    #expect(logData.range(of: expectedWorkingDirectorySuffix) != nil)
+    #expect(expectedTargetCount == 6)
+}
+
 @Test func realSVNCleansMissingAdditionAndRecursivelyCommitsRawNFDDirectory() async throws {
     let fileManager = FileManager.default
     let svnPath = try #require(firstExecutable(at: [

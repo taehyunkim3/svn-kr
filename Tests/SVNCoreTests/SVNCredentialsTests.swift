@@ -23,11 +23,11 @@ import Testing
 }
 
 @Test func targetFilesEscapePegSyntaxAndRejectLineBreaks() throws {
-    #expect(SVNClient.escapedPegTarget("보고서@최종.hwp") == "보고서@최종.hwp@")
-    #expect(SVNClient.escapedPegTarget("보고서.hwp") == "보고서.hwp")
-    #expect(try SVNClient.targetsFileContents(["보고서@최종.hwp"]) == Data("보고서@최종.hwp@\n".utf8))
+    #expect(SVNClient.svnPathEscapingPegSyntax("보고서@최종.hwp") == "보고서@최종.hwp@")
+    #expect(SVNClient.svnPathEscapingPegSyntax("보고서.hwp") == "보고서.hwp")
+    #expect(try SVNClient.svnTargetsFileContents(["보고서@최종.hwp"]) == Data("보고서@최종.hwp@\n".utf8))
     #expect(throws: SVNError.self) {
-        _ = try SVNClient.targetsFileContents(["보고서\n최종.hwp"])
+        _ = try SVNClient.svnTargetsFileContents(["보고서\n최종.hwp"])
     }
 }
 

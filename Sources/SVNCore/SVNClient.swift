@@ -3,6 +3,15 @@ import Darwin
 
 public typealias SVNOutputHandler = @Sendable (String) -> Void
 
+/// 파일 단위 SVN 명령을 작업 복사본 루트에서 실행하기 위해 필요한 경로입니다.
+/// `workingCopyRootPath`는 로컬 실행 위치이고, `svnPathRelativeToWorkingCopyRoot`는
+/// SVN이 실제로 관리하는 원문 UTF-8 경로이므로 서로 대신 사용할 수 없습니다.
+private struct SVNWorkingCopyCommandPath {
+    let workingCopyRootPath: String
+    let svnProjectPathPrefixRelativeToWorkingCopyRoot: String
+    let svnPathRelativeToWorkingCopyRoot: String
+}
+
 /// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
 ///
 /// actor로 선언해 동일 클라이언트에서 update와 commit 같은 명령이 동시에
@@ -11,6 +20,7 @@ public typealias SVNOutputHandler = @Sendable (String) -> Void
 public actor SVNClient {
     private let executablePath: String?
     private let configDirectoryPath: String?
+    private var svnProjectPathPrefixByLocalProjectPath: [SVNPathIdentity: String] = [:]
 
     public init(executablePath: String? = nil, configDirectoryPath: String? = nil) {
         self.executablePath = executablePath
@@ -158,17 +168,17 @@ public actor SVNClient {
         let root = URL(fileURLWithPath: path, isDirectory: true)
         var current = snapshot
 
-        for target in snapshot.missingScheduledAdditionCleanupTargets {
-            let targetBytes = Data(target.utf8)
+        for missingAdditionPath in snapshot.missingScheduledAdditionCleanupTargets {
+            let missingAdditionPathBytes = Data(missingAdditionPath.utf8)
             guard current.missingScheduledAdditionCleanupTargets.contains(where: {
-                Data($0.utf8) == targetBytes
+                Data($0.utf8) == missingAdditionPathBytes
             }) else { continue }
-            guard !Self.pathEntryExists(at: root.appendingPathComponent(target)) else { continue }
+            guard !Self.pathEntryExists(at: root.appendingPathComponent(missingAdditionPath)) else { continue }
 
             do {
-                _ = try checkedRunWithTargets(
+                _ = try checkedRunWithMultipleWorkingCopyPathArguments(
                     ["revert", "--depth", "infinity"],
-                    targets: [target],
+                    projectRelativePaths: [missingAdditionPath],
                     at: path,
                     credentials: credentials
                 )
@@ -257,12 +267,12 @@ public actor SVNClient {
             do {
                 try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: false)
                 defer { try? FileManager.default.removeItem(at: baseDirectory) }
-                _ = try checkedRunWithRawTrailingArgument(
+                _ = try checkedRunWithSingleWorkingCopyPathArgument(
                       ["cat", "--revision", "BASE"],
-                      rawTrailingArgument: replacement.versionedPath,
-                      outputDestinationURL: baseURL,
+                      projectRelativePath: replacement.versionedPath,
                       at: path,
-                      credentials: credentials
+                      credentials: credentials,
+                      outputDestinationURL: baseURL
                   )
                 let versionedIdentity = SVNPathIdentity(rawPath: replacement.versionedPath)
                 if try Self.filesHaveEqualContents(localURL, baseURL) {
@@ -335,11 +345,11 @@ public actor SVNClient {
         guard !before.hasUnrepairablePathCollisions else {
             throw SVNError.pathNormalizationCollision(paths: before.collisions.map(\.displayPath))
         }
-        let targets = before.canonicalAliasRepairTargets
-        if !targets.isEmpty {
-            _ = try checkedRunWithTargets(
+        let canonicalAliasRepairPaths = before.canonicalAliasRepairTargets
+        if !canonicalAliasRepairPaths.isEmpty {
+            _ = try checkedRunWithMultipleWorkingCopyPathArguments(
                 ["revert", "--depth", "empty"],
-                targets: targets,
+                projectRelativePaths: canonicalAliasRepairPaths,
                 at: path,
                 credentials: credentials
             )
@@ -377,7 +387,12 @@ public actor SVNClient {
         let existing = try ignorePatterns(at: path, directory: directory, credentials: credentials)
         guard !existing.contains(pattern) else { return }
         let value = (existing + [pattern]).joined(separator: "\n") + "\n"
-        _ = try checkedRun(["propset", "svn:ignore", value, "--", directory], at: path, credentials: credentials)
+        _ = try checkedRunWithSingleWorkingCopyPathArgument(
+            ["propset", "svn:ignore", value],
+            projectRelativePath: directory,
+            at: path,
+            credentials: credentials
+        )
     }
 
     public func removeIgnoreRule(
@@ -389,10 +404,20 @@ public actor SVNClient {
         let remaining = try ignorePatterns(at: path, directory: directory, credentials: credentials)
             .filter { $0 != pattern }
         if remaining.isEmpty {
-            _ = try checkedRun(["propdel", "svn:ignore", "--", directory], at: path, credentials: credentials)
+            _ = try checkedRunWithSingleWorkingCopyPathArgument(
+                ["propdel", "svn:ignore"],
+                projectRelativePath: directory,
+                at: path,
+                credentials: credentials
+            )
         } else {
             let value = remaining.joined(separator: "\n") + "\n"
-            _ = try checkedRun(["propset", "svn:ignore", value, "--", directory], at: path, credentials: credentials)
+            _ = try checkedRunWithSingleWorkingCopyPathArgument(
+                ["propset", "svn:ignore", value],
+                projectRelativePath: directory,
+                at: path,
+                credentials: credentials
+            )
         }
     }
 
@@ -416,8 +441,9 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> SVNLockInfo? {
-        let result = try checkedRun(
-            ["info", "--xml", "--revision", "HEAD", "--", relativePath],
+        let result = try checkedRunWithSingleWorkingCopyPathArgument(
+            ["info", "--xml", "--revision", "HEAD"],
+            projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
@@ -432,8 +458,9 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        try checkedRun(
-            ["lock", "--message", comment, "--", relativePath],
+        return try checkedRunWithSingleWorkingCopyPathArgument(
+            ["lock", "--message", comment],
+            projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
@@ -446,22 +473,188 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        try checkedRun(
-            ["unlock", "--", relativePath],
+        return try checkedRunWithSingleWorkingCopyPathArgument(
+            ["unlock"],
+            projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         ).output
     }
 
-    public func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> SVNConflictDetails? {
-        let result = try checkedRunWithRawTrailingArgument(
-            ["info", "--xml"],
-            rawTrailingArgument: relativePath,
-            at: path,
+    /// 등록 프로젝트가 작업 복사본의 하위 폴더여도 파일 명령은 `.svn`이 있는
+    /// 루트에서 실행합니다. 프로젝트 폴더의 로컬 표기(NFD일 수 있음)를 그대로
+    /// 붙이지 않고 SVN이 실제로 관리하는 원문 표기를 판별해 경로를 구성합니다.
+    private func resolveWorkingCopyCommandPath(
+        localProjectPath: String,
+        projectRelativePath: String,
+        credentials: SVNCredentials?
+    ) throws -> SVNWorkingCopyCommandPath {
+        let localProjectURL = URL(fileURLWithPath: localProjectPath, isDirectory: true).standardizedFileURL
+        guard let workingCopyRootURL = findWorkingCopyRootURL(containing: localProjectURL) else {
+            return SVNWorkingCopyCommandPath(
+                workingCopyRootPath: localProjectPath,
+                svnProjectPathPrefixRelativeToWorkingCopyRoot: "",
+                svnPathRelativeToWorkingCopyRoot: projectRelativePath
+            )
+        }
+
+        let localProjectPrefix = localProjectURL.pathComponents
+            .dropFirst(workingCopyRootURL.pathComponents.count)
+            .joined(separator: "/")
+        guard !localProjectPrefix.isEmpty else {
+            return SVNWorkingCopyCommandPath(
+                workingCopyRootPath: workingCopyRootURL.path,
+                svnProjectPathPrefixRelativeToWorkingCopyRoot: "",
+                svnPathRelativeToWorkingCopyRoot: projectRelativePath
+            )
+        }
+
+        let svnProjectPathPrefix = try resolveSVNProjectPathPrefix(
+            localProjectPrefix: localProjectPrefix,
+            localProjectPath: localProjectPath,
+            workingCopyRootPath: workingCopyRootURL.path,
             credentials: credentials
         )
-        return try SVNXMLParser.conflictDetails(fromInfo: Data(result.output.utf8))
+        let svnPathRelativeToWorkingCopyRoot = projectRelativePath == "."
+            ? svnProjectPathPrefix
+            : svnProjectPathPrefix + "/" + projectRelativePath
+        return SVNWorkingCopyCommandPath(
+            workingCopyRootPath: workingCopyRootURL.path,
+            svnProjectPathPrefixRelativeToWorkingCopyRoot: svnProjectPathPrefix,
+            svnPathRelativeToWorkingCopyRoot: svnPathRelativeToWorkingCopyRoot
+        )
+    }
+
+    /// 같은 한글 이름이라도 SVN 저장소에는 NFC 또는 NFD 원문이 들어 있을 수
+    /// 있습니다. 경로 구성요소마다 로컬 표기와 NFC 후보를 `svn info`로 확인해
+    /// 상위 NFC/하위 NFD처럼 표기가 섞인 경로도 정확히 조립한 뒤 캐시합니다.
+    private func resolveSVNProjectPathPrefix(
+        localProjectPrefix: String,
+        localProjectPath: String,
+        workingCopyRootPath: String,
+        credentials: SVNCredentials?
+    ) throws -> String {
+        let localProjectPathIdentity = SVNPathIdentity(rawPath: localProjectPath)
+        if let cachedPrefix = svnProjectPathPrefixByLocalProjectPath[localProjectPathIdentity] {
+            return cachedPrefix
+        }
+
+        var resolvedSVNPathComponents: [String] = []
+        for localPathComponent in localProjectPrefix.split(separator: "/").map(String.init) {
+            let precomposedPathComponent = localPathComponent.precomposedStringWithCanonicalMapping
+            let svnPathComponentCandidates = [localPathComponent, precomposedPathComponent]
+                .reduce(into: [String]()) { components, candidateComponent in
+                    guard !components.contains(where: {
+                        Data($0.utf8) == Data(candidateComponent.utf8)
+                    }) else { return }
+                    components.append(candidateComponent)
+                }
+            let candidateSVNPaths = svnPathComponentCandidates.map {
+                (resolvedSVNPathComponents + [$0]).joined(separator: "/")
+            }
+            let unsafeProjectPaths = Self.svnPathsUnsafeForLineDelimitedTransport(
+                candidateSVNPaths
+            )
+            guard unsafeProjectPaths.isEmpty else {
+                throw SVNError.unsupportedTargetPath(paths: unsafeProjectPaths)
+            }
+
+            var resolvedSVNPathComponent: String?
+            for (candidateComponent, candidateSVNPath) in zip(
+                svnPathComponentCandidates,
+                candidateSVNPaths
+            ) {
+                let infoResult = try run(
+                    ["info", "--show-item", "kind"],
+                    svnPathArgument: Self.svnPathEscapingPegSyntax(candidateSVNPath),
+                    at: workingCopyRootPath,
+                    credentials: credentials
+                )
+                if infoResult.exitCode == 0 {
+                    resolvedSVNPathComponent = candidateComponent
+                    break
+                }
+            }
+            guard let resolvedSVNPathComponent else {
+                // 판별 실패 시 호출 명령이 SVN의 구체적인 오류를 표시하도록
+                // 원래 로컬 표기로 실행하며, 불확실한 값은 캐시하지 않습니다.
+                return localProjectPrefix
+            }
+            resolvedSVNPathComponents.append(resolvedSVNPathComponent)
+        }
+
+        let svnProjectPathPrefix = resolvedSVNPathComponents.joined(separator: "/")
+        svnProjectPathPrefixByLocalProjectPath[localProjectPathIdentity] = svnProjectPathPrefix
+        return svnProjectPathPrefix
+    }
+
+    private func findWorkingCopyRootURL(containing localURL: URL) -> URL? {
+        var candidateDirectoryURL = localURL
+        while candidateDirectoryURL.path != "/" {
+            let svnMetadataURL = candidateDirectoryURL.appendingPathComponent(".svn", isDirectory: true)
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: svnMetadataURL.path, isDirectory: &isDirectory),
+               isDirectory.boolValue {
+                return candidateDirectoryURL
+            }
+            candidateDirectoryURL.deleteLastPathComponent()
+        }
+        return nil
+    }
+
+    public func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> SVNConflictDetails? {
+        let commandPath = try resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: relativePath,
+            credentials: credentials
+        )
+        let result = try checkedRunWithSingleSVNPathArgument(
+            ["info", "--xml"],
+            svnPathArgument: commandPath.svnPathRelativeToWorkingCopyRoot,
+            at: commandPath.workingCopyRootPath,
+            credentials: credentials
+        )
+        guard let workingCopyRootConflictDetails = try SVNXMLParser.conflictDetails(
+            fromInfo: Data(result.output.utf8)
+        ) else { return nil }
+
+        // 명령을 작업 복사본 루트에서 실행하면 SVN XML의 entry/artifact 경로도
+        // 루트 기준으로 반환됩니다. ConflictFileService는 등록 프로젝트 경로를
+        // 기준으로 파일을 찾으므로 프로젝트 접두사를 제거해 기존 계약을 지킵니다.
+        return Self.conflictDetailsRelativeToRegisteredProject(
+            workingCopyRootConflictDetails,
+            svnProjectPathPrefix: commandPath.svnProjectPathPrefixRelativeToWorkingCopyRoot
+        )
+    }
+
+    static func conflictDetailsRelativeToRegisteredProject(
+        _ conflictDetails: SVNConflictDetails,
+        svnProjectPathPrefix: String
+    ) -> SVNConflictDetails {
+        guard !svnProjectPathPrefix.isEmpty else { return conflictDetails }
+
+        func projectRelativeConflictPath(_ workingCopyRootRelativePath: String?) -> String? {
+            guard let workingCopyRootRelativePath else { return nil }
+            let projectPathPrefixWithSeparator = svnProjectPathPrefix + "/"
+            guard workingCopyRootRelativePath.hasPrefix(projectPathPrefixWithSeparator) else {
+                // SVN 버전이나 충돌 유형에 따라 절대 경로가 올 수 있으므로,
+                // 확인된 프로젝트 접두사로 시작하는 상대 경로만 변경합니다.
+                return workingCopyRootRelativePath
+            }
+            return String(workingCopyRootRelativePath.dropFirst(projectPathPrefixWithSeparator.count))
+        }
+
+        return SVNConflictDetails(
+            path: projectRelativeConflictPath(conflictDetails.path) ?? conflictDetails.path,
+            type: conflictDetails.type,
+            operation: conflictDetails.operation,
+            previousBaseFile: projectRelativeConflictPath(conflictDetails.previousBaseFile),
+            myFile: projectRelativeConflictPath(conflictDetails.myFile),
+            serverFile: projectRelativeConflictPath(conflictDetails.serverFile),
+            previousRevision: conflictDetails.previousRevision,
+            serverRevision: conflictDetails.serverRevision
+        )
     }
 
     public func resolveConflict(
@@ -470,9 +663,9 @@ public actor SVNClient {
         choice: SVNConflictChoice,
         credentials: SVNCredentials? = nil
     ) async throws -> String {
-        try checkedRunWithRawTrailingArgument(
+        try checkedRunWithSingleWorkingCopyPathArgument(
             ["resolve", "--accept", choice.rawValue],
-            rawTrailingArgument: relativePath,
+            projectRelativePath: relativePath,
             at: path,
             credentials: credentials
         ).output
@@ -504,14 +697,14 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        let targetPath = revisionTargetPath(
+        let repositoryRevisionPath = revisionTargetPath(
             repositoryPath: repositoryPath,
             workingCopyRepositoryPath: workingCopyRepositoryPath
         )
-        let target = "^\(targetPath)@\(pegRevision)"
-        return try checkedRunWithRawTrailingArgument(
+        let repositoryRevisionPathArgument = "^\(repositoryRevisionPath)@\(pegRevision)"
+        return try checkedRunWithSingleSVNPathArgument(
             ["diff", "--change", revision],
-            rawTrailingArgument: target,
+            svnPathArgument: repositoryRevisionPathArgument,
             escapePegSyntax: false,
             at: path,
             credentials: credentials,
@@ -608,13 +801,24 @@ public actor SVNClient {
     }
 
     public func diff(at path: String, relativePath: String? = nil, credentials: SVNCredentials? = nil) async throws -> String {
-        var arguments = ["diff"]
-        if let relativePath { arguments.append(relativePath) }
-        return try checkedRun(arguments, at: path, credentials: credentials).output
+        guard let relativePath else {
+            return try checkedRun(["diff"], at: path, credentials: credentials).output
+        }
+        return try checkedRunWithSingleWorkingCopyPathArgument(
+            ["diff"],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials
+        ).output
     }
 
     public func revert(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> String {
-        try checkedRun(["revert", "--", relativePath], at: path, credentials: credentials).output
+        try checkedRunWithSingleWorkingCopyPathArgument(
+            ["revert"],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials
+        ).output
     }
 
     public func fileLog(
@@ -624,8 +828,9 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> [SVNLogEntry] {
-        let result = try checkedRun(
-            ["log", "--xml", "--verbose", "--with-all-revprops", "--limit", String(limit), "--", relativePath],
+        let result = try checkedRunWithSingleWorkingCopyPathArgument(
+            ["log", "--xml", "--verbose", "--with-all-revprops", "--limit", String(limit)],
+            projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
@@ -697,26 +902,26 @@ public actor SVNClient {
                     versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey,
                     preexistingScheduledAdditionPaths: snapshot.scheduledAdditionPaths
                 ))
-                _ = try checkedRunWithTargets(
+                _ = try checkedRunWithMultipleWorkingCopyPathArguments(
                     ["add", "--parents"],
-                    targets: additions,
+                    projectRelativePaths: additions,
                     at: path,
                     credentials: credentials
                 )
             }
             if !deletions.isEmpty {
                 scheduledByThisCommit.append(contentsOf: deletions)
-                _ = try checkedRunWithTargets(
+                _ = try checkedRunWithMultipleWorkingCopyPathArguments(
                     ["delete", "--force"],
-                    targets: deletions,
+                    projectRelativePaths: deletions,
                     at: path,
                     credentials: credentials
                 )
             }
 
-            commitOutput = try checkedRunWithTargets(
+            commitOutput = try checkedRunWithMultipleWorkingCopyPathArguments(
                 ["commit", "--message", message],
-                targets: normalizedPaths,
+                projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
                 allowUntrustedServerCertificate: allowUntrustedServerCertificate
@@ -724,9 +929,9 @@ public actor SVNClient {
         } catch {
             let rollbackTargets = Self.normalizedCommitPaths(scheduledByThisCommit)
             if !rollbackTargets.isEmpty {
-                _ = try? checkedRunWithTargets(
+                _ = try? checkedRunWithMultipleWorkingCopyPathArguments(
                     ["revert", "--depth", "infinity"],
-                    targets: rollbackTargets,
+                    projectRelativePaths: rollbackTargets,
                     at: path,
                     credentials: credentials
                 )
@@ -814,9 +1019,9 @@ public actor SVNClient {
                 }
                 try fileManager.removeItem(at: localURL)
                 backups[backups.count - 1].aliasWasRemoved = true
-                _ = try checkedRunWithTargets(
+                _ = try checkedRunWithMultipleWorkingCopyPathArguments(
                     ["revert", "--depth", "empty"],
-                    targets: [replacement.versionedPath],
+                    projectRelativePaths: [replacement.versionedPath],
                     at: path,
                     credentials: credentials
                 )
@@ -966,24 +1171,65 @@ public actor SVNClient {
 
     // MARK: - 공통 명령 실행
 
-    private func checkedRunWithTargets(
+    /// 단일 파일/폴더를 받는 SVN 명령의 공통 진입점입니다. 로컬 프로젝트
+    /// 경로를 작업 복사본 루트 기준 저장소 경로로 바꾼 뒤, 원문 UTF-8 바이트를
+    /// 보존하는 파일 운반 방식으로 실행합니다.
+    private func checkedRunWithSingleWorkingCopyPathArgument(
         _ arguments: [String],
-        targets: [String],
-        at path: String,
+        projectRelativePath: String,
+        at localProjectPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        outputDestinationURL: URL? = nil
+    ) throws -> SVNCommandResult {
+        let commandPath = try resolveWorkingCopyCommandPath(
+            localProjectPath: localProjectPath,
+            projectRelativePath: projectRelativePath,
+            credentials: credentials
+        )
+        return try checkedRunWithSingleSVNPathArgument(
+            arguments,
+            svnPathArgument: commandPath.svnPathRelativeToWorkingCopyRoot,
+            outputDestinationURL: outputDestinationURL,
+            at: commandPath.workingCopyRootPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+
+    /// 여러 작업 복사본 경로는 `--targets` 파일에 원문 UTF-8로 기록합니다.
+    /// Foundation `Process.arguments`를 거치면 한글이 NFD로 변할 수 있으므로,
+    /// 커밋·add·delete·revert 대상은 이 함수 밖에서 직접 인자로 만들지 않습니다.
+    private func checkedRunWithMultipleWorkingCopyPathArguments(
+        _ arguments: [String],
+        projectRelativePaths: [String],
+        at localProjectPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) throws -> SVNCommandResult {
+        let workingCopyCommandPaths = try projectRelativePaths.map {
+            try resolveWorkingCopyCommandPath(
+                localProjectPath: localProjectPath,
+                projectRelativePath: $0,
+                credentials: credentials
+            )
+        }
+        let workingCopyRootPath = workingCopyCommandPaths.first?.workingCopyRootPath ?? localProjectPath
+        let svnPathsRelativeToWorkingCopyRoot = workingCopyCommandPaths.map(
+            \.svnPathRelativeToWorkingCopyRoot
+        )
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("svn-mac-targets-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
-        let targetsURL = temporaryDirectory.appendingPathComponent("targets", isDirectory: false)
-        try Self.targetsFileContents(targets).write(to: targetsURL, options: .atomic)
+        let svnTargetsFileURL = temporaryDirectory.appendingPathComponent("targets", isDirectory: false)
+        try Self.svnTargetsFileContents(svnPathsRelativeToWorkingCopyRoot)
+            .write(to: svnTargetsFileURL, options: .atomic)
 
         return try checkedRun(
-            arguments + ["--targets", targetsURL.path],
-            at: path,
+            arguments + ["--targets", svnTargetsFileURL.path],
+            at: workingCopyRootPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
@@ -991,24 +1237,26 @@ public actor SVNClient {
 
     /// Foundation `Process.arguments`가 macOS 파일 경로를 NFD로 변환하는 경우에도
     /// SVN 관리 경로의 원문 UTF-8 바이트를 그대로 마지막 인자로 전달합니다.
-    private func checkedRunWithRawTrailingArgument(
+    private func checkedRunWithSingleSVNPathArgument(
         _ arguments: [String],
-        rawTrailingArgument: String,
+        svnPathArgument: String,
         escapePegSyntax: Bool = true,
         outputDestinationURL: URL? = nil,
-        at path: String,
+        at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) throws -> SVNCommandResult {
-        let unsafePaths = Self.pathsUnsafeForLineDelimitedTransport([rawTrailingArgument])
-        guard unsafePaths.isEmpty else { throw SVNError.unsupportedTargetPath(paths: unsafePaths) }
+        let unsupportedSVNPaths = Self.svnPathsUnsafeForLineDelimitedTransport([svnPathArgument])
+        guard unsupportedSVNPaths.isEmpty else {
+            throw SVNError.unsupportedTargetPath(paths: unsupportedSVNPaths)
+        }
         let result = try run(
             arguments,
-            rawTrailingArgument: escapePegSyntax
-                ? Self.escapedPegTarget(rawTrailingArgument)
-                : rawTrailingArgument,
+            svnPathArgument: escapePegSyntax
+                ? Self.svnPathEscapingPegSyntax(svnPathArgument)
+                : svnPathArgument,
             outputDestinationURL: outputDestinationURL,
-            at: path,
+            at: workingDirectoryPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
         )
@@ -1022,24 +1270,31 @@ public actor SVNClient {
         return result
     }
 
-    static func escapedPegTarget(_ path: String) -> String {
+    static func svnPathEscapingPegSyntax(_ path: String) -> String {
         path.contains("@") ? path + "@" : path
     }
 
-    static func targetsFileContents(_ targets: [String]) throws -> Data {
-        let unsafePaths = pathsUnsafeForLineDelimitedTransport(targets)
-        guard unsafePaths.isEmpty else { throw SVNError.unsupportedTargetPath(paths: unsafePaths) }
-        return Data((targets.map(escapedPegTarget).joined(separator: "\n") + "\n").utf8)
+    static func svnTargetsFileContents(_ svnPaths: [String]) throws -> Data {
+        let unsupportedSVNPaths = svnPathsUnsafeForLineDelimitedTransport(svnPaths)
+        guard unsupportedSVNPaths.isEmpty else {
+            throw SVNError.unsupportedTargetPath(paths: unsupportedSVNPaths)
+        }
+        return Data((svnPaths.map(svnPathEscapingPegSyntax).joined(separator: "\n") + "\n").utf8)
     }
 
-    private static func pathsUnsafeForLineDelimitedTransport(_ paths: [String]) -> [String] {
-        paths.filter { path in
+    private static func svnPathsUnsafeForLineDelimitedTransport(_ svnPaths: [String]) -> [String] {
+        svnPaths.filter { path in
             path.unicodeScalars.contains { $0.value == 0 || $0.value == 10 || $0.value == 13 }
         }
     }
 
     private func ignorePatterns(at path: String, directory: String, credentials: SVNCredentials?) throws -> [String] {
-        let result = try run(["propget", "svn:ignore", "--strict", "--", directory], at: path, credentials: credentials)
+        let result = try runWithSingleWorkingCopyPathArgument(
+            ["propget", "svn:ignore", "--strict"],
+            projectRelativePath: directory,
+            at: path,
+            credentials: credentials
+        )
         if result.exitCode != 0, result.error.contains("W200017") { return [] }
         guard result.exitCode == 0 else {
             throw SVNError.commandFailed(command: "svn propget", message: result.error)
@@ -1047,17 +1302,49 @@ public actor SVNClient {
         return result.output.split(whereSeparator: \.isNewline).map(String.init)
     }
 
+    /// `svn propget`처럼 특정 종료 코드를 호출자가 직접 해석해야 하는 경우에도
+    /// 경로 원문 보존 규칙은 동일해야 하므로, 검사 없는 실행도 별도 경로 함수로
+    /// 제공합니다. 일반 기능에서는 종료 코드를 검사하는 checked 버전을 사용합니다.
+    private func runWithSingleWorkingCopyPathArgument(
+        _ arguments: [String],
+        projectRelativePath: String,
+        at localProjectPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) throws -> SVNCommandResult {
+        let commandPath = try resolveWorkingCopyCommandPath(
+            localProjectPath: localProjectPath,
+            projectRelativePath: projectRelativePath,
+            credentials: credentials
+        )
+        let unsupportedSVNPaths = Self.svnPathsUnsafeForLineDelimitedTransport([
+            commandPath.svnPathRelativeToWorkingCopyRoot
+        ])
+        guard unsupportedSVNPaths.isEmpty else {
+            throw SVNError.unsupportedTargetPath(paths: unsupportedSVNPaths)
+        }
+        return try run(
+            arguments,
+            svnPathArgument: Self.svnPathEscapingPegSyntax(
+                commandPath.svnPathRelativeToWorkingCopyRoot
+            ),
+            at: commandPath.workingCopyRootPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+
     @discardableResult
     private func checkedRun(
         _ arguments: [String],
-        at path: String,
+        at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
         progress: SVNOutputHandler? = nil
     ) throws -> SVNCommandResult {
         let result = try run(
             arguments,
-            at: path,
+            at: workingDirectoryPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             progress: progress
@@ -1071,9 +1358,9 @@ public actor SVNClient {
 
     private func run(
         _ arguments: [String],
-        rawTrailingArgument: String? = nil,
+        svnPathArgument: String? = nil,
         outputDestinationURL: URL? = nil,
-        at path: String,
+        at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
         progress: SVNOutputHandler? = nil
@@ -1100,21 +1387,24 @@ public actor SVNClient {
                 password = storedPassword
             }
         }
-        var rawArgumentDirectory: URL?
-        if let rawTrailingArgument {
-            let directory = FileManager.default.temporaryDirectory
+        var svnPathArgumentDirectory: URL?
+        if let svnPathArgument {
+            // `Process.arguments`에 SVN 경로를 직접 넣으면 Foundation이 한글을
+            // NFD로 바꿀 수 있습니다. 원문 UTF-8을 파일에 쓰고 POSIX shell이
+            // 읽어 argv로 넘기면 Swift 문자열의 자동 파일 경로 변환을 피할 수 있습니다.
+            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("svn-mac-raw-argument-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            rawArgumentDirectory = directory
-            let argumentURL = directory.appendingPathComponent("argument", isDirectory: false)
-            try (Data(rawTrailingArgument.utf8) + Data([0x0A])).write(to: argumentURL)
+            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
+            svnPathArgumentDirectory = svnPathTransportDirectory
+            let svnPathArgumentURL = svnPathTransportDirectory.appendingPathComponent("argument", isDirectory: false)
+            try (Data(svnPathArgument.utf8) + Data([0x0A])).write(to: svnPathArgumentURL)
 
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
             process.arguments = [
                 "-c",
-                "target_file=$1; svn_executable=$2; shift 2; IFS= read -r raw_target < \"$target_file\"; exec \"$svn_executable\" \"$@\" -- \"$raw_target\"",
+                "svn_path_file=$1; svn_executable=$2; shift 2; IFS= read -r svn_path < \"$svn_path_file\"; exec \"$svn_executable\" \"$@\" -- \"$svn_path\"",
                 "svn-mac-raw-argument",
-                argumentURL.path,
+                svnPathArgumentURL.path,
                 svnExecutable.path,
             ] + globalArguments + arguments
         } else {
@@ -1122,11 +1412,11 @@ public actor SVNClient {
             process.arguments = globalArguments + arguments
         }
         defer {
-            if let rawArgumentDirectory {
-                try? FileManager.default.removeItem(at: rawArgumentDirectory)
+            if let svnPathArgumentDirectory {
+                try? FileManager.default.removeItem(at: svnPathArgumentDirectory)
             }
         }
-        process.currentDirectoryURL = URL(fileURLWithPath: path)
+        process.currentDirectoryURL = URL(fileURLWithPath: workingDirectoryPath)
 
         // stdout/stderr를 Pipe로 계속 읽지 않으면 출력이 큰 명령에서 버퍼가 차
         // 프로세스가 멈출 수 있습니다. 임시 파일로 받으면 waitUntilExit 중에도

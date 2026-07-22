@@ -120,7 +120,9 @@ private struct RealContentConflict {
 private final class RealSVNConflictFixture {
     let root: URL
     let repository: URL
+    let publishingWorkingCopyRoot: URL
     let publishingWorkingCopy: URL
+    let conflictedWorkingCopyRoot: URL
     let conflictedWorkingCopy: URL
     let backupRoot: URL
     let projectID = UUID()
@@ -183,8 +185,12 @@ private final class RealSVNConflictFixture {
         root = URL(fileURLWithPath: "/tmp", isDirectory: true)
             .appendingPathComponent("svn-real-conflict-choice-\(UUID().uuidString)", isDirectory: true)
         repository = root.appendingPathComponent("repository", isDirectory: true)
-        publishingWorkingCopy = root.appendingPathComponent("publisher", isDirectory: true)
-        conflictedWorkingCopy = root.appendingPathComponent("conflicted", isDirectory: true)
+        publishingWorkingCopyRoot = root.appendingPathComponent("publisher", isDirectory: true)
+        publishingWorkingCopy = publishingWorkingCopyRoot
+            .appendingPathComponent("사업관리", isDirectory: true)
+        conflictedWorkingCopyRoot = root.appendingPathComponent("conflicted", isDirectory: true)
+        conflictedWorkingCopy = conflictedWorkingCopyRoot
+            .appendingPathComponent("사업관리", isDirectory: true)
         backupRoot = root.appendingPathComponent("backups", isDirectory: true)
         client = SVNClient(
             executablePath: svnPath,
@@ -197,7 +203,8 @@ private final class RealSVNConflictFixture {
         let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
         let trunkURL = repositoryURL + "trunk"
         _ = try Self.run(svnPath, ["mkdir", trunkURL, "-m", "create trunk"])
-        _ = try Self.run(svnPath, ["checkout", trunkURL, publishingWorkingCopy.path])
+        _ = try Self.run(svnPath, ["checkout", trunkURL, publishingWorkingCopyRoot.path])
+        try fileManager.createDirectory(at: publishingWorkingCopy, withIntermediateDirectories: false)
 
         for conflict in contentConflicts where conflict.choice != .working {
             let base = conflict.isBinary
@@ -207,14 +214,7 @@ private final class RealSVNConflictFixture {
         }
         try Data("property base\n".utf8).write(to: publishingWorkingCopy.appendingPathComponent(propertyConflictPath))
         try Data("tree base\n".utf8).write(to: publishingWorkingCopy.appendingPathComponent(treeConflictPath))
-        let initialPaths = contentConflicts
-            .filter { $0.choice != .working }
-            .map { publishingWorkingCopy.appendingPathComponent($0.path).path }
-            + [
-                publishingWorkingCopy.appendingPathComponent(propertyConflictPath).path,
-                publishingWorkingCopy.appendingPathComponent(treeConflictPath).path,
-            ]
-        _ = try Self.run(svnPath, ["add"] + initialPaths)
+        _ = try Self.run(svnPath, ["add", publishingWorkingCopy.path])
         for conflict in contentConflicts where conflict.isBinary && conflict.choice != .working {
             _ = try Self.run(svnPath, [
                 "propset", "svn:mime-type", "application/octet-stream",
@@ -225,20 +225,25 @@ private final class RealSVNConflictFixture {
             "propset", "integration:flag", "base",
             publishingWorkingCopy.appendingPathComponent(propertyConflictPath).path,
         ])
-        _ = try Self.run(svnPath, ["commit", publishingWorkingCopy.path, "-m", "initial files"])
+        _ = try Self.run(svnPath, ["commit", publishingWorkingCopyRoot.path, "-m", "initial files"])
         for conflict in contentConflicts where conflict.choice == .working {
             let importSource = root.appendingPathComponent("working-choice-base.bin")
             try Data([0x48, 0x57, 0x50, 0x2D, 0x42, 0x41, 0x53, 0x45, 0x00]).write(to: importSource)
             let encodedPath = try #require(
                 conflict.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
             )
+            let encodedProjectPath = try #require(
+                publishingWorkingCopy.lastPathComponent.addingPercentEncoding(
+                    withAllowedCharacters: .urlPathAllowed
+                )
+            )
             _ = try Self.run(svnPath, [
-                "import", importSource.path, "\(trunkURL)/\(encodedPath)",
+                "import", importSource.path, "\(trunkURL)/\(encodedProjectPath)/\(encodedPath)",
                 "-m", "import NFC conflict path",
             ])
         }
-        _ = try Self.run(svnPath, ["update", publishingWorkingCopy.path])
-        _ = try Self.run(svnPath, ["checkout", trunkURL, conflictedWorkingCopy.path])
+        _ = try Self.run(svnPath, ["update", publishingWorkingCopyRoot.path])
+        _ = try Self.run(svnPath, ["checkout", trunkURL, conflictedWorkingCopyRoot.path])
 
         for conflict in contentConflicts {
             try conflict.serverBytes.write(to: publishingWorkingCopy.appendingPathComponent(conflict.path))
@@ -248,7 +253,7 @@ private final class RealSVNConflictFixture {
             publishingWorkingCopy.appendingPathComponent(propertyConflictPath).path,
         ])
         _ = try Self.run(svnPath, ["delete", publishingWorkingCopy.appendingPathComponent(treeConflictPath).path])
-        _ = try Self.run(svnPath, ["commit", publishingWorkingCopy.path, "-m", "server changes"])
+        _ = try Self.run(svnPath, ["commit", publishingWorkingCopyRoot.path, "-m", "server changes"])
 
         for conflict in contentConflicts {
             try conflict.mineBytes.write(to: conflictedWorkingCopy.appendingPathComponent(conflict.path))
@@ -258,7 +263,7 @@ private final class RealSVNConflictFixture {
             conflictedWorkingCopy.appendingPathComponent(propertyConflictPath).path,
         ])
         try Data("tree local edit\n".utf8).write(to: conflictedWorkingCopy.appendingPathComponent(treeConflictPath))
-        _ = try Self.run(svnPath, ["update", "--non-interactive", conflictedWorkingCopy.path])
+        _ = try Self.run(svnPath, ["update", "--non-interactive", conflictedWorkingCopyRoot.path])
     }
 
     func remove() {
