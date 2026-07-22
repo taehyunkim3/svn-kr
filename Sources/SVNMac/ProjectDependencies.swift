@@ -172,6 +172,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case checkout
         case registerProject
         case refresh(SVNProject.ID)
+        case refreshLocal(SVNProject.ID)
         case refreshHistory(SVNProject.ID)
         case loadMoreHistory(SVNProject.ID)
         case revisionDiff(SVNProject.ID)
