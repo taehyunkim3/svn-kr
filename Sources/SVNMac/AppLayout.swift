@@ -10,6 +10,7 @@ enum AppLayout {
     static let windowMinimumHeight: CGFloat = 700
     static let windowDefaultWidth: CGFloat = 1_280
     static let windowDefaultHeight: CGFloat = 780
+    static let aboutWindowSize = CGSize(width: 420, height: 330)
 
     static let sidebarMinimumWidth: CGFloat = 190
     static let sidebarIdealWidth: CGFloat = 230

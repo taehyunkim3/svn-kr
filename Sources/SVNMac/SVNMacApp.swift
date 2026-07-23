@@ -6,6 +6,7 @@ struct SVNMacApp: App {
     // ProjectStore는 앱 창의 수명 동안 하나만 유지하며 모든 하위 화면이 공유합니다.
     @StateObject private var liveStore: ProjectStore
     @StateObject private var demoStore: ProjectStore
+    @StateObject private var updateChecker: AppUpdateChecker
     @State private var isDemoMode: Bool
     @State private var isShowingContactSupport = false
     @AppStorage(AppSettings.languageKey)
@@ -19,6 +20,7 @@ struct SVNMacApp: App {
         let startsInDemoMode = ProcessInfo.processInfo.environment["SVN_MAC_DEMO_MODE"] == "1"
         _liveStore = StateObject(wrappedValue: ProjectStore())
         _demoStore = StateObject(wrappedValue: ProjectStore.demo())
+        _updateChecker = StateObject(wrappedValue: AppUpdateChecker())
         _isDemoMode = State(initialValue: startsInDemoMode)
     }
 
@@ -38,6 +40,30 @@ struct SVNMacApp: App {
                     minWidth: AppLayout.windowMinimumWidth,
                     minHeight: AppLayout.windowMinimumHeight
                 )
+                .task {
+                    updateChecker.checkAutomaticallyIfNeeded()
+                }
+                .alert(
+                    appLanguage.text("새 업데이트가 있습니다", "An Update Is Available"),
+                    isPresented: Binding(
+                        get: { updateChecker.automaticUpdate != nil },
+                        set: { if !$0 { updateChecker.dismissAutomaticUpdate() } }
+                    ),
+                    presenting: updateChecker.automaticUpdate
+                ) { release in
+                    Button(appLanguage.text("App Store에서 보기", "View in App Store")) {
+                        updateChecker.openStore(for: release)
+                        updateChecker.dismissAutomaticUpdate()
+                    }
+                    Button(appLanguage.text("나중에", "Later"), role: .cancel) {
+                        updateChecker.dismissAutomaticUpdate()
+                    }
+                } message: { release in
+                    Text(appLanguage.text(
+                        "새 버전 \(release.version)을 사용할 수 있습니다.",
+                        "Version \(release.version) is available."
+                    ))
+                }
                 .alert(
                     AppContactSupport.alertTitle(for: appLanguage),
                     isPresented: $isShowingContactSupport
@@ -56,6 +82,7 @@ struct SVNMacApp: App {
         )
         .windowResizability(.contentMinSize)
         .commands {
+            SVNMacCommands(updateChecker: updateChecker, appLanguage: appLanguage)
             CommandGroup(after: .newItem) {
                 Button(appLanguage.text("저장소 URL 체크아웃…", "Check Out Repository URL…")) {
                     (isDemoMode ? demoStore : liveStore).isShowingAddRepository = true
@@ -73,5 +100,16 @@ struct SVNMacApp: App {
             AppSettingsView()
                 .buttonStyle(.bordered)
         }
+
+        Window(appLanguage.text("SVN for Mac 정보", "About SVN for Mac"), id: "app-about") {
+            AppAboutView(updateChecker: updateChecker)
+                .environment(\.appLanguage, appLanguage)
+                .buttonStyle(.bordered)
+        }
+        .defaultSize(
+            width: AppLayout.aboutWindowSize.width,
+            height: AppLayout.aboutWindowSize.height
+        )
+        .windowResizability(.contentSize)
     }
 }
