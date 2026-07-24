@@ -38,7 +38,7 @@ struct AppUpdateCheckerTests {
         )
 
         #expect(source.contains("checkAutomaticallyIfNeeded()"))
-        #expect(source.contains("Window(appLanguage.text(\"SVN for Mac 정보\""))
+        #expect(source.contains("Window(appLanguage.text(\"SVN KR 정보\""))
         #expect(about.contains("CommandGroup(replacing: .appInfo)"))
         #expect(about.contains("업데이트 확인"))
         #expect(about.contains("App Store에서 보기"))

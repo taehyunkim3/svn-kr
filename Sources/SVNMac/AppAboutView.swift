@@ -20,7 +20,7 @@ struct AppAboutView: View {
                 .frame(width: 88, height: 88)
 
             VStack(spacing: 4) {
-                Text("SVN for Mac")
+                Text("SVN KR")
                     .font(.title2.bold())
                 Text(appLanguage.text("버전 \(version) (\(build))", "Version \(version) (\(build))"))
                     .foregroundStyle(.secondary)
@@ -33,7 +33,7 @@ struct AppAboutView: View {
             }
             .disabled(updateChecker.manualStatus == .checking)
 
-            Text("© 2026 MR.DEVELLO")
+            Text("© 2026 Taehyun Kim")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -81,7 +81,7 @@ struct SVNMacCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button(appLanguage.text("SVN for Mac 정보", "About SVN for Mac")) {
+            Button(appLanguage.text("SVN KR 정보", "About SVN KR")) {
                 openWindow(id: "app-about")
             }
         }

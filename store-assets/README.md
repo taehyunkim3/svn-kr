@@ -1,4 +1,4 @@
-# SVN for Mac App Store Assets
+# SVN KR App Store Assets
 
 ## 제출 파일
 
@@ -15,6 +15,9 @@
 1. `01-timeline-overview.png`
 2. `02-selective-commit.png`
 3. `03-working-copy-files.png`
+4. `04-repository-locks.png`
+5. `05-project-credentials.png`
+6. `06-add-repository.png`
 
 ## 재생성
 
@@ -23,7 +26,7 @@
 ./scripts/store-assets/build-screenshots.sh
 ```
 
-스크린샷은 실제 SVN for Mac 화면으로 구성했으며 데모 저장소명과 데모 로컬 경로만 포함합니다.
+스크린샷은 실제 SVN KR 화면으로 구성했으며 데모 저장소명과 데모 로컬 경로만 포함합니다.
 
 영어 스크린샷은 영어 UI로 동일한 세 장을 다시 촬영한 뒤 별도 현지화 세트로 제작하는 것이 좋습니다. 한국어를 기본 언어로 먼저 제출하는 경우 현재 한국어 세트만으로 필수 스크린샷 요구사항을 충족합니다.
 

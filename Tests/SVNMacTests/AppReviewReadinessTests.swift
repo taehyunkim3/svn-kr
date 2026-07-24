@@ -23,8 +23,9 @@ struct AppReviewReadinessTests {
             PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Any]
         )
 
-        #expect(values["CFBundleName"] as? String == "SVN for Mac")
+        #expect(values["CFBundleName"] as? String == "SVN KR")
         #expect(values["CFBundleIdentifier"] as? String == "com.mrdevello.svnmac")
+        #expect(values["NSHumanReadableCopyright"] as? String == "© 2026 Taehyun Kim")
     }
 
     @Test func firstRunRepositorySheetExposesSampleProjectEntry() throws {

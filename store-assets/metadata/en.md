@@ -2,7 +2,7 @@
 
 ## App Name
 
-SVN for Mac
+SVN KR
 
 ## Subtitle
 
@@ -10,13 +10,13 @@ A focused native SVN client
 
 ## Promotional Text
 
-Review changes, inspect diffs, compare revisions, and browse commit history across multiple SVN working copies in one native Mac app.
+Review changes, inspect diffs, compare revisions, and browse commit history across multiple SVN working copies in one native macOS app.
 
 ## Description
 
-SVN for Mac is a native macOS client for managing multiple Subversion working copies in one place.
+SVN KR is a native macOS client for managing multiple Subversion working copies in one place.
 
-Handle everyday SVN tasks without memorizing complex commands. Review local changes, inspect file diffs, commit selected files, update a working copy, and browse server history from a focused Mac interface.
+Handle everyday SVN tasks without memorizing complex commands. Review local changes, inspect file diffs, commit selected files, update a working copy, and browse server history from a focused macOS interface.
 
 Key features
 
@@ -32,7 +32,7 @@ Key features
 • Switch between Korean and English interfaces
 • Choose the time zone used for commit timestamps
 
-SVN for Mac includes the command-line tools and libraries it needs, so users don't need to install Homebrew or SVN separately.
+SVN KR includes the command-line tools and libraries it needs, so users don't need to install Homebrew or SVN separately.
 
 Passwords are stored in macOS Keychain instead of app preference files. Repository connections go directly to the SVN server configured by the user.
 
@@ -46,13 +46,7 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.4.1 Release Notes
+## Version 0.5.15 Release Notes
 
-• Fixed checkout into user-selected folders under App Sandbox
-• Added a per-repository option for self-signed certificates and hostname mismatches
-• Added a button to open the current SVN working folder in Finder
-• Replaced diff errors for unversioned files with a clear status message
-• Fixed the final Korean character sometimes being omitted from commit messages
-• Cleared messages after commits and refreshed automatically when the window becomes active
-• Determined update status from actual remote changes for mixed-revision working copies
-• Removed quarantine attributes from App Store package contents
+• Renamed the app to SVN KR and updated related screens and metadata.
+• Restored the copyright holder in the About window and app bundle metadata.

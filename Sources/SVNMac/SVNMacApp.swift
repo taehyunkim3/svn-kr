@@ -101,7 +101,7 @@ struct SVNMacApp: App {
                 .buttonStyle(.bordered)
         }
 
-        Window(appLanguage.text("SVN for Mac 정보", "About SVN for Mac"), id: "app-about") {
+        Window(appLanguage.text("SVN KR 정보", "About SVN KR"), id: "app-about") {
             AppAboutView(updateChecker: updateChecker)
                 .environment(\.appLanguage, appLanguage)
                 .buttonStyle(.bordered)

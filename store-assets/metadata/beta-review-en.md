@@ -2,11 +2,11 @@
 
 ## Sign-in Required
 
-No. SVN for Mac does not require an app account.
+No. SVN KR does not require an app account.
 
 ## Review Notes
 
-SVN for Mac includes an in-app sample project so the main features can be reviewed without an SVN server or account.
+SVN KR includes an in-app sample project so the main features can be reviewed without an SVN server or account.
 
 1. Launch the app.
 2. In the initial Add SVN Repository window, click **Browse Sample Project**.
@@ -21,10 +21,11 @@ Hello,
 
 Thank you for your review.
 
-We addressed both issues in a new build:
+In response to the Guideline 5.2.5 feedback, we renamed the app from **SVN for Mac** to **SVN KR**.
 
-1. The installed application name is now **SVN for Mac**, matching the product name in App Store Connect. We also updated the related metadata and screenshots. The Bundle Identifier remains unchanged.
-2. The app does not require a user account. We added an in-app demonstration mode containing sample working copies, local changes, diffs, file data, repository locks, remote changes, and commit history.
+We removed the term **for Mac** and updated the app name consistently across the App Store Connect metadata, installed application name, in-app references, and screenshots. The Bundle Identifier (`com.mrdevello.svnmac`) remains unchanged so existing users can continue to receive updates.
+
+The app does not require a user account. It includes an in-app demonstration mode containing sample working copies, local changes, diffs, file data, repository locks, remote changes, and commit history.
 
 To access the demonstration mode:
 

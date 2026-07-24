@@ -21,7 +21,7 @@ build_screenshot() {
 
   magick "$source" \
     -crop "$crop" +repage \
-    -resize '2380x1390>' \
+    -resize '2380x1390' \
     "$window_image"
 
   magick "$window_image" \
@@ -41,23 +41,44 @@ build_screenshot() {
 
 build_screenshot \
   "$SOURCE_DIR/history-overview-ko.png" \
-  '2580x1570+150+110' \
+  '1281x769+108+77' \
   'SVN 작업을 한눈에' \
   '서버·로컬·미커밋 변경을 하나의 타임라인으로 확인하세요.' \
   "$OUTPUT_DIR/01-timeline-overview.png"
 
 build_screenshot \
   "$SOURCE_DIR/changes-ko.png" \
-  '2620x1590+150+50' \
+  '1279x768+14+66' \
   '변경 파일만 골라 커밋' \
   '수정·미추적 파일을 확인하고 필요한 항목만 선택하세요.' \
   "$OUTPUT_DIR/02-selective-commit.png"
 
 build_screenshot \
   "$SOURCE_DIR/files-ko.png" \
-  '2560x1558+135+93' \
+  '1280x767+83+70' \
   '프로젝트 파일을 빠르게 탐색' \
   '폴더 구조와 파일 상태를 한 화면에서 확인하고 검색하세요.' \
   "$OUTPUT_DIR/03-working-copy-files.png"
+
+build_screenshot \
+  "$SOURCE_DIR/repository-locks-ko.png" \
+  '1279x770+80+57' \
+  '팀 작업 충돌을 미리 방지' \
+  '저장소 잠금 상태를 확인해 동시 편집 충돌을 줄이세요.' \
+  "$OUTPUT_DIR/04-repository-locks.png"
+
+build_screenshot \
+  "$SOURCE_DIR/credentials-ko.png" \
+  '1282x770+116+86' \
+  '프로젝트별 인증을 안전하게' \
+  '비밀번호는 macOS Keychain에 저장하고 저장소별로 관리하세요.' \
+  "$OUTPUT_DIR/05-project-credentials.png"
+
+build_screenshot \
+  "$SOURCE_DIR/add-repository-ko.png" \
+  '1281x771+115+86' \
+  '새 저장소를 바로 시작' \
+  'URL과 로컬 폴더를 지정해 새로운 작업 폴더를 체크아웃하세요.' \
+  "$OUTPUT_DIR/06-add-repository.png"
 
 echo "$OUTPUT_DIR"
