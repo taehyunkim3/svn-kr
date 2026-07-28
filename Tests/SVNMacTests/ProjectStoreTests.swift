@@ -42,6 +42,68 @@ import Testing
 }
 
 @MainActor
+@Test func staleRevertCompletionDoesNotMutateNewProject() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/revert-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/revert-second")
+    let entry = SVNStatusEntry(path: "보고서.hwp", item: .modified)
+    let client = StubSVNClient(delaysByPath: [first.path: .milliseconds(100)])
+    let store = makeStore(projects: [first, second], client: client)
+    store.selectedPaths = [entry.path]
+
+    let task = Task { await store.confirmRevert(RevertRequest(entry: entry)) }
+    try? await Task.sleep(for: .milliseconds(10))
+    store.selectedProjectID = second.id
+    store.notice = "둘째 프로젝트 알림"
+    await task.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.notice == "둘째 프로젝트 알림")
+}
+
+@MainActor
+@Test func staleUpdatePreviewDoesNotPublishChanges() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/update-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/update-second")
+    let change = SVNStatusEntry(path: "서버변경.txt", item: .modified)
+    let client = StubSVNClient(
+        delaysByPath: [first.path: .milliseconds(100)],
+        remoteChangesByPath: [first.path: [change]]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let task = Task { await store.previewUpdate() }
+    try? await Task.sleep(for: .milliseconds(10))
+    store.selectedProjectID = second.id
+    await task.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.remoteChanges.isEmpty)
+    #expect(!store.isShowingUpdatePreview)
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func staleFileHistoryDoesNotOpenOnNewProject() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/history-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/history-second")
+    let client = StubSVNClient(
+        delaysByPath: [first.path: .milliseconds(100)],
+        fileLogsByPath: [first.path: [makeLog(revision: "42")]]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let task = Task { await store.loadFileHistory(for: "보고서.hwp") }
+    try? await Task.sleep(for: .milliseconds(10))
+    store.selectedProjectID = second.id
+    await task.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.fileHistory.isEmpty)
+    #expect(store.fileHistoryPath == nil)
+    #expect(!store.isShowingFileHistory)
+}
+
+@MainActor
 @Test func preparesBackupsOpensOnlyCopiesAndResolvesSelectedWholeVersion() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
@@ -1644,6 +1706,8 @@ private actor StubSVNClient: SVNClientServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
+    let remoteChangesByPath: [String: [SVNStatusEntry]]
+    let fileLogsByPath: [String: [SVNLogEntry]]
     let checkoutResult: String
     let checkoutProgress: [String]
     let lockInfoByPath: [String: SVNLockInfo]
@@ -1690,6 +1754,8 @@ private actor StubSVNClient: SVNClientServing {
         statusesByPath: [String: [SVNStatusEntry]] = [:],
         revisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
+        remoteChangesByPath: [String: [SVNStatusEntry]] = [:],
+        fileLogsByPath: [String: [SVNLogEntry]] = [:],
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
         lockInfoByPath: [String: SVNLockInfo] = [:],
@@ -1719,6 +1785,8 @@ private actor StubSVNClient: SVNClientServing {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
         self.delaysByPath = delaysByPath
+        self.remoteChangesByPath = remoteChangesByPath
+        self.fileLogsByPath = fileLogsByPath
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
         self.lockInfoByPath = lockInfoByPath
@@ -1888,15 +1956,22 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return false
     }
-    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] { [] }
+    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] {
+        await delay(for: path)
+        return remoteChangesByPath[path] ?? []
+    }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "updated" }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
+        await delay(for: path)
         revertCalls.append(RevertCall(workingCopyPath: path, relativePath: relativePath))
         return "reverted"
     }
     func requestedReverts() -> [RevertCall] { revertCalls }
-    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] { [] }
+    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+        await delay(for: path)
+        return fileLogsByPath[path] ?? []
+    }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(

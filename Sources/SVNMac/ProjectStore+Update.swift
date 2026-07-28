@@ -25,15 +25,17 @@ extension ProjectStore {
         let operationID = beginOperation(.previewUpdate(project.id))
         defer { endOperation(operationID) }
         do {
-            remoteChanges = try await client.remoteChanges(
+            let changes = try await client.remoteChanges(
                 at: project.path,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
-            updateRemoteSummary(for: project.id, needsUpdate: !remoteChanges.isEmpty)
+            remoteChanges = changes
+            updateRemoteSummary(for: project.id, needsUpdate: !changes.isEmpty)
             isShowingUpdatePreview = true
         } catch {
+            guard selectedProjectID == project.id else { return }
             handleRemoteError(error, project: project, action: .update)
         }
     }

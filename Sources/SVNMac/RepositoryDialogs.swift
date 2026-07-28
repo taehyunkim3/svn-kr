@@ -50,7 +50,10 @@ struct AuthenticationRequiredView: View {
             HStack {
                 Button(appLanguage.text("키체인 다시 시도", "Try Keychain Again")) {
                     isSubmitting = true
-                    Task { await store.retryKeychainAccess(for: request) }
+                    Task {
+                        await store.retryKeychainAccess(for: request)
+                        isSubmitting = false
+                    }
                 }
                 .disabled(isSubmitting)
                 .help(appLanguage.text("macOS Keychain 접근 창을 다시 표시합니다.", "Show the macOS Keychain access prompt again."))

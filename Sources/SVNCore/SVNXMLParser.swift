@@ -52,7 +52,7 @@ public enum SVNXMLParser {
     /// 미추적·무시 항목처럼 리비전이 없는 경로는 범위에서 제외합니다.
     public static func workingCopyRevision(from data: Data) throws -> SVNWorkingCopyRevision {
         let entries = try workingCopyEntries(from: data)
-        let revisions = entries.compactMap(\.revision).compactMap(Int.init)
+        let revisions = entries.compactMap(\.revision).compactMap(Int.init).filter { $0 >= 0 }
         guard let minimum = revisions.min(), let maximum = revisions.max() else {
             throw SVNError.malformedResponse
         }
@@ -228,6 +228,11 @@ private final class LockBuilder {
     var owner = ""
     var comment: String?
     var created: Date?
+    private let fractionalDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
     private let dateFormatter = ISO8601DateFormatter()
 
     init(path: String) { self.path = path }
@@ -237,7 +242,8 @@ private final class LockBuilder {
         case "token": token = value
         case "owner": owner = value
         case "comment": comment = value
-        case "created": created = dateFormatter.date(from: value)
+        case "created":
+            created = fractionalDateFormatter.date(from: value) ?? dateFormatter.date(from: value)
         default: break
         }
     }

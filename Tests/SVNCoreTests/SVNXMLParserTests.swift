@@ -60,6 +60,18 @@ import Testing
     #expect(revision.isMixed)
 }
 
+@Test func ignoresScheduledAdditionsWhenCalculatingWorkingCopyRevision() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="13295"/></entry>
+      <entry path="new.txt"><wc-status item="added" revision="-1"/></entry>
+    </target></status>
+    """
+    let revision = try SVNXMLParser.workingCopyRevision(from: Data(xml.utf8))
+    #expect(revision.minimum == "13295")
+    #expect(revision.maximum == "13295")
+}
+
 @Test func rejectsWorkingCopyRevisionWithoutVersionedEntries() {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
@@ -132,6 +144,7 @@ import Testing
     #expect(locks[0].path == "Documents/plan.pptx")
     #expect(locks[0].owner == "tester")
     #expect(locks[0].comment == "editing")
+    #expect(locks[0].created != nil)
 }
 
 @Test func parsesConflictArtifactsAndHidesTemporaryStatusEntries() throws {

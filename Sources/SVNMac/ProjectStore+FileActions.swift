@@ -11,10 +11,14 @@ extension ProjectStore {
         defer { endOperation(operationID) }
         do {
             _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
+            guard selectedProjectID == project.id else { return }
             selectedPaths.remove(request.entry.path)
             notice = AppLanguage.current.text("로컬 변경을 되돌렸습니다: \(request.entry.path)", "Reverted local changes: \(request.entry.path)")
             await refresh()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func loadFileHistory(for relativePath: String) async {
@@ -22,16 +26,21 @@ extension ProjectStore {
         let operationID = beginOperation(.fileHistory(project.id))
         defer { endOperation(operationID) }
         do {
-            fileHistory = try await client.fileLog(
+            let history = try await client.fileLog(
                 at: project.path,
                 relativePath: relativePath,
                 limit: 100,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
+            guard selectedProjectID == project.id else { return }
+            fileHistory = history
             fileHistoryPath = relativePath
             isShowingFileHistory = true
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func revealInFinder(_ relativePath: String) {
