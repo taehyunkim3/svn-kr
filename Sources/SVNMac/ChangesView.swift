@@ -218,7 +218,7 @@ struct ChangesView: View {
                     Button(appLanguage.text("동일 한글 경로 정리", "Clean Up Equivalent Path")) {
                         Task { await store.repairCanonicalAliases() }
                     }
-                    .disabled(store.isWorking)
+                    .disabled(store.isSelectedProjectActionBlocked)
                 } else {
                     Text(appLanguage.text(
                         "서버 중복 경로 수동 정리 필요",
@@ -254,7 +254,7 @@ struct ChangesView: View {
                 ) {
                     store.requestDeletion(missingEntries)
                 }
-                .disabled(store.isWorking)
+                .disabled(store.isSelectedProjectActionBlocked)
             }
             Spacer()
             Button(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules"), systemImage: "eye.slash") {

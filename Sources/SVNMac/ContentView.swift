@@ -104,7 +104,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
-                .disabled(store.selectedProject == nil || store.isWorking)
+                .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
             Button {
                 Task { await store.previewUpdate() }
@@ -115,7 +115,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
-                .disabled(store.selectedProject == nil || store.isWorking)
+                .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
             if store.showsGlobalProgress {
                 ProgressView()

@@ -101,7 +101,7 @@ struct WorkingCopyBrowserView: View {
                     Button(appLanguage.text("잠금 해제", "Release Lock")) {
                         Task { await store.unlock(lock) }
                     }
-                    .disabled(store.isWorking)
+                    .disabled(store.isSelectedProjectActionBlocked)
                 }
             }
             Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {

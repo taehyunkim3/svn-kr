@@ -51,7 +51,7 @@ struct RepositoryLocksView: View {
                         Button(appLanguage.text("내 잠금 해제", "Release My Lock")) {
                             Task { await store.unlock(lock) }
                         }
-                        .disabled(store.isWorking)
+                        .disabled(store.isSelectedProjectActionBlocked)
                     }
                 }
                 .padding(.vertical, 4)

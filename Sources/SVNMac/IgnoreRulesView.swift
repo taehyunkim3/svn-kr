@@ -81,7 +81,7 @@ struct IgnoreRulesView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(
                     store.selectedGitIgnoreImportIDs.isEmpty
-                        || store.isWorking
+                        || store.isSelectedProjectActionBlocked
                 )
             }
             .padding()
@@ -133,7 +133,7 @@ struct IgnoreRulesView: View {
             } label: {
                 Label(appLanguage.text("제거", "Remove"), systemImage: "trash")
             }
-            .disabled(store.isWorking || rule.inheritedFrom != nil)
+            .disabled(store.isSelectedProjectActionBlocked || rule.inheritedFrom != nil)
             .help(rule.inheritedFrom == nil
                 ? appLanguage.text("이 규칙을 제거합니다.", "Remove this rule.")
                 : appLanguage.text(
@@ -148,7 +148,7 @@ struct IgnoreRulesView: View {
             Button(appLanguage.text("Git 규칙과 비교", "Compare Git Rules"), systemImage: "arrow.triangle.2.circlepath") {
                 Task { await store.compareGitIgnore() }
             }
-            .disabled(store.isWorking)
+            .disabled(store.isSelectedProjectActionBlocked)
             if let comparedAt = store.gitIgnoreLastComparedAt {
                 Text(appLanguage.text(
                     "마지막 비교 \(comparedAt.formatted(date: .omitted, time: .shortened))",

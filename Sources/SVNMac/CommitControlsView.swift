@@ -41,7 +41,11 @@ struct CommitControlsView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!store.canCommitSelectedPaths || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+                .disabled(
+                    !store.canCommitSelectedPaths
+                        || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || store.isSelectedProjectActionBlocked
+                )
                 .help(appLanguage.text("선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.", "Commit the selected files to the SVN server with the entered message."))
             }
         }

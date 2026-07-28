@@ -104,7 +104,7 @@ struct HistoryView: View {
                     Button(appLanguage.text("이전 기록 50개 더 불러오기", "Load 50 More")) {
                         Task { await store.loadMoreHistory() }
                     }
-                    .disabled(store.isWorking)
+                    .disabled(store.isSelectedProjectActionBlocked)
                     Spacer()
                 }
                 .padding(.vertical, 8)

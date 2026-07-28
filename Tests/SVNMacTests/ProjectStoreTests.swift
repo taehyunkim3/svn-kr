@@ -1228,6 +1228,31 @@ import Testing
 }
 
 @MainActor
+@Test func selectedProjectActionsIgnoreUnrelatedReadOperations() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let other = SVNProject(name: "다른", path: "/tmp/other")
+    let store = makeStore(projects: [selected, other])
+
+    let selectedHistoryID = store.beginOperation(.fileHistory(selected.id))
+    let otherCommitID = store.beginOperation(.commit(other.id))
+    #expect(!store.isSelectedProjectActionBlocked)
+
+    let refreshID = store.beginOperation(.refresh(selected.id))
+    #expect(store.isRefreshingSelectedProject)
+    #expect(store.isSelectedProjectActionBlocked)
+    store.endOperation(refreshID)
+
+    let mutationID = store.beginOperation(.ignore(selected.id))
+    #expect(store.isMutatingSelectedProject)
+    #expect(store.isSelectedProjectActionBlocked)
+
+    store.endOperation(mutationID)
+    store.endOperation(selectedHistoryID)
+    store.endOperation(otherCommitID)
+    #expect(!store.isSelectedProjectActionBlocked)
+}
+
+@MainActor
 @Test func checksConflictsInLargeSelection() {
     let statuses = (0..<20_000).map {
         SVNStatusEntry(path: "Sources/file-\($0).swift", item: .modified)

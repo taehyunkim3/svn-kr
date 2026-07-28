@@ -291,6 +291,45 @@ final class ProjectStore: ObservableObject {
         operationIsActive { .update($0) }
     }
 
+    var isRefreshingSelectedProject: Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { operation in
+            switch operation.kind {
+            case .refresh(let operationProjectID),
+                 .refreshLocal(let operationProjectID),
+                 .refreshHistory(let operationProjectID):
+                operationProjectID == projectID
+            default:
+                false
+            }
+        }
+    }
+
+    /// 선택 프로젝트의 작업 복사본 또는 저장소 상태를 바꾸는 작업만 추적합니다.
+    /// 파일 기록·diff·탐색처럼 읽기 전용인 작업은 다른 액션을 불필요하게 막지 않습니다.
+    var isMutatingSelectedProject: Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { operation in
+            switch operation.kind {
+            case .ignore(let operationProjectID),
+                 .delete(let operationProjectID),
+                 .lock(let operationProjectID),
+                 .resolveConflict(let operationProjectID),
+                 .revert(let operationProjectID),
+                 .update(let operationProjectID),
+                 .commit(let operationProjectID),
+                 .recover(let operationProjectID):
+                operationProjectID == projectID
+            default:
+                false
+            }
+        }
+    }
+
+    var isSelectedProjectActionBlocked: Bool {
+        isRefreshingSelectedProject || isMutatingSelectedProject
+    }
+
     var isPathRecoveryRunning: Bool {
         guard let projectID = pathRecoverySourceProjectID else { return false }
         return activeOperations.contains { $0.kind == .recover(projectID) }

@@ -51,7 +51,7 @@ struct DeletionConfirmationView: View {
                 Button(appLanguage.text("저장소에서도 삭제로 표시", "Mark for Deletion"), role: .destructive) {
                     Task { await store.confirmDeletion(request) }
                 }
-                .disabled(store.isWorking)
+                .disabled(store.isSelectedProjectActionBlocked)
             }
         }
         .padding()
