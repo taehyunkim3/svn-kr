@@ -37,7 +37,7 @@ import Testing
         "FileHistoryView.swift",
     ]
 
-    #expect(!content.contains(".alert(appLanguage.text(\"오류\", \"Error\")"))
+    #expect(!content.contains(".alert(appLanguage.localized(\"ui.error.a08d7e0d\")"))
     #expect(content.contains("errorMessage: $store.errorMessage"))
     #expect(content.contains("isEnabled: !store.hasContextualErrorPresentationOwner"))
 
@@ -81,8 +81,8 @@ import Testing
     )
 
     #expect(source.contains("!store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true"))
-    #expect(source.contains("삭제 예정 경로의 서버 변경은 목록에 표시되지 않을 수 있습니다."))
-    #expect(source.contains("업데이트 실행"))
+    #expect(source.contains("\"ui.server.changes.inside.a.pending.deletion.may.not.475f8db6\""))
+    #expect(source.contains("\"ui.run.update.e17c8217\""))
 }
 
 private func svnMacSources() -> URL {

@@ -18,8 +18,8 @@ import Testing
     #expect(contentView.contains("label: \"\\(store.repositoryLocks.count)\""))
     #expect(!changesView.contains("$store.isShowingLocks"))
     #expect(!changesView.contains("\"잠금 목록\", \"Locks\""))
-    #expect(projectBadges.contains("잠긴 파일 \\(summary.lockCount)개"))
-    #expect(locksView.contains("잠금 파일은 편집 중인 파일에 다른 사용자가 동시에 커밋하지 못하도록"))
+    #expect(projectBadges.contains("\"ui.locked.files.457daf19\""))
+    #expect(locksView.contains("\"ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309\""))
 }
 
 @Test func repositoryLocksActionAppearsBeforeOpenInFinder() throws {
@@ -31,7 +31,7 @@ import Testing
     let contentView = try source(named: "ContentView.swift", in: sources)
 
     let locksButton = try #require(contentView.range(of: "repositoryLocksButton"))
-    let finderButton = try #require(contentView.range(of: "Button(appLanguage.text(\"Finder에서 열기\""))
+    let finderButton = try #require(contentView.range(of: "Button(appLanguage.localized(\"ui.open.in.finder.35aa9225\""))
     #expect(locksButton.lowerBound < finderButton.lowerBound)
 }
 
@@ -44,12 +44,12 @@ import Testing
     let contentView = try source(named: "ContentView.swift", in: sources)
 
     #expect(contentView.contains("Image(systemName: \"arrow.clockwise\")"))
-    #expect(contentView.contains("Text(appLanguage.text(\"새로고침\", \"Refresh\"))"))
+    #expect(contentView.contains("Text(appLanguage.localized(\"ui.refresh.0aca6bd2\"))"))
     #expect(contentView.contains("Image(systemName: \"arrow.down.circle\")"))
-    #expect(contentView.contains("Text(appLanguage.text(\"업데이트\", \"Update\"))"))
+    #expect(contentView.contains("Text(appLanguage.localized(\"ui.update.0f38eb76\"))"))
     #expect(contentView.components(separatedBy: ".padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)").count == 4)
-    #expect(!contentView.contains("Button(appLanguage.text(\"새로고침\", \"Refresh\"), systemImage:"))
-    #expect(!contentView.contains("Button(appLanguage.text(\"업데이트\", \"Update\"), systemImage:"))
+    #expect(!contentView.contains("Button(appLanguage.localized(\"ui.refresh.0aca6bd2\"), systemImage:"))
+    #expect(!contentView.contains("Button(appLanguage.localized(\"ui.update.0f38eb76\"), systemImage:"))
 }
 
 private func source(named name: String, in directory: URL) throws -> String {

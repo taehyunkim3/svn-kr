@@ -38,8 +38,9 @@ struct AppReviewReadinessTests {
     @Test func firstRunRepositorySheetExposesSampleProjectEntry() throws {
         let source = try repositorySource("RepositoryDialogs.swift")
 
-        #expect(source.contains("샘플 프로젝트 둘러보기"))
-        #expect(source.contains("Browse Sample Project"))
+        #expect(source.contains("\"ui.browse.sample.project.9ad211da\""))
+        #expect(AppLanguage.korean.localized("ui.browse.sample.project.9ad211da") == "샘플 프로젝트 둘러보기")
+        #expect(AppLanguage.english.localized("ui.browse.sample.project.9ad211da") == "Browse Sample Project")
         #expect(source.contains("onBrowseDemo()"))
     }
 
@@ -52,7 +53,7 @@ struct AppReviewReadinessTests {
 
         #expect(source.contains("@AppStorage(AppSettings.languageKey)"))
         #expect(source.contains("ForEach(AppLanguage.allCases"))
-        #expect(source.contains("appLanguage.text(\"언어\", \"Language\")"))
+        #expect(source.contains("appLanguage.localized(\"ui.language.8e5b78fb\")"))
         #expect(source.contains("systemImage: \"globe\""))
     }
 
@@ -61,9 +62,9 @@ struct AppReviewReadinessTests {
         let viewStart = try #require(file.range(of: "struct AddRepositoryView: View"))
         let viewEnd = try #require(file.range(of: "struct CredentialsView: View"))
         let source = String(file[viewStart.lowerBound..<viewEnd.lowerBound])
-        let register = try #require(source.range(of: "Button(appLanguage.text(\"기존 로컬 폴더 등록…\""))
-        let sample = try #require(source.range(of: "Button(appLanguage.text(\"샘플 프로젝트 둘러보기\""))
-        let cancel = try #require(source.range(of: "Button(appLanguage.text(\"취소\""))
+        let register = try #require(source.range(of: "Button(appLanguage.localized(\"ui.register.existing.local.folder.fcf466c4\""))
+        let sample = try #require(source.range(of: "Button(appLanguage.localized(\"ui.browse.sample.project.9ad211da\""))
+        let cancel = try #require(source.range(of: "Button(appLanguage.localized(\"ui.cancel.a2ce2c22\""))
         let spacer = register.lowerBound < sample.lowerBound
             ? source.range(of: "Spacer()", range: register.upperBound..<sample.lowerBound)
             : nil
@@ -75,9 +76,9 @@ struct AppReviewReadinessTests {
 
     @Test func demoExitUsesVisibleOrangeTextButton() throws {
         let source = try repositorySource("ContentView.swift")
-        let start = try #require(source.range(of: "Button(appLanguage.text(\"데모 종료\", \"Exit Demo\"))"))
+        let start = try #require(source.range(of: "Button(appLanguage.localized(\"ui.exit.demo.3a329c52\"))"))
         let end = try #require(source.range(
-            of: "Text(appLanguage.text(\"새로고침\", \"Refresh\"))",
+            of: "Text(appLanguage.localized(\"ui.refresh.0aca6bd2\"))",
             range: start.upperBound..<source.endIndex
         ))
         let demoButton = String(source[start.lowerBound..<end.lowerBound])
@@ -90,8 +91,8 @@ struct AppReviewReadinessTests {
     @Test func exitingEnvironmentDemoReturnsToLiveStore() throws {
         let source = try repositorySource("SVNMacApp.swift")
 
-        #expect(source.contains("_liveStore = StateObject(wrappedValue: ProjectStore())"))
-        #expect(source.contains("_demoStore = StateObject(wrappedValue: ProjectStore.demo())"))
+        #expect(source.contains("_liveStore = State(initialValue: ProjectStore())"))
+        #expect(source.contains("_demoStore = State(initialValue: ProjectStore.demo())"))
     }
 
     private func repositorySource(_ filename: String) throws -> String {
