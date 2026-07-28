@@ -493,11 +493,11 @@ public actor SVNClient {
         }
         let statusByCanonicalPath = Dictionary(
             uniqueKeysWithValues: snapshot.statuses.map {
-                ($0.path.precomposedStringWithCanonicalMapping, $0)
+                (SVNPathIdentity(rawPath: $0.path), $0)
             }
         )
         let invalidPaths = resolvedPaths.filter {
-            statusByCanonicalPath[$0.precomposedStringWithCanonicalMapping]?.canScheduleRepositoryDeletion != true
+            statusByCanonicalPath[SVNPathIdentity(rawPath: $0)]?.canScheduleRepositoryDeletion != true
         }
         guard invalidPaths.isEmpty else {
             throw SVNError.unresolvedMissingPaths(paths: invalidPaths)
@@ -513,10 +513,10 @@ public actor SVNClient {
 
         let after = try await workingCopySnapshot(at: path, credentials: credentials)
         let deletedCanonicalPaths = Set(after.statuses.lazy.filter { $0.item == .deleted }.map {
-            $0.path.precomposedStringWithCanonicalMapping
+            SVNPathIdentity(rawPath: $0.path)
         })
         let failed = targets.filter {
-            !deletedCanonicalPaths.contains($0.precomposedStringWithCanonicalMapping)
+            !deletedCanonicalPaths.contains(SVNPathIdentity(rawPath: $0))
         }
         guard failed.count < targets.count else {
             throw SVNError.deletionValidationFailed(paths: failed)
@@ -1000,20 +1000,20 @@ public actor SVNClient {
             )
         }
         let currentStatuses = snapshot.statuses
-        var statusByPath: [String: SVNStatusKind] = [:]
+        var statusByPath: [SVNPathIdentity: SVNStatusKind] = [:]
         for status in currentStatuses {
-            statusByPath[status.path.precomposedStringWithCanonicalMapping] = status.item
+            statusByPath[SVNPathIdentity(rawPath: status.path)] = status.item
         }
 
         let normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
         let unresolvedMissingPaths = resolvedPaths.filter {
-            statusByPath[$0.precomposedStringWithCanonicalMapping] == .missing
+            statusByPath[SVNPathIdentity(rawPath: $0)] == .missing
         }
         guard unresolvedMissingPaths.isEmpty else {
             throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
         }
         let additions = Self.normalizedCommitPaths(resolvedPaths.filter {
-            statusByPath[$0.precomposedStringWithCanonicalMapping] == .unversioned
+            statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
         })
 
         var scheduledByThisCommit: [String] = []
@@ -1211,17 +1211,15 @@ public actor SVNClient {
         versionedPathsByCanonicalKey: [String: [String]],
         preexistingScheduledAdditionPaths: [String] = []
     ) -> [String] {
-        let preexistingKeys = Set(preexistingScheduledAdditionPaths.map {
-            $0.precomposedStringWithCanonicalMapping
-        })
+        let preexistingKeys = Set(preexistingScheduledAdditionPaths.map(SVNPathIdentity.init(rawPath:)))
         let roots = additions.map { path -> String in
             let components = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
             guard !components.isEmpty else { return path }
             for length in 1...components.count {
                 let prefix = components.prefix(length).joined(separator: "/")
-                let key = prefix.precomposedStringWithCanonicalMapping
-                if preexistingKeys.contains(key) { continue }
-                if versionedPathsByCanonicalKey[key] == nil { return prefix }
+                let identity = SVNPathIdentity(rawPath: prefix)
+                if preexistingKeys.contains(identity) { continue }
+                if versionedPathsByCanonicalKey[identity.canonicalKey] == nil { return prefix }
             }
             return path
         }

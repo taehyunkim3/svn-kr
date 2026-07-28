@@ -24,7 +24,7 @@ struct ConflictResolutionView: View {
         .interactiveDismissDisabled(store.isResolvingConflict)
         .alert(
             confirmationTitle,
-            isPresented: Binding(get: { pendingChoice != nil }, set: { if !$0 { pendingChoice = nil } })
+            isPresented: .isPresenting($pendingChoice)
         ) {
             Button(confirmationActionTitle, role: .destructive) {
                 guard let choice = pendingChoice else { return }

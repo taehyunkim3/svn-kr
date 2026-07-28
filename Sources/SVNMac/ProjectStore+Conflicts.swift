@@ -98,10 +98,10 @@ extension ProjectStore {
                 credentials: nil
             )
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
-            let canonicalVersionedPath = session.versionedPath.precomposedStringWithCanonicalMapping
+            let versionedPathIdentity = SVNPathIdentity(rawPath: session.versionedPath)
             guard !verifiedSnapshot.statuses.contains(where: { entry in
                 entry.item == .conflicted
-                    && entry.path.precomposedStringWithCanonicalMapping == canonicalVersionedPath
+                    && SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
             }) else {
                 throw ConflictFileError.conflictResolutionVerificationFailed
             }

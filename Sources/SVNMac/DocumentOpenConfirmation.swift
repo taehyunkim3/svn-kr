@@ -8,10 +8,7 @@ private struct DocumentOpenConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         content.confirmationDialog(
             appLanguage.text("먼저 파일을 잠그고 여시겠습니까?", "Lock This File Before Opening?"),
-            isPresented: Binding(
-                get: { store.documentOpenRequest != nil },
-                set: { if !$0 { store.documentOpenRequest = nil } }
-            ),
+            isPresented: .isPresenting($store.documentOpenRequest),
             titleVisibility: .visible,
             presenting: store.documentOpenRequest
         ) { request in

@@ -1,7 +1,7 @@
 import Foundation
 import SVNCore
 
-struct DocumentOpenRequest: Identifiable, Equatable {
+struct DocumentOpenRequest: Identifiable, Equatable, Sendable {
     let id = UUID()
     let relativePath: String
     let repositoryRelativePath: String

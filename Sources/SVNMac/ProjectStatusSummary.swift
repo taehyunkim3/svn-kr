@@ -8,7 +8,7 @@ struct ProjectStatusSummary: Equatable {
     var needsUpdate = false
 }
 
-struct RevertRequest: Identifiable, Equatable {
+struct RevertRequest: Identifiable, Equatable, Sendable {
     let entry: SVNStatusEntry
     var id: String { entry.path }
 }
