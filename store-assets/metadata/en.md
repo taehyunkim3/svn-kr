@@ -46,9 +46,7 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.5.16 Release Notes
+## Version 0.5.17 Release Notes
 
-• Clearly distinguishes locally missing items from SVN items already scheduled for deletion.
-• Requires an explicit restore-or-repository-delete choice before committing a missing item.
-• Adds batch deletion conversion, pre-commit restoration, deletion summaries, and confirmation.
-• Adds SVN global-ignore management and selective import of compatible .gitignore rules.
+• Discovers .gitignore files in nested directories as well as the working-copy root.
+• Resolves each rule relative to its source directory before comparison and selective import.

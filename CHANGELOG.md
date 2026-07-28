@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.17 (2026-07-28)
+
+- Discovered nested `.gitignore` files and resolved their rules relative to each source directory.
+- Compared and imported compatible ignore rules across the full working-copy tree.
+
 ## 0.5.16 (2026-07-28)
 
 - Distinguished locally missing files from SVN items already marked for deletion.
