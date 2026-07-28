@@ -2,12 +2,13 @@ import SwiftUI
 import SVNCore
 
 struct WorkingCopyBrowserView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Binding var searchText: String
     @State private var filteredSearchTree: [WorkingCopyFileNode] = []
 
     var body: some View {
+        @Bindable var store = store
         List(selection: $store.selectedBrowserPath) {
             OutlineGroup(displayedTree, children: \.children) { node in
                 fileRow(node)
@@ -27,7 +28,7 @@ struct WorkingCopyBrowserView: View {
             }
         }
         .sheet(isPresented: $store.isShowingFileHistory) {
-            FileHistoryView().environmentObject(store)
+            FileHistoryView().environment(store)
         }
         .task(id: FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)) {
             let input = FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)

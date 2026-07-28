@@ -4,8 +4,8 @@ import SwiftUI
 @main
 struct SVNMacApp: App {
     // ProjectStore는 앱 창의 수명 동안 하나만 유지하며 모든 하위 화면이 공유합니다.
-    @StateObject private var liveStore: ProjectStore
-    @StateObject private var demoStore: ProjectStore
+    @State private var liveStore: ProjectStore
+    @State private var demoStore: ProjectStore
     @StateObject private var updateChecker: AppUpdateChecker
     @State private var isDemoMode: Bool
     @State private var isShowingContactSupport = false
@@ -18,8 +18,8 @@ struct SVNMacApp: App {
 
     init() {
         let startsInDemoMode = ProcessInfo.processInfo.environment["SVN_MAC_DEMO_MODE"] == "1"
-        _liveStore = StateObject(wrappedValue: ProjectStore())
-        _demoStore = StateObject(wrappedValue: ProjectStore.demo())
+        _liveStore = State(initialValue: ProjectStore())
+        _demoStore = State(initialValue: ProjectStore.demo())
         _updateChecker = StateObject(wrappedValue: AppUpdateChecker())
         _isDemoMode = State(initialValue: startsInDemoMode)
     }
@@ -30,7 +30,7 @@ struct SVNMacApp: App {
                 onBrowseDemo: { isDemoMode = true },
                 onExitDemo: { isDemoMode = false }
             )
-                .environmentObject(isDemoMode ? demoStore : liveStore)
+                .environment(isDemoMode ? demoStore : liveStore)
                 .environment(\.appLanguage, appLanguage)
                 .id(isDemoMode)
                 // 앱 안의 기능 동작은 기본적으로 테두리가 있는 버튼으로 표시합니다.

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 import SVNCore
 
 struct SVNProject: Codable, Identifiable, Hashable {
@@ -88,43 +89,44 @@ struct SVNAuthenticationRequest: Identifiable, Equatable {
 }
 
 @MainActor
-final class ProjectStore: ObservableObject {
+@Observable
+final class ProjectStore {
     // MARK: - 화면에 공개하는 상태
 
-    @Published var projects: [SVNProject] = [] { didSet { save() } }
-    @Published var selectedProjectID: SVNProject.ID? {
+    private var changesState = ProjectChangesStore()
+    private var browserState = ProjectBrowserStore()
+    private var historyState = ProjectHistoryStore()
+    private var updateState = ProjectUpdateStore()
+    var requiresGlobalIgnoreImportConfirmation = false
+    var selectedBrowserPath: String?
+    var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
+    private(set) var activeOperations: [ProjectOperation] = []
+    var isShowingAddRepository = false
+    var isShowingCredentials = false
+    var isShowingIgnoreRules = false
+    var isShowingLocks = false
+    var isShowingUpdatePreview = false
+    var isShowingFileHistory = false
+    var isShowingPathRecovery = false
+    var pathRecoveryPreview: SVNRecoveryPreview?
+    var documentOpenRequest: DocumentOpenRequest?
+    var activeConflictSession: ConflictResolutionSession?
+    var resolvingConflictSessionID: ConflictResolutionSession.ID?
+    var resolvingConflictProjectID: SVNProject.ID?
+    var revertRequest: RevertRequest?
+    var deletionRequest: DeletionRequest?
+    var authenticationRequest: SVNAuthenticationRequest?
+    var lastCompletedCommitMessage: String?
+    var notice: String?
+    var errorMessage: String?
+    private(set) var checkoutLog = ""
+    var selectedProjectID: SVNProject.ID? {
         didSet {
             guard selectedProjectID != oldValue else { return }
             resetSelectedProjectState()
         }
     }
-    @Published private var changesState = ProjectChangesState()
-    @Published private var browserState = ProjectBrowserState()
-    @Published private var historyState = ProjectHistoryState()
-    @Published private var updateState = ProjectUpdateState()
-    @Published var requiresGlobalIgnoreImportConfirmation = false
-    @Published var selectedBrowserPath: String?
-    @Published var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
-    @Published private(set) var activeOperations: [ProjectOperation] = []
-    @Published var isShowingAddRepository = false
-    @Published var isShowingCredentials = false
-    @Published var isShowingIgnoreRules = false
-    @Published var isShowingLocks = false
-    @Published var isShowingUpdatePreview = false
-    @Published var isShowingFileHistory = false
-    @Published var isShowingPathRecovery = false
-    @Published var pathRecoveryPreview: SVNRecoveryPreview?
-    @Published var documentOpenRequest: DocumentOpenRequest?
-    @Published var activeConflictSession: ConflictResolutionSession?
-    @Published var resolvingConflictSessionID: ConflictResolutionSession.ID?
-    @Published var resolvingConflictProjectID: SVNProject.ID?
-    @Published var revertRequest: RevertRequest?
-    @Published var deletionRequest: DeletionRequest?
-    @Published var authenticationRequest: SVNAuthenticationRequest?
-    @Published var lastCompletedCommitMessage: String?
-    @Published var notice: String?
-    @Published var errorMessage: String?
-    @Published private(set) var checkoutLog = ""
+    var projects: [SVNProject] = [] { didSet { save() } }
 
     var statuses: [SVNStatusEntry] {
         get { changesState.statuses }
@@ -1014,10 +1016,10 @@ final class ProjectStore: ObservableObject {
         latestRequestIDs.removeAll()
         failedRefreshCycleIDs = []
         automaticRefreshBlockedProjectID = nil
-        changesState = ProjectChangesState()
-        browserState = ProjectBrowserState()
-        historyState = ProjectHistoryState()
-        updateState = ProjectUpdateState()
+        changesState = ProjectChangesStore()
+        browserState = ProjectBrowserStore()
+        historyState = ProjectHistoryStore()
+        updateState = ProjectUpdateStore()
         requiresGlobalIgnoreImportConfirmation = false
         selectedBrowserPath = nil
         documentOpenRequest = nil

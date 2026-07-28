@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DeletionConfirmationView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     let request: DeletionRequest
 

@@ -1,10 +1,11 @@
 import SwiftUI
 
 private struct RevertConfirmationModifier: ViewModifier {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
 
     func body(content: Content) -> some View {
+        @Bindable var store = store
         content.alert(
             appLanguage.text("로컬 변경을 되돌릴까요?", "Revert Local Changes?"),
             isPresented: .isPresenting($store.revertRequest),

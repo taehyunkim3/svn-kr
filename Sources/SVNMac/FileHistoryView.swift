@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct FileHistoryView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading) {

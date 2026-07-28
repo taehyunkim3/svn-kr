@@ -4,7 +4,7 @@ import SVNCore
 /// 선택한 서버 리비전의 실제 패치를 기록 목록과 분리해 표시합니다.
 /// 바이너리 변경처럼 SVN이 텍스트 패치를 만들 수 없는 경우도 의미 있는 상태로 안내합니다.
 struct HistoryRevisionDiffView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
 
     var body: some View {

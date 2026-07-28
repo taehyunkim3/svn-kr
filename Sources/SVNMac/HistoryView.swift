@@ -4,7 +4,7 @@ import SVNCore
 /// 서버 커밋 기록과 로컬 작업 복사본의 기준 위치를 표시하는 전용 화면입니다.
 /// ContentView는 탭 배치만 담당하고, 기록 행의 표현과 날짜 포맷은 이 타입이 소유합니다.
 struct HistoryView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone

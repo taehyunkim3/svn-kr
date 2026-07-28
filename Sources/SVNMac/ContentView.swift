@@ -5,7 +5,7 @@ import SVNCore
 struct ContentView: View {
     // MARK: - 앱 전역 상태와 화면 전용 입력 상태
 
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
@@ -26,6 +26,7 @@ struct ContentView: View {
     // MARK: - 최상위 화면 구성
 
     var body: some View {
+        @Bindable var store = store
         NavigationSplitView {
             List(selection: $store.selectedProjectID) {
                 Section(appLanguage.text("로컬 작업 폴더", "Local working folders")) {
@@ -140,25 +141,25 @@ struct ContentView: View {
         }
         .sheet(isPresented: $store.isShowingAddRepository) {
             AddRepositoryView(onBrowseDemo: onBrowseDemo)
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $store.isShowingCredentials) {
             if let project = store.selectedProject {
                 CredentialsView(project: project)
-                    .environmentObject(store)
+                    .environment(store)
             }
         }
         .sheet(isPresented: $store.isShowingUpdatePreview) {
             UpdatePreviewView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $store.isShowingLocks) {
             RepositoryLocksView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $store.authenticationRequest) { request in
             AuthenticationRequiredView(request: request)
-                .environmentObject(store)
+                .environment(store)
         }
         .detailedErrorPresenter(
             errorMessage: $store.errorMessage,

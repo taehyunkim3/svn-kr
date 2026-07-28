@@ -3,12 +3,13 @@ import SVNCore
 
 /// 파일 내용 충돌의 두 비교 버전 또는 현재 작업 파일을 안전하게 선택하도록 안내합니다.
 struct ConflictResolutionView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
     @State private var pendingChoice: SVNConflictChoice?
 
     var body: some View {
+        @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             header
             Divider()

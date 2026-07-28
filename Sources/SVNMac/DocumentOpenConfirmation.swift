@@ -2,10 +2,11 @@ import SwiftUI
 
 /// 문서 계열 파일을 열기 전에 저장소 잠금의 의미를 설명하고 사용자의 선택을 받습니다.
 private struct DocumentOpenConfirmationModifier: ViewModifier {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
 
     func body(content: Content) -> some View {
+        @Bindable var store = store
         content.confirmationDialog(
             appLanguage.text("먼저 파일을 잠그고 여시겠습니까?", "Lock This File Before Opening?"),
             isPresented: .isPresenting($store.documentOpenRequest),

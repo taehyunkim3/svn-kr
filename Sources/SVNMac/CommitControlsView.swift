@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 커밋 메시지 입력 갱신을 대용량 변경 파일 목록과 분리합니다.
 struct CommitControlsView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @State private var commitMessage = ""
     @FocusState private var isCommitMessageFocused: Bool

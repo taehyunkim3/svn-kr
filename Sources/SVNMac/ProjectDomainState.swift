@@ -1,7 +1,9 @@
 import Foundation
+import Observation
 import SVNCore
 
-struct ProjectChangesState {
+@Observable
+final class ProjectChangesStore {
     var statuses: [SVNStatusEntry] = []
     var pathCollisions: [SVNPathCollision] = []
     var ignoredStatuses: [SVNStatusEntry] = []
@@ -17,12 +19,14 @@ struct ProjectChangesState {
     var diffContent: DiffContent = .placeholder
 }
 
-struct ProjectBrowserState {
+@Observable
+final class ProjectBrowserStore {
     var repositoryLocks: [SVNLockInfo] = []
     var workingCopyFileTree: [WorkingCopyFileNode] = []
 }
 
-struct ProjectHistoryState {
+@Observable
+final class ProjectHistoryStore {
     var logs: [SVNLogEntry] = []
     var selectedHistoryRevision: String?
     var selectedHistoryPath: String?
@@ -35,6 +39,7 @@ struct ProjectHistoryState {
     var fileHistoryPath: String?
 }
 
-struct ProjectUpdateState {
+@Observable
+final class ProjectUpdateStore {
     var remoteChanges: [SVNStatusEntry] = []
 }

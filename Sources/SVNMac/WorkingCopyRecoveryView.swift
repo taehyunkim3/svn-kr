@@ -3,7 +3,7 @@ import SwiftUI
 import SVNCore
 
 struct WorkingCopyRecoveryView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @State private var destinationURL: URL?
 

@@ -3,11 +3,12 @@ import SVNCore
 
 /// 현재 작업 복사본 범위에서 서버가 보고한 잠금과 소유자를 표시합니다.
 struct RepositoryLocksView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
                 Text(appLanguage.text("저장소 파일 잠금", "Repository Locks")).font(.title2.bold())

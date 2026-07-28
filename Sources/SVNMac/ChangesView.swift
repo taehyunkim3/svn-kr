@@ -4,10 +4,11 @@ import SVNCore
 /// 변경 파일 선택, diff 확인, 선택 커밋 입력을 담당하는 전용 화면입니다.
 /// 커밋 입력 상태를 이 화면 안에 두어 ContentView가 탭 내부 동작을 알 필요가 없게 합니다.
 struct ChangesView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
 
     var body: some View {
+        @Bindable var store = store
         WorkspaceSplitView(
             primaryMinWidth: AppLayout.changesPrimaryMinimumWidth,
             detailMinWidth: AppLayout.changesDetailMinimumWidth
@@ -33,23 +34,23 @@ struct ChangesView: View {
         }
         .sheet(isPresented: $store.isShowingIgnoreRules) {
             IgnoreRulesView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $store.activeConflictSession) { _ in
             ConflictResolutionView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $store.isShowingPathRecovery) {
             WorkingCopyRecoveryView()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $store.deletionRequest) { request in
             DeletionConfirmationView(request: request)
-                .environmentObject(store)
+                .environment(store)
         }
         .revertConfirmation()
         .documentOpenConfirmation()

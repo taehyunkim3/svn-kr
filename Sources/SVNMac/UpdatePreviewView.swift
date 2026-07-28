@@ -3,11 +3,12 @@ import SVNCore
 
 /// 작업 복사본을 변경하기 전에 서버에서 내려올 경로를 확인시키는 안전 장치입니다.
 struct UpdatePreviewView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
                 Text(appLanguage.text("업데이트 미리보기", "Update Preview")).font(.title2.bold())

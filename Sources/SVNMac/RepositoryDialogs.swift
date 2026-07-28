@@ -4,7 +4,7 @@ import SwiftUI
 /// Keychain 접근이 거부됐을 때 사용자가 인증 방식을 다시 선택하는 화면입니다.
 /// 원래 수행하려던 작업은 `SVNAuthenticationRequest`에 보존되어 인증 성공 후 재개됩니다.
 struct AuthenticationRequiredView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     let request: SVNAuthenticationRequest
     @State private var username: String
@@ -17,6 +17,7 @@ struct AuthenticationRequiredView: View {
     }
 
     var body: some View {
+        @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(appLanguage.text("SVN 인증 필요", "SVN Authentication Required"))
@@ -109,7 +110,7 @@ struct AuthenticationRequiredView: View {
 /// 새 저장소 체크아웃에 필요한 입력을 수집하는 모달 화면입니다.
 /// 실제 파일 작업과 상태 갱신은 `ProjectStore.checkout`에 위임합니다.
 struct AddRepositoryView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var appLanguage
     @AppStorage(AppSettings.languageKey)
@@ -307,7 +308,7 @@ struct AddRepositoryView: View {
 
 /// 프로젝트별 SVN 사용자명, Keychain 비밀번호, 인증서 예외를 관리합니다.
 struct CredentialsView: View {
-    @EnvironmentObject private var store: ProjectStore
+    @Environment(ProjectStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var appLanguage
     let project: SVNProject
@@ -324,6 +325,7 @@ struct CredentialsView: View {
     }
 
     var body: some View {
+        @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(appLanguage.text("폴더별 인증 설정", "Folder Credentials")).font(.title2.bold())
