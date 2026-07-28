@@ -1259,6 +1259,54 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     #expect(!log.contains("revert:기존.txt"))
 }
 
+@Test func commitClassifiesOutOfDateDirectoryWithoutDiscardingSVNDetails() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-commit-out-of-date-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|commit) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="13295"/></entry><entry path="generated"><wc-status item="deleted" revision="13295"/></entry></target></status>'
+      exit 0
+    fi
+    if [ "$command" = commit ]; then
+      printf '%s\n' 'svn: E155011: Directory generated is out of date' >&2
+      printf '%s\n' 'svn: E170004: Directory generated is out of date' >&2
+      exit 1
+    fi
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    do {
+        _ = try await client.commit(
+            at: directory.path,
+            paths: ["generated"],
+            message: "디렉터리 삭제"
+        )
+        Issue.record("out-of-date 커밋이 전용 오류로 거부되어야 합니다.")
+    } catch let SVNError.workingCopyOutOfDate(details) {
+        #expect(details.contains("E155011"))
+        #expect(details.contains("E170004"))
+        #expect(details.contains("generated is out of date"))
+    } catch {
+        Issue.record("예상하지 못한 오류: \(error)")
+    }
+}
+
 @Test func commitRejectsCanonicalPathCollisionBeforeMutation() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-collision-commit-test-\(UUID().uuidString)", isDirectory: true)

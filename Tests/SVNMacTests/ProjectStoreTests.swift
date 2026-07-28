@@ -890,6 +890,34 @@ import Testing
 }
 
 @MainActor
+@Test func outOfDateCommitMarksUpdateRequiredAndKeepsSelectionForRetry() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/out-of-date-commit")
+    let details = """
+    svn: E155011: Directory 'generated' is out of date
+    svn: E170004: Directory '/trunk/generated' is out of date
+    """
+    let client = StubSVNClient(
+        commitError: .workingCopyOutOfDate(details: details)
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [SVNStatusEntry(path: "generated", item: .deleted, revision: "13295")]
+    store.selectedPaths = ["generated"]
+    store.isWorkingCopyOutOfDate = false
+
+    let succeeded = await store.commit(message: "디렉터리 삭제")
+
+    #expect(!succeeded)
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.selectedPaths == ["generated"])
+    #expect(store.lastCompletedCommitMessage == nil)
+    #expect(store.errorMessage?.contains("E155011") == true)
+    #expect(store.localizedError(
+        SVNError.workingCopyOutOfDate(details: details),
+        language: .english
+    ).contains("Run Update") == true)
+}
+
+@MainActor
 @Test func repairCanonicalAliasesRepairsInPlaceAndDoesNotOpenPathRecovery() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/repairable-unicode-collision")
     let collision = SVNPathCollision(
@@ -1511,6 +1539,7 @@ private actor StubSVNClient: SVNClientServing {
     let resolveGate: AsyncTestGate?
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
+    let commitError: SVNError?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var lockInfoPaths: [String] = []
@@ -1553,7 +1582,8 @@ private actor StubSVNClient: SVNClientServing {
         resolveError: Error? = nil,
         resolveGate: AsyncTestGate? = nil,
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
-        ignoreRules: [SVNIgnoreRule] = []
+        ignoreRules: [SVNIgnoreRule] = [],
+        commitError: SVNError? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -1572,6 +1602,7 @@ private actor StubSVNClient: SVNClientServing {
         self.conflictDetailsGatesByRelativePath = conflictDetailsGatesByRelativePath
         self.resolveError = resolveError
         self.resolveGate = resolveGate
+        self.commitError = commitError
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
         recoveryPreviewValue = recoveryPreview
@@ -1733,6 +1764,7 @@ private actor StubSVNClient: SVNClientServing {
                 details: commitCompletedWarning.details
             )
         }
+        if let commitError { throw commitError }
         return "committed"
     }
 }

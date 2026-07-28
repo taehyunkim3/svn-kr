@@ -1424,9 +1424,21 @@ public actor SVNClient {
         )
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw SVNError.commandFailed(command: "svn \(arguments.first ?? "")", message: detail.isEmpty ? result.output : detail)
+            let message = detail.isEmpty ? result.output : detail
+            if arguments.first == "commit", Self.isWorkingCopyOutOfDateError(message) {
+                throw SVNError.workingCopyOutOfDate(details: message)
+            }
+            throw SVNError.commandFailed(command: "svn \(arguments.first ?? "")", message: message)
         }
         return result
+    }
+
+    /// `svn status --show-updates`는 삭제 예약된 디렉터리의 하위 서버 변경을
+    /// 표시하지 않을 수 있습니다. 커밋 서버가 반환한 표준 오류 코드를 최종
+    /// 판정으로 사용해 일반 명령 실패와 업데이트 필요 상태를 구분합니다.
+    private static func isWorkingCopyOutOfDateError(_ message: String) -> Bool {
+        let hasOutOfDateCode = message.contains("E155011") || message.contains("E170004")
+        return hasOutOfDateCode && message.localizedCaseInsensitiveContains("out of date")
     }
 
     private func run(

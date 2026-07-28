@@ -390,6 +390,7 @@ public struct SVNCredentials: Sendable {
 /// CLI 실행과 XML 해석 과정에서 화면이 구분해 처리해야 하는 오류입니다.
 public enum SVNError: LocalizedError, Sendable {
     case commandFailed(command: String, message: String)
+    case workingCopyOutOfDate(details: String)
     case invalidWorkingCopy
     case malformedResponse
     case pathNormalizationCollision(paths: [String])
@@ -408,6 +409,8 @@ public enum SVNError: LocalizedError, Sendable {
         switch self {
         case let .commandFailed(command, message):
             "\(command) 실패: \(message)"
+        case let .workingCopyOutOfDate(details):
+            "서버에서 먼저 변경된 항목이 있어 커밋할 수 없습니다. 작업 폴더를 업데이트하고 충돌이 있으면 해결한 뒤 다시 커밋하세요.\n\n\(details)"
         case .invalidWorkingCopy:
             "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다."
         case .malformedResponse:

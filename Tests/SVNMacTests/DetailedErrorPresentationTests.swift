@@ -73,6 +73,17 @@ import Testing
     #expect(recovery.contains("ErrorCopyButton(message: error)"))
 }
 
+@Test func updatePreviewAllowsRecoveryWhenDeletedDirectoryHidesRemoteChanges() throws {
+    let source = try String(
+        contentsOf: svnMacSources().appendingPathComponent("UpdatePreviewView.swift"),
+        encoding: .utf8
+    )
+
+    #expect(source.contains("!store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true"))
+    #expect(source.contains("삭제 예정 경로의 서버 변경은 목록에 표시되지 않을 수 있습니다."))
+    #expect(source.contains("업데이트 실행"))
+}
+
 private func svnMacSources() -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

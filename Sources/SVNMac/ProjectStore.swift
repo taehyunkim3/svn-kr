@@ -538,6 +538,14 @@ final class ProjectStore: ObservableObject {
                 details: details
             ))
             return true
+        } catch let error as SVNError {
+            if selectedProjectID == project.id {
+                if case .workingCopyOutOfDate = error {
+                    isWorkingCopyOutOfDate = true
+                }
+                handleRemoteError(error, project: project, action: .commit(message: message))
+            }
+            return false
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .commit(message: message))
@@ -718,6 +726,8 @@ final class ProjectStore: ObservableObject {
         switch svnError {
         case let .commandFailed(command, message):
             return "\(command) failed: \(message)"
+        case let .workingCopyOutOfDate(details):
+            return "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n\(details)"
         case .invalidWorkingCopy:
             return "The selected folder is not an SVN local working folder."
         case .malformedResponse:
