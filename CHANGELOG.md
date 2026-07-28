@@ -31,6 +31,44 @@
 - Added `svn:global-ignores` and inherited-rule visibility alongside existing `svn:ignore` management.
 - Added one-way `.gitignore` comparison, conversion previews, unsupported-rule explanations, and selective SVN property application.
 
+## 0.5.15 (2026-07-24)
+
+- Renamed the distributed app and user-facing product from SVN for Mac to SVN KR.
+- Preserved the existing bundle identifier and saved credentials during the rebrand.
+
+## 0.5.14 (2026-07-23)
+
+- Added automatic App Store version checks and a manual Check for Updates command.
+- Added update status and release lookup to the custom About window.
+
+## 0.5.13 (2026-07-22)
+
+- Added shared horizontal padding to frequent toolbar actions and progress indicators.
+
+## 0.5.12 (2026-07-22)
+
+- Kept frequent actions visibly labeled and used bordered controls for clearer affordance.
+
+## 0.5.11 (2026-07-22)
+
+- Added a reviewable sample project and an explicit demo exit flow.
+- Added language selection to the first-run repository screen and improved App Review guidance.
+
+## 0.5.10 (2026-07-22)
+
+- Added support-email error reports with sensitive-data redaction.
+- Unified raw UTF-8 SVN path transport and moved repository locks into the shared project header.
+
+## 0.5.9 (2026-07-22)
+
+- Allowed an existing local file to open when its remote lock lookup fails.
+- Added a detailed fallback choice to open the document without acquiring a lock.
+
+## 0.5.8 (2026-07-21)
+
+- Completed Unicode-safe text and binary conflict resolution using the exact SVN-managed path.
+- Preserved recovery copies and prevented stale conflict or revert completions from changing a newer request.
+
 ## 0.5.7 (2026-07-21)
 
 - Built SVN 1.14.5 and its non-system dependencies from checksum-pinned sources for a macOS 14 arm64 deployment target.
@@ -41,6 +79,25 @@
 
 - Bundled the exact SQLite runtime expected by the packaged SVN helper instead of loading a potentially different system SQLite version.
 - Added checksum, deployment-target, load-path, and runtime-version validation to SVN packaging.
+
+## 0.5.5 (2026-07-21)
+
+- Bundled the SQLite runtime required by SVN to prevent installed-app startup crashes.
+
+## 0.5.4 (2026-07-20)
+
+- Added in-place repair for canonically equivalent Korean paths and automatic repair before commit.
+- Added byte-level validation, ambiguity blocking, and recovery guidance for unsafe aliases.
+
+## 0.5.3 (2026-07-20)
+
+- Removed commit-message typing lag for very large change selections.
+- Added canonical-path snapshots, collision summaries, commit blocking, and safe rollback.
+
+## 0.5.2 (2026-07-20)
+
+- Displayed mixed working-copy revision ranges in history.
+- Added selected-project commit progress and scalable targets-file commits for large selections.
 
 ## 0.5.1 (2026-07-18)
 

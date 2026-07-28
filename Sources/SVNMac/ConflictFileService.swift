@@ -69,12 +69,9 @@ struct ConflictFileService {
         let myFile = details.myFile ?? details.path
         guard let serverFile = details.serverFile else { throw ConflictFileError.missingServer }
 
-        let supportRoot = try backupRootURL ?? fileManager.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        ).appendingPathComponent("SVN Mac/Conflict Backups", isDirectory: true)
+        let supportRoot = try backupRootURL
+            ?? SVNApplicationSupport.rootDirectory(fileManager: fileManager)
+                .appendingPathComponent("Conflict Backups", isDirectory: true)
         let standardizedWorkingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
         let standardizedBackupRoot = resolvedURL(supportRoot)
         guard !isAtOrBelow(standardizedBackupRoot, root: standardizedWorkingCopy) else {
@@ -197,7 +194,7 @@ struct ConflictFileService {
         }
 
         try copyItem(source, staging)
-        guard try filesHaveEqualContents(source, staging) else {
+        guard try SVNFileSystem.filesHaveEqualContents(source, staging) else {
             throw ConflictFileError.workingRecoveryVerificationFailed
         }
 
@@ -272,22 +269,6 @@ struct ConflictFileService {
         return revision
     }
 
-    private func filesHaveEqualContents(_ first: URL, _ second: URL) throws -> Bool {
-        let firstHandle = try FileHandle(forReadingFrom: first)
-        let secondHandle = try FileHandle(forReadingFrom: second)
-        defer {
-            try? firstHandle.close()
-            try? secondHandle.close()
-        }
-        let chunkSize = 64 * 1_024
-        while true {
-            let firstData = try firstHandle.read(upToCount: chunkSize) ?? Data()
-            let secondData = try secondHandle.read(upToCount: chunkSize) ?? Data()
-            guard firstData == secondData else { return false }
-            if firstData.isEmpty { return true }
-        }
-    }
-
     private func replaceFileAtomically(
         at destination: URL,
         with source: URL,
@@ -304,7 +285,7 @@ struct ConflictFileService {
         }
         try copyItem(source, staging)
         stagingExists = true
-        guard try filesHaveEqualContents(source, staging) else { throw verificationError }
+        guard try SVNFileSystem.filesHaveEqualContents(source, staging) else { throw verificationError }
         _ = try fileManager.replaceItemAt(
             destination,
             withItemAt: staging,
@@ -312,7 +293,7 @@ struct ConflictFileService {
             options: [.usingNewMetadataOnly]
         )
         stagingExists = false
-        guard try filesHaveEqualContents(source, destination) else { throw verificationError }
+        guard try SVNFileSystem.filesHaveEqualContents(source, destination) else { throw verificationError }
     }
 
 }

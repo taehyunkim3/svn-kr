@@ -282,7 +282,7 @@ public actor SVNClient {
                       outputDestinationURL: baseURL
                   )
                 let versionedIdentity = SVNPathIdentity(rawPath: replacement.versionedPath)
-                if try Self.filesHaveEqualContents(localURL, baseURL) {
+                if try SVNFileSystem.filesHaveEqualContents(localURL, baseURL) {
                     resolution.unchanged.insert(versionedIdentity)
                 } else {
                     resolution.modified.insert(versionedIdentity)
@@ -1118,7 +1118,7 @@ public actor SVNClient {
                 ))
                 try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: backupDirectory.path)
                 try fileManager.copyItem(at: localURL, to: backupURL)
-                guard try Self.filesHaveEqualContents(localURL, backupURL) else {
+                guard try SVNFileSystem.filesHaveEqualContents(localURL, backupURL) else {
                     throw SVNError.pathAliasRepairFailed(paths: [replacement.versionedPath])
                 }
 
@@ -1127,7 +1127,7 @@ public actor SVNClient {
                 )
                 guard preRemovalValues.isRegularFile == true,
                       preRemovalValues.isSymbolicLink != true,
-                      try Self.filesHaveEqualContents(localURL, backupURL) else {
+                      try SVNFileSystem.filesHaveEqualContents(localURL, backupURL) else {
                     throw SVNError.pathAliasRepairFailed(paths: [replacement.versionedPath])
                 }
                 try fileManager.removeItem(at: localURL)
@@ -1138,7 +1138,7 @@ public actor SVNClient {
                     at: path,
                     credentials: credentials
                 )
-                try Self.overwriteFile(at: versionedURL, withContentsOf: backupURL)
+                try SVNFileSystem.overwriteFile(at: versionedURL, withContentsOf: backupURL)
             }
 
             let refreshed = try await workingCopySnapshot(at: path, credentials: credentials)
@@ -1171,7 +1171,7 @@ public actor SVNClient {
                         try fileManager.removeItem(at: backup.versionedURL)
                     }
                     try fileManager.copyItem(at: backup.backupURL, to: backup.localURL)
-                    guard try Self.filesHaveEqualContents(backup.backupURL, backup.localURL) else {
+                    guard try SVNFileSystem.filesHaveEqualContents(backup.backupURL, backup.localURL) else {
                         throw SVNError.pathAliasRepairFailed(paths: [backup.replacement.versionedPath])
                     }
                     try? fileManager.removeItem(at: backup.directoryURL)
@@ -1186,43 +1186,6 @@ public actor SVNClient {
                 )
             }
             throw error
-        }
-    }
-
-    private static func overwriteFile(at destination: URL, withContentsOf source: URL) throws {
-        let input = try FileHandle(forReadingFrom: source)
-        let output = try FileHandle(forWritingTo: destination)
-        defer {
-            try? input.close()
-            try? output.close()
-        }
-        try output.truncate(atOffset: 0)
-        while let chunk = try input.read(upToCount: 1024 * 1024), !chunk.isEmpty {
-            try output.write(contentsOf: chunk)
-        }
-        try output.synchronize()
-    }
-
-    private static func filesHaveEqualContents(_ lhs: URL, _ rhs: URL) throws -> Bool {
-        let keys: Set<URLResourceKey> = [.fileSizeKey, .isRegularFileKey]
-        let lhsValues = try lhs.resourceValues(forKeys: keys)
-        let rhsValues = try rhs.resourceValues(forKeys: keys)
-        guard lhsValues.isRegularFile == true,
-              rhsValues.isRegularFile == true,
-              lhsValues.fileSize == rhsValues.fileSize else {
-            return false
-        }
-        let lhsHandle = try FileHandle(forReadingFrom: lhs)
-        let rhsHandle = try FileHandle(forReadingFrom: rhs)
-        defer {
-            try? lhsHandle.close()
-            try? rhsHandle.close()
-        }
-        while true {
-            let lhsChunk = try lhsHandle.read(upToCount: 1024 * 1024) ?? Data()
-            let rhsChunk = try rhsHandle.read(upToCount: 1024 * 1024) ?? Data()
-            guard lhsChunk == rhsChunk else { return false }
-            if lhsChunk.isEmpty { return true }
         }
     }
 
@@ -1701,14 +1664,7 @@ public actor SVNClient {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             return directory
         }
-        let applicationSupport = try FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let directory = applicationSupport
-            .appendingPathComponent("SVN Mac", isDirectory: true)
+        let directory = try SVNApplicationSupport.rootDirectory()
             .appendingPathComponent("Subversion", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory

@@ -1,10 +1,11 @@
 import Foundation
 import Security
+import SVNCore
 
 enum KeychainStore {
     /// 프로젝트 UUID를 계정 키로 사용해 서로 다른 작업 폴더의 비밀번호가
     /// 섞이지 않게 합니다. 비밀번호는 프로젝트 JSON이나 UserDefaults에 저장하지 않습니다.
-    private static let service = "com.mrdevello.svnmac.credentials"
+    private static let service = SVNApplicationSupport.keychainService
 
     static func password(for projectID: UUID) throws -> String? {
         let query: [String: Any] = [
