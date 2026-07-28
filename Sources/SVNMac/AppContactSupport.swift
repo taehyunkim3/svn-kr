@@ -5,25 +5,22 @@ enum AppContactSupport {
     static let mailURL = URL(string: "mailto:\(email)")!
 
     static func menuTitle(for language: AppLanguage) -> String {
-        language.text("문의 및 도움말", "Questions & Support")
+        language.localized("ui.questions.support.b20404dc")
     }
 
     static func alertTitle(for language: AppLanguage) -> String {
-        language.text("문의 사항이 있으신가요?", "Need help?")
+        language.localized("ui.need.help.bf7256df")
     }
 
     static func message(for language: AppLanguage) -> String {
-        language.text(
-            "문의 사항은 \(email)으로 남겨 주세요.",
-            "Please send questions to \(email)."
-        )
+        language.localized("ui.please.send.questions.to.f2d48929", email)
     }
 
     static func mailButtonTitle(for language: AppLanguage) -> String {
-        language.text("메일 보내기", "Send Email")
+        language.localized("ui.send.email.f71021b3")
     }
 
     static func closeButtonTitle(for language: AppLanguage) -> String {
-        language.text("닫기", "Close")
+        language.localized("ui.close.3ea43db3")
     }
 }

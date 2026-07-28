@@ -8,22 +8,16 @@ struct DeletionConfirmationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.text("저장소에서도 삭제로 표시", "Mark for Repository Deletion"),
+                appLanguage.localized("ui.mark.for.repository.deletion.3c417fc1"),
                 systemImage: "trash"
             )
             .font(.title2.bold())
 
-            Text(appLanguage.text(
-                "지금은 삭제 예정 상태로만 바뀝니다. 커밋하면 SVN 저장소에서 삭제되며, 커밋 전에는 취소하고 복원할 수 있습니다.",
-                "This only marks the items for deletion. They are deleted from the SVN repository when committed, and can be restored before then."
-            ))
+            Text(appLanguage.localized("ui.this.only.marks.the.items.for.deletion.they.are..594bb2c0"))
 
             if request.containsDirectory {
                 Label(
-                    appLanguage.text(
-                        "선택한 디렉터리 아래의 SVN 추적 항목도 함께 삭제 예정이 됩니다.",
-                        "Versioned items below the selected directory will also be marked for deletion."
-                    ),
+                    appLanguage.localized("ui.versioned.items.below.the.selected.directory.wil.f7d01b47"),
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .foregroundStyle(.orange)
@@ -38,17 +32,14 @@ struct DeletionConfirmationView: View {
             }
 
             HStack {
-                Text(appLanguage.text(
-                    "\(request.entries.count)개 항목",
-                    "\(request.entries.count) item(s)"
-                ))
+                Text(appLanguage.localized("ui.item.s.7cb28e2a", request.entries.count))
                 .foregroundStyle(.secondary)
                 Spacer()
-                Button(appLanguage.text("취소", "Cancel"), role: .cancel) {
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
                     store.cancelDeletion()
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(appLanguage.text("저장소에서도 삭제로 표시", "Mark for Deletion"), role: .destructive) {
+                Button(appLanguage.localized("ui.mark.for.deletion.ec31cd20"), role: .destructive) {
                     Task { await store.confirmDeletion(request) }
                 }
                 .disabled(store.isSelectedProjectActionBlocked)

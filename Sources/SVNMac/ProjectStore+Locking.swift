@@ -35,10 +35,7 @@ extension ProjectStore {
                let username = project.username,
                !username.isEmpty,
                existingLock.owner == username {
-                notice = AppLanguage.current.text(
-                    "내가 잠근 파일을 엽니다.",
-                    "Opening a file locked by you."
-                )
+                notice = AppLanguage.current.localized("ui.opening.a.file.locked.by.you.742588ff")
                 openFile(relativePath, in: project)
                 return
             }
@@ -49,10 +46,7 @@ extension ProjectStore {
             )
         } catch {
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text(
-                "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다.",
-                "Lock information could not be checked. You can open the file without locking it."
-            )
+            notice = AppLanguage.current.localized("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
             documentOpenRequest = DocumentOpenRequest(
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
@@ -67,7 +61,7 @@ extension ProjectStore {
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
-            let comment = AppLanguage.current.text("SVN KR에서 문서 편집 중", "Editing document in SVN KR")
+            let comment = AppLanguage.current.localized("ui.editing.document.in.svn.kr.5e6ac9cc")
             _ = try await client.lock(
                 at: project.path,
                 relativePath: request.repositoryRelativePath,
@@ -76,7 +70,7 @@ extension ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text("파일을 잠갔습니다. 커밋에 성공하면 잠금이 자동으로 해제됩니다.", "The file is locked. A successful commit automatically releases the lock.")
+            notice = AppLanguage.current.localized("ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd")
             openFile(request.relativePath, in: project)
             await loadRepositoryLocks()
         } catch {
@@ -89,7 +83,7 @@ extension ProjectStore {
         documentOpenRequest = nil
         guard let project = selectedProject else { return }
         openFile(request.relativePath, in: project)
-        notice = AppLanguage.current.text("잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다.", "Opened without a lock. A concurrent commit by another user may cause a conflict.")
+        notice = AppLanguage.current.localized("ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344")
     }
 
     func loadRepositoryLocks(
@@ -127,7 +121,7 @@ extension ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text("잠금을 해제했습니다.", "The lock was released.")
+            notice = AppLanguage.current.localized("ui.the.lock.was.released.3aee6b8e")
             await loadRepositoryLocks()
         } catch {
             guard selectedProjectID == project.id else { return }

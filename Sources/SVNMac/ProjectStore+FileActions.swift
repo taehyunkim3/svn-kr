@@ -13,7 +13,7 @@ extension ProjectStore {
             _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
             guard selectedProjectID == project.id else { return }
             selectedPaths.remove(request.entry.path)
-            notice = AppLanguage.current.text("로컬 변경을 되돌렸습니다: \(request.entry.path)", "Reverted local changes: \(request.entry.path)")
+            notice = AppLanguage.current.localized("ui.reverted.local.changes.4b9ba3ac", request.entry.path)
             await refresh()
         } catch {
             guard selectedProjectID == project.id else { return }
@@ -54,6 +54,6 @@ extension ProjectStore {
         let path = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath).path
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects([path as NSString])
-        notice = AppLanguage.current.text("파일 경로를 복사했습니다.", "Copied the file path.")
+        notice = AppLanguage.current.localized("ui.copied.the.file.path.5029ec9d")
     }
 }

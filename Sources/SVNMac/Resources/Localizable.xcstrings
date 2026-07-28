@@ -1,0 +1,6279 @@
+{
+  "sourceLanguage": "ko",
+  "strings": {
+    "error.choose.missing.items": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose how to handle locally missing items first: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "먼저 로컬 누락 항목의 처리 방법을 선택하세요: %1$@"
+          }
+        }
+      }
+    },
+    "error.deletion.partial": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ item(s) were marked for deletion, but %2$@ failed: %3$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개는 삭제 예정으로 전환했고, %2$@개는 전환하지 못했습니다: %3$@"
+          }
+        }
+      }
+    },
+    "error.deletion.validation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These items did not enter the pending-deletion state: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 삭제 예정 상태로 전환되지 않은 항목이 있습니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.file.replacement.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replacement files could not be restored to their original paths: %1$@. Backups: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대치 파일을 원래 위치로 복원하지 못했습니다: %1$@. 백업 파일: %2$@"
+          }
+        }
+      }
+    },
+    "error.path.alias.repair": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korean path alias repair could not be validated: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한글 경로 별칭 정리를 검증하지 못했습니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.path.normalization.collision": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korean path normalization conflicts must be recovered before continuing: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한글 경로 충돌이 있어 작업을 중단했습니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.recovery.blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some changes cannot be recovered automatically: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 복구할 수 없는 변경이 있습니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.recovery.validation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The recovered working copy did not pass validation: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 작업 폴더 검증에 실패했습니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.unresolved.missing.paths": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose how to handle locally missing items first: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 누락 항목의 처리 방법을 먼저 선택해야 합니다: %1$@"
+          }
+        }
+      }
+    },
+    "error.unsupported.target.path": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paths containing line breaks cannot be passed safely to SVN: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 명령에 안전하게 전달할 수 없는 줄바꿈 경로가 있습니다: %1$@"
+          }
+        }
+      }
+    },
+    "history.copied.from": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied from: %1$@%2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사 원본: %1$@%2$@"
+          }
+        }
+      }
+    },
+    "recovery.review.paths": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review these paths before automatic recovery: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 복구 전에 직접 확인해야 할 경로: %1$@"
+          }
+        }
+      }
+    },
+    "ui.a.clean.working.copy.is.checked.out.from.the.ser.a49ce026": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clean working copy is checked out from the server, then only real local changes are migrated using NFC paths. The current working folder and its files are not changed or deleted."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 새 작업 폴더를 체크아웃한 뒤 실제 로컬 변경만 NFC 한글 경로로 옮깁니다. 현재 작업 폴더와 파일은 변경하거나 삭제하지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.a.conflict.file.path.points.outside.the.working..137a7ed6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A conflict file path points outside the working copy."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 파일 경로가 작업 사본 밖을 가리킵니다."
+          }
+        }
+      }
+    },
+    "ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A locked file is marked on the SVN server to prevent another user from committing to it while it is being edited. Your lock is released automatically after a successful commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 파일은 편집 중인 파일에 다른 사용자가 동시에 커밋하지 못하도록 SVN 서버에 표시한 파일입니다. 내가 잠근 파일은 커밋에 성공하면 자동으로 잠금이 해제됩니다."
+          }
+        }
+      }
+    },
+    "ui.a.password.for.this.folder.is.stored.in.macos.ke.676ba875": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A password for this folder is stored in macOS Keychain."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 폴더의 비밀번호가 macOS Keychain에 저장되어 있습니다."
+          }
+        }
+      }
+    },
+    "ui.about.svn.kr.ddc63e52": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About SVN KR"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN KR 정보"
+          }
+        }
+      }
+    },
+    "ui.add.a.local.working.folder.816116ca": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a local working folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 작업 폴더를 추가하세요"
+          }
+        }
+      }
+    },
+    "ui.add.svn.repository.8b9639fa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add SVN Repository"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 저장소 추가"
+          }
+        }
+      }
+    },
+    "ui.added.0dce7328": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가"
+          }
+        }
+      }
+    },
+    "ui.added.ignore.rule.commit.the.directory.property..42754ee1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added ignore rule '%1$@'. Commit the directory property to share it with the team."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시 규칙 '%1$@'을 추가했습니다. 디렉터리 속성을 커밋하면 팀에 공유됩니다."
+          }
+        }
+      }
+    },
+    "ui.additional.revision.properties.ab3e5f0b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ additional revision properties"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가 리비전 속성 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.affected.dbd64ef9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ affected"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개 영향"
+          }
+        }
+      }
+    },
+    "ui.after.reviewing.both.backups.keep.the.content.cu.94842c30": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After reviewing both backups, keep the content currently saved in the working file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 백업본을 확인한 뒤 실제 작업 파일을 직접 편집했다면, 현재 저장된 내용을 최종본으로 사용합니다."
+          }
+        }
+      }
+    },
+    "ui.allow.self.signed.and.certificate.name.mismatch..0bfb9514": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow self-signed and certificate name mismatch errors for this repository."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다."
+          }
+        }
+      }
+    },
+    "ui.allow.untrusted.ssl.certificates.78b94750": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow untrusted SSL certificates"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신뢰할 수 없는 SSL 인증서 허용"
+          }
+        }
+      }
+    },
+    "ui.already.versioned.files.are.not.hidden.by.ignore.ed1d7db7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already versioned files are not hidden by ignore rules."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미 추적 중인 파일은 무시 규칙으로 숨겨지지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.an.update.is.available.f3c3a4e9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An Update Is Available"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 업데이트가 있습니다"
+          }
+        }
+      }
+    },
+    "ui.applied.faddeb33": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미 적용"
+          }
+        }
+      }
+    },
+    "ui.applied.git.rule.s.to.svn.ignore.properties.comm.2cfe91aa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied %1$@ Git rule(s) to SVN ignore properties. Commit the property changes to share them."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개 Git 규칙을 SVN 무시 속성에 적용했습니다. 속성 변경을 커밋해야 팀에 공유됩니다."
+          }
+        }
+      }
+    },
+    "ui.apply.aa6f48d5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "적용"
+          }
+        }
+      }
+    },
+    "ui.apply.global.ignore.rules.1ece4ab2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Global Ignore Rules?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전역 무시 규칙을 적용할까요?"
+          }
+        }
+      }
+    },
+    "ui.apply.selected.rules.f6bb01fa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply Selected Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 규칙 적용"
+          }
+        }
+      }
+    },
+    "ui.authentication.is.required.to.commit.the.selecte.4837ef80": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication is required to commit the selected changes."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 변경 사항을 서버에 커밋하려면 인증이 필요합니다."
+          }
+        }
+      }
+    },
+    "ui.authentication.is.required.to.download.the.lates.83127c9a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication is required to download the latest server changes."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 최신 변경 사항을 내려받으려면 인증이 필요합니다."
+          }
+        }
+      }
+    },
+    "ui.authentication.is.required.to.load.the.latest.se.2b552fac": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication is required to load the latest server history."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 최신 커밋 기록을 불러오려면 인증이 필요합니다."
+          }
+        }
+      }
+    },
+    "ui.authentication.uses.the.existing.svn.credential..b6c6fe66": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication uses the existing SVN credential cache and macOS Keychain."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다."
+          }
+        }
+      }
+    },
+    "ui.authentication.was.canceled.local.changes.remain.c4984bab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication was canceled. Local changes remain available."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증을 취소했습니다. 로컬 변경 사항은 계속 확인할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.automatic.unicode.path.recovery.e71b00a0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Unicode Path Recovery"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한글 경로 자동 복구"
+          }
+        }
+      }
+    },
+    "ui.available.cb60f347": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가 가능"
+          }
+        }
+      }
+    },
+    "ui.blue.dots.are.server.commits.the.green.ring.is.y.486b468b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blue dots are server commits, the green ring is your local base, and the orange branch is uncommitted work."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파란 점은 서버 커밋, 초록 테두리는 내 로컬 기준, 주황 가지는 미커밋 변경을 뜻합니다."
+          }
+        }
+      }
+    },
+    "ui.blue.dots.are.server.commits.the.green.ring.is.y.fb1c8ff5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blue dots are server commits, the green ring is your highest local revision, and the orange branch is uncommitted work."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파란 점은 서버 커밋, 초록 테두리는 내 로컬의 최상위 리비전, 주황 가지는 미커밋 변경을 뜻합니다."
+          }
+        }
+      }
+    },
+    "ui.both.versions.were.copied.to.a.backup.folder.edi.259e47d5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both versions were copied to a backup folder. Editing these copies does not change the working file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일과 서버 파일은 백업 폴더에 복사되었습니다. 열어 수정해도 실제 작업 파일에는 반영되지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.browse.sample.project.9ad211da": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse Sample Project"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "샘플 프로젝트 둘러보기"
+          }
+        }
+      }
+    },
+    "ui.cancel.a2ce2c22": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소"
+          }
+        }
+      }
+    },
+    "ui.cancel.adding.the.repository.and.close.this.wind.113063d1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel adding the repository and close this window."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 추가를 취소하고 창을 닫습니다."
+          }
+        }
+      }
+    },
+    "ui.cancel.deletion.and.restore.ce07fc64": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel Deletion and Restore…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 취소 및 복원…"
+          }
+        }
+      }
+    },
+    "ui.cancel.the.repository.deletion.state.for.and.res.fe2dce5e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel the repository deletion state for %1$@ and restore the repository version locally."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 저장소 삭제 표시를 취소하고 저장소 기준 파일을 로컬에 복원합니다."
+          }
+        }
+      }
+    },
+    "ui.canceling.does.not.prevent.viewing.local.changes.cf7ece9c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canceling does not prevent viewing local changes and diffs."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.changed.paths.89badc04": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ changed paths"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 경로 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.changes.0e19f519": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항"
+          }
+        }
+      }
+    },
+    "ui.check.for.updates.6ba78913": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 확인…"
+          }
+        }
+      }
+    },
+    "ui.check.for.updates.d0ccb7fe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 확인"
+          }
+        }
+      }
+    },
+    "ui.check.out.a.new.svn.repository.or.register.an.ex.2b1e2b00": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check out a new SVN repository or register an existing local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 SVN 저장소를 체크아웃하거나 기존 로컬 작업 폴더를 등록합니다."
+          }
+        }
+      }
+    },
+    "ui.check.out.a.repository.url.and.add.it.to.your.lo.63f0d7ea": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check out a repository URL and add it to your local working folders."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 URL을 체크아웃하고 로컬 작업 폴더 목록에 등록합니다."
+          }
+        }
+      }
+    },
+    "ui.check.out.and.add.ec5e3d09": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Out and Add"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃 및 추가"
+          }
+        }
+      }
+    },
+    "ui.check.out.repository.url.6cbf366d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Out Repository URL…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 URL 체크아웃…"
+          }
+        }
+      }
+    },
+    "ui.check.out.the.svn.repository.into.the.local.fold.4323a8e0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check out the SVN repository into the local folder and add it to the app."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력한 SVN 저장소를 로컬 폴더에 체크아웃하고 앱에 등록합니다."
+          }
+        }
+      }
+    },
+    "ui.check.the.app.store.for.the.latest.version.969078c0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the App Store for the latest version."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store에서 최신 버전을 확인할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.checking.for.updates.967c32b4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 확인 중…"
+          }
+        }
+      }
+    },
+    "ui.checking.incoming.changes.a7a217e2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking incoming changes…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 변경 확인 중…"
+          }
+        }
+      }
+    },
+    "ui.checking.out.3944eb2e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking out…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃 중…"
+          }
+        }
+      }
+    },
+    "ui.checkout.completed.but.the.password.could.not.be.ed5274e5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checkout completed, but the password could not be saved in Keychain: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃은 완료했지만 비밀번호를 Keychain에 저장하지 못했습니다: %1$@"
+          }
+        }
+      }
+    },
+    "ui.checkout.progress.log.ba2c92de": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checkout progress log"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃 진행 로그"
+          }
+        }
+      }
+    },
+    "ui.choose.0a13aec8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택"
+          }
+        }
+      }
+    },
+    "ui.choose.71d0de8d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택…"
+          }
+        }
+      }
+    },
+    "ui.choose.a.changed.file.above.to.display.only.that.7d44100e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a changed file above to display only that file's diff."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위 목록에서 변경 파일을 선택하면 해당 파일의 diff만 표시됩니다."
+          }
+        }
+      }
+    },
+    "ui.choose.a.local.folder.for.the.checkout.de1fb4ce": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a local folder for the checkout."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃할 로컬 폴더를 선택해 주세요."
+          }
+        }
+      }
+    },
+    "ui.choose.action.60c39cbd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Action…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "처리 선택…"
+          }
+        }
+      }
+    },
+    "ui.choose.an.empty.folder.8f9acb6e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an empty folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비어 있는 폴더를 선택하세요."
+          }
+        }
+      }
+    },
+    "ui.choose.an.empty.recovery.folder.c2b4a175": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an Empty Recovery Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복구할 빈 폴더 선택"
+          }
+        }
+      }
+    },
+    "ui.choose.folder.54647179": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 선택…"
+          }
+        }
+      }
+    },
+    "ui.choose.local.checkout.folder.c649aa9f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Local Checkout Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃할 로컬 폴더 선택"
+          }
+        }
+      }
+    },
+    "ui.choose.svn.local.working.folders.6d104bc9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose SVN Local Working Folders"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 로컬 작업 폴더 선택"
+          }
+        }
+      }
+    },
+    "ui.choose.the.language.used.in.the.app.interface.16c2f863": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the language used in the app interface."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 화면에 사용할 언어를 선택합니다."
+          }
+        }
+      }
+    },
+    "ui.choose.the.local.folder.for.the.checkout.31ee0035": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the local folder for the checkout."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃 결과를 저장할 로컬 폴더를 선택합니다."
+          }
+        }
+      }
+    },
+    "ui.choose.the.time.zone.used.for.commit.dates.and.t.ded46b04": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the time zone used for commit dates and times."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록의 날짜와 시간을 표시할 기준 시간대를 선택합니다."
+          }
+        }
+      }
+    },
+    "ui.choose.view.changes.in.the.history.to.display.th.cc60739e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose View Changes in the history to display the actual diff."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기록에서 변경 내용 보기 버튼을 누르면 실제 diff가 표시됩니다."
+          }
+        }
+      }
+    },
+    "ui.clean.up.equivalent.path.11fce14e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean Up Equivalent Path"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동일 한글 경로 정리"
+          }
+        }
+      }
+    },
+    "ui.cleanup.needed.3c5f4e64": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cleanup Needed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정리 필요"
+          }
+        }
+      }
+    },
+    "ui.clear.8cfe548b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 해제"
+          }
+        }
+      }
+    },
+    "ui.clear.all.selected.commit.targets.605665f6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear all selected commit targets."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 선택된 커밋 대상을 모두 해제합니다."
+          }
+        }
+      }
+    },
+    "ui.clear.selection.6520660b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Selection"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 해제"
+          }
+        }
+      }
+    },
+    "ui.close.3ea43db3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "닫기"
+          }
+        }
+      }
+    },
+    "ui.close.the.sample.project.and.return.to.normal.mo.6d61e364": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close the sample project and return to normal mode."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "샘플 프로젝트를 닫고 일반 모드로 돌아갑니다."
+          }
+        }
+      }
+    },
+    "ui.close.without.saving.credential.changes.97c00986": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close without saving credential changes."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증 설정 변경을 저장하지 않고 창을 닫습니다."
+          }
+        }
+      }
+    },
+    "ui.commit.changes.79414e6d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit Changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 변경 내용"
+          }
+        }
+      }
+    },
+    "ui.commit.history.07e0f8de": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit History"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록"
+          }
+        }
+      }
+    },
+    "ui.commit.history.time.zone.9e3260bf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit history time zone"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록 시간대"
+          }
+        }
+      }
+    },
+    "ui.commit.message.c5139167": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit message"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 메시지"
+          }
+        }
+      }
+    },
+    "ui.commit.not.found.0f4a8385": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit Not Found"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록을 찾을 수 없습니다"
+          }
+        }
+      }
+    },
+    "ui.commit.selected.29bc2086": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit Selected"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 항목 커밋"
+          }
+        }
+      }
+    },
+    "ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit the selected files to the SVN server with the entered message."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다."
+          }
+        }
+      }
+    },
+    "ui.commit.time.unavailable.59140fc5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit time unavailable"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 시각 없음"
+          }
+        }
+      }
+    },
+    "ui.committing.0e8ec0f4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Committing…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 중…"
+          }
+        }
+      }
+    },
+    "ui.compare.git.rules.2220d6b1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare Git Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git 규칙과 비교"
+          }
+        }
+      }
+    },
+    "ui.configure.the.svn.account.and.keychain.password..daa54ac3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configure the SVN account and Keychain password for this local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 로컬 작업 폴더에서 사용할 SVN 계정과 Keychain 비밀번호를 설정합니다."
+          }
+        }
+      }
+    },
+    "ui.conflict.37edb628": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌"
+          }
+        }
+      }
+    },
+    "ui.conflict.backups.must.be.stored.outside.the.work.b1ccd27c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict backups must be stored outside the working copy."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 백업 위치는 작업 사본 밖에 있어야 합니다."
+          }
+        }
+      }
+    },
+    "ui.content.changed.cb88d56c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Content changed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내용 변경"
+          }
+        }
+      }
+    },
+    "ui.coordinated.universal.time.utc.0b7fc6d7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordinated Universal Time (UTC)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "협정 세계시 (UTC)"
+          }
+        }
+      }
+    },
+    "ui.copied.13a93949": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사됨"
+          }
+        }
+      }
+    },
+    "ui.copied.the.file.path.5029ec9d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied the file path."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 경로를 복사했습니다."
+          }
+        }
+      }
+    },
+    "ui.copy.all.displayed.error.details.to.the.clipboar.717f18da": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy all displayed error details to the clipboard."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표시된 오류 내용 전체를 클립보드에 복사합니다."
+          }
+        }
+      }
+    },
+    "ui.copy.error.details.7de3d319": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Error Details"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오류 내용 복사"
+          }
+        }
+      }
+    },
+    "ui.copy.full.path.823e26e7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Full Path"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 경로 복사"
+          }
+        }
+      }
+    },
+    "ui.could.not.open.the.file.263874fa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not open the file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 열 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.credentials.97a976d9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credentials"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증 설정"
+          }
+        }
+      }
+    },
+    "ui.credentials.saved.for.409bff39": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credentials saved for %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 인증 설정 저장 완료"
+          }
+        }
+      }
+    },
+    "ui.current.working.file.669bd1d9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current Working File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일"
+          }
+        }
+      }
+    },
+    "ui.delete.from.repository.deb8c2a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete from Repository…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소에서도 삭제…"
+          }
+        }
+      }
+    },
+    "ui.delete.missing.items.ab0ea8fc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %1$@ Missing Items…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "누락 %1$@개 저장소 삭제…"
+          }
+        }
+      }
+    },
+    "ui.delete.saved.password.a38fa5cf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Saved Password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장된 비밀번호 삭제"
+          }
+        }
+      }
+    },
+    "ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete the SVN password stored in Keychain for this local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 로컬 작업 폴더용으로 Keychain에 저장된 SVN 비밀번호를 삭제합니다."
+          }
+        }
+      }
+    },
+    "ui.deleted.6826dd28": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleted"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제"
+          }
+        }
+      }
+    },
+    "ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff is unavailable until this file is added to SVN. It will be added automatically when committed."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 SVN에 추가되지 않은 파일은 diff를 표시할 수 없습니다. 커밋할 때 자동으로 추가됩니다."
+          }
+        }
+      }
+    },
+    "ui.download.the.latest.server.changes.into.the.curr.17974067": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download the latest server changes into the current local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다."
+          }
+        }
+      }
+    },
+    "ui.earlier.history.da5e45b0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "… Earlier history"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "… 이전 기록"
+          }
+        }
+      }
+    },
+    "ui.editing.document.in.svn.kr.5e6ac9cc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editing document in SVN KR"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN KR에서 문서 편집 중"
+          }
+        }
+      }
+    },
+    "ui.enter.password.48ff7123": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비밀번호 입력"
+          }
+        }
+      }
+    },
+    "ui.error.a08d7e0d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오류"
+          }
+        }
+      }
+    },
+    "ui.exit.demo.3a329c52": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit Demo"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데모 종료"
+          }
+        }
+      }
+    },
+    "ui.explore.the.main.features.with.sample.data.and.n.fd16edf5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore the main features with sample data and no server connection or account."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 연결이나 계정 없이 샘플 데이터로 주요 기능을 둘러봅니다."
+          }
+        }
+      }
+    },
+    "ui.failed.cb475070": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ failed: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 실패: %2$@"
+          }
+        }
+      }
+    },
+    "ui.failed.to.remove.an.incomplete.conflict.backup.65753038": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to remove an incomplete conflict backup: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불완전한 충돌 백업 정리에 실패했습니다: %1$@"
+          }
+        }
+      }
+    },
+    "ui.false.aliases.excluded.85d448dd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "False aliases excluded"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제외할 가짜 경로"
+          }
+        }
+      }
+    },
+    "ui.file.811b7680": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일"
+          }
+        }
+      }
+    },
+    "ui.file.commit.history.342bfaac": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File Commit History"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일의 커밋 기록"
+          }
+        }
+      }
+    },
+    "ui.file.commit.history.ab024244": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File Commit History"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 커밋 기록"
+          }
+        }
+      }
+    },
+    "ui.files.6075adef": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일"
+          }
+        }
+      }
+    },
+    "ui.files.being.downloaded.will.appear.here.after.ch.9dfb3816": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files being downloaded will appear here after checkout starts."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃을 시작하면 내려받는 파일이 여기에 표시됩니다."
+          }
+        }
+      }
+    },
+    "ui.files.inside.this.folder.will.be.added.together.637444b8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files inside this folder will be added together."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하위 파일이 함께 추가됩니다."
+          }
+        }
+      }
+    },
+    "ui.folder.credentials.b4bd68eb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder Credentials"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더별 인증 설정"
+          }
+        }
+      }
+    },
+    "ui.folder.e6474408": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더"
+          }
+        }
+      }
+    },
+    "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".gitignore is not modified. Import is one-way, and SVN property changes must be committed to share them."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".gitignore는 변경하지 않습니다. 가져오기는 단방향이며 SVN 속성 변경을 커밋해야 팀에 공유됩니다."
+          }
+        }
+      }
+    },
+    "ui.global.rules.can.affect.many.directories.below.t.164333fd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global rules can affect many directories below the working copy. Apply only after reviewing the scope."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요."
+          }
+        }
+      }
+    },
+    "ui.highest.local.revision.d334c9c1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Highest local revision"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 최상위"
+          }
+        }
+      }
+    },
+    "ui.history.refreshed.5c159ee8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ history refreshed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 커밋 기록 확인 완료"
+          }
+        }
+      }
+    },
+    "ui.ignore.this.extension.687c5df7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore This Extension"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같은 확장자 모두 무시"
+          }
+        }
+      }
+    },
+    "ui.ignore.this.item.67c56906": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore This Item"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일 무시"
+          }
+        }
+      }
+    },
+    "ui.ignored.b45ee0ef": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignored"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시됨"
+          }
+        }
+      }
+    },
+    "ui.import.git.rules.bbf8aa32": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import Git Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git 규칙 가져오기"
+          }
+        }
+      }
+    },
+    "ui.include.in.commit.2aaaa224": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include %1$@ in commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 커밋 포함"
+          }
+        }
+      }
+    },
+    "ui.include.or.exclude.this.file.from.the.next.commi.273bb38e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include or exclude this file from the next commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일을 다음 선택 커밋에 포함하거나 제외합니다."
+          }
+        }
+      }
+    },
+    "ui.included.locally.241cf38b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Included locally"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬에 포함"
+          }
+        }
+      }
+    },
+    "ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incoming changes that overlap local edits may create an SVN conflict."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 중 로컬 변경과 겹치면 SVN 충돌이 발생할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.inherited.from.1feb128b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inherited from %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 상속"
+          }
+        }
+      }
+    },
+    "ui.inherited.rules.can.only.be.removed.from.the.par.276c450b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inherited rules can only be removed from the parent directory that owns the property."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상속된 규칙은 속성을 설정한 상위 디렉터리에서만 제거할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.item.s.7cb28e2a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ item(s)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개 항목"
+          }
+        }
+      }
+    },
+    "ui.japan.standard.time.jst.utc.9.04744dfc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japan Standard Time (JST, UTC+9)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일본 표준시 (JST, UTC+9)"
+          }
+        }
+      }
+    },
+    "ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the file currently saved in the working copy and mark the conflict resolved. The file is backed up immediately before resolving."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 폴더에 저장된 파일을 유지하고 충돌을 해결 상태로 표시합니다. 실행 직전 파일은 복구본으로 보관됩니다."
+          }
+        }
+      }
+    },
+    "ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep your file. A later commit will replace the repository file with this content."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일을 유지합니다. 이후 커밋하면 서버 파일이 이 내용으로 변경됩니다."
+          }
+        }
+      }
+    },
+    "ui.keychain.access.was.denied.c1358e6f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain access was denied."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain 접근이 거부되었습니다."
+          }
+        }
+      }
+    },
+    "ui.keychain.access.was.denied.choose.how.to.authent.0d8d881a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain access was denied. Choose how to authenticate."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain 접근이 거부되었습니다. 인증 방식을 다시 선택할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.keychain.operation.failed.e456386b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain operation failed: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain 처리 실패: %1$@"
+          }
+        }
+      }
+    },
+    "ui.korea.standard.time.kst.utc.9.74d019be": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korea Standard Time (KST, UTC+9)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국 표준시 (KST, UTC+9)"
+          }
+        }
+      }
+    },
+    "ui.language.8e5b78fb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언어"
+          }
+        }
+      }
+    },
+    "ui.last.compared.cbf0bf20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last compared %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마지막 비교 %1$@"
+          }
+        }
+      }
+    },
+    "ui.later.7dd25de4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에"
+          }
+        }
+      }
+    },
+    "ui.leave.blank.to.keep.the.current.password.5f89ccfa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave blank to keep the current password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비우면 기존 값 유지"
+          }
+        }
+      }
+    },
+    "ui.load.50.more.043526e4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load 50 More"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 기록 50개 더 불러오기"
+          }
+        }
+      }
+    },
+    "ui.loading.changes.82ffc858": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading changes…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 내용 불러오는 중…"
+          }
+        }
+      }
+    },
+    "ui.loading.commit.history.c445b02a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading commit history…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록 불러오는 중…"
+          }
+        }
+      }
+    },
+    "ui.loading.file.history.c6c155f3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading file history…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 기록 불러오는 중…"
+          }
+        }
+      }
+    },
+    "ui.loading.files.a3268fef": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading files…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 목록을 불러오는 중…"
+          }
+        }
+      }
+    },
+    "ui.loading.repository.locks.3dd2dfdb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading repository locks…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 목록 불러오는 중…"
+          }
+        }
+      }
+    },
+    "ui.local.changes.60d75f36": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ local changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 변경 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.local.changes.refreshed.617acbc6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ local changes refreshed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 로컬 변경 사항 확인 완료"
+          }
+        }
+      }
+    },
+    "ui.local.folder.63f176e1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 폴더"
+          }
+        }
+      }
+    },
+    "ui.local.working.folders.341c44b5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local working folders"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 작업 폴더"
+          }
+        }
+      }
+    },
+    "ui.locally.missing.action.required.50c49ccb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locally Missing · Action Required"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 누락 · 처리 필요"
+          }
+        }
+      }
+    },
+    "ui.locally.missing.c4011027": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locally missing"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 누락"
+          }
+        }
+      }
+    },
+    "ui.lock.and.open.c64beb29": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lock and Open"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠그고 열기"
+          }
+        }
+      }
+    },
+    "ui.lock.information.could.not.be.checked.you.can.op.b80b917b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lock information could not be checked. You can open the file without locking it."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.lock.this.file.before.opening.0d16b072": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lock This File Before Opening?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "먼저 파일을 잠그고 여시겠습니까?"
+          }
+        }
+      }
+    },
+    "ui.locked.by.192b78cf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked by %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 사용자가 잠근 파일"
+          }
+        }
+      }
+    },
+    "ui.locked.by.you.f2a7c3f2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked by you"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내가 잠근 파일"
+          }
+        }
+      }
+    },
+    "ui.locked.files.457daf19": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ locked files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠긴 파일 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locking prevents concurrent commits by other users and reduces document conflicts. A successful commit automatically releases the lock."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠그면 다른 사용자의 동시 커밋을 방지해 문서 충돌을 줄일 수 있습니다. 커밋에 성공하면 잠금은 자동으로 해제됩니다."
+          }
+        }
+      }
+    },
+    "ui.locks.46e6922e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ locks"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.locks.dac8d38d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locks"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 목록"
+          }
+        }
+      }
+    },
+    "ui.mac.system.time.zone.df3e6992": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac system time zone (%1$@)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 시스템 시간대 (%1$@)"
+          }
+        }
+      }
+    },
+    "ui.manage.ignore.rules.7eac76b1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Ignore Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시 규칙 관리"
+          }
+        }
+      }
+    },
+    "ui.mark.for.deletion.ec31cd20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark for Deletion"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소에서도 삭제로 표시"
+          }
+        }
+      }
+    },
+    "ui.mark.for.repository.deletion.3c417fc1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark for Repository Deletion"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소에서도 삭제로 표시"
+          }
+        }
+      }
+    },
+    "ui.marked.item.s.for.deletion.commit.to.delete.them.ac2b38ab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marked %1$@ item(s) for deletion. Commit to delete them from the repository."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개 항목을 삭제 예정으로 표시했습니다. 커밋하면 저장소에서 삭제됩니다."
+          }
+        }
+      }
+    },
+    "ui.mixed.revisions.6faee919": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mixed revisions"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "혼합 리비전"
+          }
+        }
+      }
+    },
+    "ui.modification.date.unavailable.7b2ebc97": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification date unavailable"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수정 시각을 알 수 없음"
+          }
+        }
+      }
+    },
+    "ui.modified.01365bb2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modified"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수정"
+          }
+        }
+      }
+    },
+    "ui.modified.98221376": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modified %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수정 시각 %1$@"
+          }
+        }
+      }
+    },
+    "ui.multiple.canonically.equivalent.server.paths.exi.55798f96": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Multiple canonically equivalent server paths exist, so the app cannot choose one safely."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정규화하면 같은 서버 경로가 둘 이상이어서 앱이 기준 경로를 선택할 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.my.file.e70a2b5b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일"
+          }
+        }
+      }
+    },
+    "ui.my.local.base.eff15763": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My local base"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 기준"
+          }
+        }
+      }
+    },
+    "ui.my.local.folder.r.6668e9b0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My local folder r%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 폴더 r%1$@"
+          }
+        }
+      }
+    },
+    "ui.need.help.bf7256df": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Need help?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문의 사항이 있으신가요?"
+          }
+        }
+      }
+    },
+    "ui.new.479ccc40": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "신규"
+          }
+        }
+      }
+    },
+    "ui.new.working.folder.5db27c9c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Working Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 작업 폴더"
+          }
+        }
+      }
+    },
+    "ui.no.changed.files.27bf2bab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Changed Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 파일 없음"
+          }
+        }
+      }
+    },
+    "ui.no.changes.ea917fd6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항 없음"
+          }
+        }
+      }
+    },
+    "ui.no.commit.history.a78ed291": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Commit History"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록 없음"
+          }
+        }
+      }
+    },
+    "ui.no.commit.message.911ccc29": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No commit message"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 메시지 없음"
+          }
+        }
+      }
+    },
+    "ui.no.file.history.c4cc1ef1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No File History"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 기록 없음"
+          }
+        }
+      }
+    },
+    "ui.no.files.5245ffcc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표시할 파일 없음"
+          }
+        }
+      }
+    },
+    "ui.no.gitignore.44540a9b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No .gitignore"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".gitignore 없음"
+          }
+        }
+      }
+    },
+    "ui.no.gitignore.file.was.found.in.the.working.copy.ce93a706": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No .gitignore file was found in the working copy."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 복사본에서 .gitignore 파일을 찾지 못했습니다."
+          }
+        }
+      }
+    },
+    "ui.no.incoming.changes.8302e8b6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Incoming Changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내려받을 변경 없음"
+          }
+        }
+      }
+    },
+    "ui.no.locked.files.7d32eee0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Locked Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠긴 파일 없음"
+          }
+        }
+      }
+    },
+    "ui.no.password.is.stored.44110abb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No password is stored."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장된 비밀번호가 없습니다."
+          }
+        }
+      }
+    },
+    "ui.no.search.results.e40b4a06": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Search Results"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색 결과 없음"
+          }
+        }
+      }
+    },
+    "ui.no.svn.ignore.rules.are.configured.71e0180f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No SVN ignore rules are configured."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정된 SVN 무시 규칙이 없습니다."
+          }
+        }
+      }
+    },
+    "ui.no.text.diff.is.available.this.may.be.a.new.or.b.e90ec831": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text diff is available. This may be a new or binary file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 diff가 없습니다. 새 파일 또는 바이너리 파일일 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.no.value.480d48f5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No value"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "값 없음"
+          }
+        }
+      }
+    },
+    "ui.on.success.both.the.original.and.recovered.copie.9a6ba4b9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On success, both the original and recovered copies remain in the sidebar."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "성공하면 원본과 복구본이 모두 왼쪽 목록에 남습니다."
+          }
+        }
+      }
+    },
+    "ui.open.backup.folder.d8faa2d5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Backup Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백업 폴더 열기"
+          }
+        }
+      }
+    },
+    "ui.open.file.ea89b4b3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 열기"
+          }
+        }
+      }
+    },
+    "ui.open.in.finder.35aa9225": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Finder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder에서 열기"
+          }
+        }
+      }
+    },
+    "ui.open.my.file.537a87cb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open My File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일 열기"
+          }
+        }
+      }
+    },
+    "ui.open.server.file.252d515b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Server File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일 열기"
+          }
+        }
+      }
+    },
+    "ui.open.this.svn.local.working.folder.in.finder.9befff0f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open this SVN local working folder in Finder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 SVN 로컬 작업 폴더를 Finder에서 엽니다."
+          }
+        }
+      }
+    },
+    "ui.open.without.lock.e650efbf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Without Lock"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠그지 않고 열기"
+          }
+        }
+      }
+    },
+    "ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opened without a lock. A concurrent commit by another user may cause a conflict."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.opening.a.file.locked.by.you.742588ff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening a file locked by you."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내가 잠근 파일을 엽니다."
+          }
+        }
+      }
+    },
+    "ui.original.message.fbd14889": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original Message"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 전 원문"
+          }
+        }
+      }
+    },
+    "ui.password.945c94ed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비밀번호"
+          }
+        }
+      }
+    },
+    "ui.path.recovery.completed.the.original.working.fol.2fde9c42": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Path recovery completed. The original working folder was preserved."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 복구 완료 — 원본 작업 폴더는 그대로 유지했습니다."
+          }
+        }
+      }
+    },
+    "ui.pending.deletion.1652cca1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pending Deletion"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 예정"
+          }
+        }
+      }
+    },
+    "ui.pending.deletion.4b08f65b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ pending deletion"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 예정 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.please.send.questions.to.f2d48929": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please send questions to %1$@."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문의 사항은 %1$@으로 남겨 주세요."
+          }
+        }
+      }
+    },
+    "ui.press.o.or.use.the.button.at.the.bottom.left.42abfdb5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press ⌘O or use the + button at the bottom left."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘O를 누르거나 왼쪽 아래 + 버튼을 사용하세요."
+          }
+        }
+      }
+    },
+    "ui.properties.changed.b933354d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Properties changed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "속성 변경"
+          }
+        }
+      }
+    },
+    "ui.questions.support.b20404dc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questions & Support"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문의 및 도움말"
+          }
+        }
+      }
+    },
+    "ui.recover.to.new.working.folder.141e043c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recover to New Working Folder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 작업 폴더로 복구"
+          }
+        }
+      }
+    },
+    "ui.recovery.preview.be45be07": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery Preview"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복구 미리보기"
+          }
+        }
+      }
+    },
+    "ui.refresh.0aca6bd2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로고침"
+          }
+        }
+      }
+    },
+    "ui.refreshed.41ebae4b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ refreshed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 새로고침 완료"
+          }
+        }
+      }
+    },
+    "ui.register.an.existing.svn.working.folder.in.the.a.361385a1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Register an existing SVN working folder in the app."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미 체크아웃된 SVN 로컬 작업 폴더를 앱 목록에 등록합니다."
+          }
+        }
+      }
+    },
+    "ui.register.existing.local.folder.fcf466c4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Register Existing Local Folder…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기존 로컬 폴더 등록…"
+          }
+        }
+      }
+    },
+    "ui.release.lock.695a2075": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release Lock"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 해제"
+          }
+        }
+      }
+    },
+    "ui.release.my.lock.1b0c3150": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Release My Lock"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 잠금 해제"
+          }
+        }
+      }
+    },
+    "ui.reload.local.changes.and.the.latest.server.commi.19e409f3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload local changes and the latest server commit history."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다."
+          }
+        }
+      }
+    },
+    "ui.remove.d4be5a3e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
+          }
+        }
+      }
+    },
+    "ui.remove.inherited.rules.from.the.parent.directory.7c2d3995": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove inherited rules from the parent directory that owns the property."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상속된 규칙은 속성을 설정한 상위 디렉터리에서 제거해야 합니다."
+          }
+        }
+      }
+    },
+    "ui.remove.the.selected.working.folder.from.the.app..ffe092ae": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the selected working folder from the app. Local files are not deleted."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 로컬 작업 폴더를 앱 목록에서 제거합니다. 로컬 파일은 삭제하지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.remove.this.rule.2908b9d1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this rule."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 규칙을 제거합니다."
+          }
+        }
+      }
+    },
+    "ui.removed.ignore.rule.bb8aeaf0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed ignore rule '%1$@'."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시 규칙 '%1$@'을 제거했습니다."
+          }
+        }
+      }
+    },
+    "ui.replace.with.the.server.file.your.local.edits.le.f08dec1d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace with the server file. Your local edits leave the working copy but remain in the backup folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일로 교체합니다. 작업 중이던 내 변경 내용은 작업 폴더에서 사라집니다. 내 원본은 백업 폴더에 보관됩니다."
+          }
+        }
+      }
+    },
+    "ui.replaced.6da39732": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaced"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "교체"
+          }
+        }
+      }
+    },
+    "ui.repository.locks.dff91f03": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repository Locks"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 파일 잠금"
+          }
+        }
+      }
+    },
+    "ui.repository.url.a29f5816": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repository URL"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 URL"
+          }
+        }
+      }
+    },
+    "ui.resolve.conflict.592b6d3a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve Conflict…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 해결…"
+          }
+        }
+      }
+    },
+    "ui.resolve.conflict.d9c365ea": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve Conflict"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 해결"
+          }
+        }
+      }
+    },
+    "ui.resolve.conflicted.files.before.committing.e5cfd21c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve conflicted files before committing."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 파일은 해결 완료 처리 후 커밋할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.resolve.duplicate.server.paths.manually.e8b5d352": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve Duplicate Server Paths Manually"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 중복 경로 수동 정리 필요"
+          }
+        }
+      }
+    },
+    "ui.resolve.unicode.path.conflicts.before.comparing..17151bba": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolve Unicode path conflicts before comparing Git rules so property locations can be chosen safely."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한글 경로 충돌을 먼저 정리해야 Git 무시 규칙의 적용 위치를 안전하게 결정할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.restore.local.file.b40bfb4b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Local File…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 파일 복원…"
+          }
+        }
+      }
+    },
+    "ui.restored.98d96c01": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restored"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원됨"
+          }
+        }
+      }
+    },
+    "ui.reveal.in.finder.52d4a206": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal in Finder"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder에서 보기"
+          }
+        }
+      }
+    },
+    "ui.revert.f621e9ba": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revert"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌리기"
+          }
+        }
+      }
+    },
+    "ui.revert.local.changes.0fa51499": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revert Local Changes?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 변경을 되돌릴까요?"
+          }
+        }
+      }
+    },
+    "ui.revert.local.changes.c62907ae": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revert Local Changes…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 변경 되돌리기…"
+          }
+        }
+      }
+    },
+    "ui.reverted.local.changes.4b9ba3ac": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reverted local changes: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬 변경을 되돌렸습니다: %1$@"
+          }
+        }
+      }
+    },
+    "ui.review.618262db": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인 필요"
+          }
+        }
+      }
+    },
+    "ui.run.update.e17c8217": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run Update"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 실행"
+          }
+        }
+      }
+    },
+    "ui.save.7c93b7e1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장"
+          }
+        }
+      }
+    },
+    "ui.save.in.keychain.and.use.9c0fd0d4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save in Keychain and Use"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키체인에 저장하고 사용"
+          }
+        }
+      }
+    },
+    "ui.save.in.macos.keychain.optional.d544f3fd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save in macOS Keychain (optional)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS Keychain에 저장 (선택)"
+          }
+        }
+      }
+    },
+    "ui.save.the.svn.username.and.new.password.for.this..72748974": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save the SVN username and new password for this local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력한 SVN 사용자명과 새 비밀번호를 이 로컬 작업 폴더에 저장합니다."
+          }
+        }
+      }
+    },
+    "ui.search.author.file.message.or.revision.6c2b5d76": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search author, file, message, or revision"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작성자, 파일, 메시지, 리비전 검색"
+          }
+        }
+      }
+    },
+    "ui.search.files.e3607184": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 검색"
+          }
+        }
+      }
+    },
+    "ui.select.a.changed.file.to.view.its.diff.409b3672": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a changed file to view its diff."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 파일을 선택하면 diff가 표시됩니다."
+          }
+        }
+      }
+    },
+    "ui.select.a.commit.8977b05a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋을 선택하세요"
+          }
+        }
+      }
+    },
+    "ui.select.a.file.12b00b2b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 선택하세요"
+          }
+        }
+      }
+    },
+    "ui.select.all.061b129c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모두 선택"
+          }
+        }
+      }
+    },
+    "ui.select.all.currently.changed.files.for.commit.ccad7410": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select all currently changed files for commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 변경된 파일을 모두 커밋 대상으로 선택합니다."
+          }
+        }
+      }
+    },
+    "ui.select.all.ef1f5eca": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 선택"
+          }
+        }
+      }
+    },
+    "ui.selected.685ae833": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ selected"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개 선택"
+          }
+        }
+      }
+    },
+    "ui.send.email.f71021b3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send Email"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메일 보내기"
+          }
+        }
+      }
+    },
+    "ui.server.changes.inside.a.pending.deletion.may.not.475f8db6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server changes inside a pending deletion may not appear in this list. Run Update, then review any conflicts."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 예정 경로의 서버 변경은 목록에 표시되지 않을 수 있습니다. 업데이트를 실행한 뒤 충돌 상태를 확인하세요."
+          }
+        }
+      }
+    },
+    "ui.server.commit.952e9a4a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 커밋"
+          }
+        }
+      }
+    },
+    "ui.server.file.4c69a88d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일"
+          }
+        }
+      }
+    },
+    "ui.server.latest.52ad60d5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server latest"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 최신"
+          }
+        }
+      }
+    },
+    "ui.server.latest.r.e1c092b2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server latest r%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 최신 r%1$@"
+          }
+        }
+      }
+    },
+    "ui.server.revision.c11b62aa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server revision %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 리비전 %1$@"
+          }
+        }
+      }
+    },
+    "ui.show.ignored.files.508dbd97": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Ignored Files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시된 파일 보기"
+          }
+        }
+      }
+    },
+    "ui.show.the.macos.keychain.access.prompt.again.d57d9f96": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the macOS Keychain access prompt again."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS Keychain 접근 창을 다시 표시합니다."
+          }
+        }
+      }
+    },
+    "ui.shows.the.diff.for.this.file.6f52b16a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the diff for this file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일의 diff를 표시합니다."
+          }
+        }
+      }
+    },
+    "ui.svn.authentication.required.797a2cdb": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN Authentication Required"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 인증 필요"
+          }
+        }
+      }
+    },
+    "ui.svn.ignore.rules.90435aad": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN Ignore Rules"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 무시 규칙"
+          }
+        }
+      }
+    },
+    "ui.svn.password.5e0660b7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 비밀번호"
+          }
+        }
+      }
+    },
+    "ui.svn.username.90a19d48": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN username"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 계정명"
+          }
+        }
+      }
+    },
+    "ui.svn.username.optional.fff42bd5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN username (optional)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 계정명 (선택)"
+          }
+        }
+      }
+    },
+    "ui.symbolic.link.0dc00212": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbolic Link"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "심볼릭 링크"
+          }
+        }
+      }
+    },
+    "ui.temporary.5738ffab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporary"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "임시파일"
+          }
+        }
+      }
+    },
+    "ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The bundled SVN executable could not be found. Reinstall the app."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
+          }
+        }
+      }
+    },
+    "ui.the.commit.completed.but.working.copy.validation.e58fd53c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: %1$@"
+          }
+        }
+      }
+    },
+    "ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 먼저 변경된 항목이 있어 커밋할 수 없습니다. 작업 폴더를 업데이트하고 충돌이 있으면 해결한 뒤 다시 커밋하세요.\n\n%1$@"
+          }
+        }
+      }
+    },
+    "ui.the.conflict.remains.after.the.svn.command.revie.2162b675": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conflict remains after the SVN command. Review the backups and try again."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 명령 이후에도 충돌 상태가 남아 있습니다. 백업을 확인한 뒤 다시 시도하세요."
+          }
+        }
+      }
+    },
+    "ui.the.conflict.was.resolved.review.the.file.before.7821924b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conflict was resolved. Review the file before committing."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌을 해결했습니다. 파일을 확인한 뒤 커밋하세요."
+          }
+        }
+      }
+    },
+    "ui.the.current.working.file.could.not.be.found.60c92e05": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current working file could not be found."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일을 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.the.current.working.file.must.be.a.regular.file..1af7fbcd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current working file must be a regular file, not a symbolic link."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.the.default.is.korea.standard.time.kst.this.does.02bc8ed0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The default is Korea Standard Time (KST). This does not change the original commit time."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기본값은 한국 표준시(KST)이며 커밋 원본 시각은 변경하지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file is locked. A successful commit automatically releases the lock."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 잠갔습니다. 커밋에 성공하면 잠금이 자동으로 해제됩니다."
+          }
+        }
+      }
+    },
+    "ui.the.lock.was.released.3aee6b8e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The lock was released."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금을 해제했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.macos.unicode.path.was.matched.to.the.actual.0575e471": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The macOS Unicode path was matched to the actual SVN-managed path."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 한글 경로 표현을 실제 SVN 관리 경로로 자동 보정했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.recovery.backup.of.the.current.working.file..048b3539": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The recovery backup of the current working file could not be verified."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일의 복구 백업을 검증하지 못했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.recovery.destination.folder.must.be.empty.2f9bc173": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The recovery destination folder must be empty."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복구 대상 폴더는 비어 있어야 합니다."
+          }
+        }
+      }
+    },
+    "ui.the.saved.password.was.deleted.a729310e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The saved password was deleted."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장된 비밀번호를 삭제했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.selected.folder.is.not.an.svn.local.working..c602474e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected folder is not an SVN local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다."
+          }
+        }
+      }
+    },
+    "ui.the.selected.version.of.your.file.could.not.be.r.70a89d83": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected version of your file could not be restored to the working file."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.server.file.version.could.not.be.found.3483616c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server file version could not be found."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일 버전을 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.the.server.file.version.must.be.a.regular.file.n.7eb568b2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server file version must be a regular file, not a symbolic link."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.the.svn.response.could.not.be.read.6a3d5aa8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SVN response could not be read."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 응답을 읽지 못했습니다."
+          }
+        }
+      }
+    },
+    "ui.the.svn.server.denied.read.access.to.this.file.c.2ec5cc64": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SVN server denied read access to this file. Check the project credentials and server path permissions.\n\n%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 서버가 이 파일 내용에 대한 읽기 접근을 거부했습니다. 프로젝트 인증 정보와 서버 경로 권한을 확인해 주세요.\n\n%1$@"
+          }
+        }
+      }
+    },
+    "ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The working copy contains mixed revisions r%1$@; this marker shows the highest revision."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 복사본은 r%1$@ 혼합 리비전이며 이 위치는 최상위 리비전입니다."
+          }
+        }
+      }
+    },
+    "ui.the.working.copy.is.up.to.date.with.the.server.e31e447e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The working copy is up to date with the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 로컬 작업 폴더가 서버와 최신 상태입니다."
+          }
+        }
+      }
+    },
+    "ui.the.working.folder.no.longer.exists.restore.the..4946d37c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The '%1$@' working folder no longer exists.\n%2$@\n\nRestore the folder or remove it from the list with the − button."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%1$@' 작업 폴더가 존재하지 않습니다.\n%2$@\n\n폴더를 복원하거나 왼쪽 아래 − 버튼으로 목록에서 제거하세요."
+          }
+        }
+      }
+    },
+    "ui.there.are.no.git.rules.to.import.03bd12e9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no Git rules to import."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가져올 Git 규칙이 없습니다."
+          }
+        }
+      }
+    },
+    "ui.there.are.no.locally.modified.files.8560ad60": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no locally modified files."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬에서 수정된 파일이 없습니다."
+          }
+        }
+      }
+    },
+    "ui.this.commit.message.was.saved.with.incorrect.enc.355e2cb5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This commit message was saved with incorrect encoding and is shown after restoration. Other SVN users may see the original message below."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 커밋 메시지는 잘못된 인코딩으로 저장되어 복원 후 표시하고 있습니다. 다른 SVN 사용자에게는 아래 원문이 표시될 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.this.file.cannot.be.committed.until.it.is.marked.201bfa2c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file cannot be committed until it is marked resolved."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해결 완료 전에는 이 파일을 커밋할 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.this.file.is.currently.locked.by.opening.without.ca1f8e9a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file is currently locked by %1$@. Opening without a lock may prevent committing or cause a conflict."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 %1$@ 사용자가 잠근 파일입니다. 잠그지 않고 열면 변경 내용을 커밋할 수 없거나 충돌할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.this.is.a.server.commit.4162d83c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is a server commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 커밋입니다."
+          }
+        }
+      }
+    },
+    "ui.this.is.your.local.base.revision.5912a346": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is your local base revision."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 기준 리비전입니다."
+          }
+        }
+      }
+    },
+    "ui.this.local.working.folder.is.already.registered.b8836f70": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This local working folder is already registered."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미 등록된 로컬 작업 폴더입니다."
+          }
+        }
+      }
+    },
+    "ui.this.only.marks.the.items.for.deletion.they.are..594bb2c0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This only marks the items for deletion. They are deleted from the SVN repository when committed, and can be restored before then."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금은 삭제 예정 상태로만 바뀝니다. 커밋하면 SVN 저장소에서 삭제되며, 커밋 전에는 취소하고 복원할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.try.keychain.again.a762f607": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try Keychain Again"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키체인 다시 시도"
+          }
+        }
+      }
+    },
+    "ui.uk.time.46ba8995": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UK Time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "영국 시간"
+          }
+        }
+      }
+    },
+    "ui.unable.to.check.the.app.store.for.updates.a1a5b5ac": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to check the App Store for updates."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store에서 업데이트 정보를 확인하지 못했습니다."
+          }
+        }
+      }
+    },
+    "ui.unable.to.load.changes.78b04452": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to Load Changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 내용을 불러올 수 없습니다"
+          }
+        }
+      }
+    },
+    "ui.unable.to.open.file.ae08bd77": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to open file: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일을 열 수 없습니다: %1$@"
+          }
+        }
+      }
+    },
+    "ui.uncommitted.changes.35359722": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ uncommitted changes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미커밋 변경 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.uncommitted.changes.branch.from.your.local.base..d49c86b6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncommitted changes branch from your local base revision."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 기준 리비전에서 미커밋 변경이 갈라져 있습니다."
+          }
+        }
+      }
+    },
+    "ui.uncommitted.changes.in.will.be.discarded.and.can.df7e8671": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncommitted changes in %1$@ will be discarded and cannot be restored by SVN."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 커밋하지 않은 변경이 삭제됩니다. 이 작업은 SVN으로 복구할 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.unicode.path.conflict.1ea3bdc6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unicode Path Conflict"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한글 경로 충돌"
+          }
+        }
+      }
+    },
+    "ui.unknown.author.511030fa": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown author"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작성자 없음"
+          }
+        }
+      }
+    },
+    "ui.unknown.error.745cd1b7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown error"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없는 오류"
+          }
+        }
+      }
+    },
+    "ui.unsupported.3d400c13": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변환 불가"
+          }
+        }
+      }
+    },
+    "ui.unsupported.conflict.type.1a0e94e8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported conflict type: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원하지 않는 충돌 유형입니다: %1$@"
+          }
+        }
+      }
+    },
+    "ui.unversioned.ffbcbcb7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unversioned"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미추적"
+          }
+        }
+      }
+    },
+    "ui.up.to.date.cf368157": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to date"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신"
+          }
+        }
+      }
+    },
+    "ui.update.0f38eb76": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트"
+          }
+        }
+      }
+    },
+    "ui.update.preview.3e2a4411": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Preview"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 미리보기"
+          }
+        }
+      }
+    },
+    "ui.update.required.9da93c25": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update required"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 필요"
+          }
+        }
+      }
+    },
+    "ui.update.required.f846039b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Required"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 필요"
+          }
+        }
+      }
+    },
+    "ui.us.eastern.time.9e917cad": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "US Eastern Time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미국 동부 시간"
+          }
+        }
+      }
+    },
+    "ui.us.pacific.time.5c9c3b6f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "US Pacific Time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미국 태평양 시간"
+          }
+        }
+      }
+    },
+    "ui.use.current.working.file.275f4c29": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Current Working File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일 사용"
+          }
+        }
+      }
+    },
+    "ui.use.current.working.file.40ab0712": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Current Working File?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일을 사용할까요?"
+          }
+        }
+      }
+    },
+    "ui.use.my.file.36631b8e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use My File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일 사용"
+          }
+        }
+      }
+    },
+    "ui.use.my.file.d12a8b2d": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use My File?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일을 사용할까요?"
+          }
+        }
+      }
+    },
+    "ui.use.only.for.servers.with.self.signed.certificat.cd3b5e55": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use only for servers with self-signed certificates or certificate name mismatches."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요."
+          }
+        }
+      }
+    },
+    "ui.use.server.file.30c6c26c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Server File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일 사용"
+          }
+        }
+      }
+    },
+    "ui.use.server.file.949587dc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Server File?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일을 사용할까요?"
+          }
+        }
+      }
+    },
+    "ui.use.this.session.only.08dcce43": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Session Only"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이번 실행에만 사용"
+          }
+        }
+      }
+    },
+    "ui.use.this.when.the.target.server.s.certificate.is.2fa0c076": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use this when the target server's certificate is invalid but you trust the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다."
+          }
+        }
+      }
+    },
+    "ui.username.4e1b650a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Username"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용자명"
+          }
+        }
+      }
+    },
+    "ui.version.6bb2f91c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %1$@ (%2$@)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버전 %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "ui.version.is.available.7e5cfb4e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %1$@ is available."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 버전 %1$@을 사용할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.versioned.items.below.the.selected.directory.wil.f7d01b47": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versioned items below the selected directory will also be marked for deletion."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 디렉터리 아래의 SVN 추적 항목도 함께 삭제 예정이 됩니다."
+          }
+        }
+      }
+    },
+    "ui.view.changes.in.this.commit.afab8525": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Changes in This Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 커밋의 변경 내용 보기"
+          }
+        }
+      }
+    },
+    "ui.view.in.app.store.7c79e972": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View in App Store"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store에서 보기"
+          }
+        }
+      }
+    },
+    "ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View the locked files and their count in this repository."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 저장소에서 잠긴 파일 목록과 개수를 확인합니다."
+          }
+        }
+      }
+    },
+    "ui.view.the.original.message.before.restoration.6a5e3b2b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View the original message before restoration"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 전 원문 보기"
+          }
+        }
+      }
+    },
+    "ui.when.you.choose.a.version.the.current.working.fi.70533c5a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you choose a version, the current working file is preserved separately as a hidden recovery copy."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버전을 선택하는 순간의 현재 작업 파일은 별도의 숨김 복구본으로 보존됩니다."
+          }
+        }
+      }
+    },
+    "ui.you.re.using.the.latest.version.18d5624c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're using the latest version (%1$@)."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신 버전(%1$@)을 사용 중입니다."
+          }
+        }
+      }
+    },
+    "ui.your.file.version.could.not.be.found.576883d5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your file version could not be found."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일 버전을 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.your.file.version.must.be.a.regular.file.not.a.s.0ea5ff6f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your file version must be a regular file, not a symbolic link."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.your.local.base.revision.is.earlier.than.the.lat.e0f7b1d7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your local base revision is earlier than the latest 50 server records."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 로컬 기준 리비전이 최근 50개 서버 기록보다 이전입니다."
+          }
+        }
+      }
+    },
+    "ui.your.local.update.base.falls.between.two.server..5815a927": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your local update base falls between two server commits."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 서버 커밋 사이의 내 로컬 갱신 기준입니다."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

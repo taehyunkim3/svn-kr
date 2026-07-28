@@ -11,19 +11,16 @@ struct RepositoryLocksView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.text("저장소 파일 잠금", "Repository Locks")).font(.title2.bold())
+                Text(appLanguage.localized("ui.repository.locks.dff91f03")).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.text("새로고침", "Refresh")) { Task { await store.loadRepositoryLocks() } }
-                Button(appLanguage.text("닫기", "Close")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized("ui.refresh.0aca6bd2")) { Task { await store.loadRepositoryLocks() } }
+                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
             Label {
-                Text(appLanguage.text(
-                    "잠금 파일은 편집 중인 파일에 다른 사용자가 동시에 커밋하지 못하도록 SVN 서버에 표시한 파일입니다. 내가 잠근 파일은 커밋에 성공하면 자동으로 잠금이 해제됩니다.",
-                    "A locked file is marked on the SVN server to prevent another user from committing to it while it is being edited. Your lock is released automatically after a successful commit."
-                ))
+                Text(appLanguage.localized("ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309"))
             } icon: {
                 Image(systemName: "info.circle")
             }
@@ -49,7 +46,7 @@ struct RepositoryLocksView: View {
                     .font(.caption)
                     Spacer()
                     if lock.owner == store.selectedProject?.username {
-                        Button(appLanguage.text("내 잠금 해제", "Release My Lock")) {
+                        Button(appLanguage.localized("ui.release.my.lock.1b0c3150")) {
                             Task { await store.unlock(lock) }
                         }
                         .disabled(store.isSelectedProjectActionBlocked)
@@ -59,9 +56,9 @@ struct RepositoryLocksView: View {
             }
             .overlay {
                 if store.repositoryLocks.isEmpty, store.isLoadingSelectedProjectLocks {
-                    ProgressView(appLanguage.text("잠금 목록 불러오는 중…", "Loading repository locks…"))
+                    ProgressView(appLanguage.localized("ui.loading.repository.locks.3dd2dfdb"))
                 } else if store.repositoryLocks.isEmpty {
-                    ContentUnavailableView(appLanguage.text("잠긴 파일 없음", "No Locked Files"), systemImage: "lock.open")
+                    ContentUnavailableView(appLanguage.localized("ui.no.locked.files.7d32eee0"), systemImage: "lock.open")
                 }
             }
         }

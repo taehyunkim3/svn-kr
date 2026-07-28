@@ -44,10 +44,7 @@ extension ProjectStore {
               let sourceProject = projects.first(where: { $0.id == sourceID }) else { return false }
         let destination = destinationURL.standardizedFileURL
         guard !projects.contains(where: { $0.path == destination.path }) else {
-            errorMessage = AppLanguage.current.text(
-                "이미 등록된 로컬 작업 폴더입니다.",
-                "This local working folder is already registered."
-            )
+            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
             return false
         }
 
@@ -83,10 +80,7 @@ extension ProjectStore {
 
             selectedProjectID = recoveredID
             await refresh()
-            notice = AppLanguage.current.text(
-                "경로 복구 완료 — 원본 작업 폴더는 그대로 유지했습니다.",
-                "Path recovery completed. The original working folder was preserved."
-            )
+            notice = AppLanguage.current.localized("ui.path.recovery.completed.the.original.working.fol.2fde9c42")
             return true
         } catch {
             projectAccessManager.endAccessing(projectID: recoveredID)

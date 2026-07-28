@@ -9,22 +9,19 @@ struct SVNLogMessageView: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(entry.message.isEmpty ? appLanguage.text("커밋 메시지 없음", "No commit message") : entry.message)
+            Text(entry.message.isEmpty ? appLanguage.localized("ui.no.commit.message.911ccc29") : entry.message)
                 .textSelection(.enabled)
 
             if let originalMessage = entry.originalMessage {
-                Button(appLanguage.text("복원됨", "Restored")) {
+                Button(appLanguage.localized("ui.restored.98d96c01")) {
                     showsOriginalMessage = true
                 }
-                .help(appLanguage.text("복원 전 원문 보기", "View the original message before restoration"))
+                .help(appLanguage.localized("ui.view.the.original.message.before.restoration.6a5e3b2b"))
                 .popover(isPresented: $showsOriginalMessage) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(appLanguage.text("복원 전 원문", "Original Message"))
+                        Text(appLanguage.localized("ui.original.message.fbd14889"))
                             .font(.headline)
-                        Text(appLanguage.text(
-                            "이 커밋 메시지는 잘못된 인코딩으로 저장되어 복원 후 표시하고 있습니다. 다른 SVN 사용자에게는 아래 원문이 표시될 수 있습니다.",
-                            "This commit message was saved with incorrect encoding and is shown after restoration. Other SVN users may see the original message below."
-                        ))
+                        Text(appLanguage.localized("ui.this.commit.message.was.saved.with.incorrect.enc.355e2cb5"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(originalMessage)

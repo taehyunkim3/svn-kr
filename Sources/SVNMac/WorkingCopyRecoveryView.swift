@@ -11,30 +11,27 @@ struct WorkingCopyRecoveryView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Label(
-                    appLanguage.text("한글 경로 자동 복구", "Automatic Unicode Path Recovery"),
+                    appLanguage.localized("ui.automatic.unicode.path.recovery.e71b00a0"),
                     systemImage: "cross.case"
                 )
                 .font(.headline)
                 Spacer()
-                Button(appLanguage.text("닫기", "Close")) {
+                Button(appLanguage.localized("ui.close.3ea43db3")) {
                     store.isShowingPathRecovery = false
                 }
                 .disabled(store.isPathRecoveryRunning)
             }
 
-            Text(appLanguage.text(
-                "서버에서 새 작업 폴더를 체크아웃한 뒤 실제 로컬 변경만 NFC 한글 경로로 옮깁니다. 현재 작업 폴더와 파일은 변경하거나 삭제하지 않습니다.",
-                "A clean working copy is checked out from the server, then only real local changes are migrated using NFC paths. The current working folder and its files are not changed or deleted."
-            ))
+            Text(appLanguage.localized("ui.a.clean.working.copy.is.checked.out.from.the.ser.a49ce026"))
             .foregroundStyle(.secondary)
 
             if let preview = store.pathRecoveryPreview {
-                GroupBox(appLanguage.text("복구 미리보기", "Recovery Preview")) {
+                GroupBox(appLanguage.localized("ui.recovery.preview.be45be07")) {
                     Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
-                        previewRow(appLanguage.text("수정", "Modified"), value: preview.modifiedCount)
-                        previewRow(appLanguage.text("신규", "New"), value: preview.addedCount)
-                        previewRow(appLanguage.text("로컬 누락", "Locally missing"), value: preview.deletedCount)
-                        previewRow(appLanguage.text("제외할 가짜 경로", "False aliases excluded"), value: preview.ignoredAliasCount)
+                        previewRow(appLanguage.localized("ui.modified.01365bb2"), value: preview.modifiedCount)
+                        previewRow(appLanguage.localized("ui.new.479ccc40"), value: preview.addedCount)
+                        previewRow(appLanguage.localized("ui.locally.missing.c4011027"), value: preview.deletedCount)
+                        previewRow(appLanguage.localized("ui.false.aliases.excluded.85d448dd"), value: preview.ignoredAliasCount)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
@@ -42,9 +39,9 @@ struct WorkingCopyRecoveryView: View {
 
                 if !preview.blockingPaths.isEmpty {
                     Label(
-                        appLanguage.text(
-                            "자동 복구 전에 직접 확인해야 할 경로: \(preview.blockingPaths.joined(separator: ", "))",
-                            "Review these paths before automatic recovery: \(preview.blockingPaths.joined(separator: ", "))"
+                        appLanguage.localized(
+                            "recovery.review.paths",
+                            preview.blockingPaths.joined(separator: ", ")
                         ),
                         systemImage: "exclamationmark.triangle.fill"
                     )
@@ -52,14 +49,14 @@ struct WorkingCopyRecoveryView: View {
                 }
             }
 
-            GroupBox(appLanguage.text("새 작업 폴더", "New Working Folder")) {
+            GroupBox(appLanguage.localized("ui.new.working.folder.5db27c9c")) {
                 HStack {
-                    Text(destinationURL?.path ?? appLanguage.text("비어 있는 폴더를 선택하세요.", "Choose an empty folder."))
+                    Text(destinationURL?.path ?? appLanguage.localized("ui.choose.an.empty.folder.8f9acb6e"))
                         .foregroundStyle(destinationURL == nil ? .secondary : .primary)
                         .lineLimit(2)
                         .textSelection(.enabled)
                     Spacer()
-                    Button(appLanguage.text("폴더 선택…", "Choose Folder…"), systemImage: "folder") {
+                    Button(appLanguage.localized("ui.choose.folder.54647179"), systemImage: "folder") {
                         chooseDestination()
                     }
                     .disabled(store.isPathRecoveryRunning)
@@ -69,7 +66,7 @@ struct WorkingCopyRecoveryView: View {
 
             if let error = store.errorMessage {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label(appLanguage.text("오류", "Error"), systemImage: "exclamationmark.triangle.fill")
+                    Label(appLanguage.localized("ui.error.a08d7e0d"), systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.red)
                     ErrorDetailsText(
                         message: error,
@@ -85,15 +82,12 @@ struct WorkingCopyRecoveryView: View {
             Spacer()
 
             HStack {
-                Text(appLanguage.text(
-                    "성공하면 원본과 복구본이 모두 왼쪽 목록에 남습니다.",
-                    "On success, both the original and recovered copies remain in the sidebar."
-                ))
+                Text(appLanguage.localized("ui.on.success.both.the.original.and.recovered.copie.9a6ba4b9"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
                 if store.isPathRecoveryRunning { ProgressView().controlSize(.small) }
-                Button(appLanguage.text("새 작업 폴더로 복구", "Recover to New Working Folder")) {
+                Button(appLanguage.localized("ui.recover.to.new.working.folder.141e043c")) {
                     Task { _ = await store.recoverWorkingCopy(to: destinationURL) }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -118,7 +112,7 @@ struct WorkingCopyRecoveryView: View {
 
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = appLanguage.text("복구할 빈 폴더 선택", "Choose an Empty Recovery Folder")
+        panel.title = appLanguage.localized("ui.choose.an.empty.recovery.folder.c2b4a175")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true

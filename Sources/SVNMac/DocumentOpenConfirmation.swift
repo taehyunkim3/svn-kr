@@ -8,33 +8,27 @@ private struct DocumentOpenConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var store = store
         content.confirmationDialog(
-            appLanguage.text("먼저 파일을 잠그고 여시겠습니까?", "Lock This File Before Opening?"),
+            appLanguage.localized("ui.lock.this.file.before.opening.0d16b072"),
             isPresented: .isPresenting($store.documentOpenRequest),
             titleVisibility: .visible,
             presenting: store.documentOpenRequest
         ) { request in
             if request.existingLock == nil {
-                Button(appLanguage.text("잠그고 열기", "Lock and Open")) {
+                Button(appLanguage.localized("ui.lock.and.open.c64beb29")) {
                     Task { await store.lockAndOpen(request) }
                 }
             }
-            Button(appLanguage.text("잠그지 않고 열기", "Open Without Lock")) {
+            Button(appLanguage.localized("ui.open.without.lock.e650efbf")) {
                 store.openWithoutLock(request)
             }
-            Button(appLanguage.text("취소", "Cancel"), role: .cancel) {
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
                 store.documentOpenRequest = nil
             }
         } message: { request in
             if let lock = request.existingLock {
-                Text(appLanguage.text(
-                    "현재 \(lock.owner) 사용자가 잠근 파일입니다. 잠그지 않고 열면 변경 내용을 커밋할 수 없거나 충돌할 수 있습니다.",
-                    "This file is currently locked by \(lock.owner). Opening without a lock may prevent committing or cause a conflict."
-                ))
+                Text(appLanguage.localized("ui.this.file.is.currently.locked.by.opening.without.ca1f8e9a", lock.owner))
             } else {
-                Text(appLanguage.text(
-                    "잠그면 다른 사용자의 동시 커밋을 방지해 문서 충돌을 줄일 수 있습니다. 커밋에 성공하면 잠금은 자동으로 해제됩니다.",
-                    "Locking prevents concurrent commits by other users and reduces document conflicts. A successful commit automatically releases the lock."
-                ))
+                Text(appLanguage.localized("ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c"))
             }
         }
     }

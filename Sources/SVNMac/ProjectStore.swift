@@ -44,17 +44,11 @@ enum DiffContent: Equatable {
     func localizedText(_ language: AppLanguage) -> String {
         switch self {
         case .placeholder:
-            language.text("변경 파일을 선택하면 diff가 표시됩니다.", "Select a changed file to view its diff.")
+            language.localized("ui.select.a.changed.file.to.view.its.diff.409b3672")
         case .unavailableForUnversioned:
-            language.text(
-                "아직 SVN에 추가되지 않은 파일은 diff를 표시할 수 없습니다. 커밋할 때 자동으로 추가됩니다.",
-                "Diff is unavailable until this file is added to SVN. It will be added automatically when committed."
-            )
+            language.localized("ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5")
         case .noTextDiff:
-            language.text(
-                "텍스트 diff가 없습니다. 새 파일 또는 바이너리 파일일 수 있습니다.",
-                "No text diff is available. This may be a new or binary file."
-            )
+            language.localized("ui.no.text.diff.is.available.this.may.be.a.new.or.b.e90ec831")
         case let .text(value):
             value
         case let .failure(message):
@@ -416,7 +410,7 @@ final class ProjectStore {
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = AppLanguage.current.text("SVN 로컬 작업 폴더 선택", "Choose SVN Local Working Folders")
+        panel.title = AppLanguage.current.localized("ui.choose.svn.local.working.folders.6d104bc9")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
@@ -437,16 +431,13 @@ final class ProjectStore {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
-            errorMessage = AppLanguage.current.text(
-                "체크아웃할 로컬 폴더를 선택해 주세요.",
-                "Choose a local folder for the checkout."
-            )
+            errorMessage = AppLanguage.current.localized("ui.choose.a.local.folder.for.the.checkout.de1fb4ce")
             return false
         }
         let destination = destinationURL.standardizedFileURL
         let destinationPath = destination.path
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.text("이미 등록된 로컬 작업 폴더입니다.", "This local working folder is already registered.")
+            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
             return false
         }
 
@@ -507,10 +498,7 @@ final class ProjectStore {
             do {
                 try credentialStore.setPassword(password, for: id)
             } catch {
-                keychainWarning = AppLanguage.current.text(
-                    "체크아웃은 완료했지만 비밀번호를 Keychain에 저장하지 못했습니다: \(localizedError(error))",
-                    "Checkout completed, but the password could not be saved in Keychain: \(localizedError(error))"
-                )
+                keychainWarning = AppLanguage.current.localized("ui.checkout.completed.but.the.password.could.not.be.ed5274e5", localizedError(error))
             }
         }
 
@@ -620,7 +608,7 @@ final class ProjectStore {
             self.hasMoreHistory = logs.count == 50
             self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
             updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
-            notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
+            notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
                 handleRemoteError(
@@ -668,10 +656,7 @@ final class ProjectStore {
             self.workingCopyRepositoryPath = workingCopyRepositoryPath
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
-            notice = AppLanguage.current.text(
-                "\(project.name) 로컬 변경 사항 확인 완료",
-                "\(project.name) local changes refreshed"
-            )
+            notice = AppLanguage.current.localized("ui.local.changes.refreshed.617acbc6", project.name)
             return true
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -708,14 +693,14 @@ final class ProjectStore {
             .filter { $0.item == .missing && self.selectedPaths.contains($0.path) }
             .map(\.path)
         guard missingPaths.isEmpty else {
-            errorMessage = AppLanguage.current.text(
-                "먼저 로컬 누락 항목의 처리 방법을 선택하세요: \(missingPaths.joined(separator: ", "))",
-                "Choose how to handle locally missing items first: \(missingPaths.joined(separator: ", "))"
+            errorMessage = AppLanguage.current.localized(
+                "error.choose.missing.items",
+                missingPaths.joined(separator: ", ")
             )
             return false
         }
         guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
-            errorMessage = AppLanguage.current.text("충돌 파일은 해결 완료 처리 후 커밋할 수 있습니다.", "Resolve conflicted files before committing.")
+            errorMessage = AppLanguage.current.localized("ui.resolve.conflicted.files.before.committing.e5cfd21c")
             return false
         }
         let operationID = beginOperation(.commit(project.id))
@@ -788,7 +773,7 @@ final class ProjectStore {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.text("\(projects[index].name) 인증 설정 저장 완료", "Credentials saved for \(projects[index].name)")
+            notice = AppLanguage.current.localized("ui.credentials.saved.for.409bff39", projects[index].name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -800,7 +785,7 @@ final class ProjectStore {
         do {
             try credentialStore.deletePassword(for: projectID)
             sessionPasswords[projectID] = nil
-            notice = AppLanguage.current.text("저장된 비밀번호를 삭제했습니다.", "The saved password was deleted.")
+            notice = AppLanguage.current.localized("ui.the.saved.password.was.deleted.a729310e")
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -848,10 +833,7 @@ final class ProjectStore {
     func cancelAuthentication(for request: SVNAuthenticationRequest) {
         guard authenticationRequest?.id == request.id else { return }
         authenticationRequest = nil
-        notice = AppLanguage.current.text(
-            "인증을 취소했습니다. 로컬 변경 사항은 계속 확인할 수 있습니다.",
-            "Authentication was canceled. Local changes remain available."
-        )
+        notice = AppLanguage.current.localized("ui.authentication.was.canceled.local.changes.remain.c4984bab")
     }
 
     // MARK: - 인증 조회와 실패 후 작업 재개
@@ -917,10 +899,7 @@ final class ProjectStore {
     }
 
     private var authenticationNotice: String {
-        AppLanguage.current.text(
-            "Keychain 접근이 거부되었습니다. 인증 방식을 다시 선택할 수 있습니다.",
-            "Keychain access was denied. Choose how to authenticate."
-        )
+        AppLanguage.current.localized("ui.keychain.access.was.denied.choose.how.to.authent.0d8d881a")
     }
 
     private func resume(_ request: SVNAuthenticationRequest) async {
@@ -950,7 +929,7 @@ final class ProjectStore {
             guard selectedProjectID == project.id else { return }
             logs = newLogs
             hasMoreHistory = newLogs.count == 50
-            notice = AppLanguage.current.text("\(project.name) 커밋 기록 확인 완료", "\(project.name) history refreshed")
+            notice = AppLanguage.current.localized("ui.history.refreshed.5c159ee8", project.name)
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .refreshHistory)
@@ -971,14 +950,14 @@ final class ProjectStore {
     func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.text("파일을 열 수 없습니다: \(relativePath)", "Unable to open file: \(relativePath)")
+            errorMessage = AppLanguage.current.localized("ui.unable.to.open.file.ae08bd77", relativePath)
             return
         }
     }
 
     func openWorkspaceURL(_ url: URL) {
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.text("파일을 열 수 없습니다.", "Could not open the file.")
+            errorMessage = AppLanguage.current.localized("ui.could.not.open.the.file.263874fa")
             return
         }
     }
@@ -1043,10 +1022,7 @@ final class ProjectStore {
             guard unavailableProjectID != project.id else { return false }
             unavailableProjectID = project.id
             automaticRefreshBlockedProjectID = project.id
-            errorMessage = AppLanguage.current.text(
-                "'\(project.name)' 작업 폴더가 존재하지 않습니다.\n\(project.path)\n\n폴더를 복원하거나 왼쪽 아래 − 버튼으로 목록에서 제거하세요.",
-                "The '\(project.name)' working folder no longer exists.\n\(project.path)\n\nRestore the folder or remove it from the list with the − button."
-            )
+            errorMessage = AppLanguage.current.localized("ui.the.working.folder.no.longer.exists.restore.the..4946d37c", project.name, project.path)
             return false
         }
         if unavailableProjectID == project.id {

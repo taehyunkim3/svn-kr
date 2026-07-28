@@ -15,13 +15,10 @@ struct ProjectStatusBadges: View {
                 if summary.lockCount > 0 {
                     Label("\(summary.lockCount)", systemImage: "lock.fill")
                         .foregroundStyle(.blue)
-                        .help(appLanguage.text(
-                            "잠긴 파일 \(summary.lockCount)개",
-                            "\(summary.lockCount) locked files"
-                        ))
+                        .help(appLanguage.localized("ui.locked.files.457daf19", summary.lockCount))
                 }
                 if summary.needsUpdate {
-                    Label(appLanguage.text("업데이트", "Update"), systemImage: "arrow.down.circle.fill").foregroundStyle(.orange)
+                    Label(appLanguage.localized("ui.update.0f38eb76"), systemImage: "arrow.down.circle.fill").foregroundStyle(.orange)
                 }
             }
             .font(.caption2)

@@ -29,7 +29,7 @@ struct ContentView: View {
         @Bindable var store = store
         NavigationSplitView {
             List(selection: $store.selectedProjectID) {
-                Section(appLanguage.text("로컬 작업 폴더", "Local working folders")) {
+                Section(appLanguage.localized("ui.local.working.folders.341c44b5")) {
                     ForEach(store.projects) { project in
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
@@ -56,7 +56,7 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
-                    .help(appLanguage.text("새 SVN 저장소를 체크아웃하거나 기존 로컬 작업 폴더를 등록합니다.", "Check out a new SVN repository or register an existing local working folder."))
+                    .help(appLanguage.localized("ui.check.out.a.new.svn.repository.or.register.an.ex.2b1e2b00"))
 
                     Button(action: store.removeSelectedProject) {
                         Image(systemName: "minus")
@@ -66,7 +66,7 @@ struct ContentView: View {
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
                     .disabled(store.selectedProject == nil)
-                    .help(appLanguage.text("선택한 로컬 작업 폴더를 앱 목록에서 제거합니다. 로컬 파일은 삭제하지 않습니다.", "Remove the selected working folder from the app. Local files are not deleted."))
+                    .help(appLanguage.localized("ui.remove.the.selected.working.folder.from.the.app..ffe092ae"))
                     Spacer()
                 }
                 .padding(8)
@@ -81,43 +81,43 @@ struct ContentView: View {
                 projectView(project)
             } else {
                 ContentUnavailableView(
-                    appLanguage.text("로컬 작업 폴더를 추가하세요", "Add a local working folder"),
+                    appLanguage.localized("ui.add.a.local.working.folder.816116ca"),
                     systemImage: "externaldrive.badge.plus",
-                    description: Text(appLanguage.text("⌘O를 누르거나 왼쪽 아래 + 버튼을 사용하세요.", "Press ⌘O or use the + button at the bottom left."))
+                    description: Text(appLanguage.localized("ui.press.o.or.use.the.button.at.the.bottom.left.42abfdb5"))
                 )
             }
         }
         .toolbar {
             if store.isDemoMode {
-                Button(appLanguage.text("데모 종료", "Exit Demo")) {
+                Button(appLanguage.localized("ui.exit.demo.3a329c52")) {
                     onExitDemo()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
-                .help(appLanguage.text("샘플 프로젝트를 닫고 일반 모드로 돌아갑니다.", "Close the sample project and return to normal mode."))
+                .help(appLanguage.localized("ui.close.the.sample.project.and.return.to.normal.mo.6d61e364"))
             }
             Button {
                 Task { await store.refreshSelectedProject(manual: true) }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.clockwise")
-                    Text(appLanguage.text("새로고침", "Refresh"))
+                    Text(appLanguage.localized("ui.refresh.0aca6bd2"))
                 }
                 .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
-                .help(appLanguage.text("로컬 변경 사항과 최신 서버 커밋 기록을 다시 불러옵니다.", "Reload local changes and the latest server commit history."))
+                .help(appLanguage.localized("ui.reload.local.changes.and.the.latest.server.commi.19e409f3"))
             Button {
                 Task { await store.previewUpdate() }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.down.circle")
-                    Text(appLanguage.text("업데이트", "Update"))
+                    Text(appLanguage.localized("ui.update.0f38eb76"))
                 }
                 .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
-                .help(appLanguage.text("서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.", "Download the latest server changes into the current local working folder."))
+                .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
             if store.showsGlobalProgress {
                 ProgressView()
                     .controlSize(.small)
@@ -179,38 +179,35 @@ struct ContentView: View {
                 }
                 Spacer()
                 repositoryLocksButton
-                Button(appLanguage.text("Finder에서 열기", "Open in Finder"), systemImage: "folder") {
+                Button(appLanguage.localized("ui.open.in.finder.35aa9225"), systemImage: "folder") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
                 }
-                .help(appLanguage.text(
-                    "이 SVN 로컬 작업 폴더를 Finder에서 엽니다.",
-                    "Open this SVN local working folder in Finder."
-                ))
-                Button(appLanguage.text("인증 설정", "Credentials"), systemImage: "person.badge.key") {
+                .help(appLanguage.localized("ui.open.this.svn.local.working.folder.in.finder.9befff0f"))
+                Button(appLanguage.localized("ui.credentials.97a976d9"), systemImage: "person.badge.key") {
                     store.isShowingCredentials = true
                 }
-                .help(appLanguage.text("이 로컬 작업 폴더에서 사용할 SVN 계정과 Keychain 비밀번호를 설정합니다.", "Configure the SVN account and Keychain password for this local working folder."))
+                .help(appLanguage.localized("ui.configure.the.svn.account.and.keychain.password..daa54ac3"))
                 if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
             }
             .padding()
 
             TabView(selection: $selectedProjectTab) {
                 ChangesView()
-                    .tabItem { Label(appLanguage.text("변경 사항", "Changes"), systemImage: "checklist") }
+                    .tabItem { Label(appLanguage.localized("ui.changes.0e19f519"), systemImage: "checklist") }
                     .tag(ProjectTab.changes)
                 WorkingCopyBrowserView(searchText: $fileSearchText)
-                    .tabItem { Label(appLanguage.text("파일", "Files"), systemImage: "folder") }
+                    .tabItem { Label(appLanguage.localized("ui.files.6075adef"), systemImage: "folder") }
                     .tag(ProjectTab.files)
                 HistoryView(searchText: $historySearchText)
-                    .tabItem { Label(appLanguage.text("커밋 기록", "Commit History"), systemImage: "clock.arrow.circlepath") }
+                    .tabItem { Label(appLanguage.localized("ui.commit.history.07e0f8de"), systemImage: "clock.arrow.circlepath") }
                     .tag(ProjectTab.history)
             }
             .modifier(ProjectTabSearchModifier(
                 selectedTab: selectedProjectTab,
                 fileSearchText: $fileSearchText,
                 historySearchText: $historySearchText,
-                filePrompt: appLanguage.text("파일 검색", "Search Files"),
-                historyPrompt: appLanguage.text("작성자, 파일, 메시지, 리비전 검색", "Search author, file, message, or revision")
+                filePrompt: appLanguage.localized("ui.search.files.e3607184"),
+                historyPrompt: appLanguage.localized("ui.search.author.file.message.or.revision.6c2b5d76")
             ))
         }
     }
@@ -223,24 +220,18 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "lock")
-                Text(appLanguage.text("잠금 목록", "Locks"))
+                Text(appLanguage.localized("ui.locks.dac8d38d"))
                 if !store.repositoryLocks.isEmpty {
                     StatusBadge(
                         label: "\(store.repositoryLocks.count)",
                         color: .accentColor,
                         verticalPadding: 2
                     )
-                    .accessibilityLabel(appLanguage.text(
-                        "잠금 \(store.repositoryLocks.count)개",
-                        "\(store.repositoryLocks.count) locks"
-                    ))
+                    .accessibilityLabel(appLanguage.localized("ui.locks.46e6922e", store.repositoryLocks.count))
                 }
             }
         }
-        .help(appLanguage.text(
-            "현재 저장소에서 잠긴 파일 목록과 개수를 확인합니다.",
-            "View the locked files and their count in this repository."
-        ))
+        .help(appLanguage.localized("ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51"))
     }
 
 }

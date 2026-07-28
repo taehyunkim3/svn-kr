@@ -11,9 +11,20 @@ import Testing
     }
 }
 
-@Test func appLanguagesProvideStableNativeNamesAndFallback() {
+@Test func appLanguagesProvideStableNativeNames() {
     #expect(AppLanguage.korean.displayName == "한국어")
     #expect(AppLanguage.english.displayName == "English")
-    #expect(AppLanguage.korean.text("한국어 문구", "English copy") == "한국어 문구")
-    #expect(AppLanguage.english.text("한국어 문구", "English copy") == "English copy")
+}
+
+@Test func stringCatalogHonorsExplicitAppLanguageAndFormatArguments() {
+    #expect(AppLanguage.korean.localized("ui.close.3ea43db3") == "닫기")
+    #expect(AppLanguage.english.localized("ui.close.3ea43db3") == "Close")
+    #expect(
+        AppLanguage.korean.localized("error.choose.missing.items", "문서/누락.txt")
+            == "먼저 로컬 누락 항목의 처리 방법을 선택하세요: 문서/누락.txt"
+    )
+    #expect(
+        AppLanguage.english.localized("error.choose.missing.items", "Docs/missing.txt")
+            == "Choose how to handle locally missing items first: Docs/missing.txt"
+    )
 }

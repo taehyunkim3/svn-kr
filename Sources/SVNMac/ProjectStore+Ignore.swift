@@ -50,7 +50,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text("무시 규칙 '\(pattern)'을 추가했습니다. 디렉터리 속성을 커밋하면 팀에 공유됩니다.", "Added ignore rule '\(pattern)'. Commit the directory property to share it with the team.")
+            notice = AppLanguage.current.localized("ui.added.ignore.rule.commit.the.directory.property..42754ee1", pattern)
             await refresh()
             await loadIgnoreRules()
         } catch {
@@ -62,10 +62,7 @@ extension ProjectStore {
     func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
         guard let project = selectedProject else { return }
         guard rule.inheritedFrom == nil else {
-            errorMessage = AppLanguage.current.text(
-                "상속된 규칙은 속성을 설정한 상위 디렉터리에서만 제거할 수 있습니다.",
-                "Inherited rules can only be removed from the parent directory that owns the property."
-            )
+            errorMessage = AppLanguage.current.localized("ui.inherited.rules.can.only.be.removed.from.the.par.276c450b")
             return
         }
         let operationID = beginOperation(.ignore(project.id))
@@ -79,7 +76,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text("무시 규칙 '\(rule.pattern)'을 제거했습니다.", "Removed ignore rule '\(rule.pattern)'.")
+            notice = AppLanguage.current.localized("ui.removed.ignore.rule.bb8aeaf0", rule.pattern)
             await refresh()
             await loadIgnoreRules()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
@@ -92,10 +89,7 @@ extension ProjectStore {
     func compareGitIgnore() async {
         guard let project = selectedProject else { return }
         guard pathCollisions.isEmpty else {
-            errorMessage = AppLanguage.current.text(
-                "한글 경로 충돌을 먼저 정리해야 Git 무시 규칙의 적용 위치를 안전하게 결정할 수 있습니다.",
-                "Resolve Unicode path conflicts before comparing Git rules so property locations can be chosen safely."
-            )
+            errorMessage = AppLanguage.current.localized("ui.resolve.unicode.path.conflicts.before.comparing..17151bba")
             return
         }
         let projectRoot = URL(fileURLWithPath: project.path, isDirectory: true)
@@ -200,10 +194,7 @@ extension ProjectStore {
                 )
             }
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.text(
-                "\(proposals.count)개 Git 규칙을 SVN 무시 속성에 적용했습니다. 속성 변경을 커밋해야 팀에 공유됩니다.",
-                "Applied \(proposals.count) Git rule(s) to SVN ignore properties. Commit the property changes to share them."
-            )
+            notice = AppLanguage.current.localized("ui.applied.git.rule.s.to.svn.ignore.properties.comm.2cfe91aa", proposals.count)
             await refreshLocalWorkingCopy()
             await compareGitIgnore()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }

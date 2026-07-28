@@ -10,21 +10,18 @@ struct IgnoreRulesView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules")).font(.title2.bold())
+                Text(appLanguage.localized("ui.manage.ignore.rules.7eac76b1")).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.text("닫기", "Close")) { dismiss() }
+                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
             List {
-                Section(appLanguage.text("SVN 무시 규칙", "SVN Ignore Rules")) {
+                Section(appLanguage.localized("ui.svn.ignore.rules.90435aad")) {
                     if store.ignoreRules.isEmpty {
-                        Text(appLanguage.text(
-                            "설정된 SVN 무시 규칙이 없습니다.",
-                            "No SVN ignore rules are configured."
-                        ))
+                        Text(appLanguage.localized("ui.no.svn.ignore.rules.are.configured.71e0180f"))
                         .foregroundStyle(.secondary)
                     } else {
                         ForEach(store.ignoreRules) { rule in
@@ -38,18 +35,12 @@ struct IgnoreRulesView: View {
                     if store.hasComparedGitIgnore {
                         if !store.gitIgnoreFileExists {
                             ContentUnavailableView(
-                                appLanguage.text(".gitignore 없음", "No .gitignore"),
+                                appLanguage.localized("ui.no.gitignore.44540a9b"),
                                 systemImage: "doc.badge.questionmark",
-                                description: Text(appLanguage.text(
-                                    "작업 복사본에서 .gitignore 파일을 찾지 못했습니다.",
-                                    "No .gitignore file was found in the working copy."
-                                ))
+                                description: Text(appLanguage.localized("ui.no.gitignore.file.was.found.in.the.working.copy.ce93a706"))
                             )
                         } else if store.gitIgnoreImportItems.isEmpty {
-                            Text(appLanguage.text(
-                                "가져올 Git 규칙이 없습니다.",
-                                "There are no Git rules to import."
-                            ))
+                            Text(appLanguage.localized("ui.there.are.no.git.rules.to.import.03bd12e9"))
                             .foregroundStyle(.secondary)
                         } else {
                             ForEach(store.gitIgnoreImportItems) { item in
@@ -58,25 +49,19 @@ struct IgnoreRulesView: View {
                         }
                     }
                 } header: {
-                    Text(appLanguage.text("Git 규칙 가져오기", "Import Git Rules"))
+                    Text(appLanguage.localized("ui.import.git.rules.bbf8aa32"))
                 } footer: {
-                    Text(appLanguage.text(
-                        ".gitignore는 변경하지 않습니다. 가져오기는 단방향이며 SVN 속성 변경을 커밋해야 팀에 공유됩니다.",
-                        ".gitignore is not modified. Import is one-way, and SVN property changes must be committed to share them."
-                    ))
+                    Text(appLanguage.localized("ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7"))
                 }
             }
 
             Divider()
             HStack {
-                Text(appLanguage.text(
-                    "이미 추적 중인 파일은 무시 규칙으로 숨겨지지 않습니다.",
-                    "Already versioned files are not hidden by ignore rules."
-                ))
+                Text(appLanguage.localized("ui.already.versioned.files.are.not.hidden.by.ignore.ed1d7db7"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
-                Button(appLanguage.text("선택 규칙 적용", "Apply Selected Rules")) {
+                Button(appLanguage.localized("ui.apply.selected.rules.f6bb01fa")) {
                     store.requestApplyGitIgnoreSelection()
                 }
                 .buttonStyle(.borderedProminent)
@@ -90,20 +75,17 @@ struct IgnoreRulesView: View {
         .appSheetFrame(minimumSize: AppLayout.ignoreRulesSheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
         .alert(
-            appLanguage.text("전역 무시 규칙을 적용할까요?", "Apply Global Ignore Rules?"),
+            appLanguage.localized("ui.apply.global.ignore.rules.1ece4ab2"),
             isPresented: $store.requiresGlobalIgnoreImportConfirmation
         ) {
-            Button(appLanguage.text("적용", "Apply"), role: .destructive) {
+            Button(appLanguage.localized("ui.apply.aa6f48d5"), role: .destructive) {
                 Task { await store.applySelectedGitIgnoreRules() }
             }
-            Button(appLanguage.text("취소", "Cancel"), role: .cancel) {
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
                 store.requiresGlobalIgnoreImportConfirmation = false
             }
         } message: {
-            Text(appLanguage.text(
-                "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요.",
-                "Global rules can affect many directories below the working copy. Apply only after reviewing the scope."
-            ))
+            Text(appLanguage.localized("ui.global.rules.can.affect.many.directories.below.t.164333fd"))
         }
     }
 
@@ -120,10 +102,7 @@ struct IgnoreRulesView: View {
                     )
                     Text(rule.directory).font(.caption.monospaced())
                     if let inheritedFrom = rule.inheritedFrom {
-                        Text(appLanguage.text(
-                            "\(inheritedFrom)에서 상속",
-                            "Inherited from \(inheritedFrom)"
-                        ))
+                        Text(appLanguage.localized("ui.inherited.from.1feb128b", inheritedFrom))
                         .font(.caption)
                     }
                 }
@@ -133,38 +112,32 @@ struct IgnoreRulesView: View {
             Button(role: .destructive) {
                 Task { await store.removeIgnoreRule(rule) }
             } label: {
-                Label(appLanguage.text("제거", "Remove"), systemImage: "trash")
+                Label(appLanguage.localized("ui.remove.d4be5a3e"), systemImage: "trash")
             }
             .disabled(store.isSelectedProjectActionBlocked || rule.inheritedFrom != nil)
             .help(rule.inheritedFrom == nil
-                ? appLanguage.text("이 규칙을 제거합니다.", "Remove this rule.")
-                : appLanguage.text(
-                    "상속된 규칙은 속성을 설정한 상위 디렉터리에서 제거해야 합니다.",
-                    "Remove inherited rules from the parent directory that owns the property."
-                ))
+                ? appLanguage.localized("ui.remove.this.rule.2908b9d1")
+                : appLanguage.localized("ui.remove.inherited.rules.from.the.parent.directory.7c2d3995"))
         }
     }
 
     private var gitImportControls: some View {
         HStack {
-            Button(appLanguage.text("Git 규칙과 비교", "Compare Git Rules"), systemImage: "arrow.triangle.2.circlepath") {
+            Button(appLanguage.localized("ui.compare.git.rules.2220d6b1"), systemImage: "arrow.triangle.2.circlepath") {
                 Task { await store.compareGitIgnore() }
             }
             .disabled(store.isSelectedProjectActionBlocked)
             if let comparedAt = store.gitIgnoreLastComparedAt {
-                Text(appLanguage.text(
-                    "마지막 비교 \(comparedAt.formatted(date: .omitted, time: .shortened))",
-                    "Last compared \(comparedAt.formatted(date: .omitted, time: .shortened))"
-                ))
+                Text(appLanguage.localized("ui.last.compared.cbf0bf20", comparedAt.formatted(date: .omitted, time: .shortened)))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
             if store.gitIgnoreFileExists {
-                Button(appLanguage.text("모두 선택", "Select All")) {
+                Button(appLanguage.localized("ui.select.all.061b129c")) {
                     store.selectedGitIgnoreImportIDs = store.selectableGitIgnoreImportIDs
                 }
-                Button(appLanguage.text("선택 해제", "Clear")) {
+                Button(appLanguage.localized("ui.clear.8cfe548b")) {
                     store.selectedGitIgnoreImportIDs.removeAll()
                 }
             }
@@ -211,13 +184,13 @@ struct IgnoreRulesView: View {
 
     private func importStatus(_ item: IgnoreImportItem) -> String {
         switch item.disposition {
-        case .alreadyApplied: appLanguage.text("이미 적용", "Applied")
+        case .alreadyApplied: appLanguage.localized("ui.applied.faddeb33")
         case let .proposal(_, requiresConfirmation):
             requiresConfirmation
-                ? appLanguage.text("확인 필요", "Review")
-                : appLanguage.text("추가 가능", "Available")
-        case .unsupported: appLanguage.text("변환 불가", "Unsupported")
-        case .conflict: appLanguage.text("충돌", "Conflict")
+                ? appLanguage.localized("ui.review.618262db")
+                : appLanguage.localized("ui.available.cb60f347")
+        case .unsupported: appLanguage.localized("ui.unsupported.3d400c13")
+        case .conflict: appLanguage.localized("ui.conflict.37edb628")
         }
     }
 

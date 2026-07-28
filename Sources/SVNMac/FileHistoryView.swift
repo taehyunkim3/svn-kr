@@ -10,11 +10,11 @@ struct FileHistoryView: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(appLanguage.text("파일 커밋 기록", "File Commit History")).font(.title2.bold())
+                    Text(appLanguage.localized("ui.file.commit.history.ab024244")).font(.title2.bold())
                     if let path = store.fileHistoryPath { Text(path).font(.caption.monospaced()).foregroundStyle(.secondary) }
                 }
                 Spacer()
-                Button(appLanguage.text("닫기", "Close")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
@@ -33,9 +33,9 @@ struct FileHistoryView: View {
             }
             .overlay {
                 if store.fileHistory.isEmpty, store.isLoadingSelectedFileHistory {
-                    ProgressView(appLanguage.text("파일 기록 불러오는 중…", "Loading file history…"))
+                    ProgressView(appLanguage.localized("ui.loading.file.history.c6c155f3"))
                 } else if store.fileHistory.isEmpty {
-                    ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No File History"), systemImage: "clock")
+                    ContentUnavailableView(appLanguage.localized("ui.no.file.history.c4cc1ef1"), systemImage: "clock")
                 }
             }
         }

@@ -44,25 +44,22 @@ struct SVNMacApp: App {
                     updateChecker.checkAutomaticallyIfNeeded()
                 }
                 .alert(
-                    appLanguage.text("새 업데이트가 있습니다", "An Update Is Available"),
+                    appLanguage.localized("ui.an.update.is.available.f3c3a4e9"),
                     isPresented: Binding(
                         get: { updateChecker.automaticUpdate != nil },
                         set: { if !$0 { updateChecker.dismissAutomaticUpdate() } }
                     ),
                     presenting: updateChecker.automaticUpdate
                 ) { release in
-                    Button(appLanguage.text("App Store에서 보기", "View in App Store")) {
+                    Button(appLanguage.localized("ui.view.in.app.store.7c79e972")) {
                         updateChecker.openStore(for: release)
                         updateChecker.dismissAutomaticUpdate()
                     }
-                    Button(appLanguage.text("나중에", "Later"), role: .cancel) {
+                    Button(appLanguage.localized("ui.later.7dd25de4"), role: .cancel) {
                         updateChecker.dismissAutomaticUpdate()
                     }
                 } message: { release in
-                    Text(appLanguage.text(
-                        "새 버전 \(release.version)을 사용할 수 있습니다.",
-                        "Version \(release.version) is available."
-                    ))
+                    Text(appLanguage.localized("ui.version.is.available.7e5cfb4e", release.version))
                 }
                 .alert(
                     AppContactSupport.alertTitle(for: appLanguage),
@@ -84,7 +81,7 @@ struct SVNMacApp: App {
         .commands {
             SVNMacCommands(updateChecker: updateChecker, appLanguage: appLanguage)
             CommandGroup(after: .newItem) {
-                Button(appLanguage.text("저장소 URL 체크아웃…", "Check Out Repository URL…")) {
+                Button(appLanguage.localized("ui.check.out.repository.url.6cbf366d")) {
                     (isDemoMode ? demoStore : liveStore).isShowingAddRepository = true
                 }
                     .keyboardShortcut("o", modifiers: [.command])
@@ -101,7 +98,7 @@ struct SVNMacApp: App {
                 .buttonStyle(.bordered)
         }
 
-        Window(appLanguage.text("SVN KR 정보", "About SVN KR"), id: "app-about") {
+        Window(appLanguage.localized("ui.about.svn.kr.ddc63e52"), id: "app-about") {
             AppAboutView(updateChecker: updateChecker)
                 .environment(\.appLanguage, appLanguage)
                 .buttonStyle(.bordered)

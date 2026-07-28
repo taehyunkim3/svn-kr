@@ -75,9 +75,9 @@ struct ChangesView: View {
         .overlay {
             if store.pathCollisions.isEmpty && store.statuses.isEmpty && (!store.showsIgnoredFiles || store.ignoredStatuses.isEmpty) {
                 ContentUnavailableView(
-                    appLanguage.text("변경 사항 없음", "No Changes"),
+                    appLanguage.localized("ui.no.changes.ea917fd6"),
                     systemImage: "checkmark.circle",
-                    description: Text(appLanguage.text("로컬에서 수정된 파일이 없습니다.", "There are no locally modified files."))
+                    description: Text(appLanguage.localized("ui.there.are.no.locally.modified.files.8560ad60"))
                 )
             }
         }
@@ -94,21 +94,18 @@ struct ChangesView: View {
                     }
                 ))
                 .labelsHidden()
-                .accessibilityLabel(appLanguage.text(
-                    "\(entry.path) 커밋 포함",
-                    "Include \(entry.path) in commit"
-                ))
-                .help(appLanguage.text("이 파일을 다음 선택 커밋에 포함하거나 제외합니다.", "Include or exclude this file from the next commit."))
+                .accessibilityLabel(appLanguage.localized("ui.include.in.commit.2aaaa224", entry.path))
+                .help(appLanguage.localized("ui.include.or.exclude.this.file.from.the.next.commi.273bb38e"))
             } else if entry.canScheduleRepositoryDeletion {
                 Menu {
-                    Button(appLanguage.text("로컬 파일 복원…", "Restore Local File…")) {
+                    Button(appLanguage.localized("ui.restore.local.file.b40bfb4b")) {
                         store.requestRevert(entry)
                     }
-                    Button(appLanguage.text("저장소에서도 삭제…", "Delete from Repository…"), role: .destructive) {
+                    Button(appLanguage.localized("ui.delete.from.repository.deb8c2a7"), role: .destructive) {
                         store.requestDeletion(entry)
                     }
                 } label: {
-                    Label(appLanguage.text("처리 선택…", "Choose Action…"), systemImage: "exclamationmark.triangle")
+                    Label(appLanguage.localized("ui.choose.action.60c39cbd"), systemImage: "exclamationmark.triangle")
                         .font(.caption)
                 }
                 .menuStyle(.borderlessButton)
@@ -123,22 +120,19 @@ struct ChangesView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
                     if entry.item == .unversioned && entry.nodeKind == .directory {
-                        Text(appLanguage.text(
-                            "하위 파일이 함께 추가됩니다.",
-                            "Files inside this folder will be added together."
-                        ))
+                        Text(appLanguage.localized("ui.files.inside.this.folder.will.be.added.together.637444b8"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityHint(appLanguage.text("이 파일의 diff를 표시합니다.", "Shows the diff for this file."))
+            .accessibilityHint(appLanguage.localized("ui.shows.the.diff.for.this.file.6f52b16a"))
             Spacer()
         }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
         .contextMenu {
-            Button(appLanguage.text("파일 열기", "Open File")) {
+            Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
                 Task {
                     await store.prepareToOpen(
                         path: entry.path,
@@ -149,40 +143,40 @@ struct ChangesView: View {
                     )
                 }
             }
-            Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
+            Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
                 store.revealInFinder(entry.path)
             }
-            Button(appLanguage.text("전체 경로 복사", "Copy Full Path")) {
+            Button(appLanguage.localized("ui.copy.full.path.823e26e7")) {
                 store.copyPath(entry.path)
             }
             if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
-                Button(appLanguage.text("이 파일의 커밋 기록", "File Commit History")) {
+                Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
                     Task { await store.loadFileHistory(for: entry.path) }
                 }
             }
             Divider()
             if entry.item == .conflicted {
-                Button(appLanguage.text("충돌 해결…", "Resolve Conflict…")) {
+                Button(appLanguage.localized("ui.resolve.conflict.592b6d3a")) {
                     Task { await store.prepareConflictResolution(for: entry.path) }
                 }
                 Divider()
             }
             if entry.item == .unversioned {
-                Button(appLanguage.text("이 파일 무시", "Ignore This Item")) {
+                Button(appLanguage.localized("ui.ignore.this.item.67c56906")) {
                     Task { await store.ignore(path: entry.path, byExtension: false) }
                 }
                 if !(entry.path as NSString).pathExtension.isEmpty {
-                    Button(appLanguage.text("같은 확장자 모두 무시", "Ignore This Extension")) {
+                    Button(appLanguage.localized("ui.ignore.this.extension.687c5df7")) {
                         Task { await store.ignore(path: entry.path, byExtension: true) }
                     }
                 }
             }
             if entry.canScheduleRepositoryDeletion {
                 Divider()
-                Button(appLanguage.text("로컬 파일 복원…", "Restore Local File…")) {
+                Button(appLanguage.localized("ui.restore.local.file.b40bfb4b")) {
                     store.requestRevert(entry)
                 }
-                Button(appLanguage.text("저장소에서도 삭제…", "Delete from Repository…"), role: .destructive) {
+                Button(appLanguage.localized("ui.delete.from.repository.deb8c2a7"), role: .destructive) {
                     store.requestDeletion(entry)
                 }
             }
@@ -190,8 +184,8 @@ struct ChangesView: View {
                 Divider()
                 Button(
                     entry.item == .deleted
-                        ? appLanguage.text("삭제 취소 및 복원…", "Cancel Deletion and Restore…")
-                        : appLanguage.text("로컬 변경 되돌리기…", "Revert Local Changes…"),
+                        ? appLanguage.localized("ui.cancel.deletion.and.restore.ce07fc64")
+                        : appLanguage.localized("ui.revert.local.changes.c62907ae"),
                     role: .destructive
                 ) {
                     store.requestRevert(entry)
@@ -206,31 +200,25 @@ struct ChangesView: View {
                 .foregroundStyle(.orange)
                 .frame(width: 18)
             StatusBadge(
-                label: appLanguage.text("한글 경로 충돌", "Unicode Path Conflict"),
+                label: appLanguage.localized("ui.unicode.path.conflict.1ea3bdc6"),
                 color: .orange
             )
             Text(collision.displayPath).lineLimit(1)
             Spacer()
-            Text(appLanguage.text("\(collision.affectedEntryCount)개 영향", "\(collision.affectedEntryCount) affected"))
+            Text(appLanguage.localized("ui.affected.dbd64ef9", collision.affectedEntryCount))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if collision.id == store.pathCollisions.first?.id {
                 if store.canRepairCanonicalAliases {
-                    Button(appLanguage.text("동일 한글 경로 정리", "Clean Up Equivalent Path")) {
+                    Button(appLanguage.localized("ui.clean.up.equivalent.path.11fce14e")) {
                         Task { await store.repairCanonicalAliases() }
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 } else {
-                    Text(appLanguage.text(
-                        "서버 중복 경로 수동 정리 필요",
-                        "Resolve Duplicate Server Paths Manually"
-                    ))
+                    Text(appLanguage.localized("ui.resolve.duplicate.server.paths.manually.e8b5d352"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.text(
-                        "정규화하면 같은 서버 경로가 둘 이상이어서 앱이 기준 경로를 선택할 수 없습니다.",
-                        "Multiple canonically equivalent server paths exist, so the app cannot choose one safely."
-                    ))
+                    .help(appLanguage.localized("ui.multiple.canonically.equivalent.server.paths.exi.55798f96"))
                 }
             }
         }
@@ -238,7 +226,7 @@ struct ChangesView: View {
 
     private var changesToolbar: some View {
         HStack {
-            Toggle(appLanguage.text("무시된 파일 보기", "Show Ignored Files"), isOn: Binding(
+            Toggle(appLanguage.localized("ui.show.ignored.files.508dbd97"), isOn: Binding(
                 get: { store.showsIgnoredFiles },
                 set: { value in Task { await store.setShowsIgnoredFiles(value) } }
             ))
@@ -247,10 +235,7 @@ struct ChangesView: View {
             let missingEntries = store.statuses.filter(\.canScheduleRepositoryDeletion)
             if missingEntries.count > 1 {
                 Button(
-                    appLanguage.text(
-                        "누락 \(missingEntries.count)개 저장소 삭제…",
-                        "Delete \(missingEntries.count) Missing Items…"
-                    ),
+                    appLanguage.localized("ui.delete.missing.items.ab0ea8fc", missingEntries.count),
                     systemImage: "trash"
                 ) {
                     store.requestDeletion(missingEntries)
@@ -258,7 +243,7 @@ struct ChangesView: View {
                 .disabled(store.isSelectedProjectActionBlocked)
             }
             Spacer()
-            Button(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules"), systemImage: "eye.slash") {
+            Button(appLanguage.localized("ui.manage.ignore.rules.7eac76b1"), systemImage: "eye.slash") {
                 Task {
                     await store.loadIgnoreRules()
                     store.isShowingIgnoreRules = true
@@ -277,18 +262,18 @@ struct ChangesView: View {
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {
         if entry.isTemporaryFile {
-            return appLanguage.text("임시파일", "Temporary")
+            return appLanguage.localized("ui.temporary.5738ffab")
         }
         return switch entry.item {
-        case .modified: appLanguage.text("수정", "Modified")
-        case .added: appLanguage.text("추가", "Added")
-        case .deleted: appLanguage.text("삭제 예정", "Pending Deletion")
-        case .missing where entry.isMissingScheduledAddition: appLanguage.text("정리 필요", "Cleanup Needed")
-        case .missing: appLanguage.text("로컬 누락 · 처리 필요", "Locally Missing · Action Required")
-        case .unversioned: appLanguage.text("미추적", "Unversioned")
-        case .ignored: appLanguage.text("무시됨", "Ignored")
-        case .conflicted: appLanguage.text("충돌", "Conflict")
-        case .replaced: appLanguage.text("교체", "Replaced")
+        case .modified: appLanguage.localized("ui.modified.01365bb2")
+        case .added: appLanguage.localized("ui.added.0dce7328")
+        case .deleted: appLanguage.localized("ui.pending.deletion.1652cca1")
+        case .missing where entry.isMissingScheduledAddition: appLanguage.localized("ui.cleanup.needed.3c5f4e64")
+        case .missing: appLanguage.localized("ui.locally.missing.action.required.50c49ccb")
+        case .unversioned: appLanguage.localized("ui.unversioned.ffbcbcb7")
+        case .ignored: appLanguage.localized("ui.ignored.b45ee0ef")
+        case .conflicted: appLanguage.localized("ui.conflict.37edb628")
+        case .replaced: appLanguage.localized("ui.replaced.6da39732")
         case let .unknown(value): value
         }
     }

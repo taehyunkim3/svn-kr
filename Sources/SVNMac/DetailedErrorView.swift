@@ -42,16 +42,13 @@ struct ErrorCopyButton: View {
     var body: some View {
         Button(
             didCopy
-                ? appLanguage.text("복사됨", "Copied")
-                : appLanguage.text("오류 내용 복사", "Copy Error Details"),
+                ? appLanguage.localized("ui.copied.13a93949")
+                : appLanguage.localized("ui.copy.error.details.7de3d319"),
             systemImage: didCopy ? "checkmark" : "doc.on.doc"
         ) {
             didCopy = ErrorClipboard.copy(message)
         }
-        .help(appLanguage.text(
-            "표시된 오류 내용 전체를 클립보드에 복사합니다.",
-            "Copy all displayed error details to the clipboard."
-        ))
+        .help(appLanguage.localized("ui.copy.all.displayed.error.details.to.the.clipboar.717f18da"))
         .onChange(of: message) { _, _ in didCopy = false }
     }
 }
@@ -65,7 +62,7 @@ struct DetailedErrorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(appLanguage.text("오류", "Error"), systemImage: "exclamationmark.triangle.fill")
+            Label(appLanguage.localized("ui.error.a08d7e0d"), systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.bold())
                 .foregroundStyle(.red)
 
@@ -74,7 +71,7 @@ struct DetailedErrorView: View {
             HStack {
                 ErrorCopyButton(message: message)
                 Spacer()
-                Button(appLanguage.text("닫기", "Close"), role: .cancel) {
+                Button(appLanguage.localized("ui.close.3ea43db3"), role: .cancel) {
                     onDismiss()
                 }
                 .keyboardShortcut(.cancelAction)

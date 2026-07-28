@@ -108,10 +108,7 @@ extension ProjectStore {
             activeConflictSession = nil
             await refresh()
             guard canApplyCompletedConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.text(
-                "충돌을 해결했습니다. 파일을 확인한 뒤 커밋하세요.",
-                "The conflict was resolved. Review the file before committing."
-            )
+            notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
         } catch {
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)

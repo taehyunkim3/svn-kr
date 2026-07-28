@@ -26,10 +26,10 @@ struct HistoryView: View {
             }
             .overlay {
                 if store.logs.isEmpty, store.isHistoryLoading {
-                    ProgressView(appLanguage.text("커밋 기록 불러오는 중…", "Loading commit history…"))
+                    ProgressView(appLanguage.localized("ui.loading.commit.history.c445b02a"))
                 } else if store.logs.isEmpty {
                     ContentUnavailableView(
-                        appLanguage.text("커밋 기록 없음", "No Commit History"),
+                        appLanguage.localized("ui.no.commit.history.a78ed291"),
                         systemImage: "clock"
                     )
                 }
@@ -46,26 +46,26 @@ struct HistoryView: View {
         if let headRevision = store.logs.first?.revision {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
-                    Label(appLanguage.text("서버 최신 r\(headRevision)", "Server latest r\(headRevision)"), systemImage: "cloud")
+                    Label(appLanguage.localized("ui.server.latest.r.e1c092b2", headRevision), systemImage: "cloud")
                     if let workingCopyRevision = store.workingCopyRevision {
-                        Label(appLanguage.text("내 로컬 폴더 r\(workingCopyRevision.displayValue)", "My local folder r\(workingCopyRevision.displayValue)"), systemImage: "macbook")
+                        Label(appLanguage.localized("ui.my.local.folder.r.6668e9b0", workingCopyRevision.displayValue), systemImage: "macbook")
                         if workingCopyRevision.isMixed {
-                            historyBadge(appLanguage.text("혼합 리비전", "Mixed revisions"), color: .gray)
+                            historyBadge(appLanguage.localized("ui.mixed.revisions.6faee919"), color: .gray)
                         }
                         if store.isWorkingCopyOutOfDate == true {
-                            Text(appLanguage.text("업데이트 필요", "Update required")).foregroundStyle(.orange)
+                            Text(appLanguage.localized("ui.update.required.9da93c25")).foregroundStyle(.orange)
                         } else if store.isWorkingCopyOutOfDate == false {
-                            Text(appLanguage.text("최신", "Up to date")).foregroundStyle(.green)
+                            Text(appLanguage.localized("ui.up.to.date.cf368157")).foregroundStyle(.green)
                         }
                     }
                     Spacer()
                 }
 
                 HStack(spacing: 14) {
-                    historyLegend(color: .blue, label: appLanguage.text("서버 커밋", "Server commit"))
+                    historyLegend(color: .blue, label: appLanguage.localized("ui.server.commit.952e9a4a"))
                     historyLegend(color: .green, label: localRevisionLegendLabel)
                     if !store.statuses.isEmpty {
-                        historyLegend(color: .orange, label: appLanguage.text("미커밋 변경 \(store.statuses.count)개", "\(store.statuses.count) uncommitted changes"))
+                        historyLegend(color: .orange, label: appLanguage.localized("ui.uncommitted.changes.35359722", store.statuses.count))
                     }
                     Spacer()
                 }
@@ -101,7 +101,7 @@ struct HistoryView: View {
             if searchText.isEmpty, !store.logs.isEmpty, store.hasMoreHistory {
                 HStack {
                     Spacer()
-                    Button(appLanguage.text("이전 기록 50개 더 불러오기", "Load 50 More")) {
+                    Button(appLanguage.localized("ui.load.50.more.043526e4")) {
                         Task { await store.loadMoreHistory() }
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
@@ -144,7 +144,7 @@ struct HistoryView: View {
                 Button {
                     store.selectHistoryRevision(entry.revision)
                 } label: {
-                    Label(appLanguage.text("이 커밋의 변경 내용 보기", "View Changes in This Commit"), systemImage: "doc.text.magnifyingglass")
+                    Label(appLanguage.localized("ui.view.changes.in.this.commit.afab8525"), systemImage: "doc.text.magnifyingglass")
                 }
                 .buttonStyle(.bordered)
                 .tint(store.selectedHistoryRevision == entry.revision ? .accentColor : nil)
@@ -159,12 +159,12 @@ struct HistoryView: View {
         HStack {
             Text("r\(entry.revision)").font(.headline.monospacedDigit())
             if entry.revision == store.logs.first?.revision {
-                historyBadge(appLanguage.text("서버 최신", "Server latest"), color: .blue)
+                historyBadge(appLanguage.localized("ui.server.latest.52ad60d5"), color: .blue)
             }
             if isWorkingCopyEntry {
                 historyBadge(workingCopyEntryBadge(for: entry.revision), color: .green)
                 if !store.statuses.isEmpty {
-                    historyBadge(appLanguage.text("로컬 변경 \(store.statuses.count)개", "\(store.statuses.count) local changes"), color: .orange)
+                    historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.statuses.count), color: .orange)
                 }
             }
             Spacer()
@@ -174,7 +174,7 @@ struct HistoryView: View {
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             } else {
-                Text(appLanguage.text("커밋 시각 없음", "Commit time unavailable"))
+                Text(appLanguage.localized("ui.commit.time.unavailable.59140fc5"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -183,7 +183,7 @@ struct HistoryView: View {
 
     private func historyAuthor(_ entry: SVNLogEntry) -> some View {
         HStack(spacing: 12) {
-            Label(entry.author.isEmpty ? appLanguage.text("작성자 없음", "Unknown author") : entry.author, systemImage: "person")
+            Label(entry.author.isEmpty ? appLanguage.localized("ui.unknown.author.511030fa") : entry.author, systemImage: "person")
             if let email = entry.email, !email.isEmpty {
                 Label(email, systemImage: "envelope").textSelection(.enabled)
             }
@@ -197,7 +197,7 @@ struct HistoryView: View {
     @ViewBuilder
     private func changedPaths(_ paths: [SVNChangedPath]) -> some View {
         if !paths.isEmpty {
-            DisclosureGroup(appLanguage.text("변경 경로 \(paths.count)개", "\(paths.count) changed paths")) {
+            DisclosureGroup(appLanguage.localized("ui.changed.paths.89badc04", paths.count)) {
                 VStack(alignment: .leading, spacing: 7) {
                     ForEach(paths) { changedPath in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -218,12 +218,12 @@ struct HistoryView: View {
     @ViewBuilder
     private func revisionProperties(_ properties: [SVNRevisionProperty]) -> some View {
         if !properties.isEmpty {
-            DisclosureGroup(appLanguage.text("추가 리비전 속성 \(properties.count)개", "\(properties.count) additional revision properties")) {
+            DisclosureGroup(appLanguage.localized("ui.additional.revision.properties.ab3e5f0b", properties.count)) {
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(properties) { property in
                         HStack(alignment: .firstTextBaseline) {
                             Text(property.name).font(.caption.monospaced().bold())
-                            Text(property.value.isEmpty ? appLanguage.text("값 없음", "No value") : property.value)
+                            Text(property.value.isEmpty ? appLanguage.localized("ui.no.value.480d48f5") : property.value)
                                 .font(.caption)
                                 .textSelection(.enabled)
                         }
@@ -239,11 +239,11 @@ struct HistoryView: View {
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
         if store.workingCopyRevision?.isMixed == true {
-            return appLanguage.text("내 로컬 최상위", "Highest local revision")
+            return appLanguage.localized("ui.highest.local.revision.d334c9c1")
         }
         return entryRevision == store.workingCopyRevision?.timelineRevision
-            ? appLanguage.text("내 로컬 기준", "My local base")
-            : appLanguage.text("내 로컬에 포함", "Included locally")
+            ? appLanguage.localized("ui.my.local.base.eff15763")
+            : appLanguage.localized("ui.included.locally.241cf38b")
     }
 
     private func workingCopyMarkerRow(revision: String, isBeforeLoadedHistory: Bool) -> some View {
@@ -259,13 +259,13 @@ struct HistoryView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 if isBeforeLoadedHistory {
-                    Text(appLanguage.text("… 이전 기록", "… Earlier history")).font(.caption).foregroundStyle(.secondary)
+                    Text(appLanguage.localized("ui.earlier.history.da5e45b0")).font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
                     Text("r\(revision)").font(.headline.monospacedDigit())
                     historyBadge(localRevisionMarkerLabel, color: .green)
                     if !store.statuses.isEmpty {
-                        historyBadge(appLanguage.text("로컬 변경 \(store.statuses.count)개", "\(store.statuses.count) local changes"), color: .orange)
+                        historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.statuses.count), color: .orange)
                     }
                 }
                 Text(localRevisionMarkerDescription(isBeforeLoadedHistory: isBeforeLoadedHistory))
@@ -280,8 +280,8 @@ struct HistoryView: View {
 
     private var localRevisionLegendLabel: String {
         store.workingCopyRevision?.isMixed == true
-            ? appLanguage.text("내 로컬 최상위", "Highest local revision")
-            : appLanguage.text("내 로컬 기준", "My local base")
+            ? appLanguage.localized("ui.highest.local.revision.d334c9c1")
+            : appLanguage.localized("ui.my.local.base.eff15763")
     }
 
     private var localRevisionMarkerLabel: String {
@@ -290,27 +290,18 @@ struct HistoryView: View {
 
     private var historyGraphHelp: String {
         if store.workingCopyRevision?.isMixed == true {
-            return appLanguage.text(
-                "파란 점은 서버 커밋, 초록 테두리는 내 로컬의 최상위 리비전, 주황 가지는 미커밋 변경을 뜻합니다.",
-                "Blue dots are server commits, the green ring is your highest local revision, and the orange branch is uncommitted work."
-            )
+            return appLanguage.localized("ui.blue.dots.are.server.commits.the.green.ring.is.y.fb1c8ff5")
         }
-        return appLanguage.text(
-            "파란 점은 서버 커밋, 초록 테두리는 내 로컬 기준, 주황 가지는 미커밋 변경을 뜻합니다.",
-            "Blue dots are server commits, the green ring is your local base, and the orange branch is uncommitted work."
-        )
+        return appLanguage.localized("ui.blue.dots.are.server.commits.the.green.ring.is.y.486b468b")
     }
 
     private func localRevisionMarkerDescription(isBeforeLoadedHistory: Bool) -> String {
         if let revision = store.workingCopyRevision, revision.isMixed {
-            return appLanguage.text(
-                "작업 복사본은 r\(revision.displayValue) 혼합 리비전이며 이 위치는 최상위 리비전입니다.",
-                "The working copy contains mixed revisions r\(revision.displayValue); this marker shows the highest revision."
-            )
+            return appLanguage.localized("ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def", revision.displayValue)
         }
         return isBeforeLoadedHistory
-            ? appLanguage.text("내 로컬 기준 리비전이 최근 50개 서버 기록보다 이전입니다.", "Your local base revision is earlier than the latest 50 server records.")
-            : appLanguage.text("두 서버 커밋 사이의 내 로컬 갱신 기준입니다.", "Your local update base falls between two server commits.")
+            ? appLanguage.localized("ui.your.local.base.revision.is.earlier.than.the.lat.e0f7b1d7")
+            : appLanguage.localized("ui.your.local.update.base.falls.between.two.server..5815a927")
     }
 
     private func historyLegend(color: Color, label: String) -> some View {
@@ -357,21 +348,22 @@ struct HistoryView: View {
         let details = [
             changedPath.kind.map { kind in
                 switch kind {
-                case .directory: appLanguage.text("폴더", "Folder")
-                case .file: appLanguage.text("파일", "File")
+                case .directory: appLanguage.localized("ui.folder.e6474408")
+                case .file: appLanguage.localized("ui.file.811b7680")
                 case let .unknown(value): value
                 }
             },
-            changedPath.textModified == true ? appLanguage.text("내용 변경", "Content changed") : nil,
-            changedPath.propertiesModified == true ? appLanguage.text("속성 변경", "Properties changed") : nil,
+            changedPath.textModified == true ? appLanguage.localized("ui.content.changed.cb88d56c") : nil,
+            changedPath.propertiesModified == true ? appLanguage.localized("ui.properties.changed.b933354d") : nil,
         ].compactMap { $0 }
         if !details.isEmpty {
             Text(details.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
         }
         if let copyFromPath = changedPath.copyFromPath {
-            Text(appLanguage.text(
-                "복사 원본: \(copyFromPath)\(changedPath.copyFromRevision.map { "@r\($0)" } ?? "")",
-                "Copied from: \(copyFromPath)\(changedPath.copyFromRevision.map { "@r\($0)" } ?? "")"
+            Text(appLanguage.localized(
+                "history.copied.from",
+                copyFromPath,
+                changedPath.copyFromRevision.map { "@r\($0)" } ?? ""
             ))
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -381,10 +373,10 @@ struct HistoryView: View {
 
     private func changedPathActionLabel(_ action: SVNChangeAction) -> String {
         switch action {
-        case .added: appLanguage.text("추가", "Added")
-        case .modified: appLanguage.text("수정", "Modified")
-        case .deleted: appLanguage.text("삭제", "Deleted")
-        case .replaced: appLanguage.text("교체", "Replaced")
+        case .added: appLanguage.localized("ui.added.0dce7328")
+        case .modified: appLanguage.localized("ui.modified.01365bb2")
+        case .deleted: appLanguage.localized("ui.deleted.6826dd28")
+        case .replaced: appLanguage.localized("ui.replaced.6da39732")
         case let .unknown(value): value
         }
     }
@@ -429,8 +421,8 @@ private struct SVNHistoryGraphLane: View {
     }
 
     private var accessibilityDescription: String {
-        if hasLocalChanges { return appLanguage.text("내 로컬 기준 리비전에서 미커밋 변경이 갈라져 있습니다.", "Uncommitted changes branch from your local base revision.") }
-        if isWorkingCopyRevision { return appLanguage.text("내 로컬 기준 리비전입니다.", "This is your local base revision.") }
-        return appLanguage.text("서버 커밋입니다.", "This is a server commit.")
+        if hasLocalChanges { return appLanguage.localized("ui.uncommitted.changes.branch.from.your.local.base..d49c86b6") }
+        if isWorkingCopyRevision { return appLanguage.localized("ui.this.is.your.local.base.revision.5912a346") }
+        return appLanguage.localized("ui.this.is.a.server.commit.4162d83c")
     }
 }

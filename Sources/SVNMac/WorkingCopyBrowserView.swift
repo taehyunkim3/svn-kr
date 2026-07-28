@@ -17,12 +17,12 @@ struct WorkingCopyBrowserView: View {
         }
         .overlay {
             if isLoading, store.workingCopyFileTree.isEmpty {
-                ProgressView(appLanguage.text("파일 목록을 불러오는 중…", "Loading files…"))
+                ProgressView(appLanguage.localized("ui.loading.files.a3268fef"))
             } else if displayedTree.isEmpty {
                 ContentUnavailableView(
                     searchText.isEmpty
-                        ? appLanguage.text("표시할 파일 없음", "No Files")
-                        : appLanguage.text("검색 결과 없음", "No Search Results"),
+                        ? appLanguage.localized("ui.no.files.5245ffcc")
+                        : appLanguage.localized("ui.no.search.results.e40b4a06"),
                     systemImage: searchText.isEmpty ? "folder" : "magnifyingglass"
                 )
             }
@@ -59,7 +59,7 @@ struct WorkingCopyBrowserView: View {
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.text("심볼릭 링크", "Symbolic Link"))
+                    .help(appLanguage.localized("ui.symbolic.link.0dc00212"))
             }
         }
         .contentShape(Rectangle())
@@ -74,7 +74,7 @@ struct WorkingCopyBrowserView: View {
                 )
             }
         }
-        .accessibilityAction(named: appLanguage.text("파일 열기", "Open File")) {
+        .accessibilityAction(named: appLanguage.localized("ui.open.file.ea89b4b3")) {
             guard !node.isDirectory else { return }
             Task {
                 await store.prepareToOpen(
@@ -87,7 +87,7 @@ struct WorkingCopyBrowserView: View {
         }
         .contextMenu {
             if !node.isDirectory {
-                Button(appLanguage.text("파일 열기", "Open File")) {
+                Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
                     Task {
                         await store.prepareToOpen(
                             path: node.relativePath,
@@ -99,21 +99,21 @@ struct WorkingCopyBrowserView: View {
                 }
                 if let lock = lockInfo(for: node),
                    lock.owner == store.selectedProject?.username {
-                    Button(appLanguage.text("잠금 해제", "Release Lock")) {
+                    Button(appLanguage.localized("ui.release.lock.695a2075")) {
                         Task { await store.unlock(lock) }
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 }
             }
-            Button(appLanguage.text("Finder에서 보기", "Reveal in Finder")) {
+            Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
                 store.revealInFinder(node.relativePath)
             }
-            Button(appLanguage.text("전체 경로 복사", "Copy Full Path")) {
+            Button(appLanguage.localized("ui.copy.full.path.823e26e7")) {
                 store.copyPath(node.relativePath)
             }
             if !node.isDirectory, node.isVersioned {
                 Divider()
-                Button(appLanguage.text("이 파일의 커밋 기록", "File Commit History")) {
+                Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
                     Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
                 }
             }
@@ -146,11 +146,11 @@ struct WorkingCopyBrowserView: View {
     private func visibleStatus(for node: WorkingCopyFileNode) -> String? {
         guard let status = node.svnEntry?.status, status != "normal" else { return nil }
         switch status {
-        case "modified": return appLanguage.text("수정", "Modified")
-        case "added": return appLanguage.text("추가", "Added")
-        case "unversioned": return appLanguage.text("미추적", "Unversioned")
-        case "ignored": return appLanguage.text("무시됨", "Ignored")
-        case "conflicted": return appLanguage.text("충돌", "Conflict")
+        case "modified": return appLanguage.localized("ui.modified.01365bb2")
+        case "added": return appLanguage.localized("ui.added.0dce7328")
+        case "unversioned": return appLanguage.localized("ui.unversioned.ffbcbcb7")
+        case "ignored": return appLanguage.localized("ui.ignored.b45ee0ef")
+        case "conflicted": return appLanguage.localized("ui.conflict.37edb628")
         default: return status
         }
     }
@@ -161,9 +161,9 @@ struct WorkingCopyBrowserView: View {
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
         if lock.owner == store.selectedProject?.username {
-            return appLanguage.text("내가 잠근 파일", "Locked by you")
+            return appLanguage.localized("ui.locked.by.you.f2a7c3f2")
         }
-        return appLanguage.text("\(lock.owner) 사용자가 잠근 파일", "Locked by \(lock.owner)")
+        return appLanguage.localized("ui.locked.by.192b78cf", lock.owner)
     }
 }
 

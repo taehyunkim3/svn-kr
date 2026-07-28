@@ -14,7 +14,7 @@ struct HistoryRevisionDiffView: View {
                     Label("r\(revision)", systemImage: "doc.text.magnifyingglass")
                         .font(.headline.monospacedDigit())
                 } else {
-                    Label(appLanguage.text("커밋 변경 내용", "Commit Changes"), systemImage: "doc.text.magnifyingglass")
+                    Label(appLanguage.localized("ui.commit.changes.79414e6d"), systemImage: "doc.text.magnifyingglass")
                         .font(.headline)
                 }
                 Spacer()
@@ -43,16 +43,16 @@ struct HistoryRevisionDiffView: View {
         .opacity(selectedEntry == nil ? 0 : 1)
         .overlay {
             if store.logs.isEmpty, store.isHistoryLoading {
-                ProgressView(appLanguage.text("커밋 기록 불러오는 중…", "Loading commit history…"))
+                ProgressView(appLanguage.localized("ui.loading.commit.history.c445b02a"))
             } else if store.selectedHistoryRevision == nil {
                 ContentUnavailableView(
-                    appLanguage.text("커밋을 선택하세요", "Select a Commit"),
+                    appLanguage.localized("ui.select.a.commit.8977b05a"),
                     systemImage: "clock.arrow.circlepath",
-                    description: Text(appLanguage.text("기록에서 변경 내용 보기 버튼을 누르면 실제 diff가 표시됩니다.", "Choose View Changes in the history to display the actual diff."))
+                    description: Text(appLanguage.localized("ui.choose.view.changes.in.the.history.to.display.th.cc60739e"))
                 )
             } else if selectedEntry == nil {
                 ContentUnavailableView(
-                    appLanguage.text("커밋 기록을 찾을 수 없습니다", "Commit Not Found"),
+                    appLanguage.localized("ui.commit.not.found.0f4a8385"),
                     systemImage: "exclamationmark.magnifyingglass"
                 )
             }
@@ -104,7 +104,7 @@ struct HistoryRevisionDiffView: View {
         .overlay {
             if files.isEmpty {
                 ContentUnavailableView(
-                    appLanguage.text("변경 파일 없음", "No Changed Files"),
+                    appLanguage.localized("ui.no.changed.files.27bf2bab"),
                     systemImage: "doc"
                 )
             }
@@ -115,14 +115,14 @@ struct HistoryRevisionDiffView: View {
     private var selectedPathDiff: some View {
         if store.selectedHistoryPath == nil {
             ContentUnavailableView(
-                appLanguage.text("파일을 선택하세요", "Select a File"),
+                appLanguage.localized("ui.select.a.file.12b00b2b"),
                 systemImage: "doc.text.magnifyingglass",
-                description: Text(appLanguage.text("위 목록에서 변경 파일을 선택하면 해당 파일의 diff만 표시됩니다.", "Choose a changed file above to display only that file's diff."))
+                description: Text(appLanguage.localized("ui.choose.a.changed.file.above.to.display.only.that.7d44100e"))
             )
         } else if isLoading {
             VStack {
                 Spacer()
-                ProgressView(appLanguage.text("변경 내용 불러오는 중…", "Loading changes…"))
+                ProgressView(appLanguage.localized("ui.loading.changes.82ffc858"))
                 Spacer()
             }
             .frame(maxWidth: .infinity)
@@ -130,7 +130,7 @@ struct HistoryRevisionDiffView: View {
             diffText(value)
         } else if case let .failure(message) = store.historyDiffContent {
             ContentUnavailableView(
-                appLanguage.text("변경 내용을 불러올 수 없습니다", "Unable to Load Changes"),
+                appLanguage.localized("ui.unable.to.load.changes.78b04452"),
                 systemImage: "lock.trianglebadge.exclamationmark",
                 description: Text(historyDiffFailureDescription(message))
             )
@@ -144,10 +144,7 @@ struct HistoryRevisionDiffView: View {
 
     private func historyDiffFailureDescription(_ message: String) -> String {
         if message.contains("E175013") || message.localizedCaseInsensitiveContains("forbidden") {
-            return appLanguage.text(
-                "SVN 서버가 이 파일 내용에 대한 읽기 접근을 거부했습니다. 프로젝트 인증 정보와 서버 경로 권한을 확인해 주세요.\n\n\(message)",
-                "The SVN server denied read access to this file. Check the project credentials and server path permissions.\n\n\(message)"
-            )
+            return appLanguage.localized("ui.the.svn.server.denied.read.access.to.this.file.c.2ec5cc64", message)
         }
         return message
     }

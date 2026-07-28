@@ -20,7 +20,7 @@ struct AuthenticationRequiredView: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.text("SVN 인증 필요", "SVN Authentication Required"))
+                Text(appLanguage.localized("ui.svn.authentication.required.797a2cdb"))
                     .font(.title2.bold())
                 Text(reasonText)
                     .foregroundStyle(.secondary)
@@ -29,20 +29,17 @@ struct AuthenticationRequiredView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $password,
-                usernamePlaceholder: appLanguage.text("SVN 계정명", "SVN username"),
-                passwordPlaceholder: appLanguage.text("SVN 비밀번호", "SVN password")
+                usernamePlaceholder: appLanguage.localized("ui.svn.username.90a19d48"),
+                passwordPlaceholder: appLanguage.localized("ui.svn.password.5e0660b7")
             )
 
-            Text(appLanguage.text(
-                "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다.",
-                "Canceling does not prevent viewing local changes and diffs."
-            ))
+            Text(appLanguage.localized("ui.canceling.does.not.prevent.viewing.local.changes.cf7ece9c"))
             .font(.caption)
             .foregroundStyle(.secondary)
 
             Divider()
             HStack {
-                Button(appLanguage.text("키체인 다시 시도", "Try Keychain Again")) {
+                Button(appLanguage.localized("ui.try.keychain.again.a762f607")) {
                     isSubmitting = true
                     Task {
                         await store.retryKeychainAccess(for: request)
@@ -50,17 +47,17 @@ struct AuthenticationRequiredView: View {
                     }
                 }
                 .disabled(isSubmitting)
-                .help(appLanguage.text("macOS Keychain 접근 창을 다시 표시합니다.", "Show the macOS Keychain access prompt again."))
+                .help(appLanguage.localized("ui.show.the.macos.keychain.access.prompt.again.d57d9f96"))
                 Spacer()
-                Button(appLanguage.text("취소", "Cancel"), role: .cancel) {
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
                     store.cancelAuthentication(for: request)
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(appLanguage.text("이번 실행에만 사용", "Use This Session Only")) {
+                Button(appLanguage.localized("ui.use.this.session.only.08dcce43")) {
                     submit(saveInKeychain: false)
                 }
                 .disabled(!canSubmit)
-                Button(appLanguage.text("키체인에 저장하고 사용", "Save in Keychain and Use")) {
+                Button(appLanguage.localized("ui.save.in.keychain.and.use.9c0fd0d4")) {
                     submit(saveInKeychain: true)
                 }
                 .buttonStyle(.borderedProminent)
@@ -85,11 +82,11 @@ struct AuthenticationRequiredView: View {
     private var reasonText: String {
         switch request.action {
         case .refreshHistory:
-            appLanguage.text("서버의 최신 커밋 기록을 불러오려면 인증이 필요합니다.", "Authentication is required to load the latest server history.")
+            appLanguage.localized("ui.authentication.is.required.to.load.the.latest.se.2b552fac")
         case .update:
-            appLanguage.text("서버의 최신 변경 사항을 내려받으려면 인증이 필요합니다.", "Authentication is required to download the latest server changes.")
+            appLanguage.localized("ui.authentication.is.required.to.download.the.lates.83127c9a")
         case .commit:
-            appLanguage.text("선택한 변경 사항을 서버에 커밋하려면 인증이 필요합니다.", "Authentication is required to commit the selected changes.")
+            appLanguage.localized("ui.authentication.is.required.to.commit.the.selecte.4837ef80")
         }
     }
 
@@ -130,8 +127,8 @@ struct AddRepositoryView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(appLanguage.text("SVN 저장소 추가", "Add SVN Repository")).font(.title2.bold())
-                    Text(appLanguage.text("저장소 URL을 체크아웃하고 로컬 작업 폴더 목록에 등록합니다.", "Check out a repository URL and add it to your local working folders."))
+                    Text(appLanguage.localized("ui.add.svn.repository.8b9639fa")).font(.title2.bold())
+                    Text(appLanguage.localized("ui.check.out.a.repository.url.and.add.it.to.your.lo.63f0d7ea"))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -148,21 +145,21 @@ struct AddRepositoryView: View {
                         }
                     }
                 } label: {
-                    Label(appLanguage.text("언어", "Language"), systemImage: "globe")
+                    Label(appLanguage.localized("ui.language.8e5b78fb"), systemImage: "globe")
                 }
                 .fixedSize()
-                .help(appLanguage.text("앱 화면에 사용할 언어를 선택합니다.", "Choose the language used in the app interface."))
+                .help(appLanguage.localized("ui.choose.the.language.used.in.the.app.interface.16c2f863"))
             }
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
-                    Text(appLanguage.text("저장소 URL", "Repository URL"))
+                    Text(appLanguage.localized("ui.repository.url.a29f5816"))
                     TextField("https://server/svn/project/trunk", text: $repositoryURL)
                         .textFieldStyle(.roundedBorder)
                         .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
                 }
                 GridRow {
-                    Text(appLanguage.text("로컬 폴더", "Local folder"))
+                    Text(appLanguage.localized("ui.local.folder.63f176e1"))
                     HStack {
                         TextField(
                             "/Users/name/Documents/project",
@@ -173,8 +170,8 @@ struct AddRepositoryView: View {
                         )
                             .textFieldStyle(.roundedBorder)
                             .disabled(true)
-                        Button(appLanguage.text("선택…", "Choose…")) { chooseDestination() }
-                            .help(appLanguage.text("체크아웃 결과를 저장할 로컬 폴더를 선택합니다.", "Choose the local folder for the checkout."))
+                        Button(appLanguage.localized("ui.choose.71d0de8d")) { chooseDestination() }
+                            .help(appLanguage.localized("ui.choose.the.local.folder.for.the.checkout.31ee0035"))
                     }
                 }
             }
@@ -182,20 +179,17 @@ struct AddRepositoryView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $password,
-                usernamePlaceholder: appLanguage.text("SVN 계정명 (선택)", "SVN username (optional)"),
-                passwordPlaceholder: appLanguage.text("macOS Keychain에 저장 (선택)", "Save in macOS Keychain (optional)")
+                usernamePlaceholder: appLanguage.localized("ui.svn.username.optional.fff42bd5"),
+                passwordPlaceholder: appLanguage.localized("ui.save.in.macos.keychain.optional.d544f3fd")
             )
 
-            Text(appLanguage.text("인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다.", "Authentication uses the existing SVN credential cache and macOS Keychain."))
+            Text(appLanguage.localized("ui.authentication.uses.the.existing.svn.credential..b6c6fe66"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             UntrustedCertificateToggle(
                 isAllowed: $allowsUntrustedServerCertificate,
-                help: appLanguage.text(
-                    "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요.",
-                    "Use only for servers with self-signed certificates or certificate name mismatches."
-                )
+                help: appLanguage.localized("ui.use.only.for.servers.with.self.signed.certificat.cd3b5e55")
             )
 
             VStack(alignment: .leading, spacing: 8) {
@@ -204,8 +198,8 @@ struct AddRepositoryView: View {
                         ProgressView().controlSize(.small)
                     }
                     Text(store.isWorking
-                        ? appLanguage.text("체크아웃 중…", "Checking out…")
-                        : appLanguage.text("체크아웃 진행 로그", "Checkout progress log"))
+                        ? appLanguage.localized("ui.checking.out.3944eb2e")
+                        : appLanguage.localized("ui.checkout.progress.log.ba2c92de"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -218,10 +212,7 @@ struct AddRepositoryView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(store.checkoutLog.isEmpty
-                                ? appLanguage.text(
-                                    "체크아웃을 시작하면 내려받는 파일이 여기에 표시됩니다.",
-                                    "Files being downloaded will appear here after checkout starts."
-                                )
+                                ? appLanguage.localized("ui.files.being.downloaded.will.appear.here.after.ch.9dfb3816")
                                 : store.checkoutLog)
                                 .foregroundStyle(store.checkoutLog.isEmpty ? .secondary : .primary)
 
@@ -254,24 +245,21 @@ struct AddRepositoryView: View {
 
             Divider()
             HStack {
-                Button(appLanguage.text("기존 로컬 폴더 등록…", "Register Existing Local Folder…")) {
+                Button(appLanguage.localized("ui.register.existing.local.folder.fcf466c4")) {
                     dismiss()
                     store.showFolderPicker()
                 }
-                .help(appLanguage.text("이미 체크아웃된 SVN 로컬 작업 폴더를 앱 목록에 등록합니다.", "Register an existing SVN working folder in the app."))
+                .help(appLanguage.localized("ui.register.an.existing.svn.working.folder.in.the.a.361385a1"))
                 Spacer()
-                Button(appLanguage.text("샘플 프로젝트 둘러보기", "Browse Sample Project")) {
+                Button(appLanguage.localized("ui.browse.sample.project.9ad211da")) {
                     dismiss()
                     onBrowseDemo()
                 }
-                .help(appLanguage.text(
-                    "서버 연결이나 계정 없이 샘플 데이터로 주요 기능을 둘러봅니다.",
-                    "Explore the main features with sample data and no server connection or account."
-                ))
-                Button(appLanguage.text("취소", "Cancel"), role: .cancel) { dismiss() }
+                .help(appLanguage.localized("ui.explore.the.main.features.with.sample.data.and.n.fd16edf5"))
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .help(appLanguage.text("저장소 추가를 취소하고 창을 닫습니다.", "Cancel adding the repository and close this window."))
-                Button(appLanguage.text("체크아웃 및 추가", "Check Out and Add")) {
+                    .help(appLanguage.localized("ui.cancel.adding.the.repository.and.close.this.wind.113063d1"))
+                Button(appLanguage.localized("ui.check.out.and.add.ec5e3d09")) {
                     Task {
                         if await store.checkout(
                             repositoryURL: repositoryURL,
@@ -287,7 +275,7 @@ struct AddRepositoryView: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || destinationURL == nil || store.isWorking)
-                .help(appLanguage.text("입력한 SVN 저장소를 로컬 폴더에 체크아웃하고 앱에 등록합니다.", "Check out the SVN repository into the local folder and add it to the app."))
+                .help(appLanguage.localized("ui.check.out.the.svn.repository.into.the.local.fold.4323a8e0"))
             }
         }
         .padding(24)
@@ -296,8 +284,8 @@ struct AddRepositoryView: View {
 
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = appLanguage.text("체크아웃할 로컬 폴더 선택", "Choose Local Checkout Folder")
-        panel.prompt = appLanguage.text("선택", "Choose")
+        panel.title = appLanguage.localized("ui.choose.local.checkout.folder.c649aa9f")
+        panel.prompt = appLanguage.localized("ui.choose.0a13aec8")
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
@@ -328,7 +316,7 @@ struct CredentialsView: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.text("폴더별 인증 설정", "Folder Credentials")).font(.title2.bold())
+                Text(appLanguage.localized("ui.folder.credentials.b4bd68eb")).font(.title2.bold())
                 Text(project.name).foregroundStyle(.secondary)
                 Text(project.path).font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
             }
@@ -336,16 +324,16 @@ struct CredentialsView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $newPassword,
-                usernamePlaceholder: appLanguage.text("SVN 계정명", "SVN username"),
+                usernamePlaceholder: appLanguage.localized("ui.svn.username.90a19d48"),
                 passwordPlaceholder: hasSavedPassword
-                    ? appLanguage.text("비우면 기존 값 유지", "Leave blank to keep the current password")
-                    : appLanguage.text("비밀번호 입력", "Enter password")
+                    ? appLanguage.localized("ui.leave.blank.to.keep.the.current.password.5f89ccfa")
+                    : appLanguage.localized("ui.enter.password.48ff7123")
             )
 
             Label(
                 hasSavedPassword
-                    ? appLanguage.text("이 폴더의 비밀번호가 macOS Keychain에 저장되어 있습니다.", "A password for this folder is stored in macOS Keychain.")
-                    : appLanguage.text("저장된 비밀번호가 없습니다.", "No password is stored."),
+                    ? appLanguage.localized("ui.a.password.for.this.folder.is.stored.in.macos.ke.676ba875")
+                    : appLanguage.localized("ui.no.password.is.stored.44110abb"),
                 systemImage: hasSavedPassword ? "checkmark.shield" : "shield"
             )
             .font(.caption)
@@ -353,28 +341,25 @@ struct CredentialsView: View {
 
             UntrustedCertificateToggle(
                 isAllowed: $allowsUntrustedServerCertificate,
-                help: appLanguage.text(
-                    "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다.",
-                    "Allow self-signed and certificate name mismatch errors for this repository."
-                )
+                help: appLanguage.localized("ui.allow.self.signed.and.certificate.name.mismatch..0bfb9514")
             )
 
             Divider()
             HStack {
                 if hasSavedPassword {
-                    Button(appLanguage.text("저장된 비밀번호 삭제", "Delete Saved Password"), role: .destructive) {
+                    Button(appLanguage.localized("ui.delete.saved.password.a38fa5cf"), role: .destructive) {
                         if store.deleteSavedPassword(for: project.id) {
                             hasSavedPassword = false
                             newPassword = ""
                         }
                     }
-                    .help(appLanguage.text("이 로컬 작업 폴더용으로 Keychain에 저장된 SVN 비밀번호를 삭제합니다.", "Delete the SVN password stored in Keychain for this local working folder."))
+                    .help(appLanguage.localized("ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666"))
                 }
                 Spacer()
-                Button(appLanguage.text("취소", "Cancel"), role: .cancel) { dismiss() }
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .help(appLanguage.text("인증 설정 변경을 저장하지 않고 창을 닫습니다.", "Close without saving credential changes."))
-                Button(appLanguage.text("저장", "Save")) {
+                    .help(appLanguage.localized("ui.close.without.saving.credential.changes.97c00986"))
+                Button(appLanguage.localized("ui.save.7c93b7e1")) {
                     if store.saveCredentials(
                         for: project.id,
                         username: username,
@@ -387,7 +372,7 @@ struct CredentialsView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .help(appLanguage.text("입력한 SVN 사용자명과 새 비밀번호를 이 로컬 작업 폴더에 저장합니다.", "Save the SVN username and new password for this local working folder."))
+                .help(appLanguage.localized("ui.save.the.svn.username.and.new.password.for.this..72748974"))
             }
         }
         .padding(24)
@@ -407,13 +392,13 @@ private struct CredentialFieldsGrid: View {
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
             GridRow {
-                Text(appLanguage.text("사용자명", "Username"))
+                Text(appLanguage.localized("ui.username.4e1b650a"))
                 TextField(usernamePlaceholder, text: $username)
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: AppLayout.credentialFieldMinimumWidth)
             }
             GridRow {
-                Text(appLanguage.text("비밀번호", "Password"))
+                Text(appLanguage.localized("ui.password.945c94ed"))
                 SecureField(passwordPlaceholder, text: $password)
                     .textFieldStyle(.roundedBorder)
             }
@@ -429,19 +414,13 @@ private struct UntrustedCertificateToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(
-                appLanguage.text(
-                    "신뢰할 수 없는 SSL 인증서 허용",
-                    "Allow untrusted SSL certificates"
-                ),
+                appLanguage.localized("ui.allow.untrusted.ssl.certificates.78b94750"),
                 isOn: $isAllowed
             )
             .toggleStyle(.checkbox)
             .help(help)
 
-            Text(appLanguage.text(
-                "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
-                "Use this when the target server's certificate is invalid but you trust the server."
-            ))
+            Text(appLanguage.localized("ui.use.this.when.the.target.server.s.certificate.is.2fa0c076"))
             .font(.caption)
             .foregroundStyle(.secondary)
         }

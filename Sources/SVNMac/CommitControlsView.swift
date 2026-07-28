@@ -9,25 +9,22 @@ struct CommitControlsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            TextField(appLanguage.text("커밋 메시지", "Commit message"), text: $commitMessage)
+            TextField(appLanguage.localized("ui.commit.message.c5139167"), text: $commitMessage)
                 .textFieldStyle(.roundedBorder)
                 .focused($isCommitMessageFocused)
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
-                Button(appLanguage.text("전체 선택", "Select All")) {
+                Button(appLanguage.localized("ui.select.all.ef1f5eca")) {
                     store.selectedPaths = store.selectAllStatusPaths
                 }
-                .help(appLanguage.text("현재 변경된 파일을 모두 커밋 대상으로 선택합니다.", "Select all currently changed files for commit."))
-                Button(appLanguage.text("선택 해제", "Clear Selection")) { store.selectedPaths.removeAll() }
-                    .help(appLanguage.text("현재 선택된 커밋 대상을 모두 해제합니다.", "Clear all selected commit targets."))
+                .help(appLanguage.localized("ui.select.all.currently.changed.files.for.commit.ccad7410"))
+                Button(appLanguage.localized("ui.clear.selection.6520660b")) { store.selectedPaths.removeAll() }
+                    .help(appLanguage.localized("ui.clear.all.selected.commit.targets.605665f6"))
                 Spacer()
-                Text(appLanguage.text("\(store.selectedPaths.count)개 선택", "\(store.selectedPaths.count) selected"))
+                Text(appLanguage.localized("ui.selected.685ae833", store.selectedPaths.count))
                     .foregroundStyle(.secondary)
                 if store.scheduledDeletionCount > 0 {
-                    Text(appLanguage.text(
-                        "삭제 예정 \(store.scheduledDeletionCount)개",
-                        "\(store.scheduledDeletionCount) pending deletion"
-                    ))
+                    Text(appLanguage.localized("ui.pending.deletion.4b08f65b", store.scheduledDeletionCount))
                     .foregroundStyle(.red)
                 }
                 Button(action: submitCommitAfterEndingTextInput) {
@@ -36,8 +33,8 @@ struct CommitControlsView: View {
                             ProgressView().controlSize(.small)
                         }
                         Text(store.isCommittingSelectedProject
-                            ? appLanguage.text("커밋 중…", "Committing…")
-                            : appLanguage.text("선택 항목 커밋", "Commit Selected"))
+                            ? appLanguage.localized("ui.committing.0e8ec0f4")
+                            : appLanguage.localized("ui.commit.selected.29bc2086"))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -46,7 +43,7 @@ struct CommitControlsView: View {
                         || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         || store.isSelectedProjectActionBlocked
                 )
-                .help(appLanguage.text("선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.", "Commit the selected files to the SVN server with the entered message."))
+                .help(appLanguage.localized("ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8"))
             }
         }
         .padding()

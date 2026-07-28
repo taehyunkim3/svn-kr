@@ -5,105 +5,70 @@ enum SVNErrorLocalization {
     static func message(for error: SVNError, language: AppLanguage) -> String {
         switch error {
         case let .commandFailed(command, message):
-            return language.text("\(command) 실패: \(message)", "\(command) failed: \(message)")
+            return language.localized("ui.failed.cb475070", command, message)
         case let .workingCopyOutOfDate(details):
-            return language.text(
-                "서버에서 먼저 변경된 항목이 있어 커밋할 수 없습니다. 작업 폴더를 업데이트하고 충돌이 있으면 해결한 뒤 다시 커밋하세요.\n\n\(details)",
-                "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n\(details)"
-            )
+            return language.localized("ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4", details)
         case .invalidWorkingCopy:
-            return language.text("선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다.", "The selected folder is not an SVN local working folder.")
+            return language.localized("ui.the.selected.folder.is.not.an.svn.local.working..c602474e")
         case .malformedResponse:
-            return language.text("SVN 응답을 읽지 못했습니다.", "The SVN response could not be read.")
+            return language.localized("ui.the.svn.response.could.not.be.read.6a3d5aa8")
         case let .pathNormalizationCollision(paths):
-            return language.text(
-                "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))",
-                "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.path.normalization.collision", paths.joined(separator: ", "))
         case let .pathAliasRepairFailed(paths):
-            return language.text(
-                "한글 경로 별칭 정리를 검증하지 못했습니다: \(paths.joined(separator: ", "))",
-                "Korean path alias repair could not be validated: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.path.alias.repair", paths.joined(separator: ", "))
         case let .fileReplacementRecoveryFailed(paths, backupPaths):
-            return language.text(
-                "대치 파일을 원래 위치로 복원하지 못했습니다: \(paths.joined(separator: ", ")). 백업 파일: \(backupPaths.joined(separator: ", "))",
-                "Replacement files could not be restored to their original paths: \(paths.joined(separator: ", ")). Backups: \(backupPaths.joined(separator: ", "))"
+            return language.localized(
+                "error.file.replacement.recovery",
+                paths.joined(separator: ", "),
+                backupPaths.joined(separator: ", ")
             )
         case let .unsupportedTargetPath(paths):
-            return language.text(
-                "SVN 명령에 안전하게 전달할 수 없는 줄바꿈 경로가 있습니다: \(paths.joined(separator: ", "))",
-                "Paths containing line breaks cannot be passed safely to SVN: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.unsupported.target.path", paths.joined(separator: ", "))
         case let .unresolvedMissingPaths(paths):
-            return language.text(
-                "로컬 누락 항목의 처리 방법을 먼저 선택해야 합니다: \(paths.joined(separator: ", "))",
-                "Choose how to handle locally missing items first: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.unresolved.missing.paths", paths.joined(separator: ", "))
         case let .deletionValidationFailed(paths):
-            return language.text(
-                "저장소 삭제 예정 상태로 전환되지 않은 항목이 있습니다: \(paths.joined(separator: ", "))",
-                "These items did not enter the pending-deletion state: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.deletion.validation", paths.joined(separator: ", "))
         case let .commitSucceededWithValidationWarning(_, details):
-            return language.text(
-                "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: \(details)",
-                "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: \(details)"
-            )
+            return language.localized("ui.the.commit.completed.but.working.copy.validation.e58fd53c", details)
         case let .recoveryBlocked(paths):
-            return language.text(
-                "자동 복구할 수 없는 변경이 있습니다: \(paths.joined(separator: ", "))",
-                "Some changes cannot be recovered automatically: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.recovery.blocked", paths.joined(separator: ", "))
         case .recoveryDestinationNotEmpty:
-            return language.text("복구 대상 폴더는 비어 있어야 합니다.", "The recovery destination folder must be empty.")
+            return language.localized("ui.the.recovery.destination.folder.must.be.empty.2f9bc173")
         case let .recoveryValidationFailed(paths):
-            return language.text(
-                "새 작업 폴더 검증에 실패했습니다: \(paths.joined(separator: ", "))",
-                "The recovered working copy did not pass validation: \(paths.joined(separator: ", "))"
-            )
+            return language.localized("error.recovery.validation", paths.joined(separator: ", "))
         case .svnExecutableNotFound:
-            return language.text(
-                "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요.",
-                "The bundled SVN executable could not be found. Reinstall the app."
-            )
+            return language.localized("ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae")
         }
     }
 
     static func message(for error: ConflictFileError, language: AppLanguage) -> String {
         switch error {
         case let .unsupportedType(type):
-            return language.text("지원하지 않는 충돌 유형입니다: \(type)", "Unsupported conflict type: \(type)")
+            return language.localized("ui.unsupported.conflict.type.1a0e94e8", type)
         case .missingMine:
-            return language.text("내 파일 버전을 찾을 수 없습니다.", "Your file version could not be found.")
+            return language.localized("ui.your.file.version.could.not.be.found.576883d5")
         case .missingServer:
-            return language.text("서버 파일 버전을 찾을 수 없습니다.", "The server file version could not be found.")
+            return language.localized("ui.the.server.file.version.could.not.be.found.3483616c")
         case .missingWorkingFile:
-            return language.text("현재 작업 파일을 찾을 수 없습니다.", "The current working file could not be found.")
+            return language.localized("ui.the.current.working.file.could.not.be.found.60c92e05")
         case .sourceOutsideWorkingCopy:
-            return language.text("충돌 파일 경로가 작업 사본 밖을 가리킵니다.", "A conflict file path points outside the working copy.")
+            return language.localized("ui.a.conflict.file.path.points.outside.the.working..137a7ed6")
         case .backupRootInsideWorkingCopy:
-            return language.text("충돌 백업 위치는 작업 사본 밖에 있어야 합니다.", "Conflict backups must be stored outside the working copy.")
+            return language.localized("ui.conflict.backups.must.be.stored.outside.the.work.b1ccd27c")
         case .unsafeMineSource:
-            return language.text("내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "Your file version must be a regular file, not a symbolic link.")
+            return language.localized("ui.your.file.version.must.be.a.regular.file.not.a.s.0ea5ff6f")
         case .unsafeServerSource:
-            return language.text("서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The server file version must be a regular file, not a symbolic link.")
+            return language.localized("ui.the.server.file.version.must.be.a.regular.file.n.7eb568b2")
         case .unsafeWorkingFile:
-            return language.text("현재 작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The current working file must be a regular file, not a symbolic link.")
+            return language.localized("ui.the.current.working.file.must.be.a.regular.file..1af7fbcd")
         case .workingRecoveryVerificationFailed:
-            return language.text("현재 작업 파일의 복구 백업을 검증하지 못했습니다.", "The recovery backup of the current working file could not be verified.")
+            return language.localized("ui.the.recovery.backup.of.the.current.working.file..048b3539")
         case .workingRestoreVerificationFailed:
-            return language.text("선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다.", "The selected version of your file could not be restored to the working file.")
+            return language.localized("ui.the.selected.version.of.your.file.could.not.be.r.70a89d83")
         case .conflictResolutionVerificationFailed:
-            return language.text(
-                "SVN 명령 이후에도 충돌 상태가 남아 있습니다. 백업을 확인한 뒤 다시 시도하세요.",
-                "The conflict remains after the SVN command. Review the backups and try again."
-            )
+            return language.localized("ui.the.conflict.remains.after.the.svn.command.revie.2162b675")
         case let .cleanupFailed(message):
-            return language.text(
-                "불완전한 충돌 백업 정리에 실패했습니다: \(message)",
-                "Failed to remove an incomplete conflict backup: \(message)"
-            )
+            return language.localized("ui.failed.to.remove.an.incomplete.conflict.backup.65753038", message)
         }
     }
 }

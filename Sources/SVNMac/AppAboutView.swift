@@ -22,13 +22,13 @@ struct AppAboutView: View {
             VStack(spacing: 4) {
                 Text("SVN KR")
                     .font(.title2.bold())
-                Text(appLanguage.text("버전 \(version) (\(build))", "Version \(version) (\(build))"))
+                Text(appLanguage.localized("ui.version.6bb2f91c", version, build))
                     .foregroundStyle(.secondary)
             }
 
             updateStatus
 
-            Button(appLanguage.text("업데이트 확인", "Check for Updates")) {
+            Button(appLanguage.localized("ui.check.for.updates.d0ccb7fe")) {
                 updateChecker.checkManually()
             }
             .disabled(updateChecker.manualStatus == .checking)
@@ -53,25 +53,25 @@ struct AppAboutView: View {
     private var updateStatus: some View {
         switch updateChecker.manualStatus {
         case .idle:
-            Text(appLanguage.text("App Store에서 최신 버전을 확인할 수 있습니다.", "Check the App Store for the latest version."))
+            Text(appLanguage.localized("ui.check.the.app.store.for.the.latest.version.969078c0"))
                 .foregroundStyle(.secondary)
         case .checking:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(appLanguage.text("업데이트 확인 중…", "Checking for updates…"))
+                Text(appLanguage.localized("ui.checking.for.updates.967c32b4"))
             }
         case let .updateAvailable(release):
             VStack(spacing: 8) {
-                Text(appLanguage.text("새 버전 \(release.version)을 사용할 수 있습니다.", "Version \(release.version) is available."))
-                Button(appLanguage.text("App Store에서 보기", "View in App Store")) {
+                Text(appLanguage.localized("ui.version.is.available.7e5cfb4e", release.version))
+                Button(appLanguage.localized("ui.view.in.app.store.7c79e972")) {
                     updateChecker.openStore(for: release)
                 }
             }
         case let .upToDate(version):
-            Text(appLanguage.text("최신 버전(\(version))을 사용 중입니다.", "You're using the latest version (\(version))."))
+            Text(appLanguage.localized("ui.you.re.using.the.latest.version.18d5624c", version))
                 .foregroundStyle(.secondary)
         case .failed:
-            Text(appLanguage.text("App Store에서 업데이트 정보를 확인하지 못했습니다.", "Unable to check the App Store for updates."))
+            Text(appLanguage.localized("ui.unable.to.check.the.app.store.for.updates.a1a5b5ac"))
                 .foregroundStyle(.red)
         }
     }
@@ -84,13 +84,13 @@ struct SVNMacCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button(appLanguage.text("SVN KR 정보", "About SVN KR")) {
+            Button(appLanguage.localized("ui.about.svn.kr.ddc63e52")) {
                 openWindow(id: "app-about")
             }
         }
 
         CommandGroup(after: .appInfo) {
-            Button(appLanguage.text("업데이트 확인…", "Check for Updates…")) {
+            Button(appLanguage.localized("ui.check.for.updates.6ba78913")) {
                 openWindow(id: "app-about")
                 updateChecker.checkManually()
             }

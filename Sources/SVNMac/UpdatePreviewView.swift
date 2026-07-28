@@ -11,9 +11,9 @@ struct UpdatePreviewView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.text("업데이트 미리보기", "Update Preview")).font(.title2.bold())
+                Text(appLanguage.localized("ui.update.preview.3e2a4411")).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.text("닫기", "Close")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
@@ -26,7 +26,7 @@ struct UpdatePreviewView: View {
             }
             .overlay {
                 if store.remoteChanges.isEmpty, store.isPreviewingSelectedProjectUpdate {
-                    ProgressView(appLanguage.text("서버 변경 확인 중…", "Checking incoming changes…"))
+                    ProgressView(appLanguage.localized("ui.checking.incoming.changes.a7a217e2"))
                 } else if store.remoteChanges.isEmpty {
                     ContentUnavailableView(
                         emptyStateTitle,
@@ -38,11 +38,11 @@ struct UpdatePreviewView: View {
 
             Divider()
             HStack {
-                Text(appLanguage.text("업데이트 중 로컬 변경과 겹치면 SVN 충돌이 발생할 수 있습니다.", "Incoming changes that overlap local edits may create an SVN conflict."))
+                Text(appLanguage.localized("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e"))
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 if !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true {
-                    Button(appLanguage.text("업데이트 실행", "Run Update")) { Task { await store.update() } }
+                    Button(appLanguage.localized("ui.run.update.e17c8217")) { Task { await store.update() } }
                         .buttonStyle(.borderedProminent)
                         .disabled(store.isUpdatingSelectedProject)
                 }
@@ -55,22 +55,16 @@ struct UpdatePreviewView: View {
 
     private var emptyStateTitle: String {
         if store.isWorkingCopyOutOfDate == true {
-            return appLanguage.text("업데이트 필요", "Update Required")
+            return appLanguage.localized("ui.update.required.f846039b")
         }
-        return appLanguage.text("내려받을 변경 없음", "No Incoming Changes")
+        return appLanguage.localized("ui.no.incoming.changes.8302e8b6")
     }
 
     private var emptyStateDescription: String {
         if store.isWorkingCopyOutOfDate == true {
-            return appLanguage.text(
-                "삭제 예정 경로의 서버 변경은 목록에 표시되지 않을 수 있습니다. 업데이트를 실행한 뒤 충돌 상태를 확인하세요.",
-                "Server changes inside a pending deletion may not appear in this list. Run Update, then review any conflicts."
-            )
+            return appLanguage.localized("ui.server.changes.inside.a.pending.deletion.may.not.475f8db6")
         }
-        return appLanguage.text(
-            "현재 로컬 작업 폴더가 서버와 최신 상태입니다.",
-            "The working copy is up to date with the server."
-        )
+        return appLanguage.localized("ui.the.working.copy.is.up.to.date.with.the.server.e31e447e")
     }
 
     private func remoteBadge(_ item: SVNStatusKind) -> some View {
