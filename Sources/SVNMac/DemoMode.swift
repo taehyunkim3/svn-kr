@@ -15,6 +15,7 @@ extension ProjectStore {
             projectAccessManager: DemoProjectAccessManager(),
             workingCopyFileService: DemoWorkingCopyFileService(),
             workspaceOpener: DemoWorkspaceOpener(),
+            projectPathChecker: DemoProjectPathChecker(),
             isDemoMode: true
         )
 
@@ -35,6 +36,10 @@ extension ProjectStore {
         ]
         return store
     }
+}
+
+private struct DemoProjectPathChecker: ProjectPathChecking {
+    func directoryExists(at path: String) -> Bool { true }
 }
 
 private enum DemoData {

@@ -165,6 +165,20 @@ struct AppWorkspaceOpener: WorkspaceOpening {
     func open(_ url: URL) -> Bool { NSWorkspace.shared.open(url) }
 }
 
+// MARK: - 작업 폴더 상태
+
+protocol ProjectPathChecking {
+    func directoryExists(at path: String) -> Bool
+}
+
+struct FileManagerProjectPathChecker: ProjectPathChecking {
+    func directoryExists(at path: String) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            && isDirectory.boolValue
+    }
+}
+
 // MARK: - 실행 중 작업 모델
 
 /// 단순 busy 여부뿐 아니라 어떤 종류의 작업이 실행 중인지 함께 보존합니다.

@@ -835,6 +835,43 @@ import Testing
 }
 
 @MainActor
+@Test func deletedSelectedFolderReportsOnceAndSkipsRepeatedAutomaticRefreshes() async {
+    let project = SVNProject(name: "삭제된 프로젝트", path: "/tmp/deleted-working-copy")
+    let client = StubSVNClient()
+    let pathChecker = StubProjectPathChecker(directoryExists: false)
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:]),
+        projectPathChecker: pathChecker
+    )
+
+    async let projectRefresh: Void = store.refresh()
+    async let browserRefresh: Void = store.refreshWorkingCopyBrowser()
+    _ = await (projectRefresh, browserRefresh)
+
+    #expect(store.errorMessage?.contains("삭제된 프로젝트") == true)
+    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.workingCopyEntriesRequestCount() == 0)
+    #expect(await client.repositoryLocksRequestCount() == 0)
+
+    store.errorMessage = nil
+    await store.refreshForMainWindowActivation()
+    await store.refreshWorkingCopyBrowser()
+
+    #expect(store.errorMessage == nil)
+    #expect(await client.snapshotRequestCount() == 0)
+    #expect(await client.workingCopyEntriesRequestCount() == 0)
+    #expect(await client.repositoryLocksRequestCount() == 0)
+
+    pathChecker.directoryExists = true
+    await store.refreshLocalWorkingCopy()
+
+    #expect(store.errorMessage == nil)
+    #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
 @Test func ambiguousPathCollisionsBlockCommitAndAutomaticCleanup() {
     let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/ambiguous-commit")])
     store.statuses = [SVNStatusEntry(path: "04 구현/수정.bin", item: .modified)]
@@ -1054,7 +1091,8 @@ import Testing
         client: client,
         credentialStore: credentials,
         persistence: persistence,
-        projectAccessManager: StubProjectAccessManager()
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker()
     )
     let destination = URL(fileURLWithPath: "/tmp/checked-out-project", isDirectory: true)
 
@@ -1087,7 +1125,8 @@ import Testing
         client: client,
         credentialStore: StubCredentialStore(),
         persistence: MemoryProjectPersistence(),
-        projectAccessManager: StubProjectAccessManager()
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker()
     )
 
     let succeeded = await store.checkout(
@@ -1347,7 +1386,8 @@ private func makeStore(
     client: StubSVNClient = StubSVNClient(),
     fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
     conflictFileService: ConflictFileService = ConflictFileService(),
-    workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener()
+    workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
+    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker()
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -1356,7 +1396,8 @@ private func makeStore(
         projectAccessManager: StubProjectAccessManager(),
         conflictFileService: conflictFileService,
         workingCopyFileService: fileService,
-        workspaceOpener: workspaceOpener
+        workspaceOpener: workspaceOpener,
+        projectPathChecker: projectPathChecker
     )
 }
 
@@ -1820,6 +1861,18 @@ private final class MemoryProjectPersistence: ProjectPersisting {
     init(projects: [SVNProject] = []) { initialProjects = projects }
     func loadProjects() -> [SVNProject] { initialProjects }
     func saveProjects(_ projects: [SVNProject]) { savedProjects = projects }
+}
+
+private final class StubProjectPathChecker: ProjectPathChecking {
+    var directoryExists: Bool
+
+    init(directoryExists: Bool = true) {
+        self.directoryExists = directoryExists
+    }
+
+    func directoryExists(at path: String) -> Bool {
+        directoryExists
+    }
 }
 
 private final class StubProjectAccessManager: ProjectAccessManaging {

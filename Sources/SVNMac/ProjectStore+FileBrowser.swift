@@ -2,14 +2,19 @@ import Foundation
 
 extension ProjectStore {
     func refreshForMainWindowActivation() async {
-        guard !isDemoMode, selectedProject != nil, !isWorking else { return }
+        guard !isDemoMode,
+              let project = selectedProject,
+              !isWorking,
+              ensureWorkingCopyDirectoryExists(for: project) else { return }
         async let changes: Void = refreshLocalWorkingCopy()
         async let files: Void = loadWorkingCopyFiles()
         _ = await (changes, files)
     }
 
     func refreshWorkingCopyBrowser() async {
-        guard let projectID = selectedProjectID,
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project),
+              let projectID = selectedProjectID,
               !activeOperations.contains(where: { $0.kind == .browseFiles(projectID) }) else { return }
         async let files: Void = loadWorkingCopyFiles()
         async let locks: Void = loadRepositoryLocks()
@@ -17,7 +22,8 @@ extension ProjectStore {
     }
 
     func loadWorkingCopyFiles() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = UUID()
         fileTreeRequestID = requestID
         let operationID = beginOperation(.browseFiles(project.id))

@@ -147,8 +147,10 @@ final class ProjectStore: ObservableObject {
     let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
     private let workspaceOpener: any WorkspaceOpening
+    private let projectPathChecker: any ProjectPathChecking
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
+    private var unavailableProjectID: SVNProject.ID?
     /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
     private var refreshRequestID: UUID?
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
@@ -218,6 +220,7 @@ final class ProjectStore: ObservableObject {
         conflictFileService: ConflictFileService = ConflictFileService(),
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
+        projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
         isDemoMode: Bool = false
     ) {
         self.isDemoMode = isDemoMode
@@ -228,6 +231,7 @@ final class ProjectStore: ObservableObject {
         self.conflictFileService = conflictFileService
         self.workingCopyFileService = workingCopyFileService
         self.workspaceOpener = workspaceOpener
+        self.projectPathChecker = projectPathChecker
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
@@ -380,7 +384,8 @@ final class ProjectStore: ObservableObject {
     // MARK: - SVN 작업
 
     func refreshLocalWorkingCopy() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = registerRefreshRequest()
         let operationID = beginOperation(.refreshLocal(project.id))
         defer { endOperation(operationID) }
@@ -388,7 +393,8 @@ final class ProjectStore: ObservableObject {
     }
 
     func refresh() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = prepareRefreshRequest()
         let operationID = beginOperation(.refresh(project.id))
         defer { endOperation(operationID) }
@@ -879,6 +885,25 @@ final class ProjectStore: ObservableObject {
         diffContent = .placeholder
         notice = nil
         authenticationRequest = nil
+        unavailableProjectID = nil
+    }
+
+    /// Finder 등 외부에서 등록 폴더가 삭제된 경우 자동 새로고침들이 같은 오류를
+    /// 연달아 표시하지 않도록 선택당 한 번만 안내합니다. 폴더가 복구되면 즉시
+    /// 정상 새로고침으로 돌아갈 수 있게 누락 상태를 해제합니다.
+    func ensureWorkingCopyDirectoryExists(for project: SVNProject) -> Bool {
+        guard selectedProjectID == project.id else { return false }
+        guard projectPathChecker.directoryExists(at: project.path) else {
+            guard unavailableProjectID != project.id else { return false }
+            unavailableProjectID = project.id
+            errorMessage = AppLanguage.current.text(
+                "'\(project.name)' 작업 폴더가 존재하지 않습니다.\n\(project.path)\n\n폴더를 복원하거나 왼쪽 아래 − 버튼으로 목록에서 제거하세요.",
+                "The '\(project.name)' working folder no longer exists.\n\(project.path)\n\nRestore the folder or remove it from the list with the − button."
+            )
+            return false
+        }
+        unavailableProjectID = nil
+        return true
     }
 
     @discardableResult

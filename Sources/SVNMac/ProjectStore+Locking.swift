@@ -89,7 +89,8 @@ extension ProjectStore {
     }
 
     func loadRepositoryLocks() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project) else { return }
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
