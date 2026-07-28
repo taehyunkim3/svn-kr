@@ -46,7 +46,9 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.5.15 Release Notes
+## Version 0.5.16 Release Notes
 
-• Renamed the app to SVN KR and updated related screens and metadata.
-• Restored the copyright holder in the About window and app bundle metadata.
+• Clearly distinguishes locally missing items from SVN items already scheduled for deletion.
+• Requires an explicit restore-or-repository-delete choice before committing a missing item.
+• Adds batch deletion conversion, pre-commit restoration, deletion summaries, and confirmation.
+• Adds SVN global-ignore management and selective import of compatible .gitignore rules.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.16 (2026-07-28)
+
 - Distinguished locally missing files from SVN items already marked for deletion.
 - Required an explicit restore-or-delete choice before a missing item can be committed.
 - Added pending-deletion confirmation, batch handling, commit summaries, and pre-commit restoration.
