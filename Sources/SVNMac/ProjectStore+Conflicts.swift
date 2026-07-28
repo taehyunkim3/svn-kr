@@ -5,14 +5,11 @@ extension ProjectStore {
     func prepareConflictResolution(for relativePath: String) async {
         guard let project = selectedProject else { return }
         let projectID = project.id
-        let requestID = UUID()
-        conflictPreparationRequestID = requestID
+        let requestID = beginRequest(.conflictPreparation)
         let operationID = beginOperation(.resolveConflict(project.id))
         defer {
             endOperation(operationID)
-            if conflictPreparationRequestID == requestID {
-                conflictPreparationRequestID = nil
-            }
+            finishRequest(requestID, kind: .conflictPreparation)
         }
         do {
             let snapshot = try await client.workingCopySnapshot(at: project.path, credentials: nil)
@@ -125,7 +122,7 @@ extension ProjectStore {
         _ requestID: UUID,
         projectID: SVNProject.ID
     ) -> Bool {
-        conflictPreparationRequestID == requestID && selectedProjectID == projectID
+        canApplyRequest(requestID, kind: .conflictPreparation, projectID: projectID)
     }
 
     private func conflictDetails(

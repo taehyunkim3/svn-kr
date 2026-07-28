@@ -10,6 +10,23 @@ import Testing
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .korean) == "현재 작업 파일을 찾을 수 없습니다.")
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .english) == "The current working file could not be found.")
     #expect(store.localizedError(ConflictFileError.unsupportedType("tree"), language: .english) == "Unsupported conflict type: tree")
+    #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .korean) == "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다.")
+    #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .english) == "The selected folder is not an SVN local working folder.")
+}
+
+@MainActor
+@Test func latestRequestTrackerRejectsOlderAndSwitchedProjectResults() {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/request-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/request-second")
+    let store = makeStore(projects: [first, second])
+
+    let older = store.beginRequest(.fileTree)
+    let latest = store.beginRequest(.fileTree)
+    #expect(!store.canApplyRequest(older, kind: .fileTree, projectID: first.id))
+    #expect(store.canApplyRequest(latest, kind: .fileTree, projectID: first.id))
+
+    store.selectedProjectID = second.id
+    #expect(!store.canApplyRequest(latest, kind: .fileTree, projectID: first.id))
 }
 
 @MainActor

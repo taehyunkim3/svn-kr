@@ -33,22 +33,21 @@ extension ProjectStore {
     ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
-        let requestID = UUID()
-        fileTreeRequestID = requestID
+        let requestID = beginRequest(.fileTree)
         let operationID = beginOperation(.browseFiles(project.id))
         defer { endOperation(operationID) }
 
         do {
             let svnEntries = try await client.workingCopyEntries(at: project.path, credentials: nil)
             let tree = try await workingCopyFileService.tree(at: project.path, svnEntries: svnEntries)
-            guard fileTreeRequestID == requestID, selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
             workingCopyFileTree = tree
             if let selectedBrowserPath,
                !tree.contains(relativePath: selectedBrowserPath) {
                 self.selectedBrowserPath = nil
             }
         } catch {
-            guard fileTreeRequestID == requestID, selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
             publishRefreshError(error, projectID: project.id, policy: errorPolicy)
         }
     }

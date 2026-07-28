@@ -73,6 +73,14 @@ enum RefreshErrorPolicy {
     case coordinated(UUID)
 }
 
+enum ProjectRequestKind: Hashable {
+    case refresh
+    case diff
+    case fileTree
+    case repositoryLocks
+    case conflictPreparation
+}
+
 struct SVNAuthenticationRequest: Identifiable, Equatable {
     let id = UUID()
     let projectID: SVNProject.ID
@@ -156,13 +164,8 @@ final class ProjectStore: ObservableObject {
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
     private var unavailableProjectID: SVNProject.ID?
-    /// 새 refresh가 시작되거나 프로젝트가 바뀌면 이전 결과를 폐기하기 위한 토큰입니다.
-    private var refreshRequestID: UUID?
-    /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
-    private var diffRequestID: UUID?
-    var fileTreeRequestID: UUID?
-    var repositoryLocksRequestID: UUID?
-    var conflictPreparationRequestID: UUID?
+    /// 요청 종류별 최신 토큰만 보존해 늦게 끝난 비동기 결과를 공통 규칙으로 폐기합니다.
+    private var latestRequestIDs: [ProjectRequestKind: UUID] = [:]
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var checkoutLogSessionID = UUID()
@@ -493,9 +496,7 @@ final class ProjectStore: ObservableObject {
     }
 
     private func registerRefreshRequest() -> UUID {
-        let requestID = UUID()
-        refreshRequestID = requestID
-        return requestID
+        beginRequest(.refresh)
     }
 
     private func applyLocalWorkingCopyRefresh(
@@ -535,8 +536,7 @@ final class ProjectStore: ObservableObject {
 
     func loadDiff(for path: String) async {
         guard let project = selectedProject else { return }
-        let requestID = UUID()
-        diffRequestID = requestID
+        let requestID = beginRequest(.diff)
         selectedStatusPath = path
         if statuses.first(where: { $0.path == path })?.item == .unversioned {
             diffContent = .unavailableForUnversioned
@@ -544,12 +544,11 @@ final class ProjectStore: ObservableObject {
         }
         do {
             let value = try await client.diff(at: project.path, relativePath: path, credentials: nil)
-            guard diffRequestID == requestID,
-                  selectedProjectID == project.id,
+            guard canApplyRequest(requestID, kind: .diff, projectID: project.id),
                   selectedStatusPath == path else { return }
             diffContent = value.isEmpty ? .noTextDiff : .text(value)
         } catch {
-            if diffRequestID == requestID, selectedProjectID == project.id {
+            if canApplyRequest(requestID, kind: .diff, projectID: project.id) {
                 errorMessage = localizedError(error)
             }
         }
@@ -814,80 +813,12 @@ final class ProjectStore: ObservableObject {
 
     func localizedError(_ error: Error, language: AppLanguage = .current) -> String {
         if let conflictError = error as? ConflictFileError {
-            return localizedConflictFileError(conflictError, language: language)
+            return SVNErrorLocalization.message(for: conflictError, language: language)
         }
-        guard language == .english, let svnError = error as? SVNError else {
-            return error.localizedDescription
+        if let svnError = error as? SVNError {
+            return SVNErrorLocalization.message(for: svnError, language: language)
         }
-        switch svnError {
-        case let .commandFailed(command, message):
-            return "\(command) failed: \(message)"
-        case let .workingCopyOutOfDate(details):
-            return "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n\(details)"
-        case .invalidWorkingCopy:
-            return "The selected folder is not an SVN local working folder."
-        case .malformedResponse:
-            return "The SVN response could not be read."
-        case let .pathNormalizationCollision(paths):
-            return "Korean path normalization conflicts must be recovered before continuing: \(paths.joined(separator: ", "))"
-        case let .pathAliasRepairFailed(paths):
-            return "Korean path alias repair could not be validated: \(paths.joined(separator: ", "))"
-        case let .fileReplacementRecoveryFailed(paths, backupPaths):
-            return "Replacement files could not be restored to their original paths: \(paths.joined(separator: ", ")). Backups: \(backupPaths.joined(separator: ", "))"
-        case let .unsupportedTargetPath(paths):
-            return "Paths containing line breaks cannot be passed safely to SVN: \(paths.joined(separator: ", "))"
-        case let .unresolvedMissingPaths(paths):
-            return "Choose how to handle locally missing items first: \(paths.joined(separator: ", "))"
-        case let .deletionValidationFailed(paths):
-            return "These items did not enter the pending-deletion state: \(paths.joined(separator: ", "))"
-        case let .commitSucceededWithValidationWarning(_, details):
-            return "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: \(details)"
-        case let .recoveryBlocked(paths):
-            return "Some changes cannot be recovered automatically: \(paths.joined(separator: ", "))"
-        case .recoveryDestinationNotEmpty:
-            return "The recovery destination folder must be empty."
-        case let .recoveryValidationFailed(paths):
-            return "The recovered working copy did not pass validation: \(paths.joined(separator: ", "))"
-        case .svnExecutableNotFound:
-            return "The bundled SVN executable could not be found. Reinstall the app."
-        }
-    }
-
-    private func localizedConflictFileError(
-        _ error: ConflictFileError,
-        language: AppLanguage
-    ) -> String {
-        switch error {
-        case let .unsupportedType(type):
-            return language.text("지원하지 않는 충돌 유형입니다: \(type)", "Unsupported conflict type: \(type)")
-        case .missingMine:
-            return language.text("내 파일 버전을 찾을 수 없습니다.", "Your file version could not be found.")
-        case .missingServer:
-            return language.text("서버 파일 버전을 찾을 수 없습니다.", "The server file version could not be found.")
-        case .missingWorkingFile:
-            return language.text("현재 작업 파일을 찾을 수 없습니다.", "The current working file could not be found.")
-        case .sourceOutsideWorkingCopy:
-            return language.text("충돌 파일 경로가 작업 사본 밖을 가리킵니다.", "A conflict file path points outside the working copy.")
-        case .backupRootInsideWorkingCopy:
-            return language.text("충돌 백업 위치는 작업 사본 밖에 있어야 합니다.", "Conflict backups must be stored outside the working copy.")
-        case .unsafeMineSource:
-            return language.text("내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "Your file version must be a regular file, not a symbolic link.")
-        case .unsafeServerSource:
-            return language.text("서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The server file version must be a regular file, not a symbolic link.")
-        case .unsafeWorkingFile:
-            return language.text("현재 작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.", "The current working file must be a regular file, not a symbolic link.")
-        case .workingRecoveryVerificationFailed:
-            return language.text("현재 작업 파일의 복구 백업을 검증하지 못했습니다.", "The recovery backup of the current working file could not be verified.")
-        case .workingRestoreVerificationFailed:
-            return language.text("선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다.", "The selected version of your file could not be restored to the working file.")
-        case .conflictResolutionVerificationFailed:
-            return language.text(
-                "SVN 명령 이후에도 충돌 상태가 남아 있습니다. 백업을 확인한 뒤 다시 시도하세요.",
-                "The conflict remains after the SVN command. Review the backups and try again."
-            )
-        case let .cleanupFailed(message):
-            return language.text("불완전한 충돌 백업 정리에 실패했습니다: \(message)", "Failed to remove an incomplete conflict backup: \(message)")
-        }
+        return error.localizedDescription
     }
 
     func openFile(_ relativePath: String, in project: SVNProject) {
@@ -935,11 +866,7 @@ final class ProjectStore: ObservableObject {
     /// 프로젝트가 바뀔 때 이전 프로젝트의 화면 상태가 잠깐 보이지 않도록 관련
     /// 상태를 한곳에서 초기화합니다. 진행 중이던 요청 토큰도 폐기합니다.
     private func resetSelectedProjectState() {
-        refreshRequestID = nil
-        diffRequestID = nil
-        fileTreeRequestID = nil
-        repositoryLocksRequestID = nil
-        conflictPreparationRequestID = nil
+        latestRequestIDs.removeAll()
         failedRefreshCycleIDs = []
         automaticRefreshBlockedProjectID = nil
         statuses = []
@@ -1018,7 +945,27 @@ final class ProjectStore: ObservableObject {
     /// 요청을 시작했던 프로젝트가 아직 선택되어 있고, 더 최신 refresh가 없을 때만
     /// 비동기 결과를 화면 상태에 반영합니다.
     private func canApplyRefresh(_ requestID: UUID, projectID: SVNProject.ID) -> Bool {
-        refreshRequestID == requestID && selectedProjectID == projectID
+        canApplyRequest(requestID, kind: .refresh, projectID: projectID)
+    }
+
+    @discardableResult
+    func beginRequest(_ kind: ProjectRequestKind) -> UUID {
+        let requestID = UUID()
+        latestRequestIDs[kind] = requestID
+        return requestID
+    }
+
+    func finishRequest(_ requestID: UUID, kind: ProjectRequestKind) {
+        guard latestRequestIDs[kind] == requestID else { return }
+        latestRequestIDs[kind] = nil
+    }
+
+    func canApplyRequest(
+        _ requestID: UUID,
+        kind: ProjectRequestKind,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        latestRequestIDs[kind] == requestID && selectedProjectID == projectID
     }
 }
 

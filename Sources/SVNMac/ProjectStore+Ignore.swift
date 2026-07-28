@@ -12,14 +12,26 @@ extension ProjectStore {
             ignoredStatuses = []
             return
         }
-        do { ignoredStatuses = try await client.ignoredStatus(at: project.path, credentials: nil) }
-        catch { errorMessage = localizedError(error) }
+        do {
+            let statuses = try await client.ignoredStatus(at: project.path, credentials: nil)
+            guard selectedProjectID == project.id else { return }
+            ignoredStatuses = statuses
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func loadIgnoreRules() async {
         guard let project = selectedProject else { return }
-        do { ignoreRules = try await client.ignoreRules(at: project.path, credentials: nil) }
-        catch { errorMessage = localizedError(error) }
+        do {
+            let rules = try await client.ignoreRules(at: project.path, credentials: nil)
+            guard selectedProjectID == project.id else { return }
+            ignoreRules = rules
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func ignore(path relativePath: String, byExtension: Bool) async {
@@ -37,10 +49,14 @@ extension ProjectStore {
                 propertyKind: .local,
                 credentials: nil
             )
+            guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.text("무시 규칙 '\(pattern)'을 추가했습니다. 디렉터리 속성을 커밋하면 팀에 공유됩니다.", "Added ignore rule '\(pattern)'. Commit the directory property to share it with the team.")
             await refresh()
             await loadIgnoreRules()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
@@ -62,11 +78,15 @@ extension ProjectStore {
                 propertyKind: rule.propertyKind,
                 credentials: nil
             )
+            guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.text("무시 규칙 '\(rule.pattern)'을 제거했습니다.", "Removed ignore rule '\(rule.pattern)'.")
             await refresh()
             await loadIgnoreRules()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func compareGitIgnore() async {

@@ -1061,7 +1061,7 @@ public actor SVNClient {
         } catch {
             throw SVNError.commitSucceededWithValidationWarning(
                 output: commitOutput,
-                details: error.localizedDescription
+                details: String(describing: error)
             )
         }
         guard !committedSnapshot.hasPathCollisions else {

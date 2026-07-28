@@ -387,8 +387,9 @@ public struct SVNCredentials: Sendable {
     }
 }
 
-/// CLI 실행과 XML 해석 과정에서 화면이 구분해 처리해야 하는 오류입니다.
-public enum SVNError: LocalizedError, Sendable {
+/// CLI 실행과 XML 해석 과정에서 상위 계층이 구분해 처리해야 하는 의미 오류입니다.
+/// 사용자 표시 문구는 앱 계층에서 언어와 화면 맥락에 맞게 결정합니다.
+public enum SVNError: Error, Sendable {
     case commandFailed(command: String, message: String)
     case workingCopyOutOfDate(details: String)
     case invalidWorkingCopy
@@ -405,38 +406,4 @@ public enum SVNError: LocalizedError, Sendable {
     case recoveryValidationFailed(paths: [String])
     case svnExecutableNotFound
 
-    public var errorDescription: String? {
-        switch self {
-        case let .commandFailed(command, message):
-            "\(command) 실패: \(message)"
-        case let .workingCopyOutOfDate(details):
-            "서버에서 먼저 변경된 항목이 있어 커밋할 수 없습니다. 작업 폴더를 업데이트하고 충돌이 있으면 해결한 뒤 다시 커밋하세요.\n\n\(details)"
-        case .invalidWorkingCopy:
-            "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다."
-        case .malformedResponse:
-            "SVN 응답을 읽지 못했습니다."
-        case let .pathNormalizationCollision(paths):
-            "한글 경로 충돌이 있어 작업을 중단했습니다: \(paths.joined(separator: ", "))"
-        case let .pathAliasRepairFailed(paths):
-            "한글 경로 별칭 정리를 검증하지 못했습니다: \(paths.joined(separator: ", "))"
-        case let .fileReplacementRecoveryFailed(paths, backupPaths):
-            "대치 파일을 원래 위치로 복원하지 못했습니다: \(paths.joined(separator: ", ")). 백업 파일: \(backupPaths.joined(separator: ", "))"
-        case let .unsupportedTargetPath(paths):
-            "SVN 명령에 안전하게 전달할 수 없는 줄바꿈 경로가 있습니다: \(paths.joined(separator: ", "))"
-        case let .unresolvedMissingPaths(paths):
-            "로컬 누락 항목의 처리 방법을 먼저 선택해야 합니다: \(paths.joined(separator: ", "))"
-        case let .deletionValidationFailed(paths):
-            "저장소 삭제 예정 상태로 전환되지 않은 항목이 있습니다: \(paths.joined(separator: ", "))"
-        case let .commitSucceededWithValidationWarning(_, details):
-            "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: \(details)"
-        case let .recoveryBlocked(paths):
-            "자동 복구할 수 없는 변경이 있습니다: \(paths.joined(separator: ", "))"
-        case .recoveryDestinationNotEmpty:
-            "복구 대상 폴더는 비어 있어야 합니다."
-        case let .recoveryValidationFailed(paths):
-            "새 작업 폴더 검증에 실패했습니다: \(paths.joined(separator: ", "))"
-        case .svnExecutableNotFound:
-            "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
-        }
-    }
 }

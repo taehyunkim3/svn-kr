@@ -75,10 +75,14 @@ extension ProjectStore {
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
+            guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.text("파일을 잠갔습니다. 커밋에 성공하면 잠금이 자동으로 해제됩니다.", "The file is locked. A successful commit automatically releases the lock.")
             openFile(request.relativePath, in: project)
             await loadRepositoryLocks()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 
     func openWithoutLock(_ request: DocumentOpenRequest) {
@@ -93,8 +97,7 @@ extension ProjectStore {
     ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
-        let requestID = UUID()
-        repositoryLocksRequestID = requestID
+        let requestID = beginRequest(.repositoryLocks)
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
@@ -103,13 +106,11 @@ extension ProjectStore {
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
-            guard repositoryLocksRequestID == requestID,
-                  selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .repositoryLocks, projectID: project.id) else { return }
             repositoryLocks = locks
             updateLockSummary(for: project.id, lockCount: locks.count)
         } catch {
-            guard repositoryLocksRequestID == requestID,
-                  selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .repositoryLocks, projectID: project.id) else { return }
             publishRefreshError(error, projectID: project.id, policy: errorPolicy)
         }
     }
@@ -125,8 +126,12 @@ extension ProjectStore {
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
+            guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.text("잠금을 해제했습니다.", "The lock was released.")
             await loadRepositoryLocks()
-        } catch { errorMessage = localizedError(error) }
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
     }
 }
