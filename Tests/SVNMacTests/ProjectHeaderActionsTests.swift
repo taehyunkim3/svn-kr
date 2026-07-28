@@ -52,6 +52,19 @@ import Testing
     #expect(!contentView.contains("Button(appLanguage.localized(\"ui.update.0f38eb76\"), systemImage:"))
 }
 
+@Test func mainToolbarHidesItsTitleAndKeepsProjectActionsLeading() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let app = try source(named: "SVNMacApp.swift", in: sources)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+
+    #expect(app.contains(".windowToolbarStyle(.unified(showsTitle: false))"))
+    #expect(contentView.contains("ToolbarItemGroup(placement: .navigation)"))
+}
+
 private func source(named name: String, in directory: URL) throws -> String {
     try String(contentsOf: directory.appendingPathComponent(name), encoding: .utf8)
 }

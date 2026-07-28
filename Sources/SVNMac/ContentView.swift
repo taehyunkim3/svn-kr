@@ -88,41 +88,43 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            if store.isDemoMode {
-                Button(appLanguage.localized("ui.exit.demo.3a329c52")) {
-                    onExitDemo()
+            ToolbarItemGroup(placement: .navigation) {
+                if store.isDemoMode {
+                    Button(appLanguage.localized("ui.exit.demo.3a329c52")) {
+                        onExitDemo()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .help(appLanguage.localized("ui.close.the.sample.project.and.return.to.normal.mo.6d61e364"))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .help(appLanguage.localized("ui.close.the.sample.project.and.return.to.normal.mo.6d61e364"))
-            }
-            Button {
-                Task { await store.refreshSelectedProject(manual: true) }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.clockwise")
-                    Text(appLanguage.localized("ui.refresh.0aca6bd2"))
+                Button {
+                    Task { await store.refreshSelectedProject(manual: true) }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.clockwise")
+                        Text(appLanguage.localized("ui.refresh.0aca6bd2"))
+                    }
+                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
-                .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
-            }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized("ui.reload.local.changes.and.the.latest.server.commi.19e409f3"))
-            Button {
-                Task { await store.previewUpdate() }
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.down.circle")
-                    Text(appLanguage.localized("ui.update.0f38eb76"))
+                Button {
+                    Task { await store.previewUpdate() }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.down.circle")
+                        Text(appLanguage.localized("ui.update.0f38eb76"))
+                    }
+                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
-                .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
-            }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
-            if store.showsGlobalProgress {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 16, height: 16)
-                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
+                if store.showsGlobalProgress {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 16, height: 16)
+                        .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
+                }
             }
         }
         .task(id: store.selectedProjectID) {

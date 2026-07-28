@@ -77,6 +77,7 @@ struct SVNMacApp: App {
             width: AppLayout.windowDefaultWidth,
             height: AppLayout.windowDefaultHeight
         )
+        .windowToolbarStyle(.unified(showsTitle: false))
         .windowResizability(.contentMinSize)
         .commands {
             SVNMacCommands(updateChecker: updateChecker, appLanguage: appLanguage)
