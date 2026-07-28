@@ -38,7 +38,8 @@ import Testing
     ]
 
     #expect(!content.contains(".alert(appLanguage.text(\"오류\", \"Error\")"))
-    #expect(content.contains(".detailedErrorPresenter(errorMessage: $store.errorMessage)"))
+    #expect(content.contains("errorMessage: $store.errorMessage"))
+    #expect(content.contains("isEnabled: !store.hasContextualErrorPresentationOwner"))
 
     let dialogs = try String(
         contentsOf: sources.appendingPathComponent("RepositoryDialogs.swift"),

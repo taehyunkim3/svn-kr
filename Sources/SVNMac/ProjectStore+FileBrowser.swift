@@ -5,23 +5,32 @@ extension ProjectStore {
         guard !isDemoMode,
               let project = selectedProject,
               !isWorking,
+              automaticRefreshCanRun(for: project),
               ensureWorkingCopyDirectoryExists(for: project) else { return }
-        async let changes: Void = refreshLocalWorkingCopy()
-        async let files: Void = loadWorkingCopyFiles()
+
+        let cycleID = UUID()
+        let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
+        async let changes: Void = refreshLocalWorkingCopy(errorPolicy: errorPolicy)
+        async let files: Void = loadWorkingCopyFiles(errorPolicy: errorPolicy)
         _ = await (changes, files)
+        finishRefreshCycle(cycleID)
     }
 
-    func refreshWorkingCopyBrowser() async {
+    func refreshWorkingCopyBrowser(
+        errorPolicy: RefreshErrorPolicy = .standalone
+    ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project),
               let projectID = selectedProjectID,
               !activeOperations.contains(where: { $0.kind == .browseFiles(projectID) }) else { return }
-        async let files: Void = loadWorkingCopyFiles()
-        async let locks: Void = loadRepositoryLocks()
+        async let files: Void = loadWorkingCopyFiles(errorPolicy: errorPolicy)
+        async let locks: Void = loadRepositoryLocks(errorPolicy: errorPolicy)
         _ = await (files, locks)
     }
 
-    func loadWorkingCopyFiles() async {
+    func loadWorkingCopyFiles(
+        errorPolicy: RefreshErrorPolicy = .standalone
+    ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = UUID()
@@ -40,7 +49,7 @@ extension ProjectStore {
             }
         } catch {
             guard fileTreeRequestID == requestID, selectedProjectID == project.id else { return }
-            errorMessage = localizedError(error)
+            publishRefreshError(error, projectID: project.id, policy: errorPolicy)
         }
     }
 }

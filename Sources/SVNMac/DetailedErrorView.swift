@@ -87,12 +87,13 @@ struct DetailedErrorView: View {
 
 private struct DetailedErrorPresenter: ViewModifier {
     @Binding var errorMessage: String?
+    let isEnabled: Bool
 
     private var isPresented: Binding<Bool> {
         Binding(
-            get: { errorMessage != nil },
+            get: { isEnabled && errorMessage != nil },
             set: { presented in
-                if !presented { errorMessage = nil }
+                if isEnabled && !presented { errorMessage = nil }
             }
         )
     }
@@ -109,7 +110,13 @@ private struct DetailedErrorPresenter: ViewModifier {
 }
 
 extension View {
-    func detailedErrorPresenter(errorMessage: Binding<String?>) -> some View {
-        modifier(DetailedErrorPresenter(errorMessage: errorMessage))
+    func detailedErrorPresenter(
+        errorMessage: Binding<String?>,
+        isEnabled: Bool = true
+    ) -> some View {
+        modifier(DetailedErrorPresenter(
+            errorMessage: errorMessage,
+            isEnabled: isEnabled
+        ))
     }
 }

@@ -548,6 +548,7 @@ import Testing
     store.selectedHistoryPath = "/trunk/changed.txt"
     store.historyDiffContent = .text("history diff")
     store.notice = "완료"
+    store.errorMessage = "이전 프로젝트 오류"
     store.authenticationRequest = SVNAuthenticationRequest(projectID: first.id, action: .update)
 
     store.selectedProjectID = second.id
@@ -562,6 +563,7 @@ import Testing
     #expect(store.selectedHistoryPath == nil)
     #expect(store.historyDiffContent == .placeholder)
     #expect(store.notice == nil)
+    #expect(store.errorMessage == nil)
     #expect(store.authenticationRequest == nil)
 }
 
@@ -869,6 +871,84 @@ import Testing
 
     #expect(store.errorMessage == nil)
     #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
+@Test func persistentAutomaticRefreshFailureWaitsForExplicitRetry() async {
+    let project = SVNProject(name: "손상된 프로젝트", path: "/tmp/damaged-working-copy")
+    let client = StubSVNClient(
+        snapshotError: TestError.automaticRefreshFailed,
+        workingCopyEntriesError: TestError.automaticRefreshFailed,
+        repositoryLocksErrorsByPath: [
+            project.path: TestError.automaticRefreshFailed,
+        ]
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshSelectedProject(manual: false)
+
+    #expect(store.errorMessage != nil)
+    #expect(await client.snapshotRequestCount() == 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 1)
+
+    store.errorMessage = nil
+    await store.refreshForMainWindowActivation()
+    await store.refreshSelectedProject(manual: false)
+
+    #expect(store.errorMessage == nil)
+    #expect(await client.snapshotRequestCount() == 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 1)
+
+    await store.refreshSelectedProject(manual: true)
+
+    #expect(store.errorMessage != nil)
+    #expect(await client.snapshotRequestCount() == 2)
+    #expect(await client.workingCopyEntriesRequestCount() == 2)
+    #expect(await client.repositoryLocksRequestCount() == 2)
+}
+
+@MainActor
+@Test func staleRepositoryLockFailureDoesNotAffectNewProject() async {
+    let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow-locks")
+    let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast-locks")
+    let secondLock = SVNLockInfo(path: "current.txt", owner: "second-user")
+    let client = StubSVNClient(
+        delaysByPath: [first.path: .milliseconds(150)],
+        repositoryLocksByPath: [second.path: [secondLock]],
+        repositoryLocksErrorsByPath: [
+            first.path: TestError.staleRepositoryLocksFailed,
+        ]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let staleLoad = Task { await store.loadRepositoryLocks() }
+    try? await Task.sleep(for: .milliseconds(20))
+    store.selectedProjectID = second.id
+    await store.loadRepositoryLocks()
+    await staleLoad.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.repositoryLocks == [secondLock])
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func contextualSheetsOwnDetailedErrorPresentation() {
+    let store = makeStore(projects: [])
+    #expect(!store.hasContextualErrorPresentationOwner)
+
+    store.isShowingAddRepository = true
+    #expect(store.hasContextualErrorPresentationOwner)
+    store.isShowingAddRepository = false
+
+    store.isShowingLocks = true
+    #expect(store.hasContextualErrorPresentationOwner)
 }
 
 @MainActor
@@ -1419,6 +1499,8 @@ private enum TestError: Error {
     case backupFailed
     case resolveConflictFailed
     case lockInfoFailed
+    case automaticRefreshFailed
+    case staleRepositoryLocksFailed
 }
 
 private actor AsyncTestGate {
@@ -1566,6 +1648,10 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutProgress: [String]
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
+    let snapshotError: Error?
+    let workingCopyEntriesError: Error?
+    let repositoryLocksByPath: [String: [SVNLockInfo]]
+    let repositoryLocksErrorsByPath: [String: Error]
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
     let postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
@@ -1608,6 +1694,10 @@ private actor StubSVNClient: SVNClientServing {
         checkoutProgress: [String] = [],
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
+        snapshotError: Error? = nil,
+        workingCopyEntriesError: Error? = nil,
+        repositoryLocksByPath: [String: [SVNLockInfo]] = [:],
+        repositoryLocksErrorsByPath: [String: Error] = [:],
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
@@ -1633,6 +1723,10 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutProgress = checkoutProgress
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
+        self.snapshotError = snapshotError
+        self.workingCopyEntriesError = workingCopyEntriesError
+        self.repositoryLocksByPath = repositoryLocksByPath
+        self.repositoryLocksErrorsByPath = repositoryLocksErrorsByPath
         self.snapshotsByPath = snapshotsByPath
         self.postResolveSnapshotsByPath = postResolveSnapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
@@ -1675,11 +1769,14 @@ private actor StubSVNClient: SVNClientServing {
     }
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] {
         workingCopyEntriesRequests += 1
+        await delay(for: path)
+        if let workingCopyEntriesError { throw workingCopyEntriesError }
         return workingCopyEntriesValue
     }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
         await delay(for: path)
+        if let snapshotError { throw snapshotError }
         if !conflictChoices.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
         if scheduleDeletionRequests > 0, let snapshot = postDeletionSnapshotsByPath[path] { return snapshot }
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
@@ -1726,7 +1823,9 @@ private actor StubSVNClient: SVNClientServing {
     func scheduleDeletionRequestCount() -> Int { scheduleDeletionRequests }
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
         repositoryLocksRequests += 1
-        return []
+        await delay(for: path)
+        if let error = repositoryLocksErrorsByPath[path] { throw error }
+        return repositoryLocksByPath[path] ?? []
     }
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
         lockInfoRequests += 1

@@ -88,19 +88,30 @@ extension ProjectStore {
         notice = AppLanguage.current.text("잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다.", "Opened without a lock. A concurrent commit by another user may cause a conflict.")
     }
 
-    func loadRepositoryLocks() async {
+    func loadRepositoryLocks(
+        errorPolicy: RefreshErrorPolicy = .standalone
+    ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
+        let requestID = UUID()
+        repositoryLocksRequestID = requestID
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
-            repositoryLocks = try await client.repositoryLocks(
+            let locks = try await client.repositoryLocks(
                 at: project.path,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
-            updateLockSummary(for: project.id, lockCount: repositoryLocks.count)
-        } catch { errorMessage = localizedError(error) }
+            guard repositoryLocksRequestID == requestID,
+                  selectedProjectID == project.id else { return }
+            repositoryLocks = locks
+            updateLockSummary(for: project.id, lockCount: locks.count)
+        } catch {
+            guard repositoryLocksRequestID == requestID,
+                  selectedProjectID == project.id else { return }
+            publishRefreshError(error, projectID: project.id, policy: errorPolicy)
+        }
     }
 
     func unlock(_ lock: SVNLockInfo) async {

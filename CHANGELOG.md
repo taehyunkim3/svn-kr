@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.20 (2026-07-28)
+
+- Prevented persistent automatic-refresh failures from reopening the same error dialog until the user explicitly retries.
+- Coalesced parallel project, file, and lock refresh failures into one presentation.
+- Discarded stale repository-lock responses after switching projects and kept detailed errors owned by the active sheet.
+
 ## 0.5.19 (2026-07-28)
 
 - Restored the `Distributed by MR.DEVELLO` credit in the custom About window.

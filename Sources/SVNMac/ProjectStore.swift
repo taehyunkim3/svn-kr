@@ -68,6 +68,11 @@ enum SVNAuthenticationAction: Equatable {
     case commit(message: String)
 }
 
+enum RefreshErrorPolicy {
+    case standalone
+    case coordinated(UUID)
+}
+
 struct SVNAuthenticationRequest: Identifiable, Equatable {
     let id = UUID()
     let projectID: SVNProject.ID
@@ -156,7 +161,10 @@ final class ProjectStore: ObservableObject {
     /// 빠르게 여러 파일을 선택했을 때 늦게 끝난 이전 diff가 덮어쓰지 않게 합니다.
     private var diffRequestID: UUID?
     var fileTreeRequestID: UUID?
+    var repositoryLocksRequestID: UUID?
     var conflictPreparationRequestID: UUID?
+    private var failedRefreshCycleIDs: Set<UUID> = []
+    private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var checkoutLogSessionID = UUID()
 
     var selectedProject: SVNProject? {
@@ -188,6 +196,21 @@ final class ProjectStore: ObservableObject {
 
     var showsGlobalProgress: Bool {
         isWorking && !isCommittingSelectedProject
+    }
+
+    var hasContextualErrorPresentationOwner: Bool {
+        isShowingAddRepository
+            || isShowingCredentials
+            || isShowingUpdatePreview
+            || isShowingLocks
+            || authenticationRequest != nil
+            || isShowingIgnoreRules
+            || isShowingFileHistory
+            || isShowingPathRecovery
+            || activeConflictSession != nil
+            || deletionRequest != nil
+            || revertRequest != nil
+            || documentOpenRequest != nil
     }
 
     var selectableStatusPaths: Set<String> {
@@ -383,23 +406,49 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - SVN 작업
 
-    func refreshLocalWorkingCopy() async {
+    func refreshSelectedProject(manual: Bool) async {
+        guard !isDemoMode, let project = selectedProject else { return }
+        if manual {
+            automaticRefreshBlockedProjectID = nil
+            unavailableProjectID = nil
+        } else if !automaticRefreshCanRun(for: project) {
+            return
+        }
+        guard ensureWorkingCopyDirectoryExists(for: project) else { return }
+
+        let cycleID = UUID()
+        let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
+        async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
+        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
+        _ = await (projectRefresh, browserRefresh)
+        finishRefreshCycle(cycleID)
+    }
+
+    func refreshLocalWorkingCopy(errorPolicy: RefreshErrorPolicy = .standalone) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = registerRefreshRequest()
         let operationID = beginOperation(.refreshLocal(project.id))
         defer { endOperation(operationID) }
-        _ = await applyLocalWorkingCopyRefresh(for: project, requestID: requestID)
+        _ = await applyLocalWorkingCopyRefresh(
+            for: project,
+            requestID: requestID,
+            errorPolicy: errorPolicy
+        )
     }
 
-    func refresh() async {
+    func refresh(errorPolicy: RefreshErrorPolicy = .standalone) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = prepareRefreshRequest()
         let operationID = beginOperation(.refresh(project.id))
         defer { endOperation(operationID) }
 
-        guard await applyLocalWorkingCopyRefresh(for: project, requestID: requestID) else { return }
+        guard await applyLocalWorkingCopyRefresh(
+            for: project,
+            requestID: requestID,
+            errorPolicy: errorPolicy
+        ) else { return }
 
         do {
             let projectCredentials = try credentials(for: project)
@@ -424,7 +473,12 @@ final class ProjectStore: ObservableObject {
             notice = AppLanguage.current.text("\(project.name) 새로고침 완료", "\(project.name) refreshed")
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
-                handleRemoteError(error, project: project, action: .refreshHistory)
+                handleRemoteError(
+                    error,
+                    project: project,
+                    action: .refreshHistory,
+                    refreshErrorPolicy: errorPolicy
+                )
             }
         }
     }
@@ -446,7 +500,8 @@ final class ProjectStore: ObservableObject {
 
     private func applyLocalWorkingCopyRefresh(
         for project: SVNProject,
-        requestID: UUID
+        requestID: UUID,
+        errorPolicy: RefreshErrorPolicy
     ) async -> Bool {
         do {
             async let newSnapshot = client.workingCopySnapshot(at: project.path, credentials: nil)
@@ -472,7 +527,7 @@ final class ProjectStore: ObservableObject {
             return true
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
-                errorMessage = localizedError(error)
+                publishRefreshError(error, projectID: project.id, policy: errorPolicy)
             }
             return false
         }
@@ -667,13 +722,48 @@ final class ProjectStore: ObservableObject {
         return SVNCredentials(username: username, password: password)
     }
 
-    func handleRemoteError(_ error: Error, project: SVNProject, action: SVNAuthenticationAction) {
+    func handleRemoteError(
+        _ error: Error,
+        project: SVNProject,
+        action: SVNAuthenticationAction,
+        refreshErrorPolicy: RefreshErrorPolicy = .standalone
+    ) {
         if isKeychainAccessDenied(error) {
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
         } else {
+            publishRefreshError(error, projectID: project.id, policy: refreshErrorPolicy)
+        }
+    }
+
+    func publishRefreshError(
+        _ error: Error,
+        projectID: SVNProject.ID,
+        policy: RefreshErrorPolicy
+    ) {
+        guard selectedProjectID == projectID else { return }
+        switch policy {
+        case .standalone:
+            automaticRefreshBlockedProjectID = projectID
+            errorMessage = localizedError(error)
+        case let .coordinated(cycleID):
+            guard failedRefreshCycleIDs.insert(cycleID).inserted else { return }
+            automaticRefreshBlockedProjectID = projectID
             errorMessage = localizedError(error)
         }
+    }
+
+    func automaticRefreshCanRun(for project: SVNProject) -> Bool {
+        if unavailableProjectID == project.id,
+           projectPathChecker.directoryExists(at: project.path) {
+            unavailableProjectID = nil
+            automaticRefreshBlockedProjectID = nil
+        }
+        return automaticRefreshBlockedProjectID != project.id
+    }
+
+    func finishRefreshCycle(_ cycleID: UUID) {
+        failedRefreshCycleIDs.remove(cycleID)
     }
 
     private func isKeychainAccessDenied(_ error: Error) -> Bool {
@@ -848,7 +938,10 @@ final class ProjectStore: ObservableObject {
         refreshRequestID = nil
         diffRequestID = nil
         fileTreeRequestID = nil
+        repositoryLocksRequestID = nil
         conflictPreparationRequestID = nil
+        failedRefreshCycleIDs = []
+        automaticRefreshBlockedProjectID = nil
         statuses = []
         pathCollisions = []
         ignoredStatuses = []
@@ -884,6 +977,7 @@ final class ProjectStore: ObservableObject {
         selectedStatusPath = nil
         diffContent = .placeholder
         notice = nil
+        errorMessage = nil
         authenticationRequest = nil
         unavailableProjectID = nil
     }
@@ -896,13 +990,17 @@ final class ProjectStore: ObservableObject {
         guard projectPathChecker.directoryExists(at: project.path) else {
             guard unavailableProjectID != project.id else { return false }
             unavailableProjectID = project.id
+            automaticRefreshBlockedProjectID = project.id
             errorMessage = AppLanguage.current.text(
                 "'\(project.name)' 작업 폴더가 존재하지 않습니다.\n\(project.path)\n\n폴더를 복원하거나 왼쪽 아래 − 버튼으로 목록에서 제거하세요.",
                 "The '\(project.name)' working folder no longer exists.\n\(project.path)\n\nRestore the folder or remove it from the list with the − button."
             )
             return false
         }
-        unavailableProjectID = nil
+        if unavailableProjectID == project.id {
+            unavailableProjectID = nil
+            automaticRefreshBlockedProjectID = nil
+        }
         return true
     }
 

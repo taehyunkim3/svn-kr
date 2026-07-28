@@ -46,7 +46,8 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.5.19 Release Notes
+## Version 0.5.20 Release Notes
 
-• Restores the “Distributed by MR.DEVELLO” credit in the custom About window.
-• Keeps the individual copyright notice alongside the distribution credit.
+• Prevents persistent automatic-refresh failures from repeatedly reopening the same error dialog until you explicitly refresh.
+• Coalesces parallel project, file, and lock refresh errors into a single message.
+• Prevents stale lock results from a previously selected project from appearing in the current project.

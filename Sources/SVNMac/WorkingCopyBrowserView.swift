@@ -25,9 +25,6 @@ struct WorkingCopyBrowserView: View {
                 )
             }
         }
-        .task(id: store.selectedProjectID) {
-            await store.refreshWorkingCopyBrowser()
-        }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environmentObject(store)
         }

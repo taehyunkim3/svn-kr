@@ -96,7 +96,7 @@ struct ContentView: View {
                 .help(appLanguage.text("샘플 프로젝트를 닫고 일반 모드로 돌아갑니다.", "Close the sample project and return to normal mode."))
             }
             Button {
-                Task { await refreshSelectedProject() }
+                Task { await store.refreshSelectedProject(manual: true) }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.clockwise")
@@ -124,7 +124,9 @@ struct ContentView: View {
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
             }
         }
-        .onChange(of: store.selectedProjectID) { _, _ in Task { await refreshSelectedProject() } }
+        .task(id: store.selectedProjectID) {
+            await store.refreshSelectedProject(manual: false)
+        }
         .background {
             MainWindowActivationView {
                 Task { await store.refreshForMainWindowActivation() }
@@ -158,7 +160,10 @@ struct ContentView: View {
             AuthenticationRequiredView(request: request)
                 .environmentObject(store)
         }
-        .detailedErrorPresenter(errorMessage: $store.errorMessage)
+        .detailedErrorPresenter(
+            errorMessage: $store.errorMessage,
+            isEnabled: !store.hasContextualErrorPresentationOwner
+        )
     }
 
     // MARK: - 선택 프로젝트 화면
@@ -212,10 +217,8 @@ struct ContentView: View {
     /// 탭 바깥의 프로젝트 공통 머리글에 두어 어느 탭에서도 잠금 현황을 확인할 수 있게 합니다.
     private var repositoryLocksButton: some View {
         Button {
-            Task {
-                await store.loadRepositoryLocks()
-                store.isShowingLocks = true
-            }
+            store.isShowingLocks = true
+            Task { await store.loadRepositoryLocks() }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "lock")
@@ -234,13 +237,6 @@ struct ContentView: View {
             "현재 저장소에서 잠긴 파일 목록과 개수를 확인합니다.",
             "View the locked files and their count in this repository."
         ))
-    }
-
-    private func refreshSelectedProject() async {
-        guard !store.isDemoMode else { return }
-        async let project: Void = store.refresh()
-        async let files: Void = store.refreshWorkingCopyBrowser()
-        _ = await (project, files)
     }
 
 }
