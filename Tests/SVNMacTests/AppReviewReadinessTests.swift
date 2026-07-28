@@ -35,8 +35,15 @@ struct AppReviewReadinessTests {
         )
 
         #expect(script.contains(
-            "cp -R \"$ROOT/.build/release/SVNMac_SVNMac.bundle\" "
-                + "\"$APP/Contents/Resources/SVNMac_SVNMac.bundle\""
+            "cp -R \"$ROOT/.build/release/SVNMac_SVNMac.bundle\" \"$resource_bundle\""
+        ))
+        #expect(script.contains(
+            "Add :CFBundleIdentifier string com.mrdevello.svnmac.resources"
+        ))
+        #expect(script.contains("Add :CFBundlePackageType string BNDL"))
+        #expect(script.contains(
+            "resource_bundle_id=$(/usr/libexec/PlistBuddy -c "
+                + "'Print :CFBundleIdentifier' \"$resource_plist\")"
         ))
         let source = try repositorySource("AppSettings.swift")
         #expect(source.contains(

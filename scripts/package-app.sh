@@ -31,11 +31,20 @@ trap cleanup EXIT
 function build_app_bundle() {
   swift build --disable-sandbox -c release
 
+  local resource_bundle="$APP/Contents/Resources/SVNMac_SVNMac.bundle"
+  local version build
   rm -rf "$APP"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   cp "$ROOT/.build/release/SVNMac" "$APP/Contents/MacOS/SVNMac"
-  cp -R "$ROOT/.build/release/SVNMac_SVNMac.bundle" "$APP/Contents/Resources/SVNMac_SVNMac.bundle"
   cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+  cp -R "$ROOT/.build/release/SVNMac_SVNMac.bundle" "$resource_bundle"
+  version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
+  build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")
+  /usr/libexec/PlistBuddy -c 'Add :CFBundleIdentifier string com.mrdevello.svnmac.resources' "$resource_bundle/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Add :CFBundleName string SVNMac_SVNMac' "$resource_bundle/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Add :CFBundlePackageType string BNDL' "$resource_bundle/Info.plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $version" "$resource_bundle/Info.plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $build" "$resource_bundle/Info.plist"
   cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
   cp "$ROOT/Resources/Credits.rtf" "$APP/Contents/Resources/Credits.rtf"
   cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
@@ -43,7 +52,7 @@ function build_app_bundle() {
 }
 
 function validate_app_bundle_runtime() {
-  local binary minos dependency
+  local binary minos dependency resource_plist resource_bundle_id
   for binary in "$APP/Contents/MacOS/SVNMac" "$APP/Contents/Helpers/svn" "$APP"/Contents/Frameworks/*.dylib(N); do
     minos="$(vtool -show-build "$binary" | awk '/minos/ {print $2; exit}')"
     [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
@@ -59,6 +68,13 @@ function validate_app_bundle_runtime() {
       fi
     done < <(otool -L "$binary" | awk 'NR > 1 {print $1}')
   done
+
+  resource_plist="$APP/Contents/Resources/SVNMac_SVNMac.bundle/Info.plist"
+  resource_bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$resource_plist")
+  [[ "$resource_bundle_id" == "com.mrdevello.svnmac.resources" ]] || {
+    print -u2 "Packaged resource bundle has an invalid identifier: ${resource_bundle_id:-missing}"
+    return 1
+  }
 }
 
 # MARK: - 서명 설정
