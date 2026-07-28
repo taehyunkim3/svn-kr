@@ -40,8 +40,8 @@ struct IgnoreRulesView: View {
                                 appLanguage.text(".gitignore 없음", "No .gitignore"),
                                 systemImage: "doc.badge.questionmark",
                                 description: Text(appLanguage.text(
-                                    "작업 복사본 루트에서 .gitignore 파일을 찾지 못했습니다.",
-                                    "No .gitignore file was found at the working-copy root."
+                                    "작업 복사본에서 .gitignore 파일을 찾지 못했습니다.",
+                                    "No .gitignore file was found in the working copy."
                                 ))
                             )
                         } else if store.gitIgnoreImportItems.isEmpty {
@@ -188,6 +188,9 @@ struct IgnoreRulesView: View {
                         .font(.caption2.bold())
                         .foregroundStyle(importStatusColor(item))
                 }
+                Text(gitIgnoreSourcePath(item.rule))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
                 if let proposal = item.proposal {
                     Text("\(proposal.propertyKind.propertyName) · \(proposal.directory) · \(proposal.pattern)")
                         .font(.caption.monospaced())
@@ -230,5 +233,9 @@ struct IgnoreRulesView: View {
         case let .unsupported(reason), let .conflict(reason): reason
         default: nil
         }
+    }
+
+    private func gitIgnoreSourcePath(_ rule: GitIgnoreRule) -> String {
+        rule.sourceDirectory == "." ? ".gitignore" : "\(rule.sourceDirectory)/.gitignore"
     }
 }

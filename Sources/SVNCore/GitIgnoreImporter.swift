@@ -12,7 +12,7 @@ public struct IgnoreImportItem: Identifiable, Hashable, Sendable {
     public let disposition: IgnoreImportDisposition
     public let warning: String?
 
-    public var id: Int { rule.sourceLine }
+    public var id: String { rule.id }
 
     public init(rule: GitIgnoreRule, disposition: IgnoreImportDisposition, warning: String? = nil) {
         self.rule = rule
@@ -67,7 +67,9 @@ public enum GitIgnoreImporter {
             return IgnoreImportItem(rule: rule, disposition: .unsupported(reason: "디렉터리 구간에 glob이 포함된 규칙은 변환할 수 없습니다."))
         }
 
-        let directory = parentComponents.isEmpty ? "." : parentComponents.joined(separator: "/")
+        let sourceComponents = rule.sourceDirectory == "." ? [] : rule.sourceDirectory.split(separator: "/").map(String.init)
+        let directoryComponents = sourceComponents + parentComponents
+        let directory = directoryComponents.isEmpty ? "." : directoryComponents.joined(separator: "/")
         let pattern = components.last!
         let isGlobal = parentComponents.isEmpty && !rule.isRootAnchored
         let propertyKind: SVNIgnorePropertyKind = isGlobal ? .global : .local
@@ -108,10 +110,15 @@ public enum GitIgnoreImporter {
 
     private static func matches(path: String, rule: GitIgnoreRule) -> Bool {
         let normalized = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if rule.isRootAnchored || rule.pattern.contains("/") {
-            return normalized == rule.pattern || normalized.hasPrefix(rule.pattern + "/")
+        let scopePrefix = rule.sourceDirectory == "." ? "" : rule.sourceDirectory + "/"
+        guard scopePrefix.isEmpty || normalized == rule.sourceDirectory || normalized.hasPrefix(scopePrefix) else {
+            return false
         }
-        let name = (normalized as NSString).lastPathComponent
+        let relative = scopePrefix.isEmpty ? normalized : String(normalized.dropFirst(scopePrefix.count))
+        if rule.isRootAnchored || rule.pattern.contains("/") {
+            return relative == rule.pattern || relative.hasPrefix(rule.pattern + "/")
+        }
+        let name = (relative as NSString).lastPathComponent
         if rule.pattern.hasPrefix("*.") {
             return name.hasSuffix(String(rule.pattern.dropFirst()))
         }

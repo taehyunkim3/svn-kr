@@ -78,40 +78,53 @@ extension ProjectStore {
             )
             return
         }
-        let gitIgnoreURL = URL(fileURLWithPath: project.path, isDirectory: true)
-            .appendingPathComponent(".gitignore", isDirectory: false)
+        let projectRoot = URL(fileURLWithPath: project.path, isDirectory: true)
         hasComparedGitIgnore = true
         gitIgnoreLastComparedAt = Date()
-        guard FileManager.default.fileExists(atPath: gitIgnoreURL.path) else {
-            gitIgnoreFileExists = false
-            gitIgnoreImportItems = []
-            selectedGitIgnoreImportIDs = []
-            return
-        }
 
         let operationID = beginOperation(.ignore(project.id))
         defer { endOperation(operationID) }
         do {
-            let contents = try String(contentsOf: gitIgnoreURL, encoding: .utf8)
             async let entriesRequest = client.workingCopyEntries(at: project.path, credentials: nil)
             async let rulesRequest = client.ignoreRules(at: project.path, credentials: nil)
             let (entries, rules) = try await (entriesRequest, rulesRequest)
             guard selectedProjectID == project.id else { return }
 
             var managedDirectories: Set<String> = ["."]
+            var versionedDirectories: [String] = ["."]
             for entry in entries where entry.isVersioned {
                 var isDirectory: ObjCBool = false
-                let absolutePath = URL(fileURLWithPath: project.path, isDirectory: true)
-                    .appendingPathComponent(entry.path).path
+                let absolutePath = projectRoot.appendingPathComponent(entry.path).path
                 if FileManager.default.fileExists(atPath: absolutePath, isDirectory: &isDirectory),
                    isDirectory.boolValue {
                     managedDirectories.insert(entry.path)
+                    versionedDirectories.append(entry.path)
                 }
             }
+
+            var allRules: [GitIgnoreRule] = []
+            var foundAnyGitIgnoreFile = false
+            for directory in versionedDirectories {
+                let gitIgnoreURL = (directory == "." ? projectRoot : projectRoot.appendingPathComponent(directory, isDirectory: true))
+                    .appendingPathComponent(".gitignore", isDirectory: false)
+                guard FileManager.default.fileExists(atPath: gitIgnoreURL.path) else { continue }
+                foundAnyGitIgnoreFile = true
+                let contents = try String(contentsOf: gitIgnoreURL, encoding: .utf8)
+                allRules.append(contentsOf: GitIgnoreParser.parse(contents, sourceDirectory: directory))
+            }
+            guard selectedProjectID == project.id else { return }
+
+            guard foundAnyGitIgnoreFile else {
+                gitIgnoreFileExists = false
+                gitIgnoreImportItems = []
+                selectedGitIgnoreImportIDs = []
+                return
+            }
+
             gitIgnoreFileExists = true
             ignoreRules = rules
             gitIgnoreImportItems = GitIgnoreImporter.makePreview(
-                rules: GitIgnoreParser.parse(contents),
+                rules: allRules,
                 existingRules: rules,
                 managedDirectories: managedDirectories,
                 trackedPaths: entries.filter(\.isVersioned).map(\.path)

@@ -1,6 +1,8 @@
 import Foundation
 
 public struct GitIgnoreRule: Identifiable, Hashable, Sendable {
+    /// `.gitignore` 파일이 위치한 작업 복사본 상대 디렉터리입니다. 루트는 "."입니다.
+    public let sourceDirectory: String
     public let sourceLine: Int
     public let rawPattern: String
     public let pattern: String
@@ -8,9 +10,10 @@ public struct GitIgnoreRule: Identifiable, Hashable, Sendable {
     public let isDirectoryOnly: Bool
     public let isRootAnchored: Bool
 
-    public var id: Int { sourceLine }
+    public var id: String { "\(sourceDirectory)#\(sourceLine)" }
 
     public init(
+        sourceDirectory: String = ".",
         sourceLine: Int,
         rawPattern: String,
         pattern: String,
@@ -18,6 +21,7 @@ public struct GitIgnoreRule: Identifiable, Hashable, Sendable {
         isDirectoryOnly: Bool,
         isRootAnchored: Bool
     ) {
+        self.sourceDirectory = sourceDirectory
         self.sourceLine = sourceLine
         self.rawPattern = rawPattern
         self.pattern = pattern
@@ -28,15 +32,17 @@ public struct GitIgnoreRule: Identifiable, Hashable, Sendable {
 }
 
 public enum GitIgnoreParser {
-    public static func parse(_ contents: String) -> [GitIgnoreRule] {
+    /// `sourceDirectory`는 이 `.gitignore` 파일이 위치한 작업 복사본 상대 경로입니다(루트는 ".").
+    /// 하위 디렉터리의 `.gitignore`를 여러 번 파싱할 때 규칙이 어느 디렉터리 기준인지 구분하는 데 쓰입니다.
+    public static func parse(_ contents: String, sourceDirectory: String = ".") -> [GitIgnoreRule] {
         contents.split(separator: "\n", omittingEmptySubsequences: false)
             .enumerated()
             .compactMap { offset, rawLine in
-                parseLine(String(rawLine).trimmingCharacters(in: .newlines), number: offset + 1)
+                parseLine(String(rawLine).trimmingCharacters(in: .newlines), number: offset + 1, sourceDirectory: sourceDirectory)
             }
     }
 
-    private static func parseLine(_ source: String, number: Int) -> GitIgnoreRule? {
+    private static func parseLine(_ source: String, number: Int, sourceDirectory: String) -> GitIgnoreRule? {
         var line = trimmingUnescapedTrailingSpaces(source)
         guard !line.isEmpty else { return nil }
         guard !line.hasPrefix("#") else { return nil }
@@ -57,6 +63,7 @@ public enum GitIgnoreParser {
         guard !line.isEmpty else { return nil }
 
         return GitIgnoreRule(
+            sourceDirectory: sourceDirectory,
             sourceLine: number,
             rawPattern: rawPattern,
             pattern: line,

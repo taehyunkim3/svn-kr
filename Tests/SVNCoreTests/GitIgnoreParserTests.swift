@@ -29,3 +29,13 @@ import Testing
 
     #expect(rules.map(\.pattern) == ["plain", "kept "])
 }
+
+@Test func tagsRulesWithTheirSourceDirectory() {
+    let rootRules = GitIgnoreParser.parse("*.log\n")
+    let nestedRules = GitIgnoreParser.parse("build/\n", sourceDirectory: "lib")
+
+    #expect(rootRules.map(\.sourceDirectory) == ["."])
+    #expect(nestedRules.map(\.sourceDirectory) == ["lib"])
+    #expect(rootRules[0].id == ".#1")
+    #expect(nestedRules[0].id == "lib#1")
+}

@@ -56,3 +56,20 @@ import Testing
     #expect(!preview[0].isSelectable)
     #expect(!preview[1].isSelectable)
 }
+
+@Test func resolvesRulesFromNestedGitIgnoreRelativeToTheirOwnDirectory() {
+    let rootRules = GitIgnoreParser.parse("*.log\n")
+    let nestedRules = GitIgnoreParser.parse("/local.txt\nbuild/\ncache/tmp\n", sourceDirectory: "lib")
+    let preview = GitIgnoreImporter.makePreview(
+        rules: rootRules + nestedRules,
+        existingRules: [],
+        managedDirectories: [".", "lib", "lib/cache"],
+        trackedPaths: ["lib/build"]
+    )
+
+    #expect(preview[0].proposal == SVNIgnoreRule(directory: ".", pattern: "*.log", propertyKind: .global))
+    #expect(preview[1].proposal == SVNIgnoreRule(directory: "lib", pattern: "local.txt", propertyKind: .local))
+    #expect(preview[2].proposal == SVNIgnoreRule(directory: "lib", pattern: "build", propertyKind: .global))
+    #expect(preview[2].warning != nil, "lib/build 아래 이미 추적 중인 파일이 있으므로 경고가 있어야 합니다.")
+    #expect(preview[3].proposal == SVNIgnoreRule(directory: "lib/cache", pattern: "tmp", propertyKind: .local))
+}

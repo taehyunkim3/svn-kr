@@ -1224,7 +1224,7 @@ import Testing
 
     #expect(store.gitIgnoreFileExists)
     #expect(store.gitIgnoreImportItems.count == 2)
-    #expect(store.selectedGitIgnoreImportIDs == [1])
+    #expect(store.selectedGitIgnoreImportIDs == [".#1"])
 
     await store.applySelectedGitIgnoreRules()
 
@@ -1232,6 +1232,32 @@ import Testing
         SVNIgnoreRule(directory: ".", pattern: "build", propertyKind: .local),
     ])
     #expect(try String(contentsOf: directory.appendingPathComponent(".gitignore"), encoding: .utf8) == "/build/\n!keep.txt\n")
+}
+
+@MainActor
+@Test func comparesGitIgnoreAcrossNestedDirectories() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-gitignore-nested-store-test-\(UUID().uuidString)", isDirectory: true)
+    let libDirectory = directory.appendingPathComponent("lib", isDirectory: true)
+    try FileManager.default.createDirectory(at: libDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Data("*.log\n".utf8).write(to: directory.appendingPathComponent(".gitignore"))
+    try Data("build/\n".utf8).write(to: libDirectory.appendingPathComponent(".gitignore"))
+
+    let project = SVNProject(name: "프로젝트", path: directory.path)
+    let client = StubSVNClient(workingCopyEntries: [
+        SVNWorkingCopyEntry(path: "lib", status: "normal", revision: "5"),
+    ])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.compareGitIgnore()
+
+    #expect(store.gitIgnoreFileExists)
+    #expect(store.gitIgnoreImportItems.count == 2)
+    #expect(Set(store.gitIgnoreImportItems.map(\.rule.sourceDirectory)) == [".", "lib"])
+
+    let nestedItem = try #require(store.gitIgnoreImportItems.first { $0.rule.sourceDirectory == "lib" })
+    #expect(nestedItem.proposal == SVNIgnoreRule(directory: "lib", pattern: "build", propertyKind: .global))
 }
 
 @MainActor
