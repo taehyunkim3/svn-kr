@@ -889,7 +889,7 @@ public actor SVNClient {
 
     public func revert(at path: String, relativePath: String, credentials: SVNCredentials? = nil) async throws -> String {
         try checkedRunWithSingleWorkingCopyPathArgument(
-            ["revert"],
+            ["revert", "--depth", "infinity"],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials

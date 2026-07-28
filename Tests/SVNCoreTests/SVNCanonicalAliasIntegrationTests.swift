@@ -24,28 +24,47 @@ import Testing
     _ = try runIntegrationCommand(svnPath, ["mkdir", repositoryURL + "trunk", "-m", "initial"])
     _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", workingCopy.path])
     let fileURL = workingCopy.appendingPathComponent("old.txt")
+    let directoryURL = workingCopy.appendingPathComponent("OldDirectory", isDirectory: true)
+    let nestedFileURL = directoryURL.appendingPathComponent("nested.txt")
     try Data("old".utf8).write(to: fileURL)
-    _ = try runIntegrationCommand(svnPath, ["add", fileURL.path])
-    _ = try runIntegrationCommand(svnPath, ["commit", fileURL.path, "-m", "add old"])
+    try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    try Data("nested".utf8).write(to: nestedFileURL)
+    _ = try runIntegrationCommand(svnPath, ["add", fileURL.path, directoryURL.path])
+    _ = try runIntegrationCommand(svnPath, ["commit", workingCopy.path, "-m", "add old"])
 
     try fileManager.removeItem(at: fileURL)
+    try fileManager.removeItem(at: directoryURL)
     let client = SVNClient(
         executablePath: svnPath,
         configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
     )
-    let first = try await client.scheduleDeletion(at: workingCopy.path, paths: ["old.txt"])
-    #expect(first.scheduledPaths == ["old.txt"])
-    #expect(try await client.status(at: workingCopy.path).first?.item == .deleted)
+    let first = try await client.scheduleDeletion(
+        at: workingCopy.path,
+        paths: ["old.txt", "OldDirectory", "OldDirectory/nested.txt"]
+    )
+    #expect(first.scheduledPaths == ["OldDirectory", "old.txt"])
+    #expect(Set(try await client.status(at: workingCopy.path).map(\.item)) == [.deleted])
 
     _ = try await client.revert(at: workingCopy.path, relativePath: "old.txt")
+    _ = try await client.revert(at: workingCopy.path, relativePath: "OldDirectory")
     #expect(fileManager.fileExists(atPath: fileURL.path))
+    #expect(fileManager.fileExists(atPath: nestedFileURL.path))
 
     try fileManager.removeItem(at: fileURL)
-    _ = try await client.scheduleDeletion(at: workingCopy.path, paths: ["old.txt"])
-    _ = try await client.commit(at: workingCopy.path, paths: ["old.txt"], message: "delete old")
+    try fileManager.removeItem(at: directoryURL)
+    _ = try await client.scheduleDeletion(
+        at: workingCopy.path,
+        paths: ["old.txt", "OldDirectory"]
+    )
+    _ = try await client.commit(
+        at: workingCopy.path,
+        paths: ["old.txt", "OldDirectory"],
+        message: "delete old"
+    )
 
     _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", verificationCopy.path])
     #expect(!fileManager.fileExists(atPath: verificationCopy.appendingPathComponent("old.txt").path))
+    #expect(!fileManager.fileExists(atPath: verificationCopy.appendingPathComponent("OldDirectory").path))
 }
 
 @Test func realSVNGlobalIgnorePropertyIsSharedAfterCommit() async throws {
