@@ -89,6 +89,12 @@ final class ProjectStore: ObservableObject {
     @Published var pathCollisions: [SVNPathCollision] = []
     @Published var ignoredStatuses: [SVNStatusEntry] = []
     @Published var ignoreRules: [SVNIgnoreRule] = []
+    @Published var gitIgnoreImportItems: [IgnoreImportItem] = []
+    @Published var selectedGitIgnoreImportIDs: Set<IgnoreImportItem.ID> = []
+    @Published var hasComparedGitIgnore = false
+    @Published var gitIgnoreFileExists = false
+    @Published var gitIgnoreLastComparedAt: Date?
+    @Published var requiresGlobalIgnoreImportConfirmation = false
     @Published var repositoryLocks: [SVNLockInfo] = []
     @Published var workingCopyFileTree: [WorkingCopyFileNode] = []
     @Published var selectedBrowserPath: String?
@@ -831,6 +837,12 @@ final class ProjectStore: ObservableObject {
         pathCollisions = []
         ignoredStatuses = []
         ignoreRules = []
+        gitIgnoreImportItems = []
+        selectedGitIgnoreImportIDs = []
+        hasComparedGitIgnore = false
+        gitIgnoreFileExists = false
+        gitIgnoreLastComparedAt = nil
+        requiresGlobalIgnoreImportConfirmation = false
         repositoryLocks = []
         workingCopyFileTree = []
         selectedBrowserPath = nil

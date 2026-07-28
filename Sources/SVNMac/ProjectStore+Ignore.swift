@@ -2,6 +2,10 @@ import Foundation
 import SVNCore
 
 extension ProjectStore {
+    var selectableGitIgnoreImportIDs: Set<IgnoreImportItem.ID> {
+        Set(gitIgnoreImportItems.lazy.filter(\.isSelectable).map(\.id))
+    }
+
     func setShowsIgnoredFiles(_ showsIgnoredFiles: Bool) async {
         self.showsIgnoredFiles = showsIgnoredFiles
         guard showsIgnoredFiles, let project = selectedProject else {
@@ -63,5 +67,117 @@ extension ProjectStore {
             await loadIgnoreRules()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
         } catch { errorMessage = localizedError(error) }
+    }
+
+    func compareGitIgnore() async {
+        guard let project = selectedProject else { return }
+        guard pathCollisions.isEmpty else {
+            errorMessage = AppLanguage.current.text(
+                "한글 경로 충돌을 먼저 정리해야 Git 무시 규칙의 적용 위치를 안전하게 결정할 수 있습니다.",
+                "Resolve Unicode path conflicts before comparing Git rules so property locations can be chosen safely."
+            )
+            return
+        }
+        let gitIgnoreURL = URL(fileURLWithPath: project.path, isDirectory: true)
+            .appendingPathComponent(".gitignore", isDirectory: false)
+        hasComparedGitIgnore = true
+        gitIgnoreLastComparedAt = Date()
+        guard FileManager.default.fileExists(atPath: gitIgnoreURL.path) else {
+            gitIgnoreFileExists = false
+            gitIgnoreImportItems = []
+            selectedGitIgnoreImportIDs = []
+            return
+        }
+
+        let operationID = beginOperation(.ignore(project.id))
+        defer { endOperation(operationID) }
+        do {
+            let contents = try String(contentsOf: gitIgnoreURL, encoding: .utf8)
+            async let entriesRequest = client.workingCopyEntries(at: project.path, credentials: nil)
+            async let rulesRequest = client.ignoreRules(at: project.path, credentials: nil)
+            let (entries, rules) = try await (entriesRequest, rulesRequest)
+            guard selectedProjectID == project.id else { return }
+
+            var managedDirectories: Set<String> = ["."]
+            for entry in entries where entry.isVersioned {
+                var isDirectory: ObjCBool = false
+                let absolutePath = URL(fileURLWithPath: project.path, isDirectory: true)
+                    .appendingPathComponent(entry.path).path
+                if FileManager.default.fileExists(atPath: absolutePath, isDirectory: &isDirectory),
+                   isDirectory.boolValue {
+                    managedDirectories.insert(entry.path)
+                }
+            }
+            gitIgnoreFileExists = true
+            ignoreRules = rules
+            gitIgnoreImportItems = GitIgnoreImporter.makePreview(
+                rules: GitIgnoreParser.parse(contents),
+                existingRules: rules,
+                managedDirectories: managedDirectories,
+                trackedPaths: entries.filter(\.isVersioned).map(\.path)
+            )
+            selectedGitIgnoreImportIDs = Set(
+                gitIgnoreImportItems.lazy.filter { item in
+                    guard case let .proposal(_, requiresConfirmation) = item.disposition else { return false }
+                    return !requiresConfirmation
+                }.map(\.id)
+            )
+        } catch {
+            if selectedProjectID == project.id {
+                errorMessage = localizedError(error)
+            }
+        }
+    }
+
+    func requestApplyGitIgnoreSelection() {
+        let selectedItems = gitIgnoreImportItems.filter {
+            selectedGitIgnoreImportIDs.contains($0.id)
+        }
+        if selectedItems.contains(where: {
+            if case let .proposal(_, requiresConfirmation) = $0.disposition {
+                return requiresConfirmation
+            }
+            return false
+        }) {
+            requiresGlobalIgnoreImportConfirmation = true
+        } else {
+            Task { await applySelectedGitIgnoreRules() }
+        }
+    }
+
+    func applySelectedGitIgnoreRules() async {
+        guard let project = selectedProject else { return }
+        requiresGlobalIgnoreImportConfirmation = false
+        let proposals = gitIgnoreImportItems.compactMap { item -> SVNIgnoreRule? in
+            guard selectedGitIgnoreImportIDs.contains(item.id) else { return nil }
+            return item.proposal
+        }
+        guard !proposals.isEmpty else { return }
+
+        let operationID = beginOperation(.ignore(project.id))
+        defer { endOperation(operationID) }
+        do {
+            for proposal in proposals {
+                try await client.addIgnoreRule(
+                    at: project.path,
+                    directory: proposal.directory,
+                    pattern: proposal.pattern,
+                    propertyKind: proposal.propertyKind,
+                    credentials: nil
+                )
+            }
+            guard selectedProjectID == project.id else { return }
+            notice = AppLanguage.current.text(
+                "\(proposals.count)개 Git 규칙을 SVN 무시 속성에 적용했습니다. 속성 변경을 커밋해야 팀에 공유됩니다.",
+                "Applied \(proposals.count) Git rule(s) to SVN ignore properties. Commit the property changes to share them."
+            )
+            await refreshLocalWorkingCopy()
+            await compareGitIgnore()
+            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
+        } catch {
+            if selectedProjectID == project.id {
+                errorMessage = localizedError(error)
+            }
+        }
     }
 }

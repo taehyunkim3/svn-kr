@@ -1208,6 +1208,32 @@ import Testing
 }
 
 @MainActor
+@Test func comparesGitIgnoreAndAppliesOnlySelectedSVNPropertyProposals() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-gitignore-store-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Data("/build/\n!keep.txt\n".utf8)
+        .write(to: directory.appendingPathComponent(".gitignore"))
+
+    let project = SVNProject(name: "프로젝트", path: directory.path)
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+
+    await store.compareGitIgnore()
+
+    #expect(store.gitIgnoreFileExists)
+    #expect(store.gitIgnoreImportItems.count == 2)
+    #expect(store.selectedGitIgnoreImportIDs == [1])
+
+    await store.applySelectedGitIgnoreRules()
+
+    #expect(await client.requestedAddedIgnoreRules() == [
+        SVNIgnoreRule(directory: ".", pattern: "build", propertyKind: .local),
+    ])
+}
+
+@MainActor
 private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient(),
@@ -1402,6 +1428,8 @@ private actor StubSVNClient: SVNClientServing {
     let conflictDetailsGatesByRelativePath: [String: AsyncTestGate]
     let resolveError: Error?
     let resolveGate: AsyncTestGate?
+    let workingCopyEntriesValue: [SVNWorkingCopyEntry]
+    let ignoreRulesValue: [SVNIgnoreRule]
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var lockInfoPaths: [String] = []
@@ -1418,6 +1446,7 @@ private actor StubSVNClient: SVNClientServing {
     private var revertCalls: [RevertCall] = []
     private var conflictDetailsRequestRawPaths: [Data] = []
     private var resolvedPaths: [String] = []
+    private var addedIgnoreRules: [SVNIgnoreRule] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -1439,7 +1468,9 @@ private actor StubSVNClient: SVNClientServing {
         conflictDetailsByRelativePath: [String: SVNConflictDetails] = [:],
         conflictDetailsGatesByRelativePath: [String: AsyncTestGate] = [:],
         resolveError: Error? = nil,
-        resolveGate: AsyncTestGate? = nil
+        resolveGate: AsyncTestGate? = nil,
+        workingCopyEntries: [SVNWorkingCopyEntry] = [],
+        ignoreRules: [SVNIgnoreRule] = []
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -1457,6 +1488,8 @@ private actor StubSVNClient: SVNClientServing {
         self.conflictDetailsGatesByRelativePath = conflictDetailsGatesByRelativePath
         self.resolveError = resolveError
         self.resolveGate = resolveGate
+        workingCopyEntriesValue = workingCopyEntries
+        ignoreRulesValue = ignoreRules
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -1486,7 +1519,7 @@ private actor StubSVNClient: SVNClientServing {
     }
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] {
         workingCopyEntriesRequests += 1
-        return []
+        return workingCopyEntriesValue
     }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
@@ -1523,8 +1556,11 @@ private actor StubSVNClient: SVNClientServing {
     }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
-    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { [] }
-    func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {}
+    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { ignoreRulesValue }
+    func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {
+        addedIgnoreRules.append(SVNIgnoreRule(directory: directory, pattern: pattern, propertyKind: propertyKind))
+    }
+    func requestedAddedIgnoreRules() -> [SVNIgnoreRule] { addedIgnoreRules }
     func removeIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {}
     func scheduleDeletion(at path: String, paths: [String], credentials: SVNCredentials?) async throws -> SVNDeletionResult {
         SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
