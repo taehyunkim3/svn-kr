@@ -24,7 +24,9 @@ struct UpdatePreviewView: View {
                 }
             }
             .overlay {
-                if store.remoteChanges.isEmpty {
+                if store.remoteChanges.isEmpty, store.isPreviewingSelectedProjectUpdate {
+                    ProgressView(appLanguage.text("서버 변경 확인 중…", "Checking incoming changes…"))
+                } else if store.remoteChanges.isEmpty {
                     ContentUnavailableView(
                         emptyStateTitle,
                         systemImage: store.isWorkingCopyOutOfDate == true ? "arrow.down.circle" : "checkmark.circle",
@@ -41,7 +43,7 @@ struct UpdatePreviewView: View {
                 if !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true {
                     Button(appLanguage.text("업데이트 실행", "Run Update")) { Task { await store.update() } }
                         .buttonStyle(.borderedProminent)
-                        .disabled(store.isWorking)
+                        .disabled(store.isUpdatingSelectedProject)
                 }
             }
             .padding()
@@ -71,9 +73,9 @@ struct UpdatePreviewView: View {
     }
 
     private func remoteBadge(_ item: SVNStatusKind) -> some View {
-        Text(item.rawValue.uppercased())
-            .font(.caption2.bold()).foregroundStyle(.white)
-            .padding(.horizontal, 6).padding(.vertical, 3)
-            .background(item == .deleted ? Color.red : Color.blue, in: Capsule())
+        StatusBadge(
+            label: item.rawValue.uppercased(),
+            color: item == .deleted ? .red : .blue
+        )
     }
 }

@@ -9,8 +9,6 @@ struct HistoryView: View {
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
 
-    /// DateFormatter는 생성 비용이 크므로 뷰 상태로 한 번 만들고 설정만 갱신해 재사용합니다.
-    @State private var dateFormatter = DateFormatter()
     @Binding var searchText: String
 
     var body: some View {
@@ -323,12 +321,7 @@ struct HistoryView: View {
     }
 
     private func historyBadge(_ label: String, color: Color) -> some View {
-        Text(label)
-            .font(.caption2.bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.12), in: Capsule())
+        StatusBadge(label: label, color: color, style: .tinted)
     }
 
     // MARK: - 날짜 포맷
@@ -341,24 +334,22 @@ struct HistoryView: View {
     }
 
     private func formattedHistoryDate(_ date: Date) -> String {
-        dateFormatter.locale = Locale(identifier: appLanguage == .english ? "en_US_POSIX" : "ko_KR")
-        dateFormatter.timeZone = historyTimeZone
-        dateFormatter.dateFormat = "yyyy-MM-dd (EEE) HH:mm:ss.SSS"
-        let abbreviation = historyTimeZoneIdentifier == "Asia/Seoul"
-            ? "KST"
-            : (historyTimeZone.abbreviation(for: date) ?? historyTimeZone.identifier)
-        return "\(dateFormatter.string(from: date)) \(abbreviation)"
+        HistoryDateFormatting.shared.string(
+            from: date,
+            language: appLanguage,
+            timeZone: historyTimeZone,
+            usesKSTAbbreviation: historyTimeZoneIdentifier == "Asia/Seoul"
+        )
     }
 
     // MARK: - SVN 상태 표현 도우미
 
     private func changedPathBadge(_ action: SVNChangeAction) -> some View {
-        Text(changedPathActionLabel(action))
-            .font(.caption2.bold())
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(changedPathActionColor(action), in: Capsule())
+        StatusBadge(
+            label: changedPathActionLabel(action),
+            color: action.presentationColor,
+            verticalPadding: 2
+        )
     }
 
     @ViewBuilder
@@ -398,15 +389,6 @@ struct HistoryView: View {
         }
     }
 
-    private func changedPathActionColor(_ action: SVNChangeAction) -> Color {
-        switch action {
-        case .added: .blue
-        case .modified: .orange
-        case .deleted: .red
-        case .replaced: .purple
-        case .unknown: .gray
-        }
-    }
 }
 
 /// 서버 커밋, 로컬 기준, 미커밋 변경의 관계를 한 행의 Canvas에 그립니다.

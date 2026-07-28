@@ -21,6 +21,16 @@ struct ChangesViewPerformanceTests {
         #expect(changesView.contains("ForEach(store.ignoredStatuses)"))
     }
 
+    @Test func largeHistoryDiffUsesOneAttributedTextView() throws {
+        let sources = try svnMacSources()
+        let historyDiff = try source(named: "HistoryRevisionDiffView.swift", in: sources)
+        let diffText = try source(named: "DiffTextView.swift", in: sources)
+
+        #expect(historyDiff.contains("DiffTextView(value)"))
+        #expect(!historyDiff.contains("ForEach(Array(lines.enumerated())"))
+        #expect(diffText.contains("Text(text)"))
+    }
+
     @Test func changesViewDistinguishesMissingStatesAndSummarizesUnicodeCollisions() throws {
         let sources = try svnMacSources()
         let changesView = try source(named: "ChangesView.swift", in: sources)

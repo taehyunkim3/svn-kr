@@ -32,7 +32,11 @@ struct SVNLogMessageView: View {
                             .textSelection(.enabled)
                     }
                     .padding()
-                    .frame(minWidth: 360, idealWidth: 520, maxWidth: 640)
+                    .frame(
+                        minWidth: AppLayout.logMessagePopoverMinimumWidth,
+                        idealWidth: AppLayout.logMessagePopoverIdealWidth,
+                        maxWidth: AppLayout.logMessagePopoverMaximumWidth
+                    )
                 }
             }
         }

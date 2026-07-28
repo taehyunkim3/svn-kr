@@ -26,6 +26,11 @@ import Testing
     #expect(AppLayout.aboutWindowSize.height > 0)
     #expect(AppLayout.aboutWindowSize.width <= AppLayout.windowDefaultWidth)
     #expect(AppLayout.aboutWindowSize.height <= AppLayout.windowDefaultHeight)
+    #expect(AppLayout.settingsWindowSize.width <= AppLayout.windowDefaultWidth)
+    #expect(AppLayout.settingsWindowSize.height <= AppLayout.windowDefaultHeight)
+    #expect(AppLayout.credentialFieldMinimumWidth <= AppLayout.credentialsSheetWidth)
+    #expect(AppLayout.logMessagePopoverMinimumWidth <= AppLayout.logMessagePopoverIdealWidth)
+    #expect(AppLayout.logMessagePopoverIdealWidth <= AppLayout.logMessagePopoverMaximumWidth)
 }
 
 @Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {

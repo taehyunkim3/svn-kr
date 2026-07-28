@@ -224,12 +224,15 @@ struct ContentView: View {
                 Image(systemName: "lock")
                 Text(appLanguage.text("잠금 목록", "Locks"))
                 if !store.repositoryLocks.isEmpty {
-                    Text("\(store.repositoryLocks.count)")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.accentColor, in: Capsule())
+                    StatusBadge(
+                        label: "\(store.repositoryLocks.count)",
+                        color: .accentColor,
+                        verticalPadding: 2
+                    )
+                    .accessibilityLabel(appLanguage.text(
+                        "잠금 \(store.repositoryLocks.count)개",
+                        "\(store.repositoryLocks.count) locks"
+                    ))
                 }
             }
         }
@@ -254,15 +257,33 @@ private struct ProjectTabSearchModifier: ViewModifier {
     let filePrompt: String
     let historyPrompt: String
 
-    @ViewBuilder
     func body(content: Content) -> some View {
+        content.searchable(
+            text: activeSearchText,
+            isPresented: searchIsPresented,
+            prompt: activePrompt
+        )
+    }
+
+    private var activeSearchText: Binding<String> {
         switch selectedTab {
         case .changes:
-            content
+            .constant("")
         case .files:
-            content.searchable(text: $fileSearchText, prompt: filePrompt)
+            $fileSearchText
         case .history:
-            content.searchable(text: $historySearchText, prompt: historyPrompt)
+            $historySearchText
         }
+    }
+
+    private var searchIsPresented: Binding<Bool> {
+        Binding(
+            get: { selectedTab != .changes },
+            set: { _ in }
+        )
+    }
+
+    private var activePrompt: String {
+        selectedTab == .history ? historyPrompt : filePrompt
     }
 }

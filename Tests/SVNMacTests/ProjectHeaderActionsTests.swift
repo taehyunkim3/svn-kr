@@ -14,7 +14,8 @@ import Testing
 
     #expect(contentView.contains("private var repositoryLocksButton"))
     #expect(contentView.contains(".sheet(isPresented: $store.isShowingLocks)"))
-    #expect(contentView.contains("Text(\"\\(store.repositoryLocks.count)\")"))
+    #expect(contentView.contains("StatusBadge("))
+    #expect(contentView.contains("label: \"\\(store.repositoryLocks.count)\""))
     #expect(!changesView.contains("$store.isShowingLocks"))
     #expect(!changesView.contains("\"잠금 목록\", \"Locks\""))
     #expect(projectBadges.contains("잠긴 파일 \\(summary.lockCount)개"))

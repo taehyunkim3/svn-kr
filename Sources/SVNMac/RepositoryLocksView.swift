@@ -57,7 +57,9 @@ struct RepositoryLocksView: View {
                 .padding(.vertical, 4)
             }
             .overlay {
-                if store.repositoryLocks.isEmpty {
+                if store.repositoryLocks.isEmpty, store.isLoadingSelectedProjectLocks {
+                    ProgressView(appLanguage.text("잠금 목록 불러오는 중…", "Loading repository locks…"))
+                } else if store.repositoryLocks.isEmpty {
                     ContentUnavailableView(appLanguage.text("잠긴 파일 없음", "No Locked Files"), systemImage: "lock.open")
                 }
             }

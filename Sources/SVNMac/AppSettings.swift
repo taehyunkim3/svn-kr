@@ -92,6 +92,9 @@ struct AppSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 560, height: 230)
+        .frame(
+            width: AppLayout.settingsWindowSize.width,
+            height: AppLayout.settingsWindowSize.height
+        )
     }
 }

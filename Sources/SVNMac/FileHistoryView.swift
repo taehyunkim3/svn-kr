@@ -31,7 +31,9 @@ struct FileHistoryView: View {
                 .padding(.vertical, 4)
             }
             .overlay {
-                if store.fileHistory.isEmpty {
+                if store.fileHistory.isEmpty, store.isLoadingSelectedFileHistory {
+                    ProgressView(appLanguage.text("파일 기록 불러오는 중…", "Loading file history…"))
+                } else if store.fileHistory.isEmpty {
                     ContentUnavailableView(appLanguage.text("커밋 기록 없음", "No File History"), systemImage: "clock")
                 }
             }

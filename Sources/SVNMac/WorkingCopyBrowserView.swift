@@ -5,10 +5,11 @@ struct WorkingCopyBrowserView: View {
     @EnvironmentObject private var store: ProjectStore
     @Environment(\.appLanguage) private var appLanguage
     @Binding var searchText: String
+    @State private var filteredSearchTree: [WorkingCopyFileNode] = []
 
     var body: some View {
         List(selection: $store.selectedBrowserPath) {
-            OutlineGroup(filteredTree, children: \.children) { node in
+            OutlineGroup(displayedTree, children: \.children) { node in
                 fileRow(node)
                     .tag(node.relativePath)
             }
@@ -16,7 +17,7 @@ struct WorkingCopyBrowserView: View {
         .overlay {
             if isLoading, store.workingCopyFileTree.isEmpty {
                 ProgressView(appLanguage.text("파일 목록을 불러오는 중…", "Loading files…"))
-            } else if filteredTree.isEmpty {
+            } else if displayedTree.isEmpty {
                 ContentUnavailableView(
                     searchText.isEmpty
                         ? appLanguage.text("표시할 파일 없음", "No Files")
@@ -27,6 +28,12 @@ struct WorkingCopyBrowserView: View {
         }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environmentObject(store)
+        }
+        .task(id: FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)) {
+            let input = FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)
+            filteredSearchTree = await Task.detached {
+                input.filteredTree
+            }.value
         }
         .documentOpenConfirmation()
     }
@@ -56,6 +63,17 @@ struct WorkingCopyBrowserView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
+            guard !node.isDirectory else { return }
+            Task {
+                await store.prepareToOpen(
+                    path: node.relativePath,
+                    repositoryPath: node.repositoryRelativePath,
+                    isVersioned: node.isVersioned,
+                    isRegularFile: node.isRegularFile
+                )
+            }
+        }
+        .accessibilityAction(named: appLanguage.text("파일 열기", "Open File")) {
             guard !node.isDirectory else { return }
             Task {
                 await store.prepareToOpen(
@@ -101,10 +119,10 @@ struct WorkingCopyBrowserView: View {
         }
     }
 
-    private var filteredTree: [WorkingCopyFileNode] {
+    private var displayedTree: [WorkingCopyFileNode] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return store.workingCopyFileTree }
-        return store.workingCopyFileTree.compactMap { $0.filtering(query: query) }
+        return filteredSearchTree
     }
 
     private var isLoading: Bool {
@@ -145,6 +163,17 @@ struct WorkingCopyBrowserView: View {
             return appLanguage.text("내가 잠근 파일", "Locked by you")
         }
         return appLanguage.text("\(lock.owner) 사용자가 잠근 파일", "Locked by \(lock.owner)")
+    }
+}
+
+private struct FileTreeFilterInput: Hashable, Sendable {
+    let tree: [WorkingCopyFileNode]
+    let query: String
+
+    var filteredTree: [WorkingCopyFileNode] {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else { return tree }
+        return tree.compactMap { $0.filtering(query: normalizedQuery) }
     }
 }
 

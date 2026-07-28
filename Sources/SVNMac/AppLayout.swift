@@ -11,6 +11,7 @@ enum AppLayout {
     static let windowDefaultWidth: CGFloat = 1_280
     static let windowDefaultHeight: CGFloat = 780
     static let aboutWindowSize = CGSize(width: 420, height: 330)
+    static let settingsWindowSize = CGSize(width: 560, height: 230)
 
     static let sidebarMinimumWidth: CGFloat = 190
     static let sidebarIdealWidth: CGFloat = 230
@@ -38,6 +39,13 @@ enum AppLayout {
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
     static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)
     static let errorDetailsSheetMinimumSize = CGSize(width: 640, height: 380)
+    static let authenticationSheetWidth: CGFloat = 620
+    static let credentialsSheetWidth: CGFloat = 560
+    static let credentialFieldMinimumWidth: CGFloat = 360
+    static let repositoryURLFieldMinimumWidth: CGFloat = 440
+    static let logMessagePopoverMinimumWidth: CGFloat = 360
+    static let logMessagePopoverIdealWidth: CGFloat = 520
+    static let logMessagePopoverMaximumWidth: CGFloat = 640
     static let inlineErrorMaximumHeight: CGFloat = 160
 }
 

@@ -25,19 +25,12 @@ struct AuthenticationRequiredView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
-                GridRow {
-                    Text(appLanguage.text("사용자명", "Username"))
-                    TextField(appLanguage.text("SVN 계정명", "SVN username"), text: $username)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: 360)
-                }
-                GridRow {
-                    Text(appLanguage.text("비밀번호", "Password"))
-                    SecureField(appLanguage.text("SVN 비밀번호", "SVN password"), text: $password)
-                        .textFieldStyle(.roundedBorder)
-                }
-            }
+            CredentialFieldsGrid(
+                username: $username,
+                password: $password,
+                usernamePlaceholder: appLanguage.text("SVN 계정명", "SVN username"),
+                passwordPlaceholder: appLanguage.text("SVN 비밀번호", "SVN password")
+            )
 
             Text(appLanguage.text(
                 "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다.",
@@ -74,7 +67,7 @@ struct AuthenticationRequiredView: View {
             }
         }
         .padding(24)
-        .frame(width: 620)
+        .frame(width: AppLayout.authenticationSheetWidth)
         .onAppear {
             username = store.projects.first(where: { $0.id == request.projectID })?.username ?? ""
         }
@@ -165,7 +158,7 @@ struct AddRepositoryView: View {
                     Text(appLanguage.text("저장소 URL", "Repository URL"))
                     TextField("https://server/svn/project/trunk", text: $repositoryURL)
                         .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: 440)
+                        .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
                 }
                 GridRow {
                     Text(appLanguage.text("로컬 폴더", "Local folder"))
@@ -183,43 +176,26 @@ struct AddRepositoryView: View {
                             .help(appLanguage.text("체크아웃 결과를 저장할 로컬 폴더를 선택합니다.", "Choose the local folder for the checkout."))
                     }
                 }
-                GridRow {
-                    Text(appLanguage.text("사용자명", "Username"))
-                    TextField(appLanguage.text("SVN 계정명 (선택)", "SVN username (optional)"), text: $username)
-                        .textFieldStyle(.roundedBorder)
-                }
-                GridRow {
-                    Text(appLanguage.text("비밀번호", "Password"))
-                    SecureField(appLanguage.text("macOS Keychain에 저장 (선택)", "Save in macOS Keychain (optional)"), text: $password)
-                        .textFieldStyle(.roundedBorder)
-                }
             }
+
+            CredentialFieldsGrid(
+                username: $username,
+                password: $password,
+                usernamePlaceholder: appLanguage.text("SVN 계정명 (선택)", "SVN username (optional)"),
+                passwordPlaceholder: appLanguage.text("macOS Keychain에 저장 (선택)", "Save in macOS Keychain (optional)")
+            )
 
             Text(appLanguage.text("인증은 기존 SVN 인증 캐시와 macOS Keychain을 사용합니다.", "Authentication uses the existing SVN credential cache and macOS Keychain."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Toggle(
-                    appLanguage.text(
-                        "신뢰할 수 없는 SSL 인증서 허용",
-                        "Allow untrusted SSL certificates"
-                    ),
-                    isOn: $allowsUntrustedServerCertificate
-                )
-                .toggleStyle(.checkbox)
-                .help(appLanguage.text(
+            UntrustedCertificateToggle(
+                isAllowed: $allowsUntrustedServerCertificate,
+                help: appLanguage.text(
                     "자체 서명 인증서 또는 접속 주소와 인증서 이름이 다른 서버에서만 사용하세요.",
                     "Use only for servers with self-signed certificates or certificate name mismatches."
-                ))
-
-                Text(appLanguage.text(
-                    "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
-                    "Use this when the target server's certificate is invalid but you trust the server."
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+                )
+            )
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
@@ -355,24 +331,14 @@ struct CredentialsView: View {
                 Text(project.path).font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
             }
 
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
-                GridRow {
-                    Text(appLanguage.text("사용자명", "Username"))
-                    TextField(appLanguage.text("SVN 계정명", "SVN username"), text: $username)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: 360)
-                }
-                GridRow {
-                    Text(appLanguage.text("비밀번호", "Password"))
-                    SecureField(
-                        hasSavedPassword
-                            ? appLanguage.text("비우면 기존 값 유지", "Leave blank to keep the current password")
-                            : appLanguage.text("비밀번호 입력", "Enter password"),
-                        text: $newPassword
-                    )
-                        .textFieldStyle(.roundedBorder)
-                }
-            }
+            CredentialFieldsGrid(
+                username: $username,
+                password: $newPassword,
+                usernamePlaceholder: appLanguage.text("SVN 계정명", "SVN username"),
+                passwordPlaceholder: hasSavedPassword
+                    ? appLanguage.text("비우면 기존 값 유지", "Leave blank to keep the current password")
+                    : appLanguage.text("비밀번호 입력", "Enter password")
+            )
 
             Label(
                 hasSavedPassword
@@ -383,27 +349,13 @@ struct CredentialsView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Toggle(
-                    appLanguage.text(
-                        "신뢰할 수 없는 SSL 인증서 허용",
-                        "Allow untrusted SSL certificates"
-                    ),
-                    isOn: $allowsUntrustedServerCertificate
-                )
-                .toggleStyle(.checkbox)
-                .help(appLanguage.text(
+            UntrustedCertificateToggle(
+                isAllowed: $allowsUntrustedServerCertificate,
+                help: appLanguage.text(
                     "이 저장소의 자체 서명 및 인증서 이름 불일치 오류를 허용합니다.",
                     "Allow self-signed and certificate name mismatch errors for this repository."
-                ))
-
-                Text(appLanguage.text(
-                    "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
-                    "Use this when the target server's certificate is invalid but you trust the server."
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+                )
+            )
 
             Divider()
             HStack {
@@ -437,8 +389,59 @@ struct CredentialsView: View {
             }
         }
         .padding(24)
-        .frame(width: 560)
+        .frame(width: AppLayout.credentialsSheetWidth)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+}
+
+private struct CredentialFieldsGrid: View {
+    @Environment(\.appLanguage) private var appLanguage
+    @Binding var username: String
+    @Binding var password: String
+    let usernamePlaceholder: String
+    let passwordPlaceholder: String
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+            GridRow {
+                Text(appLanguage.text("사용자명", "Username"))
+                TextField(usernamePlaceholder, text: $username)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: AppLayout.credentialFieldMinimumWidth)
+            }
+            GridRow {
+                Text(appLanguage.text("비밀번호", "Password"))
+                SecureField(passwordPlaceholder, text: $password)
+                    .textFieldStyle(.roundedBorder)
+            }
+        }
+    }
+}
+
+private struct UntrustedCertificateToggle: View {
+    @Environment(\.appLanguage) private var appLanguage
+    @Binding var isAllowed: Bool
+    let help: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(
+                appLanguage.text(
+                    "신뢰할 수 없는 SSL 인증서 허용",
+                    "Allow untrusted SSL certificates"
+                ),
+                isOn: $isAllowed
+            )
+            .toggleStyle(.checkbox)
+            .help(help)
+
+            Text(appLanguage.text(
+                "대상 서버의 인증서가 유효하지 않지만, 해당 서버를 신뢰하는 경우에 사용합니다.",
+                "Use this when the target server's certificate is invalid but you trust the server."
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
     }
 }

@@ -153,25 +153,7 @@ struct HistoryRevisionDiffView: View {
     }
 
     private func diffText(_ value: String) -> some View {
-        let lines = value.split(separator: "\n", omittingEmptySubsequences: false)
-        return ScrollView([.horizontal, .vertical]) {
-            // LazyVStack은 가로 ScrollView 안에서 보이는 패널 너비만 콘텐츠
-            // 너비로 보고해 긴 행의 뒷부분을 스크롤 범위에 포함하지 않을 수 있습니다.
-            // 일반 VStack이 가장 긴 행의 실제 너비를 보고하게 합니다.
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                    Text(String(line))
-                        .foregroundStyle(diffLineColor(line))
-                        // 가로 ScrollView 안에서 무한 너비 frame을 사용하면 Text가 최소
-                        // 너비로 압축돼 단어 단위로 줄바꿈됩니다. 각 diff 행은 원문 너비를
-                        // 유지하고 넘치는 부분만 가로 스크롤로 확인합니다.
-                        .fixedSize(horizontal: true, vertical: true)
-                }
-            }
-            .font(.system(.caption, design: .monospaced))
-            .textSelection(.enabled)
-            .padding()
-        }
+        DiffTextView(value)
     }
 
     private var selectedEntry: SVNLogEntry? {
@@ -179,20 +161,8 @@ struct HistoryRevisionDiffView: View {
         return store.logs.first { $0.revision == revision }
     }
 
-    private func diffLineColor(_ line: Substring) -> Color {
-        if line.hasPrefix("+") && !line.hasPrefix("+++") { return .green }
-        if line.hasPrefix("-") && !line.hasPrefix("---") { return .red }
-        return .primary
-    }
-
     private func actionColor(_ action: SVNChangeAction) -> Color {
-        switch action {
-        case .added: .green
-        case .deleted: .red
-        case .modified: .blue
-        case .replaced: .orange
-        case .unknown: .secondary
-        }
+        action.presentationColor
     }
 
     private var isLoading: Bool {

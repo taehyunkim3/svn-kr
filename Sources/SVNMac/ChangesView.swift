@@ -93,6 +93,10 @@ struct ChangesView: View {
                     }
                 ))
                 .labelsHidden()
+                .accessibilityLabel(appLanguage.text(
+                    "\(entry.path) 커밋 포함",
+                    "Include \(entry.path) in commit"
+                ))
                 .help(appLanguage.text("이 파일을 다음 선택 커밋에 포함하거나 제외합니다.", "Include or exclude this file from the next commit."))
             } else if entry.canScheduleRepositoryDeletion {
                 Menu {
@@ -112,21 +116,25 @@ struct ChangesView: View {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
             statusBadge(entry)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
-                if entry.item == .unversioned && entry.nodeKind == .directory {
-                    Text(appLanguage.text(
-                        "하위 파일이 함께 추가됩니다.",
-                        "Files inside this folder will be added together."
-                    ))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Button {
+                Task { await store.loadDiff(for: entry.path) }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
+                    if entry.item == .unversioned && entry.nodeKind == .directory {
+                        Text(appLanguage.text(
+                            "하위 파일이 함께 추가됩니다.",
+                            "Files inside this folder will be added together."
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .buttonStyle(.plain)
+            .accessibilityHint(appLanguage.text("이 파일의 diff를 표시합니다.", "Shows the diff for this file."))
             Spacer()
         }
-        .contentShape(Rectangle())
-        .onTapGesture { Task { await store.loadDiff(for: entry.path) } }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
         .contextMenu {
             Button(appLanguage.text("파일 열기", "Open File")) {
@@ -196,12 +204,10 @@ struct ChangesView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
                 .frame(width: 18)
-            Text(appLanguage.text("한글 경로 충돌", "Unicode Path Conflict"))
-                .font(.caption2.bold())
-                .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(.orange, in: Capsule())
+            StatusBadge(
+                label: appLanguage.text("한글 경로 충돌", "Unicode Path Conflict"),
+                color: .orange
+            )
             Text(collision.displayPath).lineLimit(1)
             Spacer()
             Text(appLanguage.text("\(collision.affectedEntryCount)개 영향", "\(collision.affectedEntryCount) affected"))
@@ -265,12 +271,7 @@ struct ChangesView: View {
     // MARK: - 변경 상태 배지
 
     private func statusBadge(_ entry: SVNStatusEntry) -> some View {
-        Text(statusLabel(entry))
-            .font(.caption2.bold())
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(statusColor(entry), in: Capsule())
+        StatusBadge(label: statusLabel(entry), color: statusColor(entry))
     }
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {

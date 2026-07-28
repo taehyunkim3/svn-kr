@@ -192,6 +192,22 @@ final class ProjectStore: ObservableObject {
         return activeOperations.contains { $0.kind == .commit(projectID) }
     }
 
+    var isLoadingSelectedProjectLocks: Bool {
+        operationIsActive { .lock($0) }
+    }
+
+    var isLoadingSelectedFileHistory: Bool {
+        operationIsActive { .fileHistory($0) }
+    }
+
+    var isPreviewingSelectedProjectUpdate: Bool {
+        operationIsActive { .previewUpdate($0) }
+    }
+
+    var isUpdatingSelectedProject: Bool {
+        operationIsActive { .update($0) }
+    }
+
     var isPathRecoveryRunning: Bool {
         guard let projectID = pathRecoverySourceProjectID else { return false }
         return activeOperations.contains { $0.kind == .recover(projectID) }
@@ -199,6 +215,13 @@ final class ProjectStore: ObservableObject {
 
     var showsGlobalProgress: Bool {
         isWorking && !isCommittingSelectedProject
+    }
+
+    private func operationIsActive(
+        _ kind: (SVNProject.ID) -> ProjectOperation.Kind
+    ) -> Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { $0.kind == kind(projectID) }
     }
 
     var hasContextualErrorPresentationOwner: Bool {
