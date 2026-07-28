@@ -74,7 +74,7 @@ struct ConflictFileService {
                 .appendingPathComponent("Conflict Backups", isDirectory: true)
         let standardizedWorkingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
         let standardizedBackupRoot = resolvedURL(supportRoot)
-        guard !isAtOrBelow(standardizedBackupRoot, root: standardizedWorkingCopy) else {
+        guard !SVNFileSystem.isAtOrBelow(standardizedBackupRoot, root: standardizedWorkingCopy) else {
             throw ConflictFileError.backupRootInsideWorkingCopy
         }
 
@@ -238,7 +238,7 @@ struct ConflictFileService {
         let candidate = (isAbsolute ? URL(fileURLWithPath: path) : workingCopy.appendingPathComponent(path))
             .standardizedFileURL
         let resolved = resolvedURL(candidate)
-        if !isAtOrBelow(resolved, root: workingCopy) {
+        if !SVNFileSystem.isAtOrBelow(resolved, root: workingCopy) {
             throw ConflictFileError.sourceOutsideWorkingCopy
         }
         let attributes: [FileAttributeKey: Any]
@@ -255,10 +255,6 @@ struct ConflictFileService {
 
     private func resolvedURL(_ url: URL) -> URL {
         url.standardizedFileURL.resolvingSymlinksInPath().standardizedFileURL
-    }
-
-    private func isAtOrBelow(_ candidate: URL, root: URL) -> Bool {
-        candidate.path == root.path || candidate.path.hasPrefix(root.path + "/")
     }
 
     private func validRevision(_ revision: String?) -> String? {

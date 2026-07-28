@@ -111,11 +111,12 @@ struct IgnoreRulesView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(rule.pattern).font(.body.monospaced())
                 HStack(spacing: 6) {
-                    Text(rule.propertyKind == .local ? "svn:ignore" : "svn:global-ignores")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(.secondary.opacity(0.15), in: Capsule())
+                    StatusBadge(
+                        label: rule.propertyKind == .local ? "svn:ignore" : "svn:global-ignores",
+                        color: .secondary,
+                        style: .tinted,
+                        verticalPadding: 2
+                    )
                     Text(rule.directory).font(.caption.monospaced())
                     if let inheritedFrom = rule.inheritedFrom {
                         Text(appLanguage.text(

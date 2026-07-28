@@ -3,6 +3,13 @@ import Foundation
 public enum SVNFileSystem {
     private static let chunkSize = 1024 * 1024
 
+    public static func isAtOrBelow(_ candidate: URL, root: URL) -> Bool {
+        let candidateComponents = candidate.standardizedFileURL.pathComponents
+        let rootComponents = root.standardizedFileURL.pathComponents
+        guard candidateComponents.count >= rootComponents.count else { return false }
+        return candidateComponents.prefix(rootComponents.count).elementsEqual(rootComponents)
+    }
+
     public static func overwriteFile(at destination: URL, withContentsOf source: URL) throws {
         let input = try FileHandle(forReadingFrom: source)
         let output = try FileHandle(forWritingTo: destination)

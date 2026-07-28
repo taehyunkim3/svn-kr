@@ -33,6 +33,24 @@ import Testing
     #expect(try Data(contentsOf: destination) == Data("short".utf8))
 }
 
+@Test func sharedURLContainmentUsesPathComponentBoundaries() {
+    let root = URL(fileURLWithPath: "/tmp/work")
+
+    #expect(SVNFileSystem.isAtOrBelow(root, root: root))
+    #expect(SVNFileSystem.isAtOrBelow(
+        URL(fileURLWithPath: "/tmp/work/Sources/file.swift"),
+        root: root
+    ))
+    #expect(!SVNFileSystem.isAtOrBelow(
+        URL(fileURLWithPath: "/tmp/work-copy/file.swift"),
+        root: root
+    ))
+    #expect(!SVNFileSystem.isAtOrBelow(
+        URL(fileURLWithPath: "/tmp"),
+        root: root
+    ))
+}
+
 private extension Data {
     func append(to url: URL) throws {
         let handle = try FileHandle(forWritingTo: url)
