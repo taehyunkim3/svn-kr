@@ -1590,16 +1590,10 @@ public actor SVNClient {
                     progressTimer?.resume()
                     try process.run()
                     if let password, let input {
-                        do {
-                            try input.fileHandleForWriting.write(contentsOf: Data((password + "\n").utf8))
-                        } catch {
-                            // 명령이 인증 입력 전에 끝났다면 EPIPE는 프로세스 결과로
-                            // 판정합니다. 실행 중 쓰기 실패만 별도 실행 오류로 보존합니다.
-                            if process.isRunning {
-                                processController.record(error)
-                                processController.terminate()
-                            }
-                        }
+                        // 프로세스가 인증 입력 전에 종료하면 EPIPE가 발생할 수 있습니다.
+                        // `isRunning`은 종료 핸들러와 경합하므로 쓰기 오류 자체를 실행
+                        // 오류로 승격하지 않고, 아래의 종료 코드와 stderr로 판정합니다.
+                        try? input.fileHandleForWriting.write(contentsOf: Data((password + "\n").utf8))
                         try? input.fileHandleForWriting.close()
                     }
                 } catch {

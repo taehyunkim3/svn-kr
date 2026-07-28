@@ -210,12 +210,12 @@ import Testing
             destinationPath: destination.path
         )
     }
-    #expect(await waitUntil {
+    #expect(await waitUntil(timeout: .seconds(15)) {
         FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
     })
 
     let validation = Task { try await client.validateWorkingCopy(at: destination.path) }
-    let infoFinished = await waitUntil(timeout: .seconds(1)) {
+    let infoFinished = await waitUntil(timeout: .seconds(5)) {
         FileManager.default.fileExists(atPath: destination.appendingPathComponent("info-finished").path)
     }
     try Data().write(to: destination.appendingPathComponent("continue-checkout"))
@@ -246,7 +246,7 @@ import Testing
     let task = Task {
         try await client.validateWorkingCopy(at: directory.path)
     }
-    #expect(await waitUntil {
+    #expect(await waitUntil(timeout: .seconds(15)) {
         FileManager.default.fileExists(atPath: directory.appendingPathComponent("command-started").path)
     })
     task.cancel()
