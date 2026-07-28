@@ -34,6 +34,7 @@ function build_app_bundle() {
   rm -rf "$APP"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   cp "$ROOT/.build/release/SVNMac" "$APP/Contents/MacOS/SVNMac"
+  cp -R "$ROOT/.build/release/SVNMac_SVNMac.bundle" "$APP/Contents/Resources/SVNMac_SVNMac.bundle"
   cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
   cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
   cp "$ROOT/Resources/Credits.rtf" "$APP/Contents/Resources/Credits.rtf"

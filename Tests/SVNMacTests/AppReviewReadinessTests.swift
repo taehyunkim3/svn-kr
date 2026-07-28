@@ -28,6 +28,23 @@ struct AppReviewReadinessTests {
         #expect(values["NSHumanReadableCopyright"] as? String == "© 2026 Taehyun Kim")
     }
 
+    @Test func packagedAppIncludesSwiftPMResourceBundleAtRuntimeLookupPath() throws {
+        let script = try String(
+            contentsOf: repositoryRoot().appendingPathComponent("scripts/package-app.sh"),
+            encoding: .utf8
+        )
+
+        #expect(script.contains(
+            "cp -R \"$ROOT/.build/release/SVNMac_SVNMac.bundle\" "
+                + "\"$APP/Contents/Resources/SVNMac_SVNMac.bundle\""
+        ))
+        let source = try repositorySource("AppSettings.swift")
+        #expect(source.contains(
+            "Bundle.main.url(forResource: \"SVNMac_SVNMac\", withExtension: \"bundle\")"
+        ))
+        #expect(source.contains("let resources = packagedResourceBundle ?? .module"))
+    }
+
     @Test func customAboutWindowShowsDistributionCredit() throws {
         let source = try repositorySource("AppAboutView.swift")
 

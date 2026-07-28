@@ -57,11 +57,19 @@ enum AppLanguage: String, CaseIterable {
     }
 
     private var localizedBundle: Bundle {
-        guard let path = Bundle.module.path(forResource: rawValue, ofType: "lproj"),
+        let resources = packagedResourceBundle ?? .module
+        guard let path = resources.path(forResource: rawValue, ofType: "lproj"),
               let bundle = Bundle(path: path) else {
-            return .module
+            return resources
         }
         return bundle
+    }
+
+    private var packagedResourceBundle: Bundle? {
+        guard let url = Bundle.main.url(forResource: "SVNMac_SVNMac", withExtension: "bundle") else {
+            return nil
+        }
+        return Bundle(url: url)
     }
 }
 
