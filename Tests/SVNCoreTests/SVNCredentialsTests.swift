@@ -122,7 +122,7 @@ import Testing
 
     #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-marker").path))
     #expect(result.contains("--trust-server-cert-failures=unknown-ca,cn-mismatch"))
-    #expect(result.contains("checkout https://example.test/svn/project ."))
+    #expect(result.contains("checkout -- https://example.test/svn/project ."))
 }
 
 @Test func streamsCheckoutOutputBeforeCommandCompletes() async throws {
@@ -175,6 +175,158 @@ import Testing
     let result = try await checkout.value
     #expect(result.contains("Checked out revision 42."))
     #expect(recorder.output.contains("Checked out revision 42."))
+}
+
+@Test func actorCanServeAnotherCommandWhileCheckoutIsRunning() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-nonblocking-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"checkout --"*)
+        : > checkout-started
+        while [ ! -f continue-checkout ]; do sleep 0.02; done
+        ;;
+      *"info --show-item wc-root"*)
+        : > info-finished
+        printf '%s\\n' "$PWD"
+        ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+    let checkout = Task {
+        try await client.checkout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationPath: destination.path
+        )
+    }
+    #expect(await waitUntil {
+        FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
+    })
+
+    let validation = Task { try await client.validateWorkingCopy(at: destination.path) }
+    let infoFinished = await waitUntil(timeout: .seconds(1)) {
+        FileManager.default.fileExists(atPath: destination.appendingPathComponent("info-finished").path)
+    }
+    try Data().write(to: destination.appendingPathComponent("continue-checkout"))
+    _ = try await checkout.value
+    try await validation.value
+
+    #expect(infoFinished)
+}
+
+@Test func cancellingCommandTerminatesProcess() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-cancellation-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    : > command-started
+    while :; do sleep 0.05; done
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let task = Task {
+        try await client.validateWorkingCopy(at: directory.path)
+    }
+    #expect(await waitUntil {
+        FileManager.default.fileExists(atPath: directory.appendingPathComponent("command-started").path)
+    })
+    task.cancel()
+
+    await #expect(throws: CancellationError.self) {
+        try await task.value
+    }
+}
+
+@Test func passwordPipeClosureReturnsCommandFailureInsteadOfCrashing() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-password-epipe-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    try Data("#!/bin/sh\nexit 1\n".utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+
+    await #expect(throws: SVNError.self) {
+        _ = try await client.checkout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationPath: directory.appendingPathComponent("checkout").path,
+            credentials: SVNCredentials(username: "user", password: String(repeating: "x", count: 1_000_000))
+        )
+    }
+}
+
+@Test func ignorePatternStartingWithDashIsReadFromFile() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-property-option-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    value_file=
+    previous=
+    for argument in "$@"; do
+      [ "$previous" = "--file" ] && value_file=$argument
+      case "$argument" in propget|propset) command=$argument ;; esac
+      previous=$argument
+    done
+    if [ "$command" = propget ]; then
+      printf '%s\\n' 'svn: warning: W200017: Property not found' >&2
+      exit 1
+    fi
+    if [ "$command" = propset ]; then
+      printf '%s\\n' "$*" > propset-arguments
+      cp "$value_file" propset-value
+      exit 0
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+
+    try await client.addIgnoreRule(at: directory.path, directory: ".", pattern: "--dangerous")
+
+    let arguments = try String(
+        contentsOf: directory.appendingPathComponent("propset-arguments"),
+        encoding: .utf8
+    )
+    let value = try String(
+        contentsOf: directory.appendingPathComponent("propset-value"),
+        encoding: .utf8
+    )
+    #expect(arguments.contains("propset svn:ignore --file"))
+    #expect(!arguments.contains("--dangerous"))
+    #expect(value == "--dangerous\n")
 }
 
 private func waitUntil(
