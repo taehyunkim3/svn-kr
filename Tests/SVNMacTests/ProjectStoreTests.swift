@@ -1231,6 +1231,60 @@ import Testing
     #expect(await client.requestedAddedIgnoreRules() == [
         SVNIgnoreRule(directory: ".", pattern: "build", propertyKind: .local),
     ])
+    #expect(try String(contentsOf: directory.appendingPathComponent(".gitignore"), encoding: .utf8) == "/build/\n!keep.txt\n")
+}
+
+@MainActor
+@Test func deletionRequestWaitsForConfirmationAndSelectsOnlyVerifiedDeletedPaths() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/delete-flow")
+    let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10", nodeKind: .file)
+    let before = SVNWorkingCopySnapshot(
+        statuses: [missing],
+        revision: SVNWorkingCopyRevision(minimum: "10", maximum: "10"),
+        collisions: [],
+        versionedPathsByCanonicalKey: ["old.txt": ["old.txt"]]
+    )
+    let after = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: "old.txt", item: .deleted, revision: "10", nodeKind: .file)],
+        revision: before.revision,
+        collisions: [],
+        versionedPathsByCanonicalKey: ["old.txt": ["old.txt"]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [project.path: before],
+        postDeletionSnapshotsByPath: [project.path: after]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [missing]
+
+    store.requestDeletion(missing)
+
+    let request = try #require(store.deletionRequest)
+    #expect(await client.scheduleDeletionRequestCount() == 0)
+
+    await store.confirmDeletion(request)
+
+    #expect(await client.scheduleDeletionRequestCount() == 1)
+    #expect(store.statuses.first?.item == .deleted)
+    #expect(store.selectedPaths == ["old.txt"])
+}
+
+@MainActor
+@Test func deletionConfirmationIsDiscardedAfterProjectSwitch() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/delete-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/delete-second")
+    let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [first, second], client: client)
+    store.statuses = [missing]
+    store.requestDeletion(missing)
+    let request = try #require(store.deletionRequest)
+
+    store.selectedProjectID = second.id
+    await store.confirmDeletion(request)
+
+    #expect(await client.scheduleDeletionRequestCount() == 0)
+    #expect(store.selectedPaths.isEmpty)
 }
 
 @MainActor
@@ -1420,6 +1474,7 @@ private actor StubSVNClient: SVNClientServing {
     let snapshotsByPath: [String: SVNWorkingCopySnapshot]
     let postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot]
+    let postDeletionSnapshotsByPath: [String: SVNWorkingCopySnapshot]
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
     let commitCompletedWarning: (output: String, details: String)?
@@ -1447,6 +1502,7 @@ private actor StubSVNClient: SVNClientServing {
     private var conflictDetailsRequestRawPaths: [Data] = []
     private var resolvedPaths: [String] = []
     private var addedIgnoreRules: [SVNIgnoreRule] = []
+    private var scheduleDeletionRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -1459,6 +1515,7 @@ private actor StubSVNClient: SVNClientServing {
         snapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         postResolveSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         repairedSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
+        postDeletionSnapshotsByPath: [String: SVNWorkingCopySnapshot] = [:],
         recoveryPreview: SVNRecoveryPreview = SVNRecoveryPreview(
             mappings: [], ignoredAliasCount: 0, blockingPaths: []
         ),
@@ -1482,6 +1539,7 @@ private actor StubSVNClient: SVNClientServing {
         self.snapshotsByPath = snapshotsByPath
         self.postResolveSnapshotsByPath = postResolveSnapshotsByPath
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
+        self.postDeletionSnapshotsByPath = postDeletionSnapshotsByPath
         self.commitCompletedWarning = commitCompletedWarning
         self.conflictDetailsValue = conflictDetailsValue
         self.conflictDetailsByRelativePath = conflictDetailsByRelativePath
@@ -1525,6 +1583,7 @@ private actor StubSVNClient: SVNClientServing {
         snapshotRequests += 1
         await delay(for: path)
         if !conflictChoices.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
+        if scheduleDeletionRequests > 0, let snapshot = postDeletionSnapshotsByPath[path] { return snapshot }
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
         let revision = revisionsByPath[path] ?? "0"
@@ -1563,8 +1622,10 @@ private actor StubSVNClient: SVNClientServing {
     func requestedAddedIgnoreRules() -> [SVNIgnoreRule] { addedIgnoreRules }
     func removeIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {}
     func scheduleDeletion(at path: String, paths: [String], credentials: SVNCredentials?) async throws -> SVNDeletionResult {
-        SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
+        scheduleDeletionRequests += 1
+        return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
+    func scheduleDeletionRequestCount() -> Int { scheduleDeletionRequests }
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
         repositoryLocksRequests += 1
         return []

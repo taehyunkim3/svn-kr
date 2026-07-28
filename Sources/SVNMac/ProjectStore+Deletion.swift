@@ -52,10 +52,17 @@ extension ProjectStore {
             await refreshLocalWorkingCopy()
             let deletedPaths = Set(statuses.lazy.filter { $0.item == .deleted }.map(\.path))
             selectedPaths.formUnion(result.scheduledPaths.filter(deletedPaths.contains))
-            notice = AppLanguage.current.text(
-                "\(result.scheduledPaths.count)개 항목을 삭제 예정으로 표시했습니다. 커밋하면 저장소에서 삭제됩니다.",
-                "Marked \(result.scheduledPaths.count) item(s) for deletion. Commit to delete them from the repository."
-            )
+            if result.failedPaths.isEmpty {
+                notice = AppLanguage.current.text(
+                    "\(result.scheduledPaths.count)개 항목을 삭제 예정으로 표시했습니다. 커밋하면 저장소에서 삭제됩니다.",
+                    "Marked \(result.scheduledPaths.count) item(s) for deletion. Commit to delete them from the repository."
+                )
+            } else {
+                errorMessage = AppLanguage.current.text(
+                    "\(result.scheduledPaths.count)개는 삭제 예정으로 전환했고, \(result.failedPaths.count)개는 전환하지 못했습니다: \(result.failedPaths.joined(separator: ", "))",
+                    "\(result.scheduledPaths.count) item(s) were marked for deletion, but \(result.failedPaths.count) failed: \(result.failedPaths.joined(separator: ", "))"
+                )
+            }
         } catch {
             if selectedProjectID == project.id {
                 errorMessage = localizedError(error)

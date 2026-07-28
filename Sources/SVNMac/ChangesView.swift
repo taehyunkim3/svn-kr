@@ -237,6 +237,19 @@ struct ChangesView: View {
             ))
             .toggleStyle(.checkbox)
             .font(.caption)
+            let missingEntries = store.statuses.filter(\.canScheduleRepositoryDeletion)
+            if missingEntries.count > 1 {
+                Button(
+                    appLanguage.text(
+                        "누락 \(missingEntries.count)개 저장소 삭제…",
+                        "Delete \(missingEntries.count) Missing Items…"
+                    ),
+                    systemImage: "trash"
+                ) {
+                    store.requestDeletion(missingEntries)
+                }
+                .disabled(store.isWorking)
+            }
             Spacer()
             Button(appLanguage.text("무시 규칙 관리", "Manage Ignore Rules"), systemImage: "eye.slash") {
                 Task {

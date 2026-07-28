@@ -30,7 +30,7 @@ extension ProjectStore {
         store.selectedStatusPath = DemoData.statuses.first?.path
         store.diffContent = .text(DemoData.diff)
         store.projectSummaries = [
-            projects[0].id: ProjectStatusSummary(localChangeCount: 4, conflictCount: 0, lockCount: 1, needsUpdate: true),
+            projects[0].id: ProjectStatusSummary(localChangeCount: 6, conflictCount: 0, lockCount: 1, needsUpdate: true),
             projects[1].id: ProjectStatusSummary(localChangeCount: 2, conflictCount: 0, lockCount: 0, needsUpdate: false)
         ]
         return store
@@ -50,7 +50,9 @@ private enum DemoData {
         SVNStatusEntry(path: "Sources/Features/Login/LoginView.swift", item: .modified, revision: "1842"),
         SVNStatusEntry(path: "Sources/Features/Login/BiometricButton.swift", item: .added),
         SVNStatusEntry(path: "Resources/Colors.xcassets/AccentColor.colorset/Contents.json", item: .modified, revision: "1842"),
-        SVNStatusEntry(path: "Docs/legacy-login-flow.md", item: .deleted, revision: "1817")
+        SVNStatusEntry(path: "Docs/legacy-login-flow.md", item: .deleted, revision: "1817"),
+        SVNStatusEntry(path: "Docs/obsolete-guide.md", item: .missing, revision: "1842", nodeKind: .file),
+        SVNStatusEntry(path: "Resources/Legacy", item: .missing, revision: "1842", nodeKind: .directory)
     ]
 
     static let remoteChanges = [
@@ -154,14 +156,16 @@ private struct DemoWorkingCopyFileService: WorkingCopyFileListing {
     func tree(at _: String, svnEntries _: [SVNWorkingCopyEntry]) async throws -> [WorkingCopyFileNode] { DemoData.fileTree }
 }
 
-private struct DemoSVNClient: SVNClientServing {
+private actor DemoSVNClient: SVNClientServing {
+    private var scheduledDeletionPaths: Set<String> = []
+
     func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
-    func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { DemoData.statuses }
+    func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { currentStatuses }
     func workingCopyEntries(at _: String, credentials _: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
     func workingCopySnapshot(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         SVNWorkingCopySnapshot(
-            statuses: DemoData.statuses,
+            statuses: currentStatuses,
             revision: SVNWorkingCopyRevision(minimum: "1842", maximum: "1842"),
             collisions: [],
             versionedPathsByCanonicalKey: [:]
@@ -185,7 +189,8 @@ private struct DemoSVNClient: SVNClientServing {
     func addIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}
     func removeIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}
     func scheduleDeletion(at _: String, paths: [String], credentials _: SVNCredentials?) async throws -> SVNDeletionResult {
-        SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
+        scheduledDeletionPaths.formUnion(paths)
+        return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
     func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
     func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNLockInfo? { nil }
@@ -206,4 +211,16 @@ private struct DemoSVNClient: SVNClientServing {
     func revert(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Reverted" }
     func fileLog(at _: String, relativePath _: String, limit _: Int, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
     func commit(at _: String, paths _: [String], message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Committed revision 1846" }
+
+    private var currentStatuses: [SVNStatusEntry] {
+        DemoData.statuses.map { entry in
+            guard scheduledDeletionPaths.contains(entry.path) else { return entry }
+            return SVNStatusEntry(
+                path: entry.path,
+                item: .deleted,
+                revision: entry.revision,
+                nodeKind: entry.nodeKind
+            )
+        }
+    }
 }

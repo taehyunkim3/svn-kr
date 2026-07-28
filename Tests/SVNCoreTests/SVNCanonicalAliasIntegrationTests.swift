@@ -3,6 +3,90 @@ import Foundation
 import Testing
 @testable import SVNCore
 
+@Test func realSVNExplicitlySchedulesRestoresAndCommitsMissingDeletion() async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin", "/usr/local/bin/svnadmin", "/usr/bin/svnadmin",
+    ]))
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-explicit-delete-\(UUID().uuidString)", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let workingCopy = fixture.appendingPathComponent("wc", isDirectory: true)
+    let verificationCopy = fixture.appendingPathComponent("verify", isDirectory: true)
+    defer { try? fileManager.removeItem(at: fixture) }
+
+    try fileManager.createDirectory(at: fixture, withIntermediateDirectories: true)
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    _ = try runIntegrationCommand(svnPath, ["mkdir", repositoryURL + "trunk", "-m", "initial"])
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", workingCopy.path])
+    let fileURL = workingCopy.appendingPathComponent("old.txt")
+    try Data("old".utf8).write(to: fileURL)
+    _ = try runIntegrationCommand(svnPath, ["add", fileURL.path])
+    _ = try runIntegrationCommand(svnPath, ["commit", fileURL.path, "-m", "add old"])
+
+    try fileManager.removeItem(at: fileURL)
+    let client = SVNClient(
+        executablePath: svnPath,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+    let first = try await client.scheduleDeletion(at: workingCopy.path, paths: ["old.txt"])
+    #expect(first.scheduledPaths == ["old.txt"])
+    #expect(try await client.status(at: workingCopy.path).first?.item == .deleted)
+
+    _ = try await client.revert(at: workingCopy.path, relativePath: "old.txt")
+    #expect(fileManager.fileExists(atPath: fileURL.path))
+
+    try fileManager.removeItem(at: fileURL)
+    _ = try await client.scheduleDeletion(at: workingCopy.path, paths: ["old.txt"])
+    _ = try await client.commit(at: workingCopy.path, paths: ["old.txt"], message: "delete old")
+
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", verificationCopy.path])
+    #expect(!fileManager.fileExists(atPath: verificationCopy.appendingPathComponent("old.txt").path))
+}
+
+@Test func realSVNGlobalIgnorePropertyIsSharedAfterCommit() async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin", "/usr/local/bin/svnadmin", "/usr/bin/svnadmin",
+    ]))
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-global-ignore-\(UUID().uuidString)", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let workingCopy = fixture.appendingPathComponent("wc", isDirectory: true)
+    let otherCopy = fixture.appendingPathComponent("other", isDirectory: true)
+    defer { try? fileManager.removeItem(at: fixture) }
+
+    try fileManager.createDirectory(at: fixture, withIntermediateDirectories: true)
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    _ = try runIntegrationCommand(svnPath, ["mkdir", repositoryURL + "trunk", "-m", "initial"])
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", workingCopy.path])
+    let client = SVNClient(
+        executablePath: svnPath,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+    try await client.addIgnoreRule(
+        at: workingCopy.path,
+        directory: ".",
+        pattern: "*.tmp",
+        propertyKind: .global
+    )
+    _ = try await client.commit(at: workingCopy.path, paths: ["."], message: "share ignore")
+
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", otherCopy.path])
+    try Data("cache".utf8).write(to: otherCopy.appendingPathComponent("cache.tmp"))
+    let status = try runIntegrationCommand(svnPath, ["status", "--no-ignore", otherCopy.path])
+    #expect(status.contains("I"))
+    #expect(status.contains("cache.tmp"))
+}
+
 @Test(arguments: [
     "00 사업관리/000 보고관리",
     "00 사업관리/000 보고관리".decomposedStringWithCanonicalMapping,

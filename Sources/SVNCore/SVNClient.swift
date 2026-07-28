@@ -489,10 +489,11 @@ public actor SVNClient {
         let failed = targets.filter {
             !deletedCanonicalPaths.contains($0.precomposedStringWithCanonicalMapping)
         }
-        guard failed.isEmpty else {
+        guard failed.count < targets.count else {
             throw SVNError.deletionValidationFailed(paths: failed)
         }
-        return SVNDeletionResult(scheduledPaths: targets, failedPaths: [])
+        let scheduled = targets.filter { !failed.contains($0) }
+        return SVNDeletionResult(scheduledPaths: scheduled, failedPaths: failed)
     }
 
     public func repositoryLocks(
