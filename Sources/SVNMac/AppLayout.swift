@@ -32,6 +32,7 @@ enum AppLayout {
     static let checkoutLogHeight: CGFloat = 180
     static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
     static let ignoreRulesSheetMinimumSize = CGSize(width: 620, height: 420)
+    static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)

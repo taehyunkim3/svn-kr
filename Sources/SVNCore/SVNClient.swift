@@ -421,6 +421,57 @@ public actor SVNClient {
         }
     }
 
+    public func scheduleDeletion(
+        at path: String,
+        paths: [String],
+        credentials: SVNCredentials? = nil
+    ) async throws -> SVNDeletionResult {
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard !snapshot.hasPathCollisions else {
+            throw SVNError.pathNormalizationCollision(paths: snapshot.collisions.map(\.displayPath))
+        }
+
+        let resolvedPaths = try paths.map { selectedPath -> String in
+            guard let resolved = snapshot.resolvedPath(for: selectedPath) else {
+                throw SVNError.pathNormalizationCollision(
+                    paths: [selectedPath.precomposedStringWithCanonicalMapping]
+                )
+            }
+            return resolved
+        }
+        let statusByCanonicalPath = Dictionary(
+            uniqueKeysWithValues: snapshot.statuses.map {
+                ($0.path.precomposedStringWithCanonicalMapping, $0)
+            }
+        )
+        let invalidPaths = resolvedPaths.filter {
+            statusByCanonicalPath[$0.precomposedStringWithCanonicalMapping]?.canScheduleRepositoryDeletion != true
+        }
+        guard invalidPaths.isEmpty else {
+            throw SVNError.unresolvedMissingPaths(paths: invalidPaths)
+        }
+
+        let targets = Self.normalizedCommitPaths(resolvedPaths)
+        _ = try checkedRunWithMultipleWorkingCopyPathArguments(
+            ["delete", "--force"],
+            projectRelativePaths: targets,
+            at: path,
+            credentials: credentials
+        )
+
+        let after = try await workingCopySnapshot(at: path, credentials: credentials)
+        let deletedCanonicalPaths = Set(after.statuses.lazy.filter { $0.item == .deleted }.map {
+            $0.path.precomposedStringWithCanonicalMapping
+        })
+        let failed = targets.filter {
+            !deletedCanonicalPaths.contains($0.precomposedStringWithCanonicalMapping)
+        }
+        guard failed.isEmpty else {
+            throw SVNError.deletionValidationFailed(paths: failed)
+        }
+        return SVNDeletionResult(scheduledPaths: targets, failedPaths: [])
+    }
+
     public func repositoryLocks(
         at path: String,
         credentials: SVNCredentials? = nil,
@@ -886,11 +937,14 @@ public actor SVNClient {
         }
 
         let normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
+        let unresolvedMissingPaths = resolvedPaths.filter {
+            statusByPath[$0.precomposedStringWithCanonicalMapping] == .missing
+        }
+        guard unresolvedMissingPaths.isEmpty else {
+            throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
+        }
         let additions = Self.normalizedCommitPaths(resolvedPaths.filter {
             statusByPath[$0.precomposedStringWithCanonicalMapping] == .unversioned
-        })
-        let deletions = Self.normalizedCommitPaths(resolvedPaths.filter {
-            statusByPath[$0.precomposedStringWithCanonicalMapping] == .missing
         })
 
         var scheduledByThisCommit: [String] = []
@@ -909,16 +963,6 @@ public actor SVNClient {
                     credentials: credentials
                 )
             }
-            if !deletions.isEmpty {
-                scheduledByThisCommit.append(contentsOf: deletions)
-                _ = try checkedRunWithMultipleWorkingCopyPathArguments(
-                    ["delete", "--force"],
-                    projectRelativePaths: deletions,
-                    at: path,
-                    credentials: credentials
-                )
-            }
-
             commitOutput = try checkedRunWithMultipleWorkingCopyPathArguments(
                 ["commit", "--message", message],
                 projectRelativePaths: normalizedPaths,

@@ -33,6 +33,7 @@ import Testing
         AppLayout.addRepositorySheetMinimumSize,
         AppLayout.repositoryLocksSheetMinimumSize,
         AppLayout.ignoreRulesSheetMinimumSize,
+        AppLayout.deletionConfirmationSheetMinimumSize,
         AppLayout.updatePreviewSheetMinimumSize,
         AppLayout.fileHistorySheetMinimumSize,
         AppLayout.conflictResolutionSheetMinimumSize,

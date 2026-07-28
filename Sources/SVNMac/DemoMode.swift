@@ -184,6 +184,9 @@ private struct DemoSVNClient: SVNClientServing {
     func ignoreRules(at _: String, credentials _: SVNCredentials?) async throws -> [SVNIgnoreRule] { [SVNIgnoreRule(directory: ".", pattern: ".build")] }
     func addIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}
     func removeIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}
+    func scheduleDeletion(at _: String, paths: [String], credentials _: SVNCredentials?) async throws -> SVNDeletionResult {
+        SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
+    }
     func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
     func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNLockInfo? { nil }
     func lock(at _: String, relativePath _: String, comment _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Locked" }

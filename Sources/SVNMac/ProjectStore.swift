@@ -122,6 +122,7 @@ final class ProjectStore: ObservableObject {
     @Published var resolvingConflictSessionID: ConflictResolutionSession.ID?
     @Published var resolvingConflictProjectID: SVNProject.ID?
     @Published var revertRequest: RevertRequest?
+    @Published var deletionRequest: DeletionRequest?
     @Published var authenticationRequest: SVNAuthenticationRequest?
     @Published var lastCompletedCommitMessage: String?
     @Published var notice: String?
@@ -490,6 +491,16 @@ final class ProjectStore: ObservableObject {
     func commit(message: String) async -> Bool {
         guard let project = selectedProject, !selectedPaths.isEmpty else { return false }
         let paths = selectedPaths.sorted()
+        let missingPaths = statuses.lazy
+            .filter { $0.item == .missing && self.selectedPaths.contains($0.path) }
+            .map(\.path)
+        guard missingPaths.isEmpty else {
+            errorMessage = AppLanguage.current.text(
+                "먼저 로컬 누락 항목의 처리 방법을 선택하세요: \(missingPaths.joined(separator: ", "))",
+                "Choose how to handle locally missing items first: \(missingPaths.joined(separator: ", "))"
+            )
+            return false
+        }
         guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
             errorMessage = AppLanguage.current.text("충돌 파일은 해결 완료 처리 후 커밋할 수 있습니다.", "Resolve conflicted files before committing.")
             return false
@@ -713,6 +724,10 @@ final class ProjectStore: ObservableObject {
             return "Replacement files could not be restored to their original paths: \(paths.joined(separator: ", ")). Backups: \(backupPaths.joined(separator: ", "))"
         case let .unsupportedTargetPath(paths):
             return "Paths containing line breaks cannot be passed safely to SVN: \(paths.joined(separator: ", "))"
+        case let .unresolvedMissingPaths(paths):
+            return "Choose how to handle locally missing items first: \(paths.joined(separator: ", "))"
+        case let .deletionValidationFailed(paths):
+            return "These items did not enter the pending-deletion state: \(paths.joined(separator: ", "))"
         case let .commitSucceededWithValidationWarning(_, details):
             return "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: \(details)"
         case let .recoveryBlocked(paths):
@@ -828,6 +843,7 @@ final class ProjectStore: ObservableObject {
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil
+        deletionRequest = nil
         logs = []
         selectedHistoryRevision = nil
         selectedHistoryPath = nil

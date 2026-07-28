@@ -791,7 +791,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
       esac
     done
     if [ "$command" = status ]; then
-      printf '<?xml version="1.0"?><status><target path="."><entry path="Old"><wc-status item="missing" revision="1"/></entry><entry path="Old/file.txt"><wc-status item="missing" revision="1"/></entry><entry path="Old/nested/file.txt"><wc-status item="missing" revision="1"/></entry><entry path="New"><wc-status item="unversioned"/></entry><entry path="Application/file.swift"><wc-status item="modified" revision="1"/></entry><entry path="App/file.swift"><wc-status item="modified" revision="1"/></entry></target></status>'
+      printf '<?xml version="1.0"?><status><target path="."><entry path="Old"><wc-status item="deleted" revision="1"/></entry><entry path="Old/file.txt"><wc-status item="deleted" revision="1"/></entry><entry path="Old/nested/file.txt"><wc-status item="deleted" revision="1"/></entry><entry path="New"><wc-status item="unversioned"/></entry><entry path="Application/file.swift"><wc-status item="modified" revision="1"/></entry><entry path="App/file.swift"><wc-status item="modified" revision="1"/></entry></target></status>'
       exit 0
     fi
     printf '%s\n' "$command" >> command-log
@@ -823,16 +823,92 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
     let lines = log.split(whereSeparator: \.isNewline).map(String.init)
     #expect(lines.filter { $0 == "add" }.count == 1)
-    #expect(lines.filter { $0 == "delete" }.count == 1)
+    #expect(lines.filter { $0 == "delete" }.isEmpty)
     #expect(lines.filter { $0 == "commit" }.count == 1)
     #expect(lines.contains("add:New"))
-    #expect(lines.contains("delete:Old"))
-    #expect(!lines.contains("delete:Old/file.txt"))
-    #expect(!lines.contains("delete:Old/nested/file.txt"))
     #expect(lines.contains("commit:App/file.swift"))
     #expect(lines.contains("commit:Application/file.swift"))
     #expect(lines.contains("commit:New"))
     #expect(lines.contains("commit:Old"))
+}
+
+@Test func schedulesMissingDeletionBeforeCommitAndValidatesDeletedState() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-schedule-delete-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    command=
+    targets=
+    expects_targets=0
+    for argument in "$@"; do
+      if [ "$expects_targets" = 1 ]; then targets=$argument; expects_targets=0; continue; fi
+      case "$argument" in
+        --targets) expects_targets=1 ;;
+        status|delete) command=$argument ;;
+      esac
+    done
+    if [ "$command" = status ]; then
+      if [ -f deletion-scheduled ]; then item=deleted; else item=missing; fi
+      printf '<?xml version="1.0"?><status><target path="."><entry path="Old"><wc-status item="%s" revision="1" kind="dir"/></entry><entry path="Old/file.txt"><wc-status item="%s" revision="1" kind="file"/></entry></target></status>' "$item" "$item"
+      exit 0
+    fi
+    printf '%s\\n' "$command" >> command-log
+    while IFS= read -r target || [ -n "$target" ]; do
+      printf '%s:%s\\n' "$command" "$target" >> command-log
+    done < "$targets"
+    touch deletion-scheduled
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.scheduleDeletion(
+        at: directory.path,
+        paths: ["Old", "Old/file.txt"]
+    )
+
+    #expect(result.scheduledPaths == ["Old"])
+    #expect(result.failedPaths.isEmpty)
+    let log = try String(contentsOf: directory.appendingPathComponent("command-log"), encoding: .utf8)
+    #expect(log.contains("delete:Old"))
+    #expect(!log.contains("delete:Old/file.txt"))
+}
+
+@Test func commitRejectsMissingPathWithoutDeleteOrCommit() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-reject-missing-commit-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="Old.txt"><wc-status item="missing" revision="1"/></entry></target></status>'
+        exit 0
+        ;;
+    esac
+    printf '%s\\n' "$*" >> command-log
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    await #expect(throws: SVNError.self) {
+        _ = try await client.commit(at: directory.path, paths: ["Old.txt"], message: "삭제")
+    }
+    #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("command-log").path))
 }
 
 @Test func commitMaterializesCanonicalFileReplacementBeforeCommit() async throws {

@@ -33,8 +33,13 @@ struct ChangesViewPerformanceTests {
         #expect(!changesView.contains("추가 취소됨"))
         #expect(changesView.contains("한글 경로 충돌"))
         #expect(changesView.contains("entry.isSelectableForCommit"))
+        #expect(changesView.contains("entry.canScheduleRepositoryDeletion"))
+        #expect(changesView.contains("처리 선택…"))
+        #expect(changesView.contains("저장소에서도 삭제…"))
+        #expect(changesView.contains("삭제 예정"))
         #expect(commitControls.contains("store.selectAllStatusPaths"))
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
+        #expect(commitControls.contains("store.scheduledDeletionCount"))
     }
 
     @Test func unversionedDirectoryExplainsRecursiveCommit() throws {

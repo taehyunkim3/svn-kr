@@ -47,6 +47,10 @@ struct ChangesView: View {
             WorkingCopyRecoveryView()
                 .environmentObject(store)
         }
+        .sheet(item: $store.deletionRequest) { request in
+            DeletionConfirmationView(request: request)
+                .environmentObject(store)
+        }
         .revertConfirmation()
         .documentOpenConfirmation()
     }
@@ -90,6 +94,20 @@ struct ChangesView: View {
                 ))
                 .labelsHidden()
                 .help(appLanguage.text("이 파일을 다음 선택 커밋에 포함하거나 제외합니다.", "Include or exclude this file from the next commit."))
+            } else if entry.canScheduleRepositoryDeletion {
+                Menu {
+                    Button(appLanguage.text("로컬 파일 복원…", "Restore Local File…")) {
+                        store.requestRevert(entry)
+                    }
+                    Button(appLanguage.text("저장소에서도 삭제…", "Delete from Repository…"), role: .destructive) {
+                        store.requestDeletion(entry)
+                    }
+                } label: {
+                    Label(appLanguage.text("처리 선택…", "Choose Action…"), systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             } else {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
@@ -150,9 +168,23 @@ struct ChangesView: View {
                     }
                 }
             }
-            if entry.item != .unversioned && entry.item != .ignored && entry.item != .conflicted {
+            if entry.canScheduleRepositoryDeletion {
                 Divider()
-                Button(appLanguage.text("로컬 변경 되돌리기…", "Revert Local Changes…"), role: .destructive) {
+                Button(appLanguage.text("로컬 파일 복원…", "Restore Local File…")) {
+                    store.requestRevert(entry)
+                }
+                Button(appLanguage.text("저장소에서도 삭제…", "Delete from Repository…"), role: .destructive) {
+                    store.requestDeletion(entry)
+                }
+            }
+            if entry.item != .unversioned && entry.item != .ignored && entry.item != .conflicted && entry.item != .missing {
+                Divider()
+                Button(
+                    entry.item == .deleted
+                        ? appLanguage.text("삭제 취소 및 복원…", "Cancel Deletion and Restore…")
+                        : appLanguage.text("로컬 변경 되돌리기…", "Revert Local Changes…"),
+                    role: .destructive
+                ) {
                     store.requestRevert(entry)
                 }
             }
@@ -235,9 +267,9 @@ struct ChangesView: View {
         return switch entry.item {
         case .modified: appLanguage.text("수정", "Modified")
         case .added: appLanguage.text("추가", "Added")
-        case .deleted: appLanguage.text("삭제", "Deleted")
+        case .deleted: appLanguage.text("삭제 예정", "Pending Deletion")
         case .missing where entry.isMissingScheduledAddition: appLanguage.text("정리 필요", "Cleanup Needed")
-        case .missing: appLanguage.text("로컬 누락", "Locally Missing")
+        case .missing: appLanguage.text("로컬 누락 · 처리 필요", "Locally Missing · Action Required")
         case .unversioned: appLanguage.text("미추적", "Unversioned")
         case .ignored: appLanguage.text("무시됨", "Ignored")
         case .conflicted: appLanguage.text("충돌", "Conflict")

@@ -23,6 +23,13 @@ struct CommitControlsView: View {
                 Spacer()
                 Text(appLanguage.text("\(store.selectedPaths.count)개 선택", "\(store.selectedPaths.count) selected"))
                     .foregroundStyle(.secondary)
+                if store.scheduledDeletionCount > 0 {
+                    Text(appLanguage.text(
+                        "삭제 예정 \(store.scheduledDeletionCount)개",
+                        "\(store.scheduledDeletionCount) pending deletion"
+                    ))
+                    .foregroundStyle(.red)
+                }
                 Button(action: submitCommitAfterEndingTextInput) {
                     HStack(spacing: 6) {
                         if store.isCommittingSelectedProject {

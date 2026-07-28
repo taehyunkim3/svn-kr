@@ -188,8 +188,22 @@ public extension SVNStatusEntry {
         item == .missing && (revision == nil || revision == "-1")
     }
 
+    var canScheduleRepositoryDeletion: Bool {
+        item == .missing && !isMissingScheduledAddition
+    }
+
     var isSelectableForCommit: Bool {
-        !isMissingScheduledAddition && item != .ignored && item != .conflicted
+        item != .missing && item != .ignored && item != .conflicted
+    }
+}
+
+public struct SVNDeletionResult: Hashable, Sendable {
+    public let scheduledPaths: [String]
+    public let failedPaths: [String]
+
+    public init(scheduledPaths: [String], failedPaths: [String]) {
+        self.scheduledPaths = scheduledPaths
+        self.failedPaths = failedPaths
     }
 }
 
@@ -359,6 +373,8 @@ public enum SVNError: LocalizedError, Sendable {
     case pathAliasRepairFailed(paths: [String])
     case fileReplacementRecoveryFailed(paths: [String], backupPaths: [String])
     case unsupportedTargetPath(paths: [String])
+    case unresolvedMissingPaths(paths: [String])
+    case deletionValidationFailed(paths: [String])
     case commitSucceededWithValidationWarning(output: String, details: String)
     case recoveryBlocked(paths: [String])
     case recoveryDestinationNotEmpty
@@ -381,6 +397,10 @@ public enum SVNError: LocalizedError, Sendable {
             "대치 파일을 원래 위치로 복원하지 못했습니다: \(paths.joined(separator: ", ")). 백업 파일: \(backupPaths.joined(separator: ", "))"
         case let .unsupportedTargetPath(paths):
             "SVN 명령에 안전하게 전달할 수 없는 줄바꿈 경로가 있습니다: \(paths.joined(separator: ", "))"
+        case let .unresolvedMissingPaths(paths):
+            "로컬 누락 항목의 처리 방법을 먼저 선택해야 합니다: \(paths.joined(separator: ", "))"
+        case let .deletionValidationFailed(paths):
+            "저장소 삭제 예정 상태로 전환되지 않은 항목이 있습니다: \(paths.joined(separator: ", "))"
         case let .commitSucceededWithValidationWarning(_, details):
             "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: \(details)"
         case let .recoveryBlocked(paths):

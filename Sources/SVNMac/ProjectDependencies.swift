@@ -20,6 +20,7 @@ protocol SVNClientServing: Sendable {
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
     func removeIgnoreRule(at path: String, directory: String, pattern: String, credentials: SVNCredentials?) async throws
+    func scheduleDeletion(at path: String, paths: [String], credentials: SVNCredentials?) async throws -> SVNDeletionResult
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo]
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo?
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
@@ -178,6 +179,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case revisionDiff(SVNProject.ID)
         case browseFiles(SVNProject.ID)
         case ignore(SVNProject.ID)
+        case delete(SVNProject.ID)
         case lock(SVNProject.ID)
         case resolveConflict(SVNProject.ID)
         case previewUpdate(SVNProject.ID)

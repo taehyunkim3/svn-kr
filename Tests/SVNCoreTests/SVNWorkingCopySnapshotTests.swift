@@ -2,6 +2,19 @@ import Foundation
 import Testing
 @testable import SVNCore
 
+@Test func missingRequiresExplicitDeletionDecisionBeforeCommit() {
+    let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10")
+    let missingAddition = SVNStatusEntry(path: "new.txt", item: .missing, revision: "-1")
+    let deleted = SVNStatusEntry(path: "removed.txt", item: .deleted, revision: "10")
+
+    #expect(missing.canScheduleRepositoryDeletion)
+    #expect(!missing.isSelectableForCommit)
+    #expect(!missingAddition.canScheduleRepositoryDeletion)
+    #expect(!missingAddition.isSelectableForCommit)
+    #expect(!deleted.canScheduleRepositoryDeletion)
+    #expect(deleted.isSelectableForCommit)
+}
+
 @Suite("SVNWorkingCopySnapshotTests")
 struct SVNWorkingCopySnapshotTests {
     @Test func annotatingNodeKindsKeepsExistingKindWhenNoNewKindIsMapped() {

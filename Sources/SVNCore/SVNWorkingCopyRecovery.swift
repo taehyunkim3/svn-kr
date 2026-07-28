@@ -67,7 +67,7 @@ enum SVNWorkingCopyRecovery {
         }
 
         let mappings = snapshot.statuses.compactMap { entry -> SVNRecoveryPathMapping? in
-            guard entry.isSelectableForCommit || entry.item == .conflicted else { return nil }
+            guard entry.isSelectableForCommit || entry.item == .missing || entry.item == .conflicted else { return nil }
             let destination = entry.path.precomposedStringWithCanonicalMapping
             guard isSafeRelativePath(destination) else {
                 blockers.append(destination)
