@@ -28,6 +28,13 @@ struct AppReviewReadinessTests {
         #expect(values["NSHumanReadableCopyright"] as? String == "© 2026 Taehyun Kim")
     }
 
+    @Test func customAboutWindowShowsDistributionCredit() throws {
+        let source = try repositorySource("AppAboutView.swift")
+
+        #expect(source.contains("Distributed by MR.DEVELLO"))
+        #expect(source.contains("© 2026 Taehyun Kim"))
+    }
+
     @Test func firstRunRepositorySheetExposesSampleProjectEntry() throws {
         let source = try repositorySource("RepositoryDialogs.swift")
 

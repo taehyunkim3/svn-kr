@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.19 (2026-07-28)
+
+- Restored the `Distributed by MR.DEVELLO` credit in the custom About window.
+- Kept the individual copyright notice alongside the distribution credit.
+
 ## 0.5.18 (2026-07-28)
 
 - Classified SVN `E155011` and `E170004` commit failures as working-copy update requirements while preserving the original SVN details.

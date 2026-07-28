@@ -46,7 +46,7 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.5.18 Release Notes
+## Version 0.5.19 Release Notes
 
-• Identifies outdated scheduled-directory deletions as requiring an update while preserving the original SVN error details.
-• Allows Update to run even when the incoming-change list is empty, so conflicts can be reviewed before retrying the commit.
+• Restores the “Distributed by MR.DEVELLO” credit in the custom About window.
+• Keeps the individual copyright notice alongside the distribution credit.

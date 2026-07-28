@@ -33,9 +33,12 @@ struct AppAboutView: View {
             }
             .disabled(updateChecker.manualStatus == .checking)
 
-            Text("© 2026 Taehyun Kim")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 3) {
+                Text("Distributed by MR.DEVELLO")
+                Text("© 2026 Taehyun Kim")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(
