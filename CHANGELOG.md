@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Distinguished locally missing files from SVN items already marked for deletion.
+- Required an explicit restore-or-delete choice before a missing item can be committed.
+- Added pending-deletion confirmation, batch handling, commit summaries, and pre-commit restoration.
+- Added `svn:global-ignores` and inherited-rule visibility alongside existing `svn:ignore` management.
+- Added one-way `.gitignore` comparison, conversion previews, unsupported-rule explanations, and selective SVN property application.
+
 ## 0.5.7 (2026-07-21)
 
 - Built SVN 1.14.5 and its non-system dependencies from checksum-pinned sources for a macOS 14 arm64 deployment target.
