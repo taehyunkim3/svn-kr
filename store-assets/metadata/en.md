@@ -46,7 +46,7 @@ Primary: Developer Tools
 
 Secondary: Productivity
 
-## Version 0.5.17 Release Notes
+## Version 0.5.18 Release Notes
 
-• Discovers .gitignore files in nested directories as well as the working-copy root.
-• Resolves each rule relative to its source directory before comparison and selective import.
+• Identifies outdated scheduled-directory deletions as requiring an update while preserving the original SVN error details.
+• Allows Update to run even when the incoming-change list is empty, so conflicts can be reviewed before retrying the commit.

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.18 (2026-07-28)
+
+- Classified SVN `E155011` and `E170004` commit failures as working-copy update requirements while preserving the original SVN details.
+- Kept pending commit selections intact and allowed Update to run when a scheduled directory deletion hides incoming changes.
+
 ## 0.5.17 (2026-07-28)
 
 - Discovered nested `.gitignore` files and resolved their rules relative to each source directory.
