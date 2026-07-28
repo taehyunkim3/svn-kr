@@ -98,35 +98,13 @@ final class ProjectStore: ObservableObject {
             resetSelectedProjectState()
         }
     }
-    @Published var statuses: [SVNStatusEntry] = []
-    @Published var pathCollisions: [SVNPathCollision] = []
-    @Published var ignoredStatuses: [SVNStatusEntry] = []
-    @Published var ignoreRules: [SVNIgnoreRule] = []
-    @Published var gitIgnoreImportItems: [IgnoreImportItem] = []
-    @Published var selectedGitIgnoreImportIDs: Set<IgnoreImportItem.ID> = []
-    @Published var hasComparedGitIgnore = false
-    @Published var gitIgnoreFileExists = false
-    @Published var gitIgnoreLastComparedAt: Date?
+    @Published private var changesState = ProjectChangesState()
+    @Published private var browserState = ProjectBrowserState()
+    @Published private var historyState = ProjectHistoryState()
+    @Published private var updateState = ProjectUpdateState()
     @Published var requiresGlobalIgnoreImportConfirmation = false
-    @Published var repositoryLocks: [SVNLockInfo] = []
-    @Published var workingCopyFileTree: [WorkingCopyFileNode] = []
     @Published var selectedBrowserPath: String?
-    @Published var remoteChanges: [SVNStatusEntry] = []
     @Published var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
-    @Published var fileHistory: [SVNLogEntry] = []
-    @Published var fileHistoryPath: String?
-    @Published var showsIgnoredFiles = false
-    @Published var logs: [SVNLogEntry] = []
-    @Published var selectedHistoryRevision: String?
-    @Published var selectedHistoryPath: String?
-    @Published var historyDiffContent: DiffContent = .placeholder
-    @Published var hasMoreHistory = true
-    @Published var workingCopyRevision: SVNWorkingCopyRevision?
-    @Published var workingCopyRepositoryPath: String?
-    @Published var isWorkingCopyOutOfDate: Bool?
-    @Published var selectedPaths: Set<String> = []
-    @Published var selectedStatusPath: String?
-    @Published var diffContent: DiffContent = .placeholder
     @Published private(set) var activeOperations: [ProjectOperation] = []
     @Published var isShowingAddRepository = false
     @Published var isShowingCredentials = false
@@ -147,6 +125,111 @@ final class ProjectStore: ObservableObject {
     @Published var notice: String?
     @Published var errorMessage: String?
     @Published private(set) var checkoutLog = ""
+
+    var statuses: [SVNStatusEntry] {
+        get { changesState.statuses }
+        set { changesState.statuses = newValue }
+    }
+    var pathCollisions: [SVNPathCollision] {
+        get { changesState.pathCollisions }
+        set { changesState.pathCollisions = newValue }
+    }
+    var ignoredStatuses: [SVNStatusEntry] {
+        get { changesState.ignoredStatuses }
+        set { changesState.ignoredStatuses = newValue }
+    }
+    var ignoreRules: [SVNIgnoreRule] {
+        get { changesState.ignoreRules }
+        set { changesState.ignoreRules = newValue }
+    }
+    var gitIgnoreImportItems: [IgnoreImportItem] {
+        get { changesState.gitIgnoreImportItems }
+        set { changesState.gitIgnoreImportItems = newValue }
+    }
+    var selectedGitIgnoreImportIDs: Set<IgnoreImportItem.ID> {
+        get { changesState.selectedGitIgnoreImportIDs }
+        set { changesState.selectedGitIgnoreImportIDs = newValue }
+    }
+    var hasComparedGitIgnore: Bool {
+        get { changesState.hasComparedGitIgnore }
+        set { changesState.hasComparedGitIgnore = newValue }
+    }
+    var gitIgnoreFileExists: Bool {
+        get { changesState.gitIgnoreFileExists }
+        set { changesState.gitIgnoreFileExists = newValue }
+    }
+    var gitIgnoreLastComparedAt: Date? {
+        get { changesState.gitIgnoreLastComparedAt }
+        set { changesState.gitIgnoreLastComparedAt = newValue }
+    }
+    var showsIgnoredFiles: Bool {
+        get { changesState.showsIgnoredFiles }
+        set { changesState.showsIgnoredFiles = newValue }
+    }
+    var selectedPaths: Set<String> {
+        get { changesState.selectedPaths }
+        set { changesState.selectedPaths = newValue }
+    }
+    var selectedStatusPath: String? {
+        get { changesState.selectedStatusPath }
+        set { changesState.selectedStatusPath = newValue }
+    }
+    var diffContent: DiffContent {
+        get { changesState.diffContent }
+        set { changesState.diffContent = newValue }
+    }
+    var repositoryLocks: [SVNLockInfo] {
+        get { browserState.repositoryLocks }
+        set { browserState.repositoryLocks = newValue }
+    }
+    var workingCopyFileTree: [WorkingCopyFileNode] {
+        get { browserState.workingCopyFileTree }
+        set { browserState.workingCopyFileTree = newValue }
+    }
+    var logs: [SVNLogEntry] {
+        get { historyState.logs }
+        set { historyState.logs = newValue }
+    }
+    var selectedHistoryRevision: String? {
+        get { historyState.selectedHistoryRevision }
+        set { historyState.selectedHistoryRevision = newValue }
+    }
+    var selectedHistoryPath: String? {
+        get { historyState.selectedHistoryPath }
+        set { historyState.selectedHistoryPath = newValue }
+    }
+    var historyDiffContent: DiffContent {
+        get { historyState.historyDiffContent }
+        set { historyState.historyDiffContent = newValue }
+    }
+    var hasMoreHistory: Bool {
+        get { historyState.hasMoreHistory }
+        set { historyState.hasMoreHistory = newValue }
+    }
+    var workingCopyRevision: SVNWorkingCopyRevision? {
+        get { historyState.workingCopyRevision }
+        set { historyState.workingCopyRevision = newValue }
+    }
+    var workingCopyRepositoryPath: String? {
+        get { historyState.workingCopyRepositoryPath }
+        set { historyState.workingCopyRepositoryPath = newValue }
+    }
+    var isWorkingCopyOutOfDate: Bool? {
+        get { historyState.isWorkingCopyOutOfDate }
+        set { historyState.isWorkingCopyOutOfDate = newValue }
+    }
+    var fileHistory: [SVNLogEntry] {
+        get { historyState.fileHistory }
+        set { historyState.fileHistory = newValue }
+    }
+    var fileHistoryPath: String? {
+        get { historyState.fileHistoryPath }
+        set { historyState.fileHistoryPath = newValue }
+    }
+    var remoteChanges: [SVNStatusEntry] {
+        get { updateState.remoteChanges }
+        set { updateState.remoteChanges = newValue }
+    }
 
     /// 소개 이미지 촬영용 실행에서는 실제 UserDefaults, Keychain, 파일 시스템과 SVN을 사용하지 않습니다.
     let isDemoMode: Bool
@@ -892,40 +975,18 @@ final class ProjectStore: ObservableObject {
         latestRequestIDs.removeAll()
         failedRefreshCycleIDs = []
         automaticRefreshBlockedProjectID = nil
-        statuses = []
-        pathCollisions = []
-        ignoredStatuses = []
-        ignoreRules = []
-        gitIgnoreImportItems = []
-        selectedGitIgnoreImportIDs = []
-        hasComparedGitIgnore = false
-        gitIgnoreFileExists = false
-        gitIgnoreLastComparedAt = nil
+        changesState = ProjectChangesState()
+        browserState = ProjectBrowserState()
+        historyState = ProjectHistoryState()
+        updateState = ProjectUpdateState()
         requiresGlobalIgnoreImportConfirmation = false
-        repositoryLocks = []
-        workingCopyFileTree = []
         selectedBrowserPath = nil
-        remoteChanges = []
-        fileHistory = []
-        fileHistoryPath = nil
-        showsIgnoredFiles = false
         documentOpenRequest = nil
         activeConflictSession = nil
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil
         deletionRequest = nil
-        logs = []
-        selectedHistoryRevision = nil
-        selectedHistoryPath = nil
-        historyDiffContent = .placeholder
-        hasMoreHistory = true
-        workingCopyRevision = nil
-        workingCopyRepositoryPath = nil
-        isWorkingCopyOutOfDate = nil
-        selectedPaths = []
-        selectedStatusPath = nil
-        diffContent = .placeholder
         notice = nil
         errorMessage = nil
         authenticationRequest = nil
