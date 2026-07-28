@@ -247,27 +247,43 @@ private final class LockBuilder {
     }
 }
 
-/// `svn propget svn:ignore --recursive --xml` 결과를 디렉터리별 패턴으로 펼칩니다.
+/// SVN ignore 속성의 `propget --xml` 결과를 디렉터리별 패턴으로 펼칩니다.
 private final class IgnoreRulesDelegate: NSObject, XMLParserDelegate {
     var rules: [SVNIgnoreRule] = []
     private var targetPath: String?
-    private var isIgnoreProperty = false
+    private var propertyKind: SVNIgnorePropertyKind?
+    private var isInheritedProperty = false
     private var text = ""
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
         if elementName == "target" { targetPath = attributeDict["path"] }
-        if elementName == "property" { isIgnoreProperty = attributeDict["name"] == "svn:ignore" }
+        if elementName == "property" || elementName == "inherited_property" {
+            propertyKind = switch attributeDict["name"] {
+            case "svn:ignore": .local
+            case "svn:global-ignores": .global
+            default: nil
+            }
+            isInheritedProperty = elementName == "inherited_property"
+        }
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        if elementName == "property", isIgnoreProperty, let targetPath {
+        if (elementName == "property" || elementName == "inherited_property"),
+           let propertyKind,
+           let targetPath {
             rules += text.split(whereSeparator: \.isNewline).map {
-                SVNIgnoreRule(directory: targetPath, pattern: String($0))
+                SVNIgnoreRule(
+                    directory: isInheritedProperty ? "." : targetPath,
+                    pattern: String($0),
+                    propertyKind: propertyKind,
+                    inheritedFrom: isInheritedProperty ? targetPath : nil
+                )
             }
-            isIgnoreProperty = false
+            self.propertyKind = nil
+            isInheritedProperty = false
         } else if elementName == "target" {
             targetPath = nil
         }

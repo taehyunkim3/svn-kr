@@ -370,25 +370,42 @@ public actor SVNClient {
     }
 
     public func ignoreRules(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNIgnoreRule] {
-        let result = try run(["propget", "svn:ignore", "--recursive", "--xml", "."], at: path, credentials: credentials)
-        if result.exitCode != 0, result.error.contains("W200017") { return [] }
-        guard result.exitCode == 0 else {
-            throw SVNError.commandFailed(command: "svn propget", message: result.error)
+        var rules: [SVNIgnoreRule] = []
+        for kind in [SVNIgnorePropertyKind.local, .global] {
+            let result = try run(
+                ["propget", kind.propertyName, "--recursive", "--show-inherited-props", "--xml", "."],
+                at: path,
+                credentials: credentials
+            )
+            if result.exitCode != 0, result.error.contains("W200017") { continue }
+            guard result.exitCode == 0 else {
+                throw SVNError.commandFailed(command: "svn propget \(kind.propertyName)", message: result.error)
+            }
+            rules += try SVNXMLParser.ignoreRules(from: Data(result.output.utf8))
         }
-        return try SVNXMLParser.ignoreRules(from: Data(result.output.utf8))
+        return rules.sorted {
+            ($0.directory, $0.propertyKind.rawValue, $0.pattern)
+                < ($1.directory, $1.propertyKind.rawValue, $1.pattern)
+        }
     }
 
     public func addIgnoreRule(
         at path: String,
         directory: String,
         pattern: String,
+        propertyKind: SVNIgnorePropertyKind = .local,
         credentials: SVNCredentials? = nil
     ) async throws {
-        let existing = try ignorePatterns(at: path, directory: directory, credentials: credentials)
+        let existing = try ignorePatterns(
+            at: path,
+            directory: directory,
+            propertyKind: propertyKind,
+            credentials: credentials
+        )
         guard !existing.contains(pattern) else { return }
         let value = (existing + [pattern]).joined(separator: "\n") + "\n"
         _ = try checkedRunWithSingleWorkingCopyPathArgument(
-            ["propset", "svn:ignore", value],
+            ["propset", propertyKind.propertyName, value],
             projectRelativePath: directory,
             at: path,
             credentials: credentials
@@ -399,13 +416,19 @@ public actor SVNClient {
         at path: String,
         directory: String,
         pattern: String,
+        propertyKind: SVNIgnorePropertyKind = .local,
         credentials: SVNCredentials? = nil
     ) async throws {
-        let remaining = try ignorePatterns(at: path, directory: directory, credentials: credentials)
+        let remaining = try ignorePatterns(
+            at: path,
+            directory: directory,
+            propertyKind: propertyKind,
+            credentials: credentials
+        )
             .filter { $0 != pattern }
         if remaining.isEmpty {
             _ = try checkedRunWithSingleWorkingCopyPathArgument(
-                ["propdel", "svn:ignore"],
+                ["propdel", propertyKind.propertyName],
                 projectRelativePath: directory,
                 at: path,
                 credentials: credentials
@@ -413,7 +436,7 @@ public actor SVNClient {
         } else {
             let value = remaining.joined(separator: "\n") + "\n"
             _ = try checkedRunWithSingleWorkingCopyPathArgument(
-                ["propset", "svn:ignore", value],
+                ["propset", propertyKind.propertyName, value],
                 projectRelativePath: directory,
                 at: path,
                 credentials: credentials
@@ -1332,16 +1355,21 @@ public actor SVNClient {
         }
     }
 
-    private func ignorePatterns(at path: String, directory: String, credentials: SVNCredentials?) throws -> [String] {
+    private func ignorePatterns(
+        at path: String,
+        directory: String,
+        propertyKind: SVNIgnorePropertyKind,
+        credentials: SVNCredentials?
+    ) throws -> [String] {
         let result = try runWithSingleWorkingCopyPathArgument(
-            ["propget", "svn:ignore", "--strict"],
+            ["propget", propertyKind.propertyName, "--strict"],
             projectRelativePath: directory,
             at: path,
             credentials: credentials
         )
         if result.exitCode != 0, result.error.contains("W200017") { return [] }
         guard result.exitCode == 0 else {
-            throw SVNError.commandFailed(command: "svn propget", message: result.error)
+            throw SVNError.commandFailed(command: "svn propget \(propertyKind.propertyName)", message: result.error)
         }
         return result.output.split(whereSeparator: \.isNewline).map(String.init)
     }

@@ -46,16 +46,39 @@ public enum SVNStatusKind: Hashable, Sendable {
     }
 }
 
-/// 디렉터리의 `svn:ignore` 속성에 저장된 패턴 하나입니다.
+public enum SVNIgnorePropertyKind: String, Codable, Hashable, Sendable {
+    case local
+    case global
+
+    public var propertyName: String {
+        switch self {
+        case .local: "svn:ignore"
+        case .global: "svn:global-ignores"
+        }
+    }
+}
+
+/// 디렉터리의 SVN 무시 속성에 저장된 패턴 하나입니다.
 public struct SVNIgnoreRule: Identifiable, Hashable, Sendable {
     public let directory: String
     public let pattern: String
+    public let propertyKind: SVNIgnorePropertyKind
+    public let inheritedFrom: String?
 
-    public var id: String { "\(directory):\(pattern)" }
+    public var id: String {
+        "\(directory):\(propertyKind.rawValue):\(pattern):\(inheritedFrom ?? "")"
+    }
 
-    public init(directory: String, pattern: String) {
+    public init(
+        directory: String,
+        pattern: String,
+        propertyKind: SVNIgnorePropertyKind = .local,
+        inheritedFrom: String? = nil
+    ) {
         self.directory = directory
         self.pattern = pattern
+        self.propertyKind = propertyKind
+        self.inheritedFrom = inheritedFrom
     }
 }
 

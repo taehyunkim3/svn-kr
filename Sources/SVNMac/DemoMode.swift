@@ -182,8 +182,8 @@ private struct DemoSVNClient: SVNClientServing {
     }
     func ignoredStatus(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { [SVNStatusEntry(path: ".build/", item: .ignored)] }
     func ignoreRules(at _: String, credentials _: SVNCredentials?) async throws -> [SVNIgnoreRule] { [SVNIgnoreRule(directory: ".", pattern: ".build")] }
-    func addIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}
-    func removeIgnoreRule(at _: String, directory _: String, pattern _: String, credentials _: SVNCredentials?) async throws {}
+    func addIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}
+    func removeIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}
     func scheduleDeletion(at _: String, paths: [String], credentials _: SVNCredentials?) async throws -> SVNDeletionResult {
         SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }

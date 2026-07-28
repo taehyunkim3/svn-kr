@@ -89,6 +89,37 @@ import Testing
     ])
 }
 
+@Test func parsesLocalGlobalAndInheritedIgnoreRules() throws {
+    let xml = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <properties>
+      <target path=".">
+        <property name="svn:ignore">.DS_Store
+    </property>
+        <property name="svn:global-ignores">*.tmp
+    </property>
+      </target>
+      <target path="https://example.com/svn/trunk">
+        <inherited_property name="svn:global-ignores">node_modules
+    </inherited_property>
+      </target>
+    </properties>
+    """
+
+    let rules = try SVNXMLParser.ignoreRules(from: Data(xml.utf8))
+
+    #expect(rules == [
+        SVNIgnoreRule(directory: ".", pattern: ".DS_Store", propertyKind: .local),
+        SVNIgnoreRule(directory: ".", pattern: "*.tmp", propertyKind: .global),
+        SVNIgnoreRule(
+            directory: ".",
+            pattern: "node_modules",
+            propertyKind: .global,
+            inheritedFrom: "https://example.com/svn/trunk"
+        ),
+    ])
+}
+
 @Test func parsesRepositoryLocksFromRemoteStatus() throws {
     let xml = """
     <?xml version="1.0"?><status><target path="."><entry path="Documents/plan.pptx">

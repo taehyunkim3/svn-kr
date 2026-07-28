@@ -23,7 +23,22 @@ struct IgnoreRulesView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(rule.pattern).font(.body.monospaced())
-                        Text(rule.directory).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            Text(rule.propertyKind == .local ? "svn:ignore" : "svn:global-ignores")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(.secondary.opacity(0.15), in: Capsule())
+                            Text(rule.directory).font(.caption.monospaced())
+                            if let inheritedFrom = rule.inheritedFrom {
+                                Text(appLanguage.text(
+                                    "\(inheritedFrom)에서 상속",
+                                    "Inherited from \(inheritedFrom)"
+                                ))
+                                .font(.caption)
+                            }
+                        }
+                        .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button(role: .destructive) {
@@ -31,7 +46,13 @@ struct IgnoreRulesView: View {
                     } label: {
                         Label(appLanguage.text("제거", "Remove"), systemImage: "trash")
                     }
-                    .disabled(store.isWorking)
+                    .disabled(store.isWorking || rule.inheritedFrom != nil)
+                    .help(rule.inheritedFrom == nil
+                        ? appLanguage.text("이 규칙을 제거합니다.", "Remove this rule.")
+                        : appLanguage.text(
+                            "상속된 규칙은 속성을 설정한 상위 디렉터리에서 제거해야 합니다.",
+                            "Remove inherited rules from the parent directory that owns the property."
+                        ))
                 }
             }
             .overlay {
