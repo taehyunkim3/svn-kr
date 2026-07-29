@@ -52,7 +52,7 @@ import Testing
     #expect(!contentView.contains("Button(appLanguage.localized(\"ui.update.0f38eb76\"), systemImage:"))
 }
 
-@Test func updateAvailabilityAndProgressAppearOutsideTheActionButtonGroup() throws {
+@Test func updateAvailabilityUsesAButtonBadgeAndProgressStaysOutsideTheActionButtonGroup() throws {
     let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -64,16 +64,22 @@ import Testing
 
     let toolbarGroupEnd = try #require(contentView.range(of: """
                 .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
+                .accessibilityValue(
+"""))
+    let progressItem = try #require(contentView.range(of: """
             }
             ToolbarItem(placement: .navigation) {
 """))
-    let availability = try #require(contentView.range(of: "if store.isWorkingCopyOutOfDate == true"))
+    let availability = try #require(contentView.range(of: ".overlay(alignment: .topTrailing)"))
     let progress = try #require(contentView.range(of: "if store.showsGlobalProgress"))
 
-    #expect(toolbarGroupEnd.lowerBound < availability.lowerBound)
-    #expect(availability.lowerBound < progress.lowerBound)
+    #expect(availability.lowerBound < toolbarGroupEnd.lowerBound)
+    #expect(toolbarGroupEnd.lowerBound < progressItem.lowerBound)
+    #expect(progressItem.lowerBound < progress.lowerBound)
+    #expect(contentView.contains(".fill(.orange)"))
+    #expect(contentView.contains(".frame(width: 7, height: 7)"))
     #expect(!historyView.contains("if store.isWorkingCopyOutOfDate == true"))
-    #expect(projectBadges.contains("\"ui.update.required.9da93c25\""))
+    #expect(projectBadges.contains("\"ui.update.0f38eb76\""))
 }
 
 @Test func mainToolbarHidesItsTitleAndKeepsProjectActionsLeading() throws {

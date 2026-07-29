@@ -117,16 +117,23 @@ struct ContentView: View {
                         Text(appLanguage.localized("ui.update.0f38eb76"))
                     }
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
+                    .overlay(alignment: .topTrailing) {
+                        if store.isWorkingCopyOutOfDate == true {
+                            Circle()
+                                .fill(.orange)
+                                .frame(width: 7, height: 7)
+                                .offset(x: -2, y: 1)
+                                .accessibilityHidden(true)
+                        }
+                    }
                 }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
-            }
-            ToolbarItem(placement: .navigation) {
-                if store.isWorkingCopyOutOfDate == true {
-                    Text(appLanguage.localized("ui.update.required.9da93c25"))
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
+                .accessibilityValue(
+                    store.isWorkingCopyOutOfDate == true
+                        ? appLanguage.localized("ui.update.required.9da93c25")
+                        : ""
+                )
             }
             ToolbarItem(placement: .navigation) {
                 if store.showsGlobalProgress {
