@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.24 (2026-07-29)
+
+- Added an incoming-commit count badge to the Update toolbar action.
+- Marked incomplete or mixed-revision counts with a trailing plus sign.
+- Kept the update badge separate from its label and the global progress indicator.
+
 ## 0.5.20 (2026-07-28)
 
 - Prevented persistent automatic-refresh failures from reopening the same error dialog until the user explicitly retries.

@@ -115,9 +115,6 @@ struct ContentView: View {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.down.circle")
                         Text(appLanguage.localized("ui.update.0f38eb76"))
-                    }
-                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
-                    .overlay(alignment: .topTrailing) {
                         if let badgeText = store.incomingUpdateCommitBadgeText {
                             Text(badgeText)
                                 .font(.caption2.bold())
@@ -126,10 +123,11 @@ struct ContentView: View {
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(.red, in: Capsule())
-                                .offset(x: 3, y: -6)
+                                .offset(y: -6)
                                 .accessibilityHidden(true)
                         }
                     }
+                    .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
