@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var selectedProjectTab: ProjectTab = .changes
     @State private var fileSearchText = ""
     @State private var historySearchText = ""
+    @State private var projectPendingRemoval: SVNProject?
     private let onBrowseDemo: () -> Void
     private let onExitDemo: () -> Void
 
@@ -58,7 +59,7 @@ struct ContentView: View {
                     .frame(width: 30, height: 24)
                     .help(appLanguage.localized("ui.check.out.a.new.svn.repository.or.register.an.ex.2b1e2b00"))
 
-                    Button(action: store.removeSelectedProject) {
+                    Button(action: { projectPendingRemoval = store.selectedProject }) {
                         Image(systemName: "minus")
                             .frame(width: 14, height: 14)
                     }
@@ -126,6 +127,23 @@ struct ContentView: View {
                         .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
             }
+        }
+        .alert(
+            projectPendingRemoval.map {
+                appLanguage.localized("ui.remove.working.folder.from.app.confirmation.54d24642", $0.name)
+            } ?? "",
+            isPresented: .isPresenting($projectPendingRemoval),
+            presenting: projectPendingRemoval
+        ) { project in
+            Button(appLanguage.localized("ui.remove.d4be5a3e"), role: .destructive) {
+                store.removeProject(project.id)
+                projectPendingRemoval = nil
+            }
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                projectPendingRemoval = nil
+            }
+        } message: { _ in
+            Text(appLanguage.localized("ui.remove.the.selected.working.folder.from.the.app..ffe092ae"))
         }
         .task(id: store.selectedProjectID) {
             await store.refreshSelectedProject(manual: false)

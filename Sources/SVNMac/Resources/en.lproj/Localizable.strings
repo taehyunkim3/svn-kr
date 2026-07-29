@@ -241,6 +241,7 @@
 "ui.remove.d4be5a3e" = "Remove";
 "ui.remove.inherited.rules.from.the.parent.directory.7c2d3995" = "Remove inherited rules from the parent directory that owns the property.";
 "ui.remove.the.selected.working.folder.from.the.app..ffe092ae" = "Remove the selected working folder from the app. Local files are not deleted.";
+"ui.remove.working.folder.from.app.confirmation.54d24642" = "Remove '%1$@' from the app?";
 "ui.remove.this.rule.2908b9d1" = "Remove this rule.";
 "ui.removed.ignore.rule.bb8aeaf0" = "Removed ignore rule '%1$@'.";
 "ui.replace.with.the.server.file.your.local.edits.le.f08dec1d" = "Replace with the server file. Your local edits leave the working copy but remain in the backup folder.";

@@ -27,4 +27,16 @@ import Testing
         AppLanguage.english.localized("error.choose.missing.items", "Docs/missing.txt")
             == "Choose how to handle locally missing items first: Docs/missing.txt"
     )
+    #expect(
+        AppLanguage.korean.localized(
+            "ui.remove.working.folder.from.app.confirmation.54d24642",
+            "Atlas Mobile"
+        ) == "'Atlas Mobile' 등록을 해제할까요?"
+    )
+    #expect(
+        AppLanguage.english.localized(
+            "ui.remove.working.folder.from.app.confirmation.54d24642",
+            "Atlas Mobile"
+        ) == "Remove 'Atlas Mobile' from the app?"
+    )
 }

@@ -4132,6 +4132,23 @@
         }
       }
     },
+    "ui.remove.working.folder.from.app.confirmation.54d24642": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove '%1$@' from the app?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%1$@' 등록을 해제할까요?"
+          }
+        }
+      }
+    },
     "ui.remove.this.rule.2908b9d1": {
       "extractionState": "manual",
       "localizations": {

@@ -65,6 +65,24 @@ import Testing
     #expect(contentView.contains("ToolbarItemGroup(placement: .navigation)"))
 }
 
+@Test func sidebarRemovalRequiresConfirmationForTheCapturedProject() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+    let projectStore = try source(named: "ProjectStore.swift", in: sources)
+
+    #expect(contentView.contains("@State private var projectPendingRemoval: SVNProject?"))
+    #expect(contentView.contains("projectPendingRemoval = store.selectedProject"))
+    #expect(contentView.contains("isPresented: .isPresenting($projectPendingRemoval)"))
+    #expect(contentView.contains("store.removeProject(project.id)"))
+    #expect(contentView.contains("role: .destructive"))
+    #expect(!contentView.contains("Button(action: store.removeSelectedProject)"))
+    #expect(projectStore.contains("func removeProject(_ projectID: SVNProject.ID)"))
+}
+
 private func source(named name: String, in directory: URL) throws -> String {
     try String(contentsOf: directory.appendingPathComponent(name), encoding: .utf8)
 }

@@ -531,15 +531,15 @@ final class ProjectStore {
         }
     }
 
-    func removeSelectedProject() {
-        if let selectedProjectID {
-            sessionPasswords[selectedProjectID] = nil
-            try? credentialStore.deletePassword(for: selectedProjectID)
-            projectAccessManager.endAccessing(projectID: selectedProjectID)
-            projectSummaries[selectedProjectID] = nil
+    func removeProject(_ projectID: SVNProject.ID) {
+        sessionPasswords[projectID] = nil
+        try? credentialStore.deletePassword(for: projectID)
+        projectAccessManager.endAccessing(projectID: projectID)
+        projectSummaries[projectID] = nil
+        projects.removeAll { $0.id == projectID }
+        if selectedProjectID == projectID {
+            selectedProjectID = projects.first?.id
         }
-        projects.removeAll { $0.id == selectedProjectID }
-        selectedProjectID = projects.first?.id
     }
 
     // MARK: - SVN 작업

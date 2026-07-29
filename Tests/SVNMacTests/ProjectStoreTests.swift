@@ -30,6 +30,19 @@ import Testing
 }
 
 @MainActor
+@Test func removingCapturedProjectKeepsANewerSelection() {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/remove-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/remove-second")
+    let store = makeStore(projects: [first, second])
+    store.selectedProjectID = second.id
+
+    store.removeProject(first.id)
+
+    #expect(store.projects.map(\.id) == [second.id])
+    #expect(store.selectedProjectID == second.id)
+}
+
+@MainActor
 @Test func confirmRevertUsesCapturedRequestAfterPresentationStateClears() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/revert-race")
     let entry = SVNStatusEntry(path: "00 사업관리/보고서.hwp", item: .modified)
