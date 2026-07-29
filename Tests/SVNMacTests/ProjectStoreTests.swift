@@ -628,6 +628,39 @@ import Testing
 }
 
 @MainActor
+@Test func updateCommitBadgeCountsLoadedHistoryAndMarksLowerBounds() {
+    let store = makeStore(projects: [])
+    store.isWorkingCopyOutOfDate = true
+    store.workingCopyRevision = SVNWorkingCopyRevision(minimum: "10", maximum: "10")
+    store.logs = [
+        makeLog(revision: "14"),
+        makeLog(revision: "12"),
+        makeLog(revision: "10"),
+    ]
+
+    #expect(store.incomingUpdateCommitBadgeText == "2")
+
+    store.hasMoreHistory = true
+    store.logs = (11...60).reversed().map { makeLog(revision: String($0)) }
+    #expect(store.incomingUpdateCommitBadgeText == "50+")
+
+    store.hasMoreHistory = false
+    store.workingCopyRevision = SVNWorkingCopyRevision(minimum: "5", maximum: "10")
+    store.logs = [
+        makeLog(revision: "12"),
+        makeLog(revision: "11"),
+        makeLog(revision: "9"),
+    ]
+    #expect(store.incomingUpdateCommitBadgeText == "2+")
+
+    store.logs = [makeLog(revision: "9")]
+    #expect(store.incomingUpdateCommitBadgeText == "1+")
+
+    store.isWorkingCopyOutOfDate = false
+    #expect(store.incomingUpdateCommitBadgeText == nil)
+}
+
+@MainActor
 @Test func changingProjectClearsProjectSpecificViewState() {
     let first = SVNProject(name: "첫 번째", path: "/tmp/first")
     let second = SVNProject(name: "두 번째", path: "/tmp/second")

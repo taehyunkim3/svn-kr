@@ -214,6 +214,22 @@ final class ProjectStore {
         get { historyState.isWorkingCopyOutOfDate }
         set { historyState.isWorkingCopyOutOfDate = newValue }
     }
+    var incomingUpdateCommitBadgeText: String? {
+        guard isWorkingCopyOutOfDate == true,
+              let workingCopyRevision,
+              let localRevision = Int(workingCopyRevision.maximum) else {
+            return nil
+        }
+
+        let loadedRevisions = logs.compactMap { Int($0.revision) }
+        let loadedIncomingCount = loadedRevisions.count { $0 > localRevision }
+        let unloadedIncomingHistoryExists =
+            hasMoreHistory && loadedRevisions.min().map { $0 > localRevision } == true
+        let needsLowerBoundIndicator =
+            workingCopyRevision.isMixed || unloadedIncomingHistoryExists || loadedIncomingCount == 0
+        let displayedCount = max(loadedIncomingCount, 1)
+        return "\(displayedCount)\(needsLowerBoundIndicator ? "+" : "")"
+    }
     var fileHistory: [SVNLogEntry] {
         get { historyState.fileHistory }
         set { historyState.fileHistory = newValue }

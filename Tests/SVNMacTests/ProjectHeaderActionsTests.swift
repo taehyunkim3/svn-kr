@@ -76,8 +76,8 @@ import Testing
     #expect(availability.lowerBound < toolbarGroupEnd.lowerBound)
     #expect(toolbarGroupEnd.lowerBound < progressItem.lowerBound)
     #expect(progressItem.lowerBound < progress.lowerBound)
-    #expect(contentView.contains(".fill(.orange)"))
-    #expect(contentView.contains(".frame(width: 7, height: 7)"))
+    #expect(contentView.contains("if let badgeText = store.incomingUpdateCommitBadgeText"))
+    #expect(contentView.contains(".background(.red, in: Capsule())"))
     #expect(!historyView.contains("if store.isWorkingCopyOutOfDate == true"))
     #expect(projectBadges.contains("\"ui.update.0f38eb76\""))
 }

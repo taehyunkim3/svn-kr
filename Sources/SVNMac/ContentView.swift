@@ -118,11 +118,15 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                     .overlay(alignment: .topTrailing) {
-                        if store.isWorkingCopyOutOfDate == true {
-                            Circle()
-                                .fill(.orange)
-                                .frame(width: 7, height: 7)
-                                .offset(x: -2, y: 1)
+                        if let badgeText = store.incomingUpdateCommitBadgeText {
+                            Text(badgeText)
+                                .font(.caption2.bold())
+                                .monospacedDigit()
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(.red, in: Capsule())
+                                .offset(x: 3, y: -6)
                                 .accessibilityHidden(true)
                         }
                     }
