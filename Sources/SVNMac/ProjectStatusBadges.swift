@@ -18,7 +18,8 @@ struct ProjectStatusBadges: View {
                         .help(appLanguage.localized("ui.locked.files.457daf19", summary.lockCount))
                 }
                 if summary.needsUpdate {
-                    Label(appLanguage.localized("ui.update.0f38eb76"), systemImage: "arrow.down.circle.fill").foregroundStyle(.orange)
+                    Label(appLanguage.localized("ui.update.required.9da93c25"), systemImage: "arrow.down.circle.fill")
+                        .foregroundStyle(.orange)
                 }
             }
             .font(.caption2)

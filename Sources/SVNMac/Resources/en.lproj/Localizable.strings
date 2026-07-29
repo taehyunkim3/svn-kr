@@ -341,8 +341,8 @@
 "ui.up.to.date.cf368157" = "Up to date";
 "ui.update.0f38eb76" = "Update";
 "ui.update.preview.3e2a4411" = "Update Preview";
-"ui.update.required.9da93c25" = "Update required";
-"ui.update.required.f846039b" = "Update Required";
+"ui.update.required.9da93c25" = "Update available";
+"ui.update.required.f846039b" = "Update Available";
 "ui.us.eastern.time.9e917cad" = "US Eastern Time";
 "ui.us.pacific.time.5c9c3b6f" = "US Pacific Time";
 "ui.use.current.working.file.275f4c29" = "Use Current Working File";

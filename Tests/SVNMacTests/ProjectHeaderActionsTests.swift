@@ -52,6 +52,30 @@ import Testing
     #expect(!contentView.contains("Button(appLanguage.localized(\"ui.update.0f38eb76\"), systemImage:"))
 }
 
+@Test func updateAvailabilityAndProgressAppearOutsideTheActionButtonGroup() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+    let historyView = try source(named: "HistoryView.swift", in: sources)
+    let projectBadges = try source(named: "ProjectStatusBadges.swift", in: sources)
+
+    let toolbarGroupEnd = try #require(contentView.range(of: """
+                .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
+            }
+            ToolbarItem(placement: .navigation) {
+"""))
+    let availability = try #require(contentView.range(of: "if store.isWorkingCopyOutOfDate == true"))
+    let progress = try #require(contentView.range(of: "if store.showsGlobalProgress"))
+
+    #expect(toolbarGroupEnd.lowerBound < availability.lowerBound)
+    #expect(availability.lowerBound < progress.lowerBound)
+    #expect(!historyView.contains("if store.isWorkingCopyOutOfDate == true"))
+    #expect(projectBadges.contains("\"ui.update.required.9da93c25\""))
+}
+
 @Test func mainToolbarHidesItsTitleAndKeepsProjectActionsLeading() throws {
     let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

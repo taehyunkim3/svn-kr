@@ -52,9 +52,7 @@ struct HistoryView: View {
                         if workingCopyRevision.isMixed {
                             historyBadge(appLanguage.localized("ui.mixed.revisions.6faee919"), color: .gray)
                         }
-                        if store.isWorkingCopyOutOfDate == true {
-                            Text(appLanguage.localized("ui.update.required.9da93c25")).foregroundStyle(.orange)
-                        } else if store.isWorkingCopyOutOfDate == false {
+                        if store.isWorkingCopyOutOfDate == false {
                             Text(appLanguage.localized("ui.up.to.date.cf368157")).foregroundStyle(.green)
                         }
                     }

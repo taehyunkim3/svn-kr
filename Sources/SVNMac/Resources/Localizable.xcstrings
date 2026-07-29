@@ -5838,13 +5838,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update required"
+            "value": "Update available"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "업데이트 필요"
+            "value": "업데이트 있음"
           }
         }
       }
@@ -5855,13 +5855,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update Required"
+            "value": "Update Available"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "업데이트 필요"
+            "value": "업데이트 있음"
           }
         }
       }

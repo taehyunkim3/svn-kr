@@ -120,6 +120,15 @@ struct ContentView: View {
                 }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
+            }
+            ToolbarItem(placement: .navigation) {
+                if store.isWorkingCopyOutOfDate == true {
+                    Text(appLanguage.localized("ui.update.required.9da93c25"))
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+            ToolbarItem(placement: .navigation) {
                 if store.showsGlobalProgress {
                     ProgressView()
                         .controlSize(.small)
