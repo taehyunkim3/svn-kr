@@ -92,6 +92,7 @@
 "ui.commit.selected.29bc2086" = "Commit Selected";
 "ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8" = "Commit the selected files to the SVN server with the entered message.";
 "ui.commit.time.unavailable.59140fc5" = "Commit time unavailable";
+"ui.commit.without.a.message.6f0f2d41" = "Commit without a message?";
 "ui.committing.0e8ec0f4" = "Committing…";
 "ui.compare.git.rules.2220d6b1" = "Compare Git Rules";
 "ui.configure.the.svn.account.and.keychain.password..daa54ac3" = "Configure the SVN account and Keychain password for this local working folder.";
@@ -195,6 +196,7 @@
 "ui.need.help.bf7256df" = "Need help?";
 "ui.new.479ccc40" = "New";
 "ui.new.working.folder.5db27c9c" = "New Working Folder";
+"ui.no.bafd7322" = "No";
 "ui.no.changed.files.27bf2bab" = "No Changed Files";
 "ui.no.changes.ea917fd6" = "No Changes";
 "ui.no.commit.history.a78ed291" = "No Commit History";
@@ -295,6 +297,7 @@
 "ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae" = "The bundled SVN executable could not be found. Reinstall the app.";
 "ui.the.commit.completed.but.working.copy.validation.e58fd53c" = "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: %1$@";
 "ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4" = "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n%1$@";
+"ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05" = "The commit will be recorded with an empty message.";
 "ui.the.conflict.remains.after.the.svn.command.revie.2162b675" = "The conflict remains after the SVN command. Review the backups and try again.";
 "ui.the.conflict.was.resolved.review.the.file.before.7821924b" = "The conflict was resolved. Review the file before committing.";
 "ui.the.current.working.file.could.not.be.found.60c92e05" = "The current working file could not be found.";
@@ -363,6 +366,7 @@
 "ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51" = "View the locked files and their count in this repository.";
 "ui.view.the.original.message.before.restoration.6a5e3b2b" = "View the original message before restoration";
 "ui.when.you.choose.a.version.the.current.working.fi.70533c5a" = "When you choose a version, the current working file is preserved separately as a hidden recovery copy.";
+"ui.yes.93cba074" = "Yes";
 "ui.you.re.using.the.latest.version.18d5624c" = "You're using the latest version (%1$@).";
 "ui.your.file.version.could.not.be.found.576883d5" = "Your file version could not be found.";
 "ui.your.file.version.must.be.a.regular.file.not.a.s.0ea5ff6f" = "Your file version must be a regular file, not a symbolic link.";

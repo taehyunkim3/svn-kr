@@ -92,6 +92,7 @@
 "ui.commit.selected.29bc2086" = "선택 항목 커밋";
 "ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8" = "선택한 파일을 입력한 메시지로 SVN 서버에 커밋합니다.";
 "ui.commit.time.unavailable.59140fc5" = "커밋 시각 없음";
+"ui.commit.without.a.message.6f0f2d41" = "커밋 메시지 없이 커밋할까요?";
 "ui.committing.0e8ec0f4" = "커밋 중…";
 "ui.compare.git.rules.2220d6b1" = "Git 규칙과 비교";
 "ui.configure.the.svn.account.and.keychain.password..daa54ac3" = "이 로컬 작업 폴더에서 사용할 SVN 계정과 Keychain 비밀번호를 설정합니다.";
@@ -195,6 +196,7 @@
 "ui.need.help.bf7256df" = "문의 사항이 있으신가요?";
 "ui.new.479ccc40" = "신규";
 "ui.new.working.folder.5db27c9c" = "새 작업 폴더";
+"ui.no.bafd7322" = "아니오";
 "ui.no.changed.files.27bf2bab" = "변경 파일 없음";
 "ui.no.changes.ea917fd6" = "변경 사항 없음";
 "ui.no.commit.history.a78ed291" = "커밋 기록 없음";
@@ -295,6 +297,7 @@
 "ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae" = "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요.";
 "ui.the.commit.completed.but.working.copy.validation.e58fd53c" = "커밋은 완료되었지만 작업 폴더 검증에 실패했습니다. 다시 커밋하지 말고 새로고침 결과를 확인하세요: %1$@";
 "ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4" = "서버에서 먼저 변경된 항목이 있어 커밋할 수 없습니다. 작업 폴더를 업데이트하고 충돌이 있으면 해결한 뒤 다시 커밋하세요.\n\n%1$@";
+"ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05" = "빈 메시지로 커밋이 기록됩니다.";
 "ui.the.conflict.remains.after.the.svn.command.revie.2162b675" = "SVN 명령 이후에도 충돌 상태가 남아 있습니다. 백업을 확인한 뒤 다시 시도하세요.";
 "ui.the.conflict.was.resolved.review.the.file.before.7821924b" = "충돌을 해결했습니다. 파일을 확인한 뒤 커밋하세요.";
 "ui.the.current.working.file.could.not.be.found.60c92e05" = "현재 작업 파일을 찾을 수 없습니다.";
@@ -363,6 +366,7 @@
 "ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51" = "현재 저장소에서 잠긴 파일 목록과 개수를 확인합니다.";
 "ui.view.the.original.message.before.restoration.6a5e3b2b" = "복원 전 원문 보기";
 "ui.when.you.choose.a.version.the.current.working.fi.70533c5a" = "버전을 선택하는 순간의 현재 작업 파일은 별도의 숨김 복구본으로 보존됩니다.";
+"ui.yes.93cba074" = "예";
 "ui.you.re.using.the.latest.version.18d5624c" = "최신 버전(%1$@)을 사용 중입니다.";
 "ui.your.file.version.could.not.be.found.576883d5" = "내 파일 버전을 찾을 수 없습니다.";
 "ui.your.file.version.must.be.a.regular.file.not.a.s.0ea5ff6f" = "내 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.";

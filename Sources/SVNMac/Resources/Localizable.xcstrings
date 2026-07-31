@@ -1599,6 +1599,23 @@
         }
       }
     },
+    "ui.commit.without.a.message.6f0f2d41": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit without a message?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 메시지 없이 커밋할까요?"
+          }
+        }
+      }
+    },
     "ui.committing.0e8ec0f4": {
       "extractionState": "manual",
       "localizations": {
@@ -3350,6 +3367,23 @@
         }
       }
     },
+    "ui.no.bafd7322": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아니오"
+          }
+        }
+      }
+    },
     "ui.no.changed.files.27bf2bab": {
       "extractionState": "manual",
       "localizations": {
@@ -5050,6 +5084,23 @@
         }
       }
     },
+    "ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit will be recorded with an empty message."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빈 메시지로 커밋이 기록됩니다."
+          }
+        }
+      }
+    },
     "ui.the.conflict.remains.after.the.svn.command.revie.2162b675": {
       "extractionState": "manual",
       "localizations": {
@@ -6202,6 +6253,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "버전을 선택하는 순간의 현재 작업 파일은 별도의 숨김 복구본으로 보존됩니다."
+          }
+        }
+      }
+    },
+    "ui.yes.93cba074": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예"
           }
         }
       }

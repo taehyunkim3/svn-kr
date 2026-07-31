@@ -5,6 +5,7 @@ struct CommitControlsView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @State private var commitMessage = ""
+    @State private var isConfirmingEmptyMessageCommit = false
     @FocusState private var isCommitMessageFocused: Bool
 
     var body: some View {
@@ -40,7 +41,6 @@ struct CommitControlsView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(
                     !store.canCommitSelectedPaths
-                        || commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         || store.isSelectedProjectActionBlocked
                 )
                 .help(appLanguage.localized("ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8"))
@@ -54,11 +54,25 @@ struct CommitControlsView: View {
             isCommitMessageFocused = false
             store.lastCompletedCommitMessage = nil
         }
+        .alert(
+            appLanguage.localized("ui.commit.without.a.message.6f0f2d41"),
+            isPresented: $isConfirmingEmptyMessageCommit
+        ) {
+            Button(appLanguage.localized("ui.yes.93cba074")) {
+                Task { _ = await store.commit(message: "") }
+            }
+            Button(appLanguage.localized("ui.no.bafd7322"), role: .cancel) {}
+        } message: {
+            Text(appLanguage.localized("ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05"))
+        }
     }
 
     private func submitCommit() {
         let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
+        guard !message.isEmpty else {
+            isConfirmingEmptyMessageCommit = true
+            return
+        }
         Task { _ = await store.commit(message: message) }
     }
 
