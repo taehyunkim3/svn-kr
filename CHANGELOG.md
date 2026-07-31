@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.5.25 (2026-07-31)
+
+- Allowed committing without a message after an explicit confirmation prompt.
+- Kept the commit button enabled for an empty message and applied the same confirmation to button and Return submissions.
+- Preserved the entered text and the selected files when the confirmation is declined.
+
 ## 0.5.24 (2026-07-29)
 
 - Added an incoming-commit count badge to the Update toolbar action.
