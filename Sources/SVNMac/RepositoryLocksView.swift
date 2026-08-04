@@ -13,7 +13,15 @@ struct RepositoryLocksView: View {
             HStack {
                 Text(appLanguage.localized("ui.repository.locks.dff91f03")).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized("ui.refresh.0aca6bd2")) { Task { await store.loadRepositoryLocks() } }
+                Button {
+                    Task { await store.loadRepositoryLocks() }
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.refresh.0aca6bd2"),
+                        isInProgress: store.isLoadingSelectedProjectLocks
+                    )
+                }
+                .disabled(store.isLoadingSelectedProjectLocks)
                 Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
@@ -46,8 +54,13 @@ struct RepositoryLocksView: View {
                     .font(.caption)
                     Spacer()
                     if lock.owner == store.selectedProject?.username {
-                        Button(appLanguage.localized("ui.release.my.lock.1b0c3150")) {
+                        Button {
                             Task { await store.unlock(lock) }
+                        } label: {
+                            ActionProgressLabel(
+                                title: appLanguage.localized("ui.release.my.lock.1b0c3150"),
+                                isInProgress: store.isLoadingSelectedProjectLocks
+                            )
                         }
                         .disabled(store.isSelectedProjectActionBlocked)
                     }

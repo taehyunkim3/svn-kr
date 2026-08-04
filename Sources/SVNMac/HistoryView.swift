@@ -99,10 +99,16 @@ struct HistoryView: View {
             if searchText.isEmpty, !store.logs.isEmpty, store.hasMoreHistory {
                 HStack {
                     Spacer()
-                    Button(appLanguage.localized("ui.load.50.more.043526e4")) {
+                    Button {
                         Task { await store.loadMoreHistory() }
+                    } label: {
+                        ActionProgressLabel(
+                            title: appLanguage.localized("ui.load.50.more.043526e4"),
+                            inProgressTitle: appLanguage.localized("ui.loading.b0a3fd42"),
+                            isInProgress: store.isLoadingMoreHistory
+                        )
                     }
-                    .disabled(store.isSelectedProjectActionBlocked)
+                    .disabled(store.isSelectedProjectActionBlocked || store.isLoadingMoreHistory)
                     Spacer()
                 }
                 .padding(.vertical, 8)

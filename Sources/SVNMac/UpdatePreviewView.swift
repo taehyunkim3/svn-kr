@@ -42,9 +42,17 @@ struct UpdatePreviewView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 if !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true {
-                    Button(appLanguage.localized("ui.run.update.e17c8217")) { Task { await store.update() } }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(store.isUpdatingSelectedProject)
+                    Button {
+                        Task { await store.update() }
+                    } label: {
+                        ActionProgressLabel(
+                            title: appLanguage.localized("ui.run.update.e17c8217"),
+                            inProgressTitle: appLanguage.localized("ui.updating.4d2f9a11"),
+                            isInProgress: store.isUpdatingSelectedProject
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.isUpdatingSelectedProject)
                 }
             }
             .padding()

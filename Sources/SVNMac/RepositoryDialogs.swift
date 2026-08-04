@@ -117,6 +117,7 @@ struct AddRepositoryView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var allowsUntrustedServerCertificate = false
+    @State private var isConfirmingCheckoutCancellation = false
     private let onBrowseDemo: () -> Void
 
     init(onBrowseDemo: @escaping () -> Void = {}) {
@@ -194,10 +195,10 @@ struct AddRepositoryView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    if store.isWorking {
+                    if store.isCheckingOut {
                         ProgressView().controlSize(.small)
                     }
-                    Text(store.isWorking
+                    Text(store.isCheckingOut
                         ? appLanguage.localized("ui.checking.out.3944eb2e")
                         : appLanguage.localized("ui.checkout.progress.log.ba2c92de"))
                         .font(.caption)
@@ -249,19 +250,21 @@ struct AddRepositoryView: View {
                     dismiss()
                     store.showFolderPicker()
                 }
+                .disabled(store.isCheckingOut)
                 .help(appLanguage.localized("ui.register.an.existing.svn.working.folder.in.the.a.361385a1"))
                 Spacer()
                 Button(appLanguage.localized("ui.browse.sample.project.9ad211da")) {
                     dismiss()
                     onBrowseDemo()
                 }
+                .disabled(store.isCheckingOut)
                 .help(appLanguage.localized("ui.explore.the.main.features.with.sample.data.and.n.fd16edf5"))
-                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { dismiss() }
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { requestCancellation() }
                     .keyboardShortcut(.cancelAction)
                     .help(appLanguage.localized("ui.cancel.adding.the.repository.and.close.this.wind.113063d1"))
-                Button(appLanguage.localized("ui.check.out.and.add.ec5e3d09")) {
+                Button {
                     Task {
-                        if await store.checkout(
+                        if await store.startCheckout(
                             repositoryURL: repositoryURL,
                             destinationURL: destinationURL,
                             username: username,
@@ -271,6 +274,12 @@ struct AddRepositoryView: View {
                             dismiss()
                         }
                     }
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.check.out.and.add.ec5e3d09"),
+                        inProgressTitle: appLanguage.localized("ui.checking.out.3944eb2e"),
+                        isInProgress: store.isCheckingOut
+                    )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
@@ -280,6 +289,30 @@ struct AddRepositoryView: View {
         }
         .padding(24)
         .appSheetFrame(minimumSize: AppLayout.addRepositorySheetMinimumSize)
+        // 체크아웃 도중 시트가 그냥 닫히면 svn 프로세스만 백그라운드에 남습니다.
+        // 닫는 경로를 취소 확인 한곳으로 모읍니다.
+        .interactiveDismissDisabled(store.isCheckingOut)
+        .alert(
+            appLanguage.localized("ui.stop.the.checkout.in.progress.5d0c9b71"),
+            isPresented: $isConfirmingCheckoutCancellation
+        ) {
+            Button(appLanguage.localized("ui.stop.checkout.b0f4e2a7"), role: .destructive) {
+                store.cancelCheckout()
+                dismiss()
+            }
+            Button(appLanguage.localized("ui.keep.downloading.3c1de80f"), role: .cancel) {}
+        } message: {
+            Text(appLanguage.localized("ui.the.running.svn.checkout.will.be.stopped.already.4b7d5a19"))
+        }
+    }
+
+    /// 체크아웃이 도는 중이면 되돌리기 어려운 결정이므로 한 번 더 확인합니다.
+    private func requestCancellation() {
+        guard store.isCheckingOut else {
+            dismiss()
+            return
+        }
+        isConfirmingCheckoutCancellation = true
     }
 
     private func chooseDestination() {
@@ -294,7 +327,7 @@ struct AddRepositoryView: View {
     }
 }
 
-/// 프로젝트별 SVN 사용자명, Keychain 비밀번호, 인증서 예외를 관리합니다.
+/// 프로젝트별 로컬 폴더 위치, SVN 사용자명, Keychain 비밀번호, 인증서 예외를 관리합니다.
 struct CredentialsView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -304,6 +337,7 @@ struct CredentialsView: View {
     @State private var newPassword = ""
     @State private var hasSavedPassword: Bool
     @State private var allowsUntrustedServerCertificate: Bool
+    @State private var relocatedURL: URL?
 
     init(project: SVNProject) {
         self.project = project
@@ -316,9 +350,37 @@ struct CredentialsView: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.localized("ui.folder.credentials.b4bd68eb")).font(.title2.bold())
+                Text(appLanguage.localized("ui.folder.settings.6f2a0d43")).font(.title2.bold())
                 Text(project.name).foregroundStyle(.secondary)
-                Text(project.path).font(.caption).foregroundStyle(.tertiary).textSelection(.enabled)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text(appLanguage.localized("ui.local.folder.63f176e1"))
+                    HStack {
+                        TextField(
+                            "",
+                            text: Binding(
+                                get: { pendingPath },
+                                set: { _ in }
+                            )
+                        )
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(true)
+                        Button(appLanguage.localized("ui.change.7c3aa7d1")) { chooseWorkingFolder() }
+                            .disabled(store.isRelocatingProject)
+                            .help(appLanguage.localized("ui.pick.the.new.location.of.this.svn.working.folder.0c58fa9e"))
+                    }
+                }
+            }
+
+            if pendingPath != project.path {
+                Label(
+                    appLanguage.localized("ui.the.new.folder.is.applied.when.you.save.2b70a1cd"),
+                    systemImage: "arrow.triangle.swap"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             CredentialFieldsGrid(
@@ -358,27 +420,59 @@ struct CredentialsView: View {
                 Spacer()
                 Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .disabled(store.isRelocatingProject)
                     .help(appLanguage.localized("ui.close.without.saving.credential.changes.97c00986"))
-                Button(appLanguage.localized("ui.save.7c93b7e1")) {
-                    if store.saveCredentials(
-                        for: project.id,
-                        username: username,
-                        newPassword: newPassword,
-                        allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
-                    ) {
-                        dismiss()
-                        Task { await store.refresh() }
-                    }
+                Button(action: save) {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.save.7c93b7e1"),
+                        inProgressTitle: appLanguage.localized("ui.saving.6a1b2f0c"),
+                        isInProgress: store.isRelocatingProject
+                    )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .help(appLanguage.localized("ui.save.the.svn.username.and.new.password.for.this..72748974"))
+                .disabled(store.isRelocatingProject)
+                .help(appLanguage.localized("ui.save.the.working.folder.location.svn.username.an.4f0a7c19"))
             }
         }
         .padding(24)
         .frame(width: AppLayout.credentialsSheetWidth)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+
+    private var pendingPath: String {
+        relocatedURL?.path ?? project.path
+    }
+
+    private func chooseWorkingFolder() {
+        let panel = NSOpenPanel()
+        panel.title = appLanguage.localized("ui.choose.svn.local.working.folders.6d104bc9")
+        panel.prompt = appLanguage.localized("ui.choose.0a13aec8")
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: project.path, isDirectory: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        relocatedURL = url.standardizedFileURL
+    }
+
+    /// 폴더 이동과 자격 증명 변경을 한 번의 저장으로 처리합니다.
+    /// 폴더 검증이 실패하면 자격 증명도 바꾸지 않아 화면과 저장 상태가 어긋나지 않습니다.
+    private func save() {
+        Task {
+            if let relocatedURL, relocatedURL.path != project.path {
+                guard await store.relocateProject(project.id, to: relocatedURL) else { return }
+            }
+            guard store.saveCredentials(
+                for: project.id,
+                username: username,
+                newPassword: newPassword,
+                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+            ) else { return }
+            dismiss()
+            await store.refresh()
+        }
     }
 }
 

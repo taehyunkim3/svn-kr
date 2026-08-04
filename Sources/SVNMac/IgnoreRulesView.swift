@@ -61,8 +61,14 @@ struct IgnoreRulesView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
-                Button(appLanguage.localized("ui.apply.selected.rules.f6bb01fa")) {
+                Button {
                     store.requestApplyGitIgnoreSelection()
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.apply.selected.rules.f6bb01fa"),
+                        inProgressTitle: appLanguage.localized("ui.applying.8c4d1e05"),
+                        isInProgress: store.isIgnoringSelectedProject
+                    )
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
@@ -112,7 +118,11 @@ struct IgnoreRulesView: View {
             Button(role: .destructive) {
                 Task { await store.removeIgnoreRule(rule) }
             } label: {
-                Label(appLanguage.localized("ui.remove.d4be5a3e"), systemImage: "trash")
+                ActionProgressLabel(
+                    title: appLanguage.localized("ui.remove.d4be5a3e"),
+                    systemImage: "trash",
+                    isInProgress: store.isIgnoringSelectedProject
+                )
             }
             .disabled(store.isSelectedProjectActionBlocked || rule.inheritedFrom != nil)
             .help(rule.inheritedFrom == nil
@@ -123,8 +133,14 @@ struct IgnoreRulesView: View {
 
     private var gitImportControls: some View {
         HStack {
-            Button(appLanguage.localized("ui.compare.git.rules.2220d6b1"), systemImage: "arrow.triangle.2.circlepath") {
+            Button {
                 Task { await store.compareGitIgnore() }
+            } label: {
+                ActionProgressLabel(
+                    title: appLanguage.localized("ui.compare.git.rules.2220d6b1"),
+                    systemImage: "arrow.triangle.2.circlepath",
+                    isInProgress: store.isIgnoringSelectedProject
+                )
             }
             .disabled(store.isSelectedProjectActionBlocked)
             if let comparedAt = store.gitIgnoreLastComparedAt {

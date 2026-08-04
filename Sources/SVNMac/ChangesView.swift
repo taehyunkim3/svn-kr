@@ -210,8 +210,13 @@ struct ChangesView: View {
                 .foregroundStyle(.secondary)
             if collision.id == store.pathCollisions.first?.id {
                 if store.canRepairCanonicalAliases {
-                    Button(appLanguage.localized("ui.clean.up.equivalent.path.11fce14e")) {
+                    Button {
                         Task { await store.repairCanonicalAliases() }
+                    } label: {
+                        ActionProgressLabel(
+                            title: appLanguage.localized("ui.clean.up.equivalent.path.11fce14e"),
+                            isInProgress: store.isRecoveringSelectedProject
+                        )
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 } else {
@@ -234,11 +239,14 @@ struct ChangesView: View {
             .font(.caption)
             let missingEntries = store.statuses.filter(\.canScheduleRepositoryDeletion)
             if missingEntries.count > 1 {
-                Button(
-                    appLanguage.localized("ui.delete.missing.items.ab0ea8fc", missingEntries.count),
-                    systemImage: "trash"
-                ) {
+                Button {
                     store.requestDeletion(missingEntries)
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.delete.missing.items.ab0ea8fc", missingEntries.count),
+                        systemImage: "trash",
+                        isInProgress: store.isDeletingSelectedProject
+                    )
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
             }

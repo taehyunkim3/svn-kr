@@ -264,6 +264,9 @@ final class ProjectStore {
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var checkoutLogSessionID = UUID()
+    /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
+    /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
+    private var checkoutTask: Task<Bool, Never>?
 
     var selectedProject: SVNProject? {
         projects.first { $0.id == selectedProjectID }
@@ -289,6 +292,37 @@ final class ProjectStore {
 
     var isLoadingSelectedProjectLocks: Bool {
         operationIsActive { .lock($0) }
+    }
+
+    var isCheckingOut: Bool {
+        activeOperations.contains { $0.kind == .checkout }
+    }
+
+    var isLoadingMoreHistory: Bool {
+        operationIsActive { .loadMoreHistory($0) }
+    }
+
+    var isIgnoringSelectedProject: Bool {
+        operationIsActive { .ignore($0) }
+    }
+
+    var isDeletingSelectedProject: Bool {
+        operationIsActive { .delete($0) }
+    }
+
+    var isRevertingSelectedProject: Bool {
+        operationIsActive { .revert($0) }
+    }
+
+    var isRecoveringSelectedProject: Bool {
+        operationIsActive { .recover($0) }
+    }
+
+    var isRelocatingProject: Bool {
+        activeOperations.contains { operation in
+            if case .relocate = operation.kind { return true }
+            return false
+        }
     }
 
     var isLoadingSelectedFileHistory: Bool {
@@ -434,6 +468,39 @@ final class ProjectStore {
         for url in panel.urls { addProject(url) }
     }
 
+    /// 체크아웃을 취소 가능한 Task로 감싸 실행합니다.
+    /// 화면은 이 함수만 호출하고, 취소는 `cancelCheckout`으로 요청합니다.
+    func startCheckout(
+        repositoryURL: String,
+        destinationURL: URL?,
+        username: String,
+        password: String,
+        allowsUntrustedServerCertificate: Bool
+    ) async -> Bool {
+        checkoutTask?.cancel()
+        let task = Task { [weak self] in
+            await self?.checkout(
+                repositoryURL: repositoryURL,
+                destinationURL: destinationURL,
+                username: username,
+                password: password,
+                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+            ) ?? false
+        }
+        checkoutTask = task
+        let didComplete = await task.value
+        if checkoutTask == task { checkoutTask = nil }
+        return didComplete
+    }
+
+    /// 진행 중인 체크아웃을 실제로 중단합니다. Task 취소가 `SVNClient`의
+    /// 취소 처리기까지 전달되어 실행 중인 svn 프로세스를 종료시킵니다.
+    func cancelCheckout() {
+        guard let checkoutTask else { return }
+        checkoutTask.cancel()
+        self.checkoutTask = nil
+    }
+
     func checkout(
         repositoryURL: String,
         destinationURL: URL?,
@@ -491,6 +558,16 @@ final class ProjectStore {
         } catch {
             checkoutLog = progressBuffer.output
             projectAccessManager.endAccessing(url: destinationURL.standardizedFileURL)
+            // 사용자가 직접 멈춘 작업은 실패가 아니므로 오류 대화상자를 띄우지 않습니다.
+            // 다만 이미 내려받은 파일은 디스크에 남으므로 대상 폴더를 함께 알립니다.
+            if error is CancellationError || Task.isCancelled {
+                errorMessage = nil
+                notice = AppLanguage.current.localized(
+                    "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58",
+                    destinationPath
+                )
+                return false
+            }
             errorMessage = localizedError(error)
             return false
         }
@@ -544,6 +621,53 @@ final class ProjectStore {
                 projectAccessManager.endAccessing(projectID: projectID)
                 errorMessage = localizedError(error)
             }
+        }
+    }
+
+    /// 이미 등록한 프로젝트의 로컬 폴더 위치를 바꿉니다.
+    ///
+    /// Finder에서 작업 폴더를 옮겼을 때 프로젝트를 지우고 다시 추가하면 Keychain
+    /// 비밀번호와 프로젝트 식별자가 함께 사라집니다. 같은 식별자를 유지한 채
+    /// 경로와 보안 범위 bookmark만 교체해 자격 증명을 보존합니다.
+    func relocateProject(_ projectID: SVNProject.ID, to destinationURL: URL) async -> Bool {
+        guard let currentIndex = projects.firstIndex(where: { $0.id == projectID }) else { return false }
+        let destination = destinationURL.standardizedFileURL
+        let destinationPath = destination.path
+        let previousPath = projects[currentIndex].path
+        guard destinationPath != previousPath else { return true }
+        guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
+            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            return false
+        }
+
+        errorMessage = nil
+        let operationID = beginOperation(.relocate(projectID))
+        defer { endOperation(operationID) }
+
+        let previousURL = URL(fileURLWithPath: previousPath, isDirectory: true)
+        do {
+            let bookmarkData = try projectAccessManager.makeBookmark(for: destination)
+            // 한 프로젝트는 한 폴더에만 접근 권한을 가지므로 새 폴더를 열기 전에
+            // 이전 폴더 권한을 먼저 반납합니다.
+            projectAccessManager.endAccessing(projectID: projectID)
+            projectAccessManager.beginAccessing(destination, for: projectID)
+            try await client.validateWorkingCopy(at: destinationPath, credentials: nil)
+            guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return false }
+            projects[index].path = destinationPath
+            projects[index].name = destination.lastPathComponent
+            projects[index].bookmarkData = bookmarkData
+            notice = AppLanguage.current.localized(
+                "ui.the.working.folder.was.changed.to.9c6f01b2",
+                destinationPath
+            )
+            if selectedProjectID == projectID { await refresh() }
+            return true
+        } catch {
+            // 검증에 실패하면 등록 정보를 바꾸지 않고 이전 폴더 접근 권한을 복구합니다.
+            projectAccessManager.endAccessing(projectID: projectID)
+            projectAccessManager.beginAccessing(previousURL, for: projectID)
+            errorMessage = localizedError(error)
+            return false
         }
     }
 

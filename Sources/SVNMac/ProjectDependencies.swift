@@ -186,6 +186,7 @@ struct ProjectOperation: Identifiable, Equatable {
     enum Kind: Equatable {
         case checkout
         case registerProject
+        case relocate(SVNProject.ID)
         case refresh(SVNProject.ID)
         case refreshLocal(SVNProject.ID)
         case refreshHistory(SVNProject.ID)

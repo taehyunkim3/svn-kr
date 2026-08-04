@@ -111,8 +111,14 @@ struct ConflictResolutionView: View {
                 .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
-                    Button(appLanguage.localized("ui.use.current.working.file.275f4c29")) {
+                    Button {
                         pendingChoice = .working
+                    } label: {
+                        ActionProgressLabel(
+                            title: appLanguage.localized("ui.use.current.working.file.275f4c29"),
+                            inProgressTitle: appLanguage.localized("ui.resolving.d5e0b71c"),
+                            isInProgress: store.isResolvingConflict
+                        )
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(store.isResolvingConflict)
@@ -148,8 +154,14 @@ struct ConflictResolutionView: View {
                     }
                     .disabled(store.isResolvingConflict)
                     Spacer()
-                    Button(useTitle) {
+                    Button {
                         pendingChoice = choice
+                    } label: {
+                        ActionProgressLabel(
+                            title: useTitle,
+                            inProgressTitle: appLanguage.localized("ui.resolving.d5e0b71c"),
+                            isInProgress: store.isResolvingConflict
+                        )
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(store.isResolvingConflict)

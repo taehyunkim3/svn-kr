@@ -1379,6 +1379,108 @@ import Testing
 }
 
 @MainActor
+@Test func cancelingCheckoutStopsTheRunAndLeavesNoProjectRegistered() async {
+    let client = StubSVNClient(checkoutRunsUntilCancelled: true)
+    let accessManager = StubProjectAccessManager()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: accessManager,
+        projectPathChecker: StubProjectPathChecker()
+    )
+    let destination = URL(fileURLWithPath: "/tmp/canceled-checkout", isDirectory: true)
+
+    let checkout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationURL: destination,
+            username: "",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await waitUntilCheckoutStarts(client)
+    store.cancelCheckout()
+    let succeeded = await checkout.value
+
+    #expect(!succeeded)
+    #expect(store.projects.isEmpty)
+    #expect(!store.isCheckingOut)
+    // 사용자가 직접 멈춘 작업이므로 오류가 아니라 남은 파일 위치 안내만 남깁니다.
+    #expect(store.errorMessage == nil)
+    #expect(store.notice?.contains(destination.path) == true)
+    #expect(accessManager.releasedURLs.contains(destination))
+}
+
+@MainActor
+@Test func relocatingProjectKeepsIdentityAndCredentialsWhileMovingTheFolder() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old-location", username: "tester")
+    let client = StubSVNClient()
+    let accessManager = StubProjectAccessManager()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: accessManager,
+        projectPathChecker: StubProjectPathChecker()
+    )
+    let destination = URL(fileURLWithPath: "/tmp/new-location", isDirectory: true)
+
+    let relocated = await store.relocateProject(project.id, to: destination)
+
+    #expect(relocated)
+    #expect(store.projects.count == 1)
+    #expect(store.projects.first?.id == project.id)
+    #expect(store.projects.first?.path == destination.path)
+    #expect(store.projects.first?.name == "new-location")
+    #expect(store.projects.first?.username == "tester")
+    #expect(await client.recordedValidatedPaths() == [destination.path])
+    #expect(accessManager.accessedURLs[project.id] == destination)
+}
+
+@MainActor
+@Test func relocatingToAFolderRegisteredByAnotherProjectIsRejected() async {
+    let first = SVNProject(name: "첫 폴더", path: "/tmp/first-location")
+    let second = SVNProject(name: "둘째 폴더", path: "/tmp/second-location")
+    let store = makeStore(projects: [first, second])
+
+    let relocated = await store.relocateProject(
+        first.id,
+        to: URL(fileURLWithPath: second.path, isDirectory: true)
+    )
+
+    #expect(!relocated)
+    #expect(store.projects.first?.path == first.path)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func failedWorkingCopyValidationKeepsTheOriginalFolderRegistration() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/original-location")
+    let client = StubSVNClient(validateWorkingCopyError: SVNError.invalidWorkingCopy)
+    let accessManager = StubProjectAccessManager()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: accessManager,
+        projectPathChecker: StubProjectPathChecker()
+    )
+
+    let relocated = await store.relocateProject(
+        project.id,
+        to: URL(fileURLWithPath: "/tmp/not-a-working-copy", isDirectory: true)
+    )
+
+    #expect(!relocated)
+    #expect(store.projects.first?.path == project.path)
+    #expect(store.errorMessage != nil)
+    // 검증에 실패하면 이전 폴더 접근 권한을 되돌려 다음 새로고침이 계속 동작해야 합니다.
+    #expect(accessManager.accessedURLs[project.id] == URL(fileURLWithPath: project.path, isDirectory: true))
+}
+
+@MainActor
 @Test func recoveryRegistersSideBySideProjectAndKeepsSource() async {
     let source = SVNProject(
         name: "손상 작업본",
@@ -1684,6 +1786,15 @@ private func waitForConflictDetailsRequest(_ client: StubSVNClient, path: String
     Issue.record("충돌 상세 요청이 시작되지 않았습니다: \(path)")
 }
 
+private func waitUntilCheckoutStarts(_ client: StubSVNClient) async {
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
+        if await client.hasStartedCheckout() { return }
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+    Issue.record("체크아웃이 시작되지 않았습니다.")
+}
+
 private func waitForResolveRequest(_ client: StubSVNClient) async {
     let deadline = ContinuousClock.now + .seconds(10)
     while ContinuousClock.now < deadline {
@@ -1800,6 +1911,10 @@ private actor StubSVNClient: SVNClientServing {
     let fileLogsByPath: [String: [SVNLogEntry]]
     let checkoutResult: String
     let checkoutProgress: [String]
+    let checkoutRunsUntilCancelled: Bool
+    let validateWorkingCopyError: Error?
+    private var checkoutStarted = false
+    private var validatedPaths: [String] = []
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
     let snapshotError: Error?
@@ -1848,6 +1963,8 @@ private actor StubSVNClient: SVNClientServing {
         fileLogsByPath: [String: [SVNLogEntry]] = [:],
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
+        checkoutRunsUntilCancelled: Bool = false,
+        validateWorkingCopyError: Error? = nil,
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
         snapshotError: Error? = nil,
@@ -1879,6 +1996,8 @@ private actor StubSVNClient: SVNClientServing {
         self.fileLogsByPath = fileLogsByPath
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
+        self.checkoutRunsUntilCancelled = checkoutRunsUntilCancelled
+        self.validateWorkingCopyError = validateWorkingCopyError
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
         self.snapshotError = snapshotError
@@ -1918,9 +2037,21 @@ private actor StubSVNClient: SVNClientServing {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { checkoutResult }
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String {
         for output in checkoutProgress { progress?(output) }
+        if checkoutRunsUntilCancelled {
+            checkoutStarted = true
+            // 실제 SVNClient는 취소 시 svn 프로세스를 종료하고 CancellationError를
+            // 던집니다. sleep도 같은 오류를 던지므로 취소 경로를 그대로 재현합니다.
+            try await Task.sleep(for: .seconds(60))
+        }
         return checkoutResult
     }
-    func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws {}
+    func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws {
+        validatedPaths.append(path)
+        if let validateWorkingCopyError { throw validateWorkingCopyError }
+    }
+
+    func recordedValidatedPaths() -> [String] { validatedPaths }
+    func hasStartedCheckout() -> Bool { checkoutStarted }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {
         await delay(for: path)
         return statusesByPath[path] ?? []
@@ -2140,9 +2271,22 @@ private final class StubProjectPathChecker: ProjectPathChecking {
 }
 
 private final class StubProjectAccessManager: ProjectAccessManaging {
+    private(set) var accessedURLs: [SVNProject.ID: URL] = [:]
+    private(set) var releasedURLs: [URL] = []
+
     func makeBookmark(for url: URL) throws -> Data { Data("bookmark".utf8) }
     func restoreAccess(for projects: inout [SVNProject]) {}
-    func beginAccessing(_ url: URL, for projectID: SVNProject.ID) {}
-    func endAccessing(projectID: SVNProject.ID) {}
-    func endAccessing(url: URL) {}
+    func beginAccessing(_ url: URL, for projectID: SVNProject.ID) {
+        accessedURLs[projectID] = url
+    }
+
+    func endAccessing(projectID: SVNProject.ID) {
+        guard let url = accessedURLs.removeValue(forKey: projectID) else { return }
+        releasedURLs.append(url)
+    }
+
+    func endAccessing(url: URL) {
+        guard let entry = accessedURLs.first(where: { $0.value == url }) else { return }
+        endAccessing(projectID: entry.key)
+    }
 }

@@ -31,6 +31,7 @@
 "ui.apply.aa6f48d5" = "Apply";
 "ui.apply.global.ignore.rules.1ece4ab2" = "Apply Global Ignore Rules?";
 "ui.apply.selected.rules.f6bb01fa" = "Apply Selected Rules";
+"ui.applying.8c4d1e05" = "Applying…";
 "ui.authentication.is.required.to.commit.the.selecte.4837ef80" = "Authentication is required to commit the selected changes.";
 "ui.authentication.is.required.to.download.the.lates.83127c9a" = "Authentication is required to download the latest server changes.";
 "ui.authentication.is.required.to.load.the.latest.se.2b552fac" = "Authentication is required to load the latest server history.";
@@ -47,6 +48,8 @@
 "ui.cancel.deletion.and.restore.ce07fc64" = "Cancel Deletion and Restore…";
 "ui.cancel.the.repository.deletion.state.for.and.res.fe2dce5e" = "Cancel the repository deletion state for %1$@ and restore the repository version locally.";
 "ui.canceling.does.not.prevent.viewing.local.changes.cf7ece9c" = "Canceling does not prevent viewing local changes and diffs.";
+"ui.change.7c3aa7d1" = "Change…";
+"ui.change.this.folder.s.location.svn.account.and.k.5b3e9d20" = "Change this folder's location, SVN account, and Keychain password.";
 "ui.changed.paths.89badc04" = "%1$@ changed paths";
 "ui.changes.0e19f519" = "Changes";
 "ui.check.for.updates.6ba78913" = "Check for Updates…";
@@ -133,6 +136,7 @@
 "ui.files.inside.this.folder.will.be.added.together.637444b8" = "Files inside this folder will be added together.";
 "ui.folder.credentials.b4bd68eb" = "Folder Credentials";
 "ui.folder.e6474408" = "Folder";
+"ui.folder.settings.6f2a0d43" = "Folder Settings";
 "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7" = ".gitignore is not modified. Import is one-way, and SVN property changes must be committed to share them.";
 "ui.global.rules.can.affect.many.directories.below.t.164333fd" = "Global rules can affect many directories below the working copy. Apply only after reviewing the scope.";
 "ui.highest.local.revision.d334c9c1" = "Highest local revision";
@@ -149,6 +153,7 @@
 "ui.inherited.rules.can.only.be.removed.from.the.par.276c450b" = "Inherited rules can only be removed from the parent directory that owns the property.";
 "ui.item.s.7cb28e2a" = "%1$@ item(s)";
 "ui.japan.standard.time.jst.utc.9.04744dfc" = "Japan Standard Time (JST, UTC+9)";
+"ui.keep.downloading.3c1de80f" = "Keep Downloading";
 "ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30" = "Keep the file currently saved in the working copy and mark the conflict resolved. The file is backed up immediately before resolving.";
 "ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb" = "Keep your file. A later commit will replace the repository file with this content.";
 "ui.keychain.access.was.denied.c1358e6f" = "Keychain access was denied.";
@@ -160,6 +165,7 @@
 "ui.later.7dd25de4" = "Later";
 "ui.leave.blank.to.keep.the.current.password.5f89ccfa" = "Leave blank to keep the current password";
 "ui.load.50.more.043526e4" = "Load 50 More";
+"ui.loading.b0a3fd42" = "Loading…";
 "ui.loading.changes.82ffc858" = "Loading changes…";
 "ui.loading.commit.history.c445b02a" = "Loading commit history…";
 "ui.loading.file.history.c6c155f3" = "Loading file history…";
@@ -227,6 +233,7 @@
 "ui.path.recovery.completed.the.original.working.fol.2fde9c42" = "Path recovery completed. The original working folder was preserved.";
 "ui.pending.deletion.1652cca1" = "Pending Deletion";
 "ui.pending.deletion.4b08f65b" = "%1$@ pending deletion";
+"ui.pick.the.new.location.of.this.svn.working.folder.0c58fa9e" = "Pick the new location of this SVN working folder.";
 "ui.please.send.questions.to.f2d48929" = "Please send questions to %1$@.";
 "ui.press.o.or.use.the.button.at.the.bottom.left.42abfdb5" = "Press ⌘O or use the + button at the bottom left.";
 "ui.properties.changed.b933354d" = "Properties changed";
@@ -243,8 +250,8 @@
 "ui.remove.d4be5a3e" = "Remove";
 "ui.remove.inherited.rules.from.the.parent.directory.7c2d3995" = "Remove inherited rules from the parent directory that owns the property.";
 "ui.remove.the.selected.working.folder.from.the.app..ffe092ae" = "Remove the selected working folder from the app. Local files are not deleted.";
-"ui.remove.working.folder.from.app.confirmation.54d24642" = "Remove '%1$@' from the app?";
 "ui.remove.this.rule.2908b9d1" = "Remove this rule.";
+"ui.remove.working.folder.from.app.confirmation.54d24642" = "Remove '%1$@' from the app?";
 "ui.removed.ignore.rule.bb8aeaf0" = "Removed ignore rule '%1$@'.";
 "ui.replace.with.the.server.file.your.local.edits.le.f08dec1d" = "Replace with the server file. Your local edits leave the working copy but remain in the backup folder.";
 "ui.replaced.6da39732" = "Replaced";
@@ -255,6 +262,7 @@
 "ui.resolve.conflicted.files.before.committing.e5cfd21c" = "Resolve conflicted files before committing.";
 "ui.resolve.duplicate.server.paths.manually.e8b5d352" = "Resolve Duplicate Server Paths Manually";
 "ui.resolve.unicode.path.conflicts.before.comparing..17151bba" = "Resolve Unicode path conflicts before comparing Git rules so property locations can be chosen safely.";
+"ui.resolving.d5e0b71c" = "Resolving…";
 "ui.restore.local.file.b40bfb4b" = "Restore Local File…";
 "ui.restored.98d96c01" = "Restored";
 "ui.reveal.in.finder.52d4a206" = "Reveal in Finder";
@@ -268,6 +276,8 @@
 "ui.save.in.keychain.and.use.9c0fd0d4" = "Save in Keychain and Use";
 "ui.save.in.macos.keychain.optional.d544f3fd" = "Save in macOS Keychain (optional)";
 "ui.save.the.svn.username.and.new.password.for.this..72748974" = "Save the SVN username and new password for this local working folder.";
+"ui.save.the.working.folder.location.svn.username.an.4f0a7c19" = "Save the working folder location, SVN username, and new password for this folder.";
+"ui.saving.6a1b2f0c" = "Saving…";
 "ui.search.author.file.message.or.revision.6c2b5d76" = "Search author, file, message, or revision";
 "ui.search.files.e3607184" = "Search Files";
 "ui.select.a.changed.file.to.view.its.diff.409b3672" = "Select a changed file to view its diff.";
@@ -287,6 +297,8 @@
 "ui.show.ignored.files.508dbd97" = "Show Ignored Files";
 "ui.show.the.macos.keychain.access.prompt.again.d57d9f96" = "Show the macOS Keychain access prompt again.";
 "ui.shows.the.diff.for.this.file.6f52b16a" = "Shows the diff for this file.";
+"ui.stop.checkout.b0f4e2a7" = "Stop Checkout";
+"ui.stop.the.checkout.in.progress.5d0c9b71" = "Stop the checkout in progress?";
 "ui.svn.authentication.required.797a2cdb" = "SVN Authentication Required";
 "ui.svn.ignore.rules.90435aad" = "SVN Ignore Rules";
 "ui.svn.password.5e0660b7" = "SVN password";
@@ -295,6 +307,7 @@
 "ui.symbolic.link.0dc00212" = "Symbolic Link";
 "ui.temporary.5738ffab" = "Temporary";
 "ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae" = "The bundled SVN executable could not be found. Reinstall the app.";
+"ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58" = "The checkout was canceled. Partially downloaded files may remain in %1$@.";
 "ui.the.commit.completed.but.working.copy.validation.e58fd53c" = "The commit completed, but working-copy validation failed. Do not retry the commit; review the refreshed status: %1$@";
 "ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4" = "The commit is based on an older working-copy state. Run Update, resolve any conflicts, and then commit again.\n\n%1$@";
 "ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05" = "The commit will be recorded with an empty message.";
@@ -306,8 +319,10 @@
 "ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd" = "The file is locked. A successful commit automatically releases the lock.";
 "ui.the.lock.was.released.3aee6b8e" = "The lock was released.";
 "ui.the.macos.unicode.path.was.matched.to.the.actual.0575e471" = "The macOS Unicode path was matched to the actual SVN-managed path.";
+"ui.the.new.folder.is.applied.when.you.save.2b70a1cd" = "The new folder is applied when you save.";
 "ui.the.recovery.backup.of.the.current.working.file..048b3539" = "The recovery backup of the current working file could not be verified.";
 "ui.the.recovery.destination.folder.must.be.empty.2f9bc173" = "The recovery destination folder must be empty.";
+"ui.the.running.svn.checkout.will.be.stopped.already.4b7d5a19" = "The running SVN checkout will be stopped. Already downloaded files stay in the local folder.";
 "ui.the.saved.password.was.deleted.a729310e" = "The saved password was deleted.";
 "ui.the.selected.folder.is.not.an.svn.local.working..c602474e" = "The selected folder is not an SVN local working folder.";
 "ui.the.selected.version.of.your.file.could.not.be.r.70a89d83" = "The selected version of your file could not be restored to the working file.";
@@ -318,6 +333,7 @@
 "ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def" = "The working copy contains mixed revisions r%1$@; this marker shows the highest revision.";
 "ui.the.working.copy.is.up.to.date.with.the.server.e31e447e" = "The working copy is up to date with the server.";
 "ui.the.working.folder.no.longer.exists.restore.the..4946d37c" = "The '%1$@' working folder no longer exists.\n%2$@\n\nRestore the folder or remove it from the list with the − button.";
+"ui.the.working.folder.was.changed.to.9c6f01b2" = "The working folder was changed to %1$@.";
 "ui.there.are.no.git.rules.to.import.03bd12e9" = "There are no Git rules to import.";
 "ui.there.are.no.locally.modified.files.8560ad60" = "There are no locally modified files.";
 "ui.this.commit.message.was.saved.with.incorrect.enc.355e2cb5" = "This commit message was saved with incorrect encoding and is shown after restoration. Other SVN users may see the original message below.";
@@ -346,6 +362,7 @@
 "ui.update.preview.3e2a4411" = "Update Preview";
 "ui.update.required.9da93c25" = "Update available";
 "ui.update.required.f846039b" = "Update Available";
+"ui.updating.4d2f9a11" = "Updating…";
 "ui.us.eastern.time.9e917cad" = "US Eastern Time";
 "ui.us.pacific.time.5c9c3b6f" = "US Pacific Time";
 "ui.use.current.working.file.275f4c29" = "Use Current Working File";

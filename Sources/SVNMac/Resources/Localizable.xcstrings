@@ -562,6 +562,23 @@
         }
       }
     },
+    "ui.applying.8c4d1e05": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applying…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "적용 중…"
+          }
+        }
+      }
+    },
     "ui.authentication.is.required.to.commit.the.selecte.4837ef80": {
       "extractionState": "manual",
       "localizations": {
@@ -830,6 +847,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.change.7c3aa7d1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경…"
+          }
+        }
+      }
+    },
+    "ui.change.this.folder.s.location.svn.account.and.k.5b3e9d20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change this folder's location, SVN account, and Keychain password."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 폴더의 위치, SVN 계정, Keychain 비밀번호를 변경합니다."
           }
         }
       }
@@ -2296,6 +2347,23 @@
         }
       }
     },
+    "ui.folder.settings.6f2a0d43": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 설정"
+          }
+        }
+      }
+    },
     "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7": {
       "extractionState": "manual",
       "localizations": {
@@ -2568,6 +2636,23 @@
         }
       }
     },
+    "ui.keep.downloading.3c1de80f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Downloading"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계속 내려받기"
+          }
+        }
+      }
+    },
     "ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30": {
       "extractionState": "manual",
       "localizations": {
@@ -2751,6 +2836,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이전 기록 50개 더 불러오기"
+          }
+        }
+      }
+    },
+    "ui.loading.b0a3fd42": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불러오는 중…"
           }
         }
       }
@@ -3894,6 +3996,23 @@
         }
       }
     },
+    "ui.pick.the.new.location.of.this.svn.working.folder.0c58fa9e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the new location of this SVN working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 SVN 작업 폴더의 새 위치를 고릅니다."
+          }
+        }
+      }
+    },
     "ui.please.send.questions.to.f2d48929": {
       "extractionState": "manual",
       "localizations": {
@@ -4166,23 +4285,6 @@
         }
       }
     },
-    "ui.remove.working.folder.from.app.confirmation.54d24642": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove '%1$@' from the app?"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "'%1$@' 등록을 해제할까요?"
-          }
-        }
-      }
-    },
     "ui.remove.this.rule.2908b9d1": {
       "extractionState": "manual",
       "localizations": {
@@ -4196,6 +4298,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 규칙을 제거합니다."
+          }
+        }
+      }
+    },
+    "ui.remove.working.folder.from.app.confirmation.54d24642": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove '%1$@' from the app?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%1$@' 등록을 해제할까요?"
           }
         }
       }
@@ -4366,6 +4485,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "한글 경로 충돌을 먼저 정리해야 Git 무시 규칙의 적용 위치를 안전하게 결정할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.resolving.d5e0b71c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolving…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해결 중…"
           }
         }
       }
@@ -4587,6 +4723,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "입력한 SVN 사용자명과 새 비밀번호를 이 로컬 작업 폴더에 저장합니다."
+          }
+        }
+      }
+    },
+    "ui.save.the.working.folder.location.svn.username.an.4f0a7c19": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save the working folder location, SVN username, and new password for this folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 폴더의 작업 폴더 위치와 SVN 사용자명, 새 비밀번호를 저장합니다."
+          }
+        }
+      }
+    },
+    "ui.saving.6a1b2f0c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 중…"
           }
         }
       }
@@ -4914,6 +5084,40 @@
         }
       }
     },
+    "ui.stop.checkout.b0f4e2a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Checkout"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃 중지"
+          }
+        }
+      }
+    },
+    "ui.stop.the.checkout.in.progress.5d0c9b71": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop the checkout in progress?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 중인 체크아웃을 중지할까요?"
+          }
+        }
+      }
+    },
     "ui.svn.authentication.required.797a2cdb": {
       "extractionState": "manual",
       "localizations": {
@@ -5046,6 +5250,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "앱에 포함된 SVN 실행 파일을 찾지 못했습니다. 앱을 다시 설치해 주세요."
+          }
+        }
+      }
+    },
+    "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The checkout was canceled. Partially downloaded files may remain in %1$@."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃을 취소했습니다. %1$@ 안에 일부만 내려받은 파일이 남아 있을 수 있습니다."
           }
         }
       }
@@ -5237,6 +5458,23 @@
         }
       }
     },
+    "ui.the.new.folder.is.applied.when.you.save.2b70a1cd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The new folder is applied when you save."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 폴더는 저장할 때 적용됩니다."
+          }
+        }
+      }
+    },
     "ui.the.recovery.backup.of.the.current.working.file..048b3539": {
       "extractionState": "manual",
       "localizations": {
@@ -5267,6 +5505,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "복구 대상 폴더는 비어 있어야 합니다."
+          }
+        }
+      }
+    },
+    "ui.the.running.svn.checkout.will.be.stopped.already.4b7d5a19": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The running SVN checkout will be stopped. Already downloaded files stay in the local folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중인 SVN 체크아웃을 중지합니다. 이미 내려받은 파일은 로컬 폴더에 그대로 남습니다."
           }
         }
       }
@@ -5437,6 +5692,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "'%1$@' 작업 폴더가 존재하지 않습니다.\n%2$@\n\n폴더를 복원하거나 왼쪽 아래 − 버튼으로 목록에서 제거하세요."
+          }
+        }
+      }
+    },
+    "ui.the.working.folder.was.changed.to.9c6f01b2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The working folder was changed to %1$@."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 폴더를 %1$@(으)로 변경했습니다."
           }
         }
       }
@@ -5913,6 +6185,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 있음"
+          }
+        }
+      }
+    },
+    "ui.updating.4d2f9a11": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 중…"
           }
         }
       }

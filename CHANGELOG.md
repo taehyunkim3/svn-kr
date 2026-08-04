@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.26 (2026-08-04)
+
+- Showed a progress spinner inside every long-running action button instead of only disabling it.
+- Made canceling an in-progress checkout terminate the running SVN process after an explicit confirmation.
+- Blocked the add-repository sheet from closing while a checkout is running so no work is left behind.
+- Allowed an already registered folder to change its local path, keeping the same project identity and Keychain password.
+
 ## 0.5.25 (2026-07-31)
 
 - Allowed committing without a message after an explicit confirmation prompt.

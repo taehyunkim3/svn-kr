@@ -39,8 +39,13 @@ struct DeletionConfirmationView: View {
                     store.cancelDeletion()
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(appLanguage.localized("ui.mark.for.deletion.ec31cd20"), role: .destructive) {
+                Button(role: .destructive) {
                     Task { await store.confirmDeletion(request) }
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.mark.for.deletion.ec31cd20"),
+                        isInProgress: store.isDeletingSelectedProject
+                    )
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
             }

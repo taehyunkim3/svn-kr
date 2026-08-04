@@ -102,7 +102,11 @@ struct ContentView: View {
                     Task { await store.refreshSelectedProject(manual: true) }
                 } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "arrow.clockwise")
+                        if store.isRefreshingSelectedProject {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
                         Text(appLanguage.localized("ui.refresh.0aca6bd2"))
                     }
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
@@ -113,7 +117,11 @@ struct ContentView: View {
                     Task { await store.previewUpdate() }
                 } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "arrow.down.circle")
+                        if isUpdateInProgress {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                        }
                         Text(appLanguage.localized("ui.update.0f38eb76"))
                         if let badgeText = store.incomingUpdateCommitBadgeText {
                             Text(badgeText)
@@ -205,6 +213,10 @@ struct ContentView: View {
         )
     }
 
+    private var isUpdateInProgress: Bool {
+        store.isPreviewingSelectedProjectUpdate || store.isUpdatingSelectedProject
+    }
+
     // MARK: - 선택 프로젝트 화면
 
     /// 선택한 프로젝트의 공통 머리글과 변경/기록 탭을 구성합니다.
@@ -221,10 +233,10 @@ struct ContentView: View {
                     NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
                 }
                 .help(appLanguage.localized("ui.open.this.svn.local.working.folder.in.finder.9befff0f"))
-                Button(appLanguage.localized("ui.credentials.97a976d9"), systemImage: "person.badge.key") {
+                Button(appLanguage.localized("ui.folder.settings.6f2a0d43"), systemImage: "person.badge.key") {
                     store.isShowingCredentials = true
                 }
-                .help(appLanguage.localized("ui.configure.the.svn.account.and.keychain.password..daa54ac3"))
+                .help(appLanguage.localized("ui.change.this.folder.s.location.svn.account.and.k.5b3e9d20"))
                 if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
             }
             .padding()
