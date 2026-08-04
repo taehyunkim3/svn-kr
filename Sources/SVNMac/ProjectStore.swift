@@ -325,6 +325,13 @@ final class ProjectStore {
         }
     }
 
+    var isVerifyingCredentials: Bool {
+        activeOperations.contains { operation in
+            if case .verifyCredentials = operation.kind { return true }
+            return false
+        }
+    }
+
     var isLoadingSelectedFileHistory: Bool {
         operationIsActive { .fileHistory($0) }
     }
@@ -896,6 +903,43 @@ final class ProjectStore {
 
     func hasSavedPassword(for projectID: UUID) -> Bool {
         (try? credentialStore.password(for: projectID)) != nil
+    }
+
+    /// 입력한 계정으로 저장소에 접근할 수 있는지 저장 전에 확인합니다.
+    ///
+    /// 잘못된 계정을 먼저 저장하면 Keychain과 프로젝트 목록이 이미 바뀐 뒤에야
+    /// 새로고침이 실패해 되돌릴 것이 남습니다. 확인을 저장보다 앞에 두면 실패했을 때
+    /// 아무것도 바뀌지 않은 상태가 되어 사용자가 재입력과 취소를 그대로 고를 수 있습니다.
+    /// 반환값은 실패 사유이고, `nil`이면 확인에 성공한 것입니다.
+    func verifyCredentials(
+        for projectID: SVNProject.ID,
+        username: String,
+        password: String,
+        allowsUntrustedServerCertificate: Bool
+    ) async -> String? {
+        guard let project = projects.first(where: { $0.id == projectID }) else { return nil }
+        let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 비밀번호를 비워 두면 기존에 저장된 비밀번호를 그대로 쓰겠다는 뜻이므로
+        // 확인에도 같은 값을 사용해야 화면 안내와 실제 동작이 어긋나지 않습니다.
+        let effectivePassword = password.isEmpty
+            ? (sessionPasswords[projectID] ?? (try? credentialStore.password(for: projectID)) ?? nil)
+            : password
+        let credentials = username.isEmpty
+            ? nil
+            : SVNCredentials(username: username, password: effectivePassword)
+
+        let operationID = beginOperation(.verifyCredentials(projectID))
+        defer { endOperation(operationID) }
+        do {
+            try await client.verifyCredentials(
+                at: project.path,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowsUntrustedServerCertificate
+            )
+            return nil
+        } catch {
+            return localizedError(error)
+        }
     }
 
     func saveCredentials(

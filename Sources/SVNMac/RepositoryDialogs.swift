@@ -338,12 +338,15 @@ struct CredentialsView: View {
     @State private var hasSavedPassword: Bool
     @State private var allowsUntrustedServerCertificate: Bool
     @State private var relocatedURL: URL?
+    @State private var originalPath: String
+    @State private var credentialFailureMessage: String?
 
     init(project: SVNProject) {
         self.project = project
         _username = State(initialValue: project.username ?? "")
         _hasSavedPassword = State(initialValue: false)
         _allowsUntrustedServerCertificate = State(initialValue: project.allowsUntrustedServerCertificate == true)
+        _originalPath = State(initialValue: project.path)
     }
 
     var body: some View {
@@ -420,25 +423,46 @@ struct CredentialsView: View {
                 Spacer()
                 Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .disabled(store.isRelocatingProject)
+                    .disabled(isSaving)
                     .help(appLanguage.localized("ui.close.without.saving.credential.changes.97c00986"))
                 Button(action: save) {
                     ActionProgressLabel(
                         title: appLanguage.localized("ui.save.7c93b7e1"),
-                        inProgressTitle: appLanguage.localized("ui.saving.6a1b2f0c"),
-                        isInProgress: store.isRelocatingProject
+                        inProgressTitle: store.isVerifyingCredentials
+                            ? appLanguage.localized("ui.checking.the.account.c47f1a90")
+                            : appLanguage.localized("ui.saving.6a1b2f0c"),
+                        isInProgress: isSaving
                     )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(store.isRelocatingProject)
+                .disabled(isSaving)
                 .help(appLanguage.localized("ui.save.the.working.folder.location.svn.username.an.4f0a7c19"))
             }
         }
         .padding(24)
         .frame(width: AppLayout.credentialsSheetWidth)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
+        .alert(
+            appLanguage.localized("ui.the.svn.account.or.password.is.not.valid.6d81e3f4"),
+            isPresented: .isPresenting($credentialFailureMessage),
+            presenting: credentialFailureMessage
+        ) { _ in
+            Button(appLanguage.localized("ui.enter.valid.credentials.9a70c5b2")) {
+                credentialFailureMessage = nil
+            }
+            Button(appLanguage.localized("ui.discard.changes.and.close.4e12b8a7"), role: .cancel) {
+                credentialFailureMessage = nil
+                discardChanges()
+            }
+        } message: { message in
+            Text(message)
+        }
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+
+    private var isSaving: Bool {
+        store.isRelocatingProject || store.isVerifyingCredentials
     }
 
     private var pendingPath: String {
@@ -458,11 +482,22 @@ struct CredentialsView: View {
     }
 
     /// 폴더 이동과 자격 증명 변경을 한 번의 저장으로 처리합니다.
-    /// 폴더 검증이 실패하면 자격 증명도 바꾸지 않아 화면과 저장 상태가 어긋나지 않습니다.
+    ///
+    /// 자격 증명은 서버 확인을 통과한 뒤에만 Keychain과 프로젝트 목록에 기록합니다.
+    /// 확인 전에는 아무것도 바꾸지 않으므로 사용자가 재입력을 고르면 이전 설정이 그대로 남습니다.
     private func save() {
         Task {
             if let relocatedURL, relocatedURL.path != project.path {
                 guard await store.relocateProject(project.id, to: relocatedURL) else { return }
+            }
+            if let failure = await store.verifyCredentials(
+                for: project.id,
+                username: username,
+                password: newPassword,
+                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+            ) {
+                credentialFailureMessage = failure
+                return
             }
             guard store.saveCredentials(
                 for: project.id,
@@ -474,6 +509,24 @@ struct CredentialsView: View {
             await store.refresh()
         }
     }
+
+    /// 확인에 실패한 입력을 버리고 시트를 열었을 때의 상태로 되돌립니다.
+    /// 자격 증명은 아직 저장되지 않았으므로 이 화면에서 바꾼 폴더 위치만 복구하면 됩니다.
+    private func discardChanges() {
+        Task {
+            if store.projects.first(where: { $0.id == project.id })?.path != originalPath {
+                _ = await store.relocateProject(
+                    project.id,
+                    to: URL(fileURLWithPath: originalPath, isDirectory: true)
+                )
+            }
+            relocatedURL = nil
+            username = project.username ?? ""
+            newPassword = ""
+            allowsUntrustedServerCertificate = project.allowsUntrustedServerCertificate == true
+            dismiss()
+        }
+    }
 }
 
 private struct CredentialFieldsGrid: View {
@@ -482,6 +535,7 @@ private struct CredentialFieldsGrid: View {
     @Binding var password: String
     let usernamePlaceholder: String
     let passwordPlaceholder: String
+    @State private var isPasswordRevealed = false
 
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
@@ -493,8 +547,38 @@ private struct CredentialFieldsGrid: View {
             }
             GridRow {
                 Text(appLanguage.localized("ui.password.945c94ed"))
-                SecureField(passwordPlaceholder, text: $password)
-                    .textFieldStyle(.roundedBorder)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        // macOS의 보안 입력 필드는 입력기를 막기 때문에 가려진 상태로는
+                        // 한글을 조합할 수 없습니다. 표시 상태에서는 일반 필드를 써서
+                        // 같은 값을 한글 입력기로도 입력할 수 있게 합니다.
+                        if isPasswordRevealed {
+                            TextField(passwordPlaceholder, text: $password)
+                                .textFieldStyle(.roundedBorder)
+                        } else {
+                            SecureField(passwordPlaceholder, text: $password)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        Button {
+                            isPasswordRevealed.toggle()
+                        } label: {
+                            Image(systemName: isPasswordRevealed ? "eye.slash" : "eye")
+                                .frame(width: 14, height: 14)
+                        }
+                        .buttonStyle(.bordered)
+                        .help(isPasswordRevealed
+                            ? appLanguage.localized("ui.hide.password.4c8a1f60")
+                            : appLanguage.localized("ui.show.password.9b3d2e71"))
+                        .accessibilityLabel(isPasswordRevealed
+                            ? appLanguage.localized("ui.hide.password.4c8a1f60")
+                            : appLanguage.localized("ui.show.password.9b3d2e71"))
+                    }
+                    if !isPasswordRevealed {
+                        Text(appLanguage.localized("ui.secure.entry.blocks.the.korean.input.method.reve.3f7b0c25"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }

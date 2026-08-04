@@ -1440,6 +1440,69 @@ import Testing
 }
 
 @MainActor
+@Test func invalidCredentialsAreReportedWithoutTouchingStoredSettings() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "old-user")
+    let client = StubSVNClient(
+        verifyCredentialsError: SVNError.commandFailed(command: "svn info", message: "E215004")
+    )
+    let credentials = StubCredentialStore()
+    let persistence = MemoryProjectPersistence(projects: [project])
+    let store = ProjectStore(
+        client: client,
+        credentialStore: credentials,
+        persistence: persistence,
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker()
+    )
+
+    let failure = await store.verifyCredentials(
+        for: project.id,
+        username: "new-user",
+        password: "wrong",
+        allowsUntrustedServerCertificate: false
+    )
+
+    #expect(failure != nil)
+    // 확인 단계에서 실패하면 프로젝트 목록과 Keychain은 그대로여야 되돌릴 것이 없습니다.
+    #expect(store.projects.first?.username == "old-user")
+    #expect(!store.hasSavedPassword(for: project.id))
+    #expect(!store.isVerifyingCredentials)
+}
+
+@MainActor
+@Test func blankPasswordVerifiesWithTheAlreadyStoredPassword() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
+    let client = StubSVNClient()
+    let credentials = StubCredentialStore()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker()
+    )
+    #expect(store.saveCredentials(
+        for: project.id,
+        username: "tester",
+        newPassword: "stored-secret",
+        allowsUntrustedServerCertificate: false
+    ))
+
+    let failure = await store.verifyCredentials(
+        for: project.id,
+        username: "tester",
+        password: "",
+        allowsUntrustedServerCertificate: false
+    )
+
+    #expect(failure == nil)
+    let verified = await client.recordedVerifiedCredentials()
+    #expect(verified.count == 1)
+    #expect(verified.first??.username == "tester")
+    #expect(verified.first??.password == "stored-secret")
+}
+
+@MainActor
 @Test func relocatingToAFolderRegisteredByAnotherProjectIsRejected() async {
     let first = SVNProject(name: "첫 폴더", path: "/tmp/first-location")
     let second = SVNProject(name: "둘째 폴더", path: "/tmp/second-location")
@@ -1913,8 +1976,10 @@ private actor StubSVNClient: SVNClientServing {
     let checkoutProgress: [String]
     let checkoutRunsUntilCancelled: Bool
     let validateWorkingCopyError: Error?
+    let verifyCredentialsError: Error?
     private var checkoutStarted = false
     private var validatedPaths: [String] = []
+    private var verifiedCredentials: [SVNCredentials?] = []
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
     let snapshotError: Error?
@@ -1965,6 +2030,7 @@ private actor StubSVNClient: SVNClientServing {
         checkoutProgress: [String] = [],
         checkoutRunsUntilCancelled: Bool = false,
         validateWorkingCopyError: Error? = nil,
+        verifyCredentialsError: Error? = nil,
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
         snapshotError: Error? = nil,
@@ -1998,6 +2064,7 @@ private actor StubSVNClient: SVNClientServing {
         self.checkoutProgress = checkoutProgress
         self.checkoutRunsUntilCancelled = checkoutRunsUntilCancelled
         self.validateWorkingCopyError = validateWorkingCopyError
+        self.verifyCredentialsError = verifyCredentialsError
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
         self.snapshotError = snapshotError
@@ -2050,6 +2117,12 @@ private actor StubSVNClient: SVNClientServing {
         if let validateWorkingCopyError { throw validateWorkingCopyError }
     }
 
+    func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws {
+        verifiedCredentials.append(credentials)
+        if let verifyCredentialsError { throw verifyCredentialsError }
+    }
+
+    func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
     func recordedValidatedPaths() -> [String] { validatedPaths }
     func hasStartedCheckout() -> Bool { checkoutStarted }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {

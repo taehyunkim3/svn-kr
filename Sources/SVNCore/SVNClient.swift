@@ -81,6 +81,25 @@ public actor SVNClient {
             .output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// 주어진 자격 증명으로 저장소에 실제로 접근할 수 있는지 확인합니다.
+    ///
+    /// 작업 복사본 대상 `info`는 로컬 메타데이터만 읽어 인증을 거치지 않으므로,
+    /// 저장소 URL을 대상으로 원격 조회를 한 번 수행해 인증 실패를 저장 전에 드러냅니다.
+    /// 저장소 URL 자체는 인증 없이 읽을 수 있어 먼저 로컬에서 확인합니다.
+    public func verifyCredentials(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws {
+        let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: nil)
+        _ = try await checkedRun(
+            ["info", "--show-item", "revision", "--", repositoryURL],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+
     public func recoveryPreview(
         at path: String,
         credentials: SVNCredentials? = nil

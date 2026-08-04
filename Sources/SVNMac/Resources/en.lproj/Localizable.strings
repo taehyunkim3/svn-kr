@@ -63,6 +63,7 @@
 "ui.checking.for.updates.967c32b4" = "Checking for updates…";
 "ui.checking.incoming.changes.a7a217e2" = "Checking incoming changes…";
 "ui.checking.out.3944eb2e" = "Checking out…";
+"ui.checking.the.account.c47f1a90" = "Checking the account…";
 "ui.checkout.completed.but.the.password.could.not.be.ed5274e5" = "Checkout completed, but the password could not be saved in Keychain: %1$@";
 "ui.checkout.progress.log.ba2c92de" = "Checkout progress log";
 "ui.choose.0a13aec8" = "Choose";
@@ -118,10 +119,12 @@
 "ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666" = "Delete the SVN password stored in Keychain for this local working folder.";
 "ui.deleted.6826dd28" = "Deleted";
 "ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5" = "Diff is unavailable until this file is added to SVN. It will be added automatically when committed.";
+"ui.discard.changes.and.close.4e12b8a7" = "Discard Changes and Close";
 "ui.download.the.latest.server.changes.into.the.curr.17974067" = "Download the latest server changes into the current local working folder.";
 "ui.earlier.history.da5e45b0" = "… Earlier history";
 "ui.editing.document.in.svn.kr.5e6ac9cc" = "Editing document in SVN KR";
 "ui.enter.password.48ff7123" = "Enter password";
+"ui.enter.valid.credentials.9a70c5b2" = "Enter Valid Credentials";
 "ui.error.a08d7e0d" = "Error";
 "ui.exit.demo.3a329c52" = "Exit Demo";
 "ui.explore.the.main.features.with.sample.data.and.n.fd16edf5" = "Explore the main features with sample data and no server connection or account.";
@@ -139,6 +142,7 @@
 "ui.folder.settings.6f2a0d43" = "Folder Settings";
 "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7" = ".gitignore is not modified. Import is one-way, and SVN property changes must be committed to share them.";
 "ui.global.rules.can.affect.many.directories.below.t.164333fd" = "Global rules can affect many directories below the working copy. Apply only after reviewing the scope.";
+"ui.hide.password.4c8a1f60" = "Hide password";
 "ui.highest.local.revision.d334c9c1" = "Highest local revision";
 "ui.history.refreshed.5c159ee8" = "%1$@ history refreshed";
 "ui.ignore.this.extension.687c5df7" = "Ignore This Extension";
@@ -280,6 +284,7 @@
 "ui.saving.6a1b2f0c" = "Saving…";
 "ui.search.author.file.message.or.revision.6c2b5d76" = "Search author, file, message, or revision";
 "ui.search.files.e3607184" = "Search Files";
+"ui.secure.entry.blocks.the.korean.input.method.reve.3f7b0c25" = "Secure entry blocks the Korean input method. Reveal the password with the eye button to type Korean.";
 "ui.select.a.changed.file.to.view.its.diff.409b3672" = "Select a changed file to view its diff.";
 "ui.select.a.commit.8977b05a" = "Select a Commit";
 "ui.select.a.file.12b00b2b" = "Select a File";
@@ -295,6 +300,7 @@
 "ui.server.latest.r.e1c092b2" = "Server latest r%1$@";
 "ui.server.revision.c11b62aa" = "Server revision %1$@";
 "ui.show.ignored.files.508dbd97" = "Show Ignored Files";
+"ui.show.password.9b3d2e71" = "Show password";
 "ui.show.the.macos.keychain.access.prompt.again.d57d9f96" = "Show the macOS Keychain access prompt again.";
 "ui.shows.the.diff.for.this.file.6f52b16a" = "Shows the diff for this file.";
 "ui.stop.checkout.b0f4e2a7" = "Stop Checkout";
@@ -328,6 +334,7 @@
 "ui.the.selected.version.of.your.file.could.not.be.r.70a89d83" = "The selected version of your file could not be restored to the working file.";
 "ui.the.server.file.version.could.not.be.found.3483616c" = "The server file version could not be found.";
 "ui.the.server.file.version.must.be.a.regular.file.n.7eb568b2" = "The server file version must be a regular file, not a symbolic link.";
+"ui.the.svn.account.or.password.is.not.valid.6d81e3f4" = "The SVN account or password is not valid";
 "ui.the.svn.response.could.not.be.read.6a3d5aa8" = "The SVN response could not be read.";
 "ui.the.svn.server.denied.read.access.to.this.file.c.2ec5cc64" = "The SVN server denied read access to this file. Check the project credentials and server path permissions.\n\n%1$@";
 "ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def" = "The working copy contains mixed revisions r%1$@; this marker shows the highest revision.";

@@ -166,6 +166,7 @@ private actor DemoSVNClient: SVNClientServing {
 
     func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
+    func verifyCredentials(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws {}
     func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { currentStatuses }
     func workingCopyEntries(at _: String, credentials _: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
     func workingCopySnapshot(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {

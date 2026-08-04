@@ -63,6 +63,7 @@
 "ui.checking.for.updates.967c32b4" = "업데이트 확인 중…";
 "ui.checking.incoming.changes.a7a217e2" = "서버 변경 확인 중…";
 "ui.checking.out.3944eb2e" = "체크아웃 중…";
+"ui.checking.the.account.c47f1a90" = "계정 확인 중…";
 "ui.checkout.completed.but.the.password.could.not.be.ed5274e5" = "체크아웃은 완료했지만 비밀번호를 Keychain에 저장하지 못했습니다: %1$@";
 "ui.checkout.progress.log.ba2c92de" = "체크아웃 진행 로그";
 "ui.choose.0a13aec8" = "선택";
@@ -118,10 +119,12 @@
 "ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666" = "이 로컬 작업 폴더용으로 Keychain에 저장된 SVN 비밀번호를 삭제합니다.";
 "ui.deleted.6826dd28" = "삭제";
 "ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5" = "아직 SVN에 추가되지 않은 파일은 diff를 표시할 수 없습니다. 커밋할 때 자동으로 추가됩니다.";
+"ui.discard.changes.and.close.4e12b8a7" = "변경 취소하고 닫기";
 "ui.download.the.latest.server.changes.into.the.curr.17974067" = "서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.";
 "ui.earlier.history.da5e45b0" = "… 이전 기록";
 "ui.editing.document.in.svn.kr.5e6ac9cc" = "SVN KR에서 문서 편집 중";
 "ui.enter.password.48ff7123" = "비밀번호 입력";
+"ui.enter.valid.credentials.9a70c5b2" = "다시 입력";
 "ui.error.a08d7e0d" = "오류";
 "ui.exit.demo.3a329c52" = "데모 종료";
 "ui.explore.the.main.features.with.sample.data.and.n.fd16edf5" = "서버 연결이나 계정 없이 샘플 데이터로 주요 기능을 둘러봅니다.";
@@ -139,6 +142,7 @@
 "ui.folder.settings.6f2a0d43" = "폴더 설정";
 "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7" = ".gitignore는 변경하지 않습니다. 가져오기는 단방향이며 SVN 속성 변경을 커밋해야 팀에 공유됩니다.";
 "ui.global.rules.can.affect.many.directories.below.t.164333fd" = "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요.";
+"ui.hide.password.4c8a1f60" = "비밀번호 가리기";
 "ui.highest.local.revision.d334c9c1" = "내 로컬 최상위";
 "ui.history.refreshed.5c159ee8" = "%1$@ 커밋 기록 확인 완료";
 "ui.ignore.this.extension.687c5df7" = "같은 확장자 모두 무시";
@@ -280,6 +284,7 @@
 "ui.saving.6a1b2f0c" = "저장 중…";
 "ui.search.author.file.message.or.revision.6c2b5d76" = "작성자, 파일, 메시지, 리비전 검색";
 "ui.search.files.e3607184" = "파일 검색";
+"ui.secure.entry.blocks.the.korean.input.method.reve.3f7b0c25" = "보안 입력 상태에서는 한글 입력기를 쓸 수 없습니다. 오른쪽 눈 버튼으로 비밀번호를 표시하면 한글도 입력할 수 있습니다.";
 "ui.select.a.changed.file.to.view.its.diff.409b3672" = "변경 파일을 선택하면 diff가 표시됩니다.";
 "ui.select.a.commit.8977b05a" = "커밋을 선택하세요";
 "ui.select.a.file.12b00b2b" = "파일을 선택하세요";
@@ -295,6 +300,7 @@
 "ui.server.latest.r.e1c092b2" = "서버 최신 r%1$@";
 "ui.server.revision.c11b62aa" = "서버 리비전 %1$@";
 "ui.show.ignored.files.508dbd97" = "무시된 파일 보기";
+"ui.show.password.9b3d2e71" = "비밀번호 표시";
 "ui.show.the.macos.keychain.access.prompt.again.d57d9f96" = "macOS Keychain 접근 창을 다시 표시합니다.";
 "ui.shows.the.diff.for.this.file.6f52b16a" = "이 파일의 diff를 표시합니다.";
 "ui.stop.checkout.b0f4e2a7" = "체크아웃 중지";
@@ -328,6 +334,7 @@
 "ui.the.selected.version.of.your.file.could.not.be.r.70a89d83" = "선택한 내 파일 버전을 작업 파일에 복원하지 못했습니다.";
 "ui.the.server.file.version.could.not.be.found.3483616c" = "서버 파일 버전을 찾을 수 없습니다.";
 "ui.the.server.file.version.must.be.a.regular.file.n.7eb568b2" = "서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다.";
+"ui.the.svn.account.or.password.is.not.valid.6d81e3f4" = "SVN 계정 또는 비밀번호가 올바르지 않습니다";
 "ui.the.svn.response.could.not.be.read.6a3d5aa8" = "SVN 응답을 읽지 못했습니다.";
 "ui.the.svn.server.denied.read.access.to.this.file.c.2ec5cc64" = "SVN 서버가 이 파일 내용에 대한 읽기 접근을 거부했습니다. 프로젝트 인증 정보와 서버 경로 권한을 확인해 주세요.\n\n%1$@";
 "ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def" = "작업 복사본은 r%1$@ 혼합 리비전이며 이 위치는 최상위 리비전입니다.";

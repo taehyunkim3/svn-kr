@@ -1106,6 +1106,23 @@
         }
       }
     },
+    "ui.checking.the.account.c47f1a90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the account…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계정 확인 중…"
+          }
+        }
+      }
+    },
     "ui.checkout.completed.but.the.password.could.not.be.ed5274e5": {
       "extractionState": "manual",
       "localizations": {
@@ -2041,6 +2058,23 @@
         }
       }
     },
+    "ui.discard.changes.and.close.4e12b8a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard Changes and Close"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 취소하고 닫기"
+          }
+        }
+      }
+    },
     "ui.download.the.latest.server.changes.into.the.curr.17974067": {
       "extractionState": "manual",
       "localizations": {
@@ -2105,6 +2139,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "비밀번호 입력"
+          }
+        }
+      }
+    },
+    "ui.enter.valid.credentials.9a70c5b2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter Valid Credentials"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 입력"
           }
         }
       }
@@ -2394,6 +2445,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요."
+          }
+        }
+      }
+    },
+    "ui.hide.password.4c8a1f60": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비밀번호 가리기"
           }
         }
       }
@@ -4795,6 +4863,23 @@
         }
       }
     },
+    "ui.secure.entry.blocks.the.korean.input.method.reve.3f7b0c25": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secure entry blocks the Korean input method. Reveal the password with the eye button to type Korean."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보안 입력 상태에서는 한글 입력기를 쓸 수 없습니다. 오른쪽 눈 버튼으로 비밀번호를 표시하면 한글도 입력할 수 있습니다."
+          }
+        }
+      }
+    },
     "ui.select.a.changed.file.to.view.its.diff.409b3672": {
       "extractionState": "manual",
       "localizations": {
@@ -5046,6 +5131,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "무시된 파일 보기"
+          }
+        }
+      }
+    },
+    "ui.show.password.9b3d2e71": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show password"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비밀번호 표시"
           }
         }
       }
@@ -5607,6 +5709,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "서버 파일 버전은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.the.svn.account.or.password.is.not.valid.6d81e3f4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SVN account or password is not valid"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 계정 또는 비밀번호가 올바르지 않습니다"
           }
         }
       }

@@ -8,6 +8,8 @@
 - Made canceling an in-progress checkout terminate the running SVN process after an explicit confirmation.
 - Blocked the add-repository sheet from closing while a checkout is running so no work is left behind.
 - Allowed an already registered folder to change its local path, keeping the same project identity and Keychain password.
+- Verified an SVN account against the server before saving it, and offered re-entry or discarding the change when it fails.
+- Added a reveal toggle to every password field, which also allows Korean input that macOS secure entry blocks.
 
 ## 0.5.25 (2026-07-31)
 

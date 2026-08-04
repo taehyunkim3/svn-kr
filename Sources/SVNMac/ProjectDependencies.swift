@@ -10,6 +10,7 @@ protocol SVNClientServing: Sendable {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
+    func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot
@@ -187,6 +188,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case checkout
         case registerProject
         case relocate(SVNProject.ID)
+        case verifyCredentials(SVNProject.ID)
         case refresh(SVNProject.ID)
         case refreshLocal(SVNProject.ID)
         case refreshHistory(SVNProject.ID)
