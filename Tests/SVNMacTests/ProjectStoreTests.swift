@@ -1622,7 +1622,7 @@ import Testing
     ))
 }
 
-@Test func recognizesTemporaryFilesByNameWhileRejectingDirectories() {
+@Test func recognizesTemporaryFileNamesButOnlyHidesKnownUnversionedFiles() {
     let temporaryPaths = [
         "문서/~$보고서.xlsx",
         ".DS_Store",
@@ -1645,15 +1645,18 @@ import Testing
         #expect(!TemporaryFilePolicy.isTemporaryFile(entry), "일반 파일이 임시 파일로 분류됨: \(path)")
     }
 
-    #expect(TemporaryFilePolicy.isTemporaryFile(
-        SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file)
-    ))
+    let versioned = SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file)
+    let directory = SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory)
+    let unknownKind = SVNStatusEntry(path: "~$종류미상", item: .unversioned)
+
+    #expect(TemporaryFilePolicy.isTemporaryFile(versioned))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(versioned))
     #expect(!TemporaryFilePolicy.isTemporaryFile(
-        SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory)
+        directory
     ))
-    #expect(TemporaryFilePolicy.isTemporaryFile(
-        SVNStatusEntry(path: "~$종류미상", item: .unversioned)
-    ))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(directory))
+    #expect(TemporaryFilePolicy.isTemporaryFile(unknownKind))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(unknownKind))
 }
 
 @MainActor
@@ -1674,6 +1677,29 @@ import Testing
     store.selectedPaths.insert(temporary.path)
     #expect(!store.canCommitSelectedPaths)
     #expect(!(await store.commit(message: "임시파일 제외")))
+}
+
+@MainActor
+@Test func hiddenModeKeepsVersionedTemporaryFilesVisibleAndCommittable() async {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: true
+    )
+    let versionedTemporary = SVNStatusEntry(
+        path: "~$기존문서.xlsx",
+        item: .modified,
+        nodeKind: .file
+    )
+    let unknownKindTemporary = SVNStatusEntry(path: "~$종류미상", item: .unversioned)
+    store.statuses = [versionedTemporary, unknownKindTemporary]
+
+    #expect(store.visibleStatuses == [versionedTemporary, unknownKindTemporary])
+    #expect(store.selectableStatusPaths == [versionedTemporary.path, unknownKindTemporary.path])
+    #expect(store.selectAllStatusPaths == [versionedTemporary.path, unknownKindTemporary.path])
+
+    store.selectedPaths = [versionedTemporary.path]
+    #expect(store.canCommitSelectedPaths)
+    #expect(await store.commit(message: "버전관리 임시파일 수정"))
 }
 
 @MainActor

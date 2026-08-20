@@ -240,7 +240,7 @@ struct ChangesView: View {
             ))
             .toggleStyle(.checkbox)
             .font(.caption)
-            let missingEntries = store.statuses.filter(\.canScheduleRepositoryDeletion)
+            let missingEntries = store.visibleStatuses.filter(\.canScheduleRepositoryDeletion)
             if missingEntries.count > 1 {
                 Button {
                     store.requestDeletion(missingEntries)
