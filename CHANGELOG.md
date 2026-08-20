@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.0.3 (2026-08-20)
+
+- Hid Mac and Office temporary files from the changes list by default, and excluded them from commit targets so they can no longer be uploaded by accident.
+- Added a settings toggle that reveals temporary files again when they need to be committed or inspected deliberately.
+- Offered an optional cleanup commit after an update that deletes Mac and Office temporary files already stored in the repository, gated by name patterns, magic-byte checks, and a per-file review step.
+
 ## 0.5.26 (2026-08-04)
 
 - Showed a progress spinner inside every long-running action button instead of only disabling it.
