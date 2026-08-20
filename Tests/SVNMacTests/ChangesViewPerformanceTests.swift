@@ -17,8 +17,10 @@ struct ChangesViewPerformanceTests {
         let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
 
         #expect(!changesView.contains("store.statuses +"))
-        #expect(changesView.contains("ForEach(store.statuses)"))
-        #expect(changesView.contains("ForEach(store.ignoredStatuses)"))
+        #expect(changesView.contains("let visibleStatuses = store.visibleStatuses"))
+        #expect(changesView.contains("let visibleIgnoredStatuses = store.visibleIgnoredStatuses"))
+        #expect(changesView.contains("ForEach(visibleStatuses)"))
+        #expect(changesView.contains("ForEach(visibleIgnoredStatuses)"))
     }
 
     @Test func largeHistoryDiffUsesOneAttributedTextView() throws {
@@ -61,7 +63,7 @@ struct ChangesViewPerformanceTests {
         let changesView = try source(named: "ChangesView.swift", in: sources)
         let commitControls = try source(named: "CommitControlsView.swift", in: sources)
 
-        #expect(changesView.contains("entry.isTemporaryFile"))
+        #expect(changesView.contains("TemporaryFilePolicy.isTemporaryFile(entry)"))
         #expect(changesView.contains("\"ui.temporary.5738ffab\""))
         #expect(commitControls.contains("store.selectAllStatusPaths"))
         #expect(commitControls.contains("store.selectedPaths.removeAll()"))

@@ -170,6 +170,14 @@ final class ProjectStore {
         get { changesState.selectedStatusPath }
         set { changesState.selectedStatusPath = newValue }
     }
+    var hideTemporaryFiles: Bool {
+        didSet {
+            selectedPaths.formIntersection(selectableStatusPaths)
+            if let selectedProjectID {
+                updateLocalSummary(for: selectedProjectID, statuses: statuses)
+            }
+        }
+    }
     var diffContent: DiffContent {
         get { changesState.diffContent }
         set { changesState.diffContent = newValue }
@@ -414,12 +422,23 @@ final class ProjectStore {
             || documentOpenRequest != nil
     }
 
+    var visibleStatuses: [SVNStatusEntry] {
+        TemporaryFilePolicy.visibleEntries(statuses, hideTemporaryFiles: hideTemporaryFiles)
+    }
+
+    var visibleIgnoredStatuses: [SVNStatusEntry] {
+        TemporaryFilePolicy.visibleEntries(ignoredStatuses, hideTemporaryFiles: hideTemporaryFiles)
+    }
+
     var selectableStatusPaths: Set<String> {
-        Set(statuses.lazy.filter(\.isSelectableForCommit).map(\.path))
+        Set(TemporaryFilePolicy.commitEligibleEntries(
+            statuses,
+            hideTemporaryFiles: hideTemporaryFiles
+        ).map(\.path))
     }
 
     var selectAllStatusPaths: Set<String> {
-        Set(statuses.lazy.filter { $0.isSelectableForCommit && !$0.isTemporaryFile }.map(\.path))
+        Set(TemporaryFilePolicy.automaticallySelectedEntries(statuses).map(\.path))
     }
 
     var canRepairCanonicalAliases: Bool {
@@ -445,9 +464,11 @@ final class ProjectStore {
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
+        hideTemporaryFiles: Bool = AppSettings.hideTemporaryFiles(),
         isDemoMode: Bool = false
     ) {
         self.isDemoMode = isDemoMode
+        self.hideTemporaryFiles = hideTemporaryFiles
         self.client = client
         self.credentialStore = credentialStore
         self.persistence = persistence
@@ -834,7 +855,7 @@ final class ProjectStore {
     }
 
     func commit(message: String) async -> Bool {
-        guard let project = selectedProject, !selectedPaths.isEmpty else { return false }
+        guard let project = selectedProject, canCommitSelectedPaths else { return false }
         let paths = selectedPaths.sorted()
         let missingPaths = statuses.lazy
             .filter { $0.item == .missing && self.selectedPaths.contains($0.path) }
@@ -1153,9 +1174,13 @@ final class ProjectStore {
     }
 
     func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
+        let visibleStatuses = TemporaryFilePolicy.visibleEntries(
+            statuses,
+            hideTemporaryFiles: hideTemporaryFiles
+        )
         var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
-        summary.localChangeCount = statuses.count
-        summary.conflictCount = statuses.filter { $0.item == .conflicted }.count
+        summary.localChangeCount = visibleStatuses.count
+        summary.conflictCount = visibleStatuses.filter { $0.item == .conflicted }.count
         projectSummaries[projectID] = summary
     }
 

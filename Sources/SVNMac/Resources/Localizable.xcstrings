@@ -2449,6 +2449,23 @@
         }
       }
     },
+    "ui.hide.mac.office.temporary.files.875f35d1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Mac/Office temporary files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac/Office 임시파일 숨기기"
+          }
+        }
+      }
+    },
     "ui.hide.password.4c8a1f60": {
       "extractionState": "manual",
       "localizations": {
@@ -2462,6 +2479,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "비밀번호 가리기"
+          }
+        }
+      }
+    },
+    "ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide temporary files from Changes and prevent them from being committed. Versioned files remain visible in Update Preview because SVN update may still download them."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "임시파일을 변경 사항에서 숨기고 커밋되지 않게 합니다. SVN 업데이트에서 내려올 수 있는 버전관리 파일은 업데이트 미리보기에 계속 표시됩니다."
           }
         }
       }

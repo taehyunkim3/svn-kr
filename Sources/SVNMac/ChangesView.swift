@@ -59,21 +59,24 @@ struct ChangesView: View {
     // MARK: - 변경 파일 목록
 
     private var changedFileList: some View {
-        List {
+        let visibleStatuses = store.visibleStatuses
+        let visibleIgnoredStatuses = store.visibleIgnoredStatuses
+
+        return List {
             ForEach(store.pathCollisions) { collision in
                 collisionRow(collision)
             }
-            ForEach(store.statuses) { entry in
+            ForEach(visibleStatuses) { entry in
                 changedFileRow(entry)
             }
             if store.showsIgnoredFiles {
-                ForEach(store.ignoredStatuses) { entry in
+                ForEach(visibleIgnoredStatuses) { entry in
                     changedFileRow(entry)
                 }
             }
         }
         .overlay {
-            if store.pathCollisions.isEmpty && store.statuses.isEmpty && (!store.showsIgnoredFiles || store.ignoredStatuses.isEmpty) {
+            if store.pathCollisions.isEmpty && visibleStatuses.isEmpty && (!store.showsIgnoredFiles || visibleIgnoredStatuses.isEmpty) {
                 ContentUnavailableView(
                     appLanguage.localized("ui.no.changes.ea917fd6"),
                     systemImage: "checkmark.circle",
@@ -269,7 +272,7 @@ struct ChangesView: View {
     }
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {
-        if entry.isTemporaryFile {
+        if TemporaryFilePolicy.isTemporaryFile(entry) {
             return appLanguage.localized("ui.temporary.5738ffab")
         }
         return switch entry.item {
@@ -287,7 +290,7 @@ struct ChangesView: View {
     }
 
     private func statusColor(_ entry: SVNStatusEntry) -> Color {
-        if entry.isTemporaryFile { return .gray }
+        if TemporaryFilePolicy.isTemporaryFile(entry) { return .gray }
         return switch entry.item {
         case .modified: .orange
         case .added, .unversioned: .blue

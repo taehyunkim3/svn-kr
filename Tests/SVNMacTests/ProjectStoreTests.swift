@@ -1622,7 +1622,7 @@ import Testing
     ))
 }
 
-@Test func recognizesOnlyConservativeUnversionedTemporaryFiles() {
+@Test func recognizesTemporaryFilesByNameWhileRejectingDirectories() {
     let temporaryPaths = [
         "문서/~$보고서.xlsx",
         ".DS_Store",
@@ -1636,39 +1636,62 @@ import Testing
 
     for path in temporaryPaths {
         let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
-        #expect(entry.isTemporaryFile, "임시 파일로 분류되지 않음: \(path)")
+        #expect(TemporaryFilePolicy.isTemporaryFile(entry), "임시 파일로 분류되지 않음: \(path)")
     }
 
     let ordinaryPaths = ["보고서.xlsx", "cache.tmp", "cache.temp", "DS_Store"]
     for path in ordinaryPaths {
         let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
-        #expect(!entry.isTemporaryFile, "일반 파일이 임시 파일로 분류됨: \(path)")
+        #expect(!TemporaryFilePolicy.isTemporaryFile(entry), "일반 파일이 임시 파일로 분류됨: \(path)")
     }
 
-    #expect(!SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file).isTemporaryFile)
-    #expect(!SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory).isTemporaryFile)
-    #expect(!SVNStatusEntry(path: "~$종류미상", item: .unversioned).isTemporaryFile)
+    #expect(TemporaryFilePolicy.isTemporaryFile(
+        SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file)
+    ))
+    #expect(!TemporaryFilePolicy.isTemporaryFile(
+        SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory)
+    ))
+    #expect(TemporaryFilePolicy.isTemporaryFile(
+        SVNStatusEntry(path: "~$종류미상", item: .unversioned)
+    ))
 }
 
 @MainActor
-@Test func selectAllExcludesTemporaryFilesWithoutBlockingManualSelection() {
-    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+@Test func hiddenTemporaryFilesAreAbsentAndCannotBeCommitted() async {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: true
+    )
     let modified = SVNStatusEntry(path: "보고서.xlsx", item: .modified, nodeKind: .file)
     let unversioned = SVNStatusEntry(path: "새 문서.xlsx", item: .unversioned, nodeKind: .file)
     let temporary = SVNStatusEntry(path: "~$보고서.xlsx", item: .unversioned, nodeKind: .file)
     store.statuses = [modified, unversioned, temporary]
 
-    #expect(store.selectableStatusPaths == [modified.path, unversioned.path, temporary.path])
+    #expect(store.visibleStatuses == [modified, unversioned])
+    #expect(store.selectableStatusPaths == [modified.path, unversioned.path])
     #expect(store.selectAllStatusPaths == [modified.path, unversioned.path])
 
     store.selectedPaths.insert(temporary.path)
+    #expect(!store.canCommitSelectedPaths)
+    #expect(!(await store.commit(message: "임시파일 제외")))
+}
+
+@MainActor
+@Test func shownTemporaryFilesRemainManualCommitCandidatesButNotSelectAllCandidates() {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: false
+    )
+    let modified = SVNStatusEntry(path: "보고서.xlsx", item: .modified, nodeKind: .file)
+    let temporary = SVNStatusEntry(path: "~$보고서.xlsx", item: .unversioned, nodeKind: .file)
+    store.statuses = [modified, temporary]
+
+    #expect(store.visibleStatuses == [modified, temporary])
+    #expect(store.selectableStatusPaths == [modified.path, temporary.path])
+    #expect(store.selectAllStatusPaths == [modified.path])
+
+    store.selectedPaths = [temporary.path]
     #expect(store.canCommitSelectedPaths)
-
-    store.selectedPaths = store.selectAllStatusPaths
-    #expect(store.selectedPaths == [modified.path, unversioned.path])
-
-    store.selectedPaths.removeAll()
-    #expect(store.selectedPaths.isEmpty)
 }
 
 @MainActor
@@ -1784,7 +1807,8 @@ private func makeStore(
     fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
     conflictFileService: ConflictFileService = ConflictFileService(),
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
-    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker()
+    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
+    hideTemporaryFiles: Bool = true
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -1794,7 +1818,8 @@ private func makeStore(
         conflictFileService: conflictFileService,
         workingCopyFileService: fileService,
         workspaceOpener: workspaceOpener,
-        projectPathChecker: projectPathChecker
+        projectPathChecker: projectPathChecker,
+        hideTemporaryFiles: hideTemporaryFiles
     )
 }
 

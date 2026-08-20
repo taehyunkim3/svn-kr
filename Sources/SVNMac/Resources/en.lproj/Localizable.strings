@@ -142,7 +142,9 @@
 "ui.folder.settings.6f2a0d43" = "Folder Settings";
 "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7" = ".gitignore is not modified. Import is one-way, and SVN property changes must be committed to share them.";
 "ui.global.rules.can.affect.many.directories.below.t.164333fd" = "Global rules can affect many directories below the working copy. Apply only after reviewing the scope.";
+"ui.hide.mac.office.temporary.files.875f35d1" = "Hide Mac/Office temporary files";
 "ui.hide.password.4c8a1f60" = "Hide password";
+"ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4" = "Hide temporary files from Changes and prevent them from being committed. Versioned files remain visible in Update Preview because SVN update may still download them.";
 "ui.highest.local.revision.d334c9c1" = "Highest local revision";
 "ui.history.refreshed.5c159ee8" = "%1$@ history refreshed";
 "ui.ignore.this.extension.687c5df7" = "Ignore This Extension";

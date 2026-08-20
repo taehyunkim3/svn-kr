@@ -142,7 +142,9 @@
 "ui.folder.settings.6f2a0d43" = "폴더 설정";
 "ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7" = ".gitignore는 변경하지 않습니다. 가져오기는 단방향이며 SVN 속성 변경을 커밋해야 팀에 공유됩니다.";
 "ui.global.rules.can.affect.many.directories.below.t.164333fd" = "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요.";
+"ui.hide.mac.office.temporary.files.875f35d1" = "Mac/Office 임시파일 숨기기";
 "ui.hide.password.4c8a1f60" = "비밀번호 가리기";
+"ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4" = "임시파일을 변경 사항에서 숨기고 커밋되지 않게 합니다. SVN 업데이트에서 내려올 수 있는 버전관리 파일은 업데이트 미리보기에 계속 표시됩니다.";
 "ui.highest.local.revision.d334c9c1" = "내 로컬 최상위";
 "ui.history.refreshed.5c159ee8" = "%1$@ 커밋 기록 확인 완료";
 "ui.ignore.this.extension.687c5df7" = "같은 확장자 모두 무시";
