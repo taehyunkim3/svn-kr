@@ -1659,6 +1659,140 @@ import Testing
     #expect(!TemporaryFilePolicy.isHideableTemporaryFile(unknownKind))
 }
 
+@Test func repositoryCleanupUsesOnlyStrongTemporaryFileNames() {
+    let strongPaths = [
+        ".DS_Store",
+        "자료/._원본.pdf",
+        "문서/~$보고서.DOCX",
+        "Icon\r",
+        ".Spotlight-V100",
+        ".Trashes",
+        ".fseventsd",
+        ".TemporaryItems",
+        ".apdisk",
+    ]
+    let weakPaths = [
+        "메모.txt~",
+        ".main.swift.swp",
+        ".main.swift.swo",
+        "#메모.txt#",
+        ".#메모.txt",
+        "~$그림.png",
+    ]
+
+    for path in strongPaths {
+        #expect(TemporaryFilePolicy.isRepositoryCleanupCandidate(
+            SVNStatusEntry(path: path, item: .added)
+        ), "강한 정리 후보가 누락됨: \(path)")
+    }
+    for path in weakPaths {
+        #expect(!TemporaryFilePolicy.isRepositoryCleanupCandidate(
+            SVNStatusEntry(path: path, item: .added)
+        ), "약한 이름이 정리 후보로 포함됨: \(path)")
+    }
+}
+
+@Test func repositoryCleanupValidatesMagicBytesAndOfficeLockSize() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("repository-cleanup-validation-\(UUID().uuidString)", isDirectory: true)
+    let validDirectory = root.appendingPathComponent("valid", isDirectory: true)
+    let fakeDirectory = root.appendingPathComponent("fake", isDirectory: true)
+    try FileManager.default.createDirectory(at: validDirectory, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: fakeDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    try Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31, 0x00])
+        .write(to: validDirectory.appendingPathComponent(".DS_Store"))
+    try Data("not a DS Store".utf8)
+        .write(to: fakeDirectory.appendingPathComponent(".DS_Store"))
+    try Data([0x00, 0x05, 0x16, 0x07, 0x00])
+        .write(to: root.appendingPathComponent("._원본.pdf"))
+    try Data(repeating: 0x41, count: TemporaryFilePolicy.maximumOfficeLockFileSize + 1)
+        .write(to: root.appendingPathComponent("~$보고서.xlsx"))
+    try Data("owner".utf8)
+        .write(to: root.appendingPathComponent("~$작은파일.xlsx"))
+
+    let assessments = TemporaryFilePolicy.validateRepositoryCleanupCandidates(
+        paths: [
+            "valid/.DS_Store",
+            "fake/.DS_Store",
+            "._원본.pdf",
+            "~$보고서.xlsx",
+            "~$작은파일.xlsx",
+        ],
+        in: root
+    )
+    let byPath = Dictionary(uniqueKeysWithValues: assessments.map { ($0.path, $0) })
+
+    #expect(byPath["valid/.DS_Store"]?.isEligible == true)
+    #expect(byPath["._원본.pdf"]?.isEligible == true)
+    #expect(byPath["~$작은파일.xlsx"]?.isEligible == true)
+    #expect(byPath["fake/.DS_Store"]?.failure == .invalidDSStoreSignature)
+    #expect(
+        byPath["~$보고서.xlsx"]?.failure
+            == .officeLockFileTooLarge(maximumBytes: TemporaryFilePolicy.maximumOfficeLockFileSize)
+    )
+    #expect(Set(assessments.lazy.filter(\.isEligible).map(\.path)) == [
+        "valid/.DS_Store",
+        "._원본.pdf",
+        "~$작은파일.xlsx",
+    ])
+}
+
+@MainActor
+@Test func updateCleanupReviewExcludesValidationFailuresAndDefaultsToOff() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("repository-cleanup-update-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31])
+        .write(to: root.appendingPathComponent(".DS_Store"))
+    try Data("fake".utf8).write(to: root.appendingPathComponent("._fake"))
+
+    let project = SVNProject(name: "프로젝트", path: root.path)
+    let changes = [
+        SVNStatusEntry(path: ".DS_Store", item: .added),
+        SVNStatusEntry(path: "._fake", item: .added),
+    ]
+    let client = StubSVNClient(remoteChangesByPath: [project.path: changes])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.previewUpdate()
+    #expect(store.shouldOfferRepositoryTemporaryFileCleanup)
+    #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
+
+    store.cleansRepositoryTemporaryFilesAfterUpdate = true
+    await store.update()
+
+    #expect(store.isShowingTemporaryFileCleanup)
+    #expect(store.selectedTemporaryFileCleanupPaths == [".DS_Store"])
+    #expect(
+        store.temporaryFileCleanupAssessments.first { $0.path == "._fake" }?.failure
+            == .invalidAppleDoubleSignature
+    )
+
+    await store.confirmRepositoryTemporaryFileCleanup()
+    #expect(await client.requestedRepositoryCleanupDeletionPaths() == [".DS_Store"])
+    let commit = await client.lastCommitRequest()
+    #expect(commit?.paths == [".DS_Store"])
+    #expect(commit?.message == "Mac/Office 임시파일 정리\n\n- .DS_Store")
+}
+
+@MainActor
+@Test func updatePreviewDoesNotOfferCleanupWithoutStrongCandidates() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/no-cleanup-candidates")
+    let client = StubSVNClient(remoteChangesByPath: [project.path: [
+        SVNStatusEntry(path: "메모.txt~", item: .added),
+        SVNStatusEntry(path: ".DS_Store", item: .deleted),
+    ]])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.previewUpdate()
+
+    #expect(!store.shouldOfferRepositoryTemporaryFileCleanup)
+    #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
+}
+
 @MainActor
 @Test func hiddenTemporaryFilesAreAbsentAndCannotBeCommitted() async {
     let store = makeStore(
@@ -2017,6 +2151,11 @@ private struct RevisionDiffRequest: Equatable, Sendable {
     let pegRevision: String
 }
 
+private struct CommitRequest: Equatable, Sendable {
+    let paths: [String]
+    let message: String
+}
+
 private actor StubSVNClient: SVNClientServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
@@ -2070,6 +2209,8 @@ private actor StubSVNClient: SVNClientServing {
     private var resolvedPaths: [String] = []
     private var addedIgnoreRules: [SVNIgnoreRule] = []
     private var scheduleDeletionRequests = 0
+    private var repositoryCleanupDeletionPaths: [String] = []
+    private var commitRequests: [CommitRequest] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -2234,6 +2375,10 @@ private actor StubSVNClient: SVNClientServing {
         return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
     func scheduleDeletionRequestCount() -> Int { scheduleDeletionRequests }
+    func scheduleRepositoryCleanupDeletion(at path: String, relativePath: String, credentials: SVNCredentials?) async throws {
+        repositoryCleanupDeletionPaths.append(relativePath)
+    }
+    func requestedRepositoryCleanupDeletionPaths() -> [String] { repositoryCleanupDeletionPaths }
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
         repositoryLocksRequests += 1
         await delay(for: path)
@@ -2318,6 +2463,7 @@ private actor StubSVNClient: SVNClientServing {
         return fileLogsByPath[path] ?? []
     }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        commitRequests.append(CommitRequest(paths: paths, message: message))
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(
                 output: commitCompletedWarning.output,
@@ -2327,6 +2473,7 @@ private actor StubSVNClient: SVNClientServing {
         if let commitError { throw commitError }
         return "committed"
     }
+    func lastCommitRequest() -> CommitRequest? { commitRequests.last }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {

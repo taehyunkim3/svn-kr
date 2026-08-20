@@ -42,4 +42,15 @@ final class ProjectHistoryStore {
 @Observable
 final class ProjectUpdateStore {
     var remoteChanges: [SVNStatusEntry] = []
+    var cleansRepositoryTemporaryFilesAfterUpdate = false
+    var temporaryFileCleanupAssessments: [TemporaryFileCleanupAssessment] = []
+    var selectedTemporaryFileCleanupPaths: Set<String> = []
+    var temporaryFileCleanupFailures: [TemporaryFileCleanupFailure] = []
+}
+
+struct TemporaryFileCleanupFailure: Identifiable, Hashable {
+    let path: String
+    let reason: String
+
+    var id: String { "operation-failure:\(path)" }
 }

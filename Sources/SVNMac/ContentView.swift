@@ -199,6 +199,10 @@ struct ContentView: View {
             UpdatePreviewView()
                 .environment(store)
         }
+        .sheet(isPresented: $store.isShowingTemporaryFileCleanup) {
+            TemporaryFileCleanupView()
+                .environment(store)
+        }
         .sheet(isPresented: $store.isShowingLocks) {
             RepositoryLocksView()
                 .environment(store)

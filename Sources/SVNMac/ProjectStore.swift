@@ -100,6 +100,7 @@ final class ProjectStore {
     var isShowingIgnoreRules = false
     var isShowingLocks = false
     var isShowingUpdatePreview = false
+    var isShowingTemporaryFileCleanup = false
     var isShowingFileHistory = false
     var isShowingPathRecovery = false
     var pathRecoveryPreview: SVNRecoveryPreview?
@@ -250,6 +251,22 @@ final class ProjectStore {
         get { updateState.remoteChanges }
         set { updateState.remoteChanges = newValue }
     }
+    var cleansRepositoryTemporaryFilesAfterUpdate: Bool {
+        get { updateState.cleansRepositoryTemporaryFilesAfterUpdate }
+        set { updateState.cleansRepositoryTemporaryFilesAfterUpdate = newValue }
+    }
+    var temporaryFileCleanupAssessments: [TemporaryFileCleanupAssessment] {
+        get { updateState.temporaryFileCleanupAssessments }
+        set { updateState.temporaryFileCleanupAssessments = newValue }
+    }
+    var selectedTemporaryFileCleanupPaths: Set<String> {
+        get { updateState.selectedTemporaryFileCleanupPaths }
+        set { updateState.selectedTemporaryFileCleanupPaths = newValue }
+    }
+    var temporaryFileCleanupFailures: [TemporaryFileCleanupFailure] {
+        get { updateState.temporaryFileCleanupFailures }
+        set { updateState.temporaryFileCleanupFailures = newValue }
+    }
 
     /// 소개 이미지 촬영용 실행에서는 실제 UserDefaults, Keychain, 파일 시스템과 SVN을 사용하지 않습니다.
     let isDemoMode: Bool
@@ -352,6 +369,10 @@ final class ProjectStore {
         operationIsActive { .update($0) }
     }
 
+    var isCleaningSelectedProjectTemporaryFiles: Bool {
+        operationIsActive { .cleanupTemporaryFiles($0) }
+    }
+
     var isRefreshingSelectedProject: Bool {
         guard let projectID = selectedProjectID else { return false }
         return activeOperations.contains { operation in
@@ -411,6 +432,7 @@ final class ProjectStore {
         isShowingAddRepository
             || isShowingCredentials
             || isShowingUpdatePreview
+            || isShowingTemporaryFileCleanup
             || isShowingLocks
             || authenticationRequest != nil
             || isShowingIgnoreRules
@@ -428,6 +450,14 @@ final class ProjectStore {
 
     var visibleIgnoredStatuses: [SVNStatusEntry] {
         TemporaryFilePolicy.visibleEntries(ignoredStatuses, hideTemporaryFiles: hideTemporaryFiles)
+    }
+
+    var repositoryTemporaryFileCleanupCandidates: [SVNStatusEntry] {
+        TemporaryFilePolicy.repositoryCleanupCandidates(in: remoteChanges)
+    }
+
+    var shouldOfferRepositoryTemporaryFileCleanup: Bool {
+        !repositoryTemporaryFileCleanupCandidates.isEmpty
     }
 
     var selectableStatusPaths: Set<String> {
@@ -1208,6 +1238,7 @@ final class ProjectStore {
         browserState = ProjectBrowserStore()
         historyState = ProjectHistoryStore()
         updateState = ProjectUpdateStore()
+        isShowingTemporaryFileCleanup = false
         requiresGlobalIgnoreImportConfirmation = false
         selectedBrowserPath = nil
         documentOpenRequest = nil

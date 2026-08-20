@@ -35,6 +35,7 @@ enum AppLayout {
     static let ignoreRulesSheetMinimumSize = CGSize(width: 760, height: 620)
     static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
+    static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
     static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)

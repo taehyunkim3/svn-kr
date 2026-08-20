@@ -544,6 +544,35 @@ public actor SVNClient {
         return SVNDeletionResult(scheduledPaths: scheduled, failedPaths: failed)
     }
 
+    /// 내용 검증과 사용자 확인을 마친 저장소 임시파일 하나를 삭제 예약합니다.
+    /// 일반 누락 항목 삭제와 달리 update 직후 디스크에 존재하는 버전관리 항목이 대상입니다.
+    public func scheduleRepositoryCleanupDeletion(
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws {
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard !snapshot.hasPathCollisions,
+              let resolvedPath = snapshot.resolvedPath(for: relativePath) else {
+            throw SVNError.pathNormalizationCollision(paths: [relativePath])
+        }
+
+        _ = try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["delete", "--force"],
+            projectRelativePath: resolvedPath,
+            at: path,
+            credentials: credentials
+        )
+
+        let after = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard after.statuses.contains(where: {
+            SVNPathIdentity(rawPath: $0.path) == SVNPathIdentity(rawPath: resolvedPath)
+                && $0.item == .deleted
+        }) else {
+            throw SVNError.deletionValidationFailed(paths: [relativePath])
+        }
+    }
+
     public func repositoryLocks(
         at path: String,
         credentials: SVNCredentials? = nil,
