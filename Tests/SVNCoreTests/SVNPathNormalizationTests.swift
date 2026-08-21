@@ -80,6 +80,59 @@ import Testing
     #expect(result.unnormalizedPaths.map { Data($0.utf8) } == [Data(nfdName.utf8)])
 }
 
+@Test func pathNormalizationPreservesVersionedNFDAncestor() throws {
+    let fixture = try makeNormalizationFixture()
+    defer { try? FileManager.default.removeItem(at: fixture) }
+    let nfcDirectory = "기존폴더"
+    let nfdDirectory = nfcDirectory.decomposedStringWithCanonicalMapping
+    let nfcChild = "새파일.txt"
+    let nfdChild = nfcChild.decomposedStringWithCanonicalMapping
+    try createNormalizationDirectory(atPath: fixture.path + "/" + nfdDirectory)
+    try writeNormalizationFile(
+        Data("new".utf8),
+        atPath: fixture.path + "/" + nfdDirectory + "/" + nfdChild
+    )
+
+    let result = SVNPathNormalization.normalizeNewPaths(
+        rootPath: fixture.path,
+        relativePaths: [nfdDirectory + "/" + nfdChild],
+        versionedPathsByCanonicalKey: [nfcDirectory: [nfdDirectory]]
+    )
+
+    #expect(result.didRename)
+    #expect(result.unnormalizedPaths.isEmpty)
+    #expect(try storedNames(in: fixture).map { Data($0.utf8) } == [Data(nfdDirectory.utf8)])
+    let storedChildren = try FileManager.default.contentsOfDirectory(
+        atPath: fixture.path + "/" + nfdDirectory
+    )
+    #expect(storedChildren.map { Data($0.utf8) } == [Data(nfcChild.utf8)])
+    #expect(result.normalizedPaths.map { Data($0.utf8) } == [
+        Data("\(nfdDirectory)/\(nfcChild)".utf8),
+    ])
+}
+
+@Test func pathNormalizationReadsEachNewDirectoryAtMostTwice() throws {
+    let fixture = try makeNormalizationFixture()
+    defer { try? FileManager.default.removeItem(at: fixture) }
+    let directoryName = "bulk"
+    let directoryPath = fixture.path + "/" + directoryName
+    try createNormalizationDirectory(atPath: directoryPath)
+    for index in 0..<50 {
+        let nfdName = "한글-\(index).txt".decomposedStringWithCanonicalMapping
+        try writeNormalizationFile(Data("item".utf8), atPath: directoryPath + "/" + nfdName)
+    }
+    let fileManager = CountingDirectoryFileManager()
+
+    let result = SVNPathNormalization.normalizeNewPaths(
+        rootPath: fixture.path,
+        relativePaths: [directoryName],
+        fileManager: fileManager
+    )
+
+    #expect(result.didRename)
+    #expect(fileManager.readCount(atPath: directoryPath) == 2)
+}
+
 private func makeNormalizationFixture() throws -> URL {
     let fixture = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-path-normalization-\(UUID().uuidString)", isDirectory: true)
@@ -129,5 +182,18 @@ private final class CollisionDirectoryFileManager: FileManager, @unchecked Senda
 
     override func contentsOfDirectory(atPath path: String) throws -> [String] {
         entries
+    }
+}
+
+private final class CountingDirectoryFileManager: FileManager, @unchecked Sendable {
+    private var readCounts: [String: Int] = [:]
+
+    override func contentsOfDirectory(atPath path: String) throws -> [String] {
+        readCounts[path, default: 0] += 1
+        return try super.contentsOfDirectory(atPath: path)
+    }
+
+    func readCount(atPath path: String) -> Int {
+        readCounts[path, default: 0]
     }
 }

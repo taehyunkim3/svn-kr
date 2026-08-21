@@ -85,6 +85,49 @@ import Testing
     #expect(!nameBytes.contains(Data(existingNFCName.utf8)))
 }
 
+@Test func realSVNCommitIntoVersionedNFDDirectoryLeavesWorkingCopyClean() async throws {
+    let fixture = try UnicodeCommitFixture()
+    defer { fixture.remove() }
+    let nfcDirectory = "기존폴더"
+    let nfdDirectory = nfcDirectory.decomposedStringWithCanonicalMapping
+    let directoryPath = fixture.workingCopy.path + "/" + nfdDirectory
+    try createUnicodeIntegrationDirectory(atPath: directoryPath)
+    try writeUnicodeIntegrationFile(Data("seed".utf8), atPath: directoryPath + "/seed.txt")
+    _ = try runUnicodeIntegrationCommand(fixture.svnPath, ["add", directoryPath])
+    _ = try runUnicodeIntegrationCommand(
+        fixture.svnPath,
+        ["commit", directoryPath, "-m", "existing NFD dir"]
+    )
+
+    let nfcChild = "새파일.txt"
+    let nfdChild = nfcChild.decomposedStringWithCanonicalMapping
+    try writeUnicodeIntegrationFile(
+        Data("new".utf8),
+        atPath: directoryPath + "/" + nfdChild
+    )
+
+    _ = try await fixture.client.commit(
+        at: fixture.workingCopy.path,
+        paths: [nfdDirectory + "/" + nfdChild],
+        message: "new child in versioned NFD dir"
+    )
+
+    let names = try repositoryNames(fixture, recursive: true)
+    let bytes = names.map { Data($0.utf8) }
+    #expect(bytes.contains(Data("\(nfdDirectory)/".utf8)))
+    #expect(!bytes.contains(Data("\(nfcDirectory)/".utf8)))
+    #expect(bytes.contains(Data("\(nfdDirectory)/\(nfcChild)".utf8)))
+
+    let onDisk = try FileManager.default.contentsOfDirectory(atPath: fixture.workingCopy.path)
+        .filter { $0 != ".svn" }
+    #expect(onDisk.map { Data($0.utf8) } == [Data(nfdDirectory.utf8)])
+    let status = try runUnicodeIntegrationCommand(
+        fixture.svnPath,
+        ["status", fixture.workingCopy.path]
+    )
+    #expect(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+}
+
 private struct UnicodeCommitFixture {
     let root: URL
     let repository: URL

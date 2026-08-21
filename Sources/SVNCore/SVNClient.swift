@@ -1038,7 +1038,8 @@ public actor SVNClient {
         if !additions.isEmpty {
             let pathNormalization = SVNPathNormalization.normalizeNewPaths(
                 rootPath: path,
-                relativePaths: additions
+                relativePaths: additions,
+                versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
             )
             // HFS+처럼 rename 뒤에도 NFD로 되돌리는 볼륨에서는 원문 경로로 add를 계속합니다.
             // NFC 문자열만 넘기면 E155010(추가 예약 경로 누락)이 발생하므로 실패를 삼켜
