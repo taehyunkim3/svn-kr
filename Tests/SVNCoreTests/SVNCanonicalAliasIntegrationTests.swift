@@ -212,7 +212,7 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     #expect(expectedTargetCount == 6)
 }
 
-@Test func realSVNCleansMissingAdditionAndRecursivelyCommitsRawNFDDirectory() async throws {
+@Test func realSVNCleansMissingAdditionAndRecursivelyCommitsNFDDirectoryAsNFC() async throws {
     let fileManager = FileManager.default
     let svnPath = try #require(firstExecutable(at: [
         "/opt/homebrew/bin/svn",
@@ -259,6 +259,8 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     let rawFile = "기획 문서.pdf".decomposedStringWithCanonicalMapping
     let relativeDirectory = "plans/\(rawDirectory)"
     let relativeFile = "\(relativeDirectory)/\(rawFile)"
+    let normalizedDirectory = relativeDirectory.precomposedStringWithCanonicalMapping
+    let normalizedFile = relativeFile.precomposedStringWithCanonicalMapping
     let physicalDirectory = workingCopy.path + "/" + relativeDirectory
     let physicalFile = workingCopy.path + "/" + relativeFile
     let expectedBytes = Data([0x25, 0x50, 0x44, 0x46, 0x00, 0xFF])
@@ -275,12 +277,15 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     )
 
     let repositoryTree = try runIntegrationCommand(svnlookPath, ["tree", "--full-paths", repository.path])
-    let committedBytes = try runIntegrationCommandData(
-        svnlookPath,
-        ["cat", repository.path, relativeFile]
+    let encodedNormalizedFile = try #require(
+        normalizedFile.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     )
-    #expect(Data(repositoryTree.utf8).range(of: Data("\(relativeDirectory)/\n".utf8)) != nil)
-    #expect(Data(repositoryTree.utf8).range(of: Data("\(relativeFile)\n".utf8)) != nil)
+    let committedBytes = try runIntegrationCommandData(
+        svnPath,
+        ["cat", repositoryURL + encodedNormalizedFile]
+    )
+    #expect(Data(repositoryTree.utf8).range(of: Data("\(normalizedDirectory)/\n".utf8)) != nil)
+    #expect(Data(repositoryTree.utf8).range(of: Data("\(normalizedFile)\n".utf8)) != nil)
     #expect(committedBytes == expectedBytes)
 }
 
