@@ -999,7 +999,7 @@ public actor SVNClient {
             throw SVNError.pathNormalizationCollision(paths: snapshot.collisions.map(\.displayPath))
         }
 
-        let resolvedPaths = try paths.map { selectedPath -> String in
+        var resolvedPaths = try paths.map { selectedPath -> String in
             guard let resolved = snapshot.resolvedPath(for: selectedPath) else {
                 throw SVNError.pathNormalizationCollision(
                     paths: [selectedPath.precomposedStringWithCanonicalMapping]
@@ -1018,22 +1018,80 @@ public actor SVNClient {
                 credentials: credentials
             )
         }
-        let currentStatuses = snapshot.statuses
+        var currentStatuses = snapshot.statuses
         var statusByPath: [SVNPathIdentity: SVNStatusKind] = [:]
         for status in currentStatuses {
             statusByPath[SVNPathIdentity(rawPath: status.path)] = status.item
         }
 
-        let normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
-        let unresolvedMissingPaths = resolvedPaths.filter {
+        var normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
+        var unresolvedMissingPaths = resolvedPaths.filter {
             statusByPath[SVNPathIdentity(rawPath: $0)] == .missing
         }
         guard unresolvedMissingPaths.isEmpty else {
             throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
         }
-        let additions = Self.normalizedCommitPaths(resolvedPaths.filter {
+        var additions = Self.normalizedCommitPaths(resolvedPaths.filter {
             statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
         })
+
+        if !additions.isEmpty {
+            let pathNormalization = SVNPathNormalization.normalizeNewPaths(
+                rootPath: path,
+                relativePaths: additions
+            )
+            // HFS+처럼 rename 뒤에도 NFD로 되돌리는 볼륨에서는 원문 경로로 add를 계속합니다.
+            // NFC 문자열만 넘기면 E155010(추가 예약 경로 누락)이 발생하므로 실패를 삼켜
+            // 문자열만 바꾸지 않고, 디스크 rename이 확인된 경우에만 스냅샷을 갱신합니다.
+            if pathNormalization.didRename {
+                let previousAdditions = additions
+                let normalizedAdditions = pathNormalization.normalizedPaths
+                func pathAfterNormalization(_ originalPath: String) -> String {
+                    let originalBytes = Data(originalPath.utf8)
+                    for (previous, normalized) in zip(previousAdditions, normalizedAdditions) {
+                        let previousBytes = Data(previous.utf8)
+                        if originalBytes == previousBytes { return normalized }
+                        let prefixBytes = previousBytes + Data([0x2F])
+                        guard originalBytes.starts(with: prefixBytes) else { continue }
+                        let suffixBytes = originalBytes.dropFirst(prefixBytes.count)
+                        guard let suffix = String(data: suffixBytes, encoding: .utf8) else { continue }
+                        return normalized + "/" + suffix
+                    }
+                    return originalPath
+                }
+
+                snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+                guard !snapshot.hasUnrepairablePathCollisions else {
+                    throw SVNError.pathNormalizationCollision(
+                        paths: snapshot.collisions.map(\.displayPath)
+                    )
+                }
+                resolvedPaths = try resolvedPaths.map { previousPath -> String in
+                    let renamedPath = pathAfterNormalization(previousPath)
+                    guard let resolved = snapshot.resolvedPath(for: renamedPath) else {
+                        throw SVNError.pathNormalizationCollision(
+                            paths: [renamedPath.precomposedStringWithCanonicalMapping]
+                        )
+                    }
+                    return resolved
+                }
+                currentStatuses = snapshot.statuses
+                statusByPath.removeAll(keepingCapacity: true)
+                for status in currentStatuses {
+                    statusByPath[SVNPathIdentity(rawPath: status.path)] = status.item
+                }
+                normalizedPaths = Self.normalizedCommitPaths(resolvedPaths)
+                unresolvedMissingPaths = resolvedPaths.filter {
+                    statusByPath[SVNPathIdentity(rawPath: $0)] == .missing
+                }
+                guard unresolvedMissingPaths.isEmpty else {
+                    throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
+                }
+                additions = Self.normalizedCommitPaths(resolvedPaths.filter {
+                    statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
+                })
+            }
+        }
 
         var scheduledByThisCommit: [String] = []
         let commitOutput: String
