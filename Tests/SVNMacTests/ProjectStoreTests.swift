@@ -1778,21 +1778,26 @@ import Testing
 }
 
 @MainActor
-@Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() {
+@Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() async {
     let warningProject = SVNProject(name: "HFS 프로젝트", path: "/Volumes/HFS/project")
     let unknownProject = SVNProject(name: "알 수 없는 프로젝트", path: "/Volumes/Unknown/project")
+    let gate = AsyncTestGate()
     let probe = StubVolumeNormalizationProbe(results: [
         warningProject.path: false,
         unknownProject.path: nil,
-    ])
+    ], gate: gate)
 
     let store = makeStore(
         projects: [warningProject, unknownProject],
         volumeNormalizationProbe: probe
     )
+    #expect(store.filenameNormalizationWarningProjectIDs.isEmpty)
+
+    await gate.release()
+    await store.waitForFilenameNormalizationProbes()
 
     #expect(store.filenameNormalizationWarningProjectIDs == [warningProject.id])
-    #expect(probe.probedPaths == [warningProject.path, unknownProject.path])
+    #expect(Set(await probe.probedPaths) == [warningProject.path, unknownProject.path])
 }
 
 @MainActor
@@ -1840,15 +1845,18 @@ private enum TestError: Error {
     case staleRepositoryLocksFailed
 }
 
-private final class StubVolumeNormalizationProbe: VolumeNormalizationProbing {
+private actor StubVolumeNormalizationProbe: VolumeNormalizationProbing {
     private let results: [String: Bool?]
+    private let gate: AsyncTestGate?
     private(set) var probedPaths: [String] = []
 
-    init(results: [String: Bool?] = [:]) {
+    init(results: [String: Bool?] = [:], gate: AsyncTestGate? = nil) {
         self.results = results
+        self.gate = gate
     }
 
-    func preservesPrecomposedFilenames(at directoryPath: String) -> Bool? {
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool? {
+        await gate?.wait()
         probedPaths.append(directoryPath)
         return results[directoryPath] ?? nil
     }

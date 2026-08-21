@@ -5,12 +5,8 @@ import Foundation
 public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
     public static let shared = SVNVolumeNormalizationProbe()
 
-    private enum CachedResult {
-        case known(Bool?)
-    }
-
     private let lock = NSLock()
-    private var cachedResults: [String: CachedResult] = [:]
+    private var cachedResults: [String: Bool] = [:]
 
     public init() {}
 
@@ -18,13 +14,14 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
     public func preservesPrecomposedFilenames(at directoryPath: String) -> Bool? {
         let path = URL(fileURLWithPath: directoryPath, isDirectory: true).standardizedFileURL.path
 
-        return lock.withLock {
-            if case let .known(result)? = cachedResults[path] {
-                return result
-            }
+        if let cachedResult = lock.withLock({ cachedResults[path] }) {
+            return cachedResult
+        }
 
-            let result = probeUncached(at: path)
-            cachedResults[path] = .known(result)
+        guard let result = probeUncached(at: path) else { return nil }
+        return lock.withLock {
+            if let cachedResult = cachedResults[path] { return cachedResult }
+            cachedResults[path] = result
             return result
         }
     }
@@ -34,6 +31,22 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
     }
 
     private func probeUncached(at directoryPath: String) -> Bool? {
+        guard let directory = opendir(directoryPath) else { return nil }
+        defer { closedir(directory) }
+
+        let probePrefix = Data(".svn-mac-normalization-probe-".utf8)
+        while let entry = readdir(directory) {
+            let bytes = entryNameBytes(entry)
+            guard bytes.starts(with: probePrefix) else { continue }
+            let didRemove = withUnsafePointer(to: &entry.pointee.d_name) { namePointer in
+                namePointer.withMemoryRebound(
+                    to: CChar.self,
+                    capacity: MemoryLayout.size(ofValue: entry.pointee.d_name)
+                ) { unlinkat(dirfd(directory), $0, 0) == 0 }
+            }
+            guard didRemove else { return nil }
+        }
+
         let probeName = ".svn-mac-normalization-probe-\(UUID().uuidString)-한글"
             .precomposedStringWithCanonicalMapping
         // URL.appendingPathComponent는 Darwin에서 유니코드 경로 표현을 바꿀 수 있으므로
@@ -46,21 +59,24 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
         close(descriptor)
         defer { unlink(probePath) }
 
-        guard let directory = opendir(directoryPath) else { return nil }
-        defer { closedir(directory) }
+        rewinddir(directory)
 
         let expectedNFC = Data(probeName.utf8)
         let expectedNFD = Data(probeName.decomposedStringWithCanonicalMapping.utf8)
 
         while let entry = readdir(directory) {
-            let bytes = withUnsafeBytes(of: &entry.pointee.d_name) { rawBuffer -> Data in
-                let nameLength = rawBuffer.firstIndex(of: 0) ?? rawBuffer.count
-                return Data(rawBuffer.prefix(nameLength))
-            }
+            let bytes = entryNameBytes(entry)
             if bytes == expectedNFC { return true }
             if bytes == expectedNFD { return false }
         }
 
         return nil
+    }
+
+    private func entryNameBytes(_ entry: UnsafeMutablePointer<dirent>) -> Data {
+        withUnsafeBytes(of: &entry.pointee.d_name) { rawBuffer in
+            let nameLength = rawBuffer.firstIndex(of: 0) ?? rawBuffer.count
+            return Data(rawBuffer.prefix(nameLength))
+        }
     }
 }

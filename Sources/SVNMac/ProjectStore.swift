@@ -265,6 +265,7 @@ final class ProjectStore {
     private var latestRequestIDs: [ProjectRequestKind: UUID] = [:]
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
+    private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
     private var checkoutLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
@@ -692,6 +693,7 @@ final class ProjectStore {
         projectAccessManager.endAccessing(projectID: projectID)
         projectSummaries[projectID] = nil
         filenameNormalizationWarningProjectIDs.remove(projectID)
+        filenameNormalizationProbeTasks.removeValue(forKey: projectID)?.cancel()
         projects.removeAll { $0.id == projectID }
         if selectedProjectID == projectID {
             selectedProjectID = projects.first?.id
@@ -699,10 +701,34 @@ final class ProjectStore {
     }
 
     private func probeFilenameNormalization(for project: SVNProject) {
-        if volumeNormalizationProbe.preservesPrecomposedFilenames(at: project.path) == false {
-            filenameNormalizationWarningProjectIDs.insert(project.id)
+        filenameNormalizationProbeTasks.removeValue(forKey: project.id)?.cancel()
+        filenameNormalizationWarningProjectIDs.remove(project.id)
+        let probe = volumeNormalizationProbe
+        let projectID = project.id
+        let projectPath = project.path
+        filenameNormalizationProbeTasks[projectID] = Task { [weak self] in
+            let result = await probe.preservesPrecomposedFilenames(at: projectPath)
+            guard !Task.isCancelled else { return }
+            self?.applyFilenameNormalizationResult(result, projectID: projectID, path: projectPath)
+        }
+    }
+
+    private func applyFilenameNormalizationResult(
+        _ result: Bool?,
+        projectID: SVNProject.ID,
+        path: String
+    ) {
+        guard projects.contains(where: { $0.id == projectID && $0.path == path }) else { return }
+        if result == false {
+            filenameNormalizationWarningProjectIDs.insert(projectID)
         } else {
-            filenameNormalizationWarningProjectIDs.remove(project.id)
+            filenameNormalizationWarningProjectIDs.remove(projectID)
+        }
+    }
+
+    func waitForFilenameNormalizationProbes() async {
+        for task in filenameNormalizationProbeTasks.values {
+            await task.value
         }
     }
 

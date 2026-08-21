@@ -28,6 +28,39 @@ import Testing
     #expect(probe.preservesPrecomposedFilenames(at: directory.path) == true)
 }
 
+@Test func normalizationProbeDoesNotCacheUnknownResult() throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory
+        .appendingPathComponent("svn-normalization-retry-\(UUID().uuidString)", isDirectory: true)
+    let probe = SVNVolumeNormalizationProbe()
+
+    #expect(probe.preservesPrecomposedFilenames(at: directory.path) == nil)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: false)
+    defer { try? fileManager.removeItem(at: directory) }
+
+    #expect(probe.preservesPrecomposedFilenames(at: directory.path) == true)
+}
+
+@Test func normalizationProbeRemovesStaleProbeFilesBeforeRunning() throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory
+        .appendingPathComponent("svn-normalization-cleanup-\(UUID().uuidString)", isDirectory: true)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: false)
+    defer { try? fileManager.removeItem(at: directory) }
+
+    let staleProbe = directory.appendingPathComponent(
+        ".svn-mac-normalization-probe-STALE-한글",
+        isDirectory: false
+    )
+    let unrelatedFile = directory.appendingPathComponent(".keep", isDirectory: false)
+    #expect(fileManager.createFile(atPath: staleProbe.path, contents: Data()))
+    #expect(fileManager.createFile(atPath: unrelatedFile.path, contents: Data()))
+
+    let probe = SVNVolumeNormalizationProbe()
+    #expect(probe.preservesPrecomposedFilenames(at: directory.path) == true)
+    #expect(try fileManager.contentsOfDirectory(atPath: directory.path) == [".keep"])
+}
+
 @Test func normalizationProbeDetectsHFSPlusWhenDiskImagesAreAvailable() throws {
     let fileManager = FileManager.default
     let hdiutil = "/usr/bin/hdiutil"

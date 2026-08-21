@@ -182,13 +182,15 @@ struct FileManagerProjectPathChecker: ProjectPathChecking {
 
 // MARK: - 볼륨 파일명 정규화
 
-protocol VolumeNormalizationProbing {
-    func preservesPrecomposedFilenames(at directoryPath: String) -> Bool?
+protocol VolumeNormalizationProbing: Sendable {
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool?
 }
 
 struct CoreVolumeNormalizationProbe: VolumeNormalizationProbing {
-    func preservesPrecomposedFilenames(at directoryPath: String) -> Bool? {
-        SVNVolumeNormalizationProbe.preservesPrecomposedFilenames(at: directoryPath)
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool? {
+        await Task.detached {
+            SVNVolumeNormalizationProbe.preservesPrecomposedFilenames(at: directoryPath)
+        }.value
     }
 }
 
