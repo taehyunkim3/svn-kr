@@ -94,6 +94,7 @@ final class ProjectStore {
     var requiresGlobalIgnoreImportConfirmation = false
     var selectedBrowserPath: String?
     var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
+    private(set) var filenameNormalizationWarningProjectIDs: Set<SVNProject.ID> = []
     private(set) var activeOperations: [ProjectOperation] = []
     var isShowingAddRepository = false
     var isShowingCredentials = false
@@ -256,6 +257,7 @@ final class ProjectStore {
     let conflictFileService: ConflictFileService
     private let workspaceOpener: any WorkspaceOpening
     private let projectPathChecker: any ProjectPathChecking
+    private let volumeNormalizationProbe: any VolumeNormalizationProbing
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
     private var unavailableProjectID: SVNProject.ID?
@@ -263,6 +265,7 @@ final class ProjectStore {
     private var latestRequestIDs: [ProjectRequestKind: UUID] = [:]
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
+    private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
     private var checkoutLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
@@ -445,6 +448,7 @@ final class ProjectStore {
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
+        volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
         isDemoMode: Bool = false
     ) {
         self.isDemoMode = isDemoMode
@@ -456,11 +460,13 @@ final class ProjectStore {
         self.workingCopyFileService = workingCopyFileService
         self.workspaceOpener = workspaceOpener
         self.projectPathChecker = projectPathChecker
+        self.volumeNormalizationProbe = volumeNormalizationProbe
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
         projects = saved
         selectedProjectID = saved.first?.id
+        for project in saved { probeFilenameNormalization(for: project) }
     }
 
     // MARK: - 프로젝트 등록과 삭제
@@ -589,6 +595,7 @@ final class ProjectStore {
         )
         projects.append(project)
         selectedProjectID = project.id
+        probeFilenameNormalization(for: project)
         notice = checkoutNotice
 
         var keychainWarning: String?
@@ -623,6 +630,7 @@ final class ProjectStore {
                 let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
                 selectedProjectID = project.id
+                probeFilenameNormalization(for: project)
                 await refresh()
             } catch {
                 projectAccessManager.endAccessing(projectID: projectID)
@@ -663,6 +671,7 @@ final class ProjectStore {
             projects[index].path = destinationPath
             projects[index].name = destination.lastPathComponent
             projects[index].bookmarkData = bookmarkData
+            probeFilenameNormalization(for: projects[index])
             notice = AppLanguage.current.localized(
                 "ui.the.working.folder.was.changed.to.9c6f01b2",
                 destinationPath
@@ -683,9 +692,43 @@ final class ProjectStore {
         try? credentialStore.deletePassword(for: projectID)
         projectAccessManager.endAccessing(projectID: projectID)
         projectSummaries[projectID] = nil
+        filenameNormalizationWarningProjectIDs.remove(projectID)
+        filenameNormalizationProbeTasks.removeValue(forKey: projectID)?.cancel()
         projects.removeAll { $0.id == projectID }
         if selectedProjectID == projectID {
             selectedProjectID = projects.first?.id
+        }
+    }
+
+    private func probeFilenameNormalization(for project: SVNProject) {
+        filenameNormalizationProbeTasks.removeValue(forKey: project.id)?.cancel()
+        filenameNormalizationWarningProjectIDs.remove(project.id)
+        let probe = volumeNormalizationProbe
+        let projectID = project.id
+        let projectPath = project.path
+        filenameNormalizationProbeTasks[projectID] = Task { [weak self] in
+            let result = await probe.preservesPrecomposedFilenames(at: projectPath)
+            guard !Task.isCancelled else { return }
+            self?.applyFilenameNormalizationResult(result, projectID: projectID, path: projectPath)
+        }
+    }
+
+    private func applyFilenameNormalizationResult(
+        _ result: Bool?,
+        projectID: SVNProject.ID,
+        path: String
+    ) {
+        guard projects.contains(where: { $0.id == projectID && $0.path == path }) else { return }
+        if result == false {
+            filenameNormalizationWarningProjectIDs.insert(projectID)
+        } else {
+            filenameNormalizationWarningProjectIDs.remove(projectID)
+        }
+    }
+
+    func waitForFilenameNormalizationProbes() async {
+        for task in filenameNormalizationProbeTasks.values {
+            await task.value
         }
     }
 

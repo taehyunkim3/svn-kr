@@ -180,6 +180,20 @@ struct FileManagerProjectPathChecker: ProjectPathChecking {
     }
 }
 
+// MARK: - 볼륨 파일명 정규화
+
+protocol VolumeNormalizationProbing: Sendable {
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool?
+}
+
+struct CoreVolumeNormalizationProbe: VolumeNormalizationProbing {
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool? {
+        await Task.detached {
+            SVNVolumeNormalizationProbe.preservesPrecomposedFilenames(at: directoryPath)
+        }.value
+    }
+}
+
 // MARK: - 실행 중 작업 모델
 
 /// 단순 busy 여부뿐 아니라 어떤 종류의 작업이 실행 중인지 함께 보존합니다.

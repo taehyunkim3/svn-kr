@@ -1778,13 +1778,37 @@ import Testing
 }
 
 @MainActor
+@Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() async {
+    let warningProject = SVNProject(name: "HFS 프로젝트", path: "/Volumes/HFS/project")
+    let unknownProject = SVNProject(name: "알 수 없는 프로젝트", path: "/Volumes/Unknown/project")
+    let gate = AsyncTestGate()
+    let probe = StubVolumeNormalizationProbe(results: [
+        warningProject.path: false,
+        unknownProject.path: nil,
+    ], gate: gate)
+
+    let store = makeStore(
+        projects: [warningProject, unknownProject],
+        volumeNormalizationProbe: probe
+    )
+    #expect(store.filenameNormalizationWarningProjectIDs.isEmpty)
+
+    await gate.release()
+    await store.waitForFilenameNormalizationProbes()
+
+    #expect(store.filenameNormalizationWarningProjectIDs == [warningProject.id])
+    #expect(Set(await probe.probedPaths) == [warningProject.path, unknownProject.path])
+}
+
+@MainActor
 private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient(),
     fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
     conflictFileService: ConflictFileService = ConflictFileService(),
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
-    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker()
+    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
+    volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe()
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -1794,7 +1818,8 @@ private func makeStore(
         conflictFileService: conflictFileService,
         workingCopyFileService: fileService,
         workspaceOpener: workspaceOpener,
-        projectPathChecker: projectPathChecker
+        projectPathChecker: projectPathChecker,
+        volumeNormalizationProbe: volumeNormalizationProbe
     )
 }
 
@@ -1818,6 +1843,23 @@ private enum TestError: Error {
     case lockInfoFailed
     case automaticRefreshFailed
     case staleRepositoryLocksFailed
+}
+
+private actor StubVolumeNormalizationProbe: VolumeNormalizationProbing {
+    private let results: [String: Bool?]
+    private let gate: AsyncTestGate?
+    private(set) var probedPaths: [String] = []
+
+    init(results: [String: Bool?] = [:], gate: AsyncTestGate? = nil) {
+        self.results = results
+        self.gate = gate
+    }
+
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool? {
+        await gate?.wait()
+        probedPaths.append(directoryPath)
+        return results[directoryPath] ?? nil
+    }
 }
 
 private actor AsyncTestGate {

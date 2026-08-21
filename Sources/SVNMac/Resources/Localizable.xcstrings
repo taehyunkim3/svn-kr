@@ -2313,6 +2313,23 @@
         }
       }
     },
+    "ui.filename.warning.52af346c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filename warning"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일명 경고"
+          }
+        }
+      }
+    },
     "ui.files.6075adef": {
       "extractionState": "manual",
       "localizations": {
@@ -5879,6 +5896,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 커밋 메시지는 잘못된 인코딩으로 저장되어 복원 후 표시하고 있습니다. 다른 SVN 사용자에게는 아래 원문이 표시될 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The disk containing this folder stores Korean filenames only in decomposed form. Filenames may appear broken on Windows. We recommend working on an APFS-formatted disk."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 폴더가 있는 디스크는 한글 파일 이름을 자모 분리 형태로만 저장합니다. 윈도우에서 파일 이름이 깨져 보일 수 있습니다. APFS로 포맷된 디스크에서 작업하는 것을 권장합니다."
           }
         }
       }
