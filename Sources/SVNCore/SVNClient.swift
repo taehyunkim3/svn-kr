@@ -81,6 +81,191 @@ public actor SVNClient {
             .output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    public func repositoryPathsNeedingNormalization(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> [SVNRepositoryPathNormalizationTarget] {
+        let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: credentials)
+        let result = try await checkedRun(
+            ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        let entries = try SVNXMLParser.repositoryListEntries(from: Data(result.output.utf8))
+        return SVNRepositoryPathNormalization.targets(from: entries)
+    }
+
+    public func normalizeRepositoryPaths(
+        _ targets: [SVNRepositoryPathNormalizationTarget],
+        at path: String,
+        message: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> SVNRepositoryPathNormalizationResult {
+        let targets = SVNRepositoryPathNormalization.minimalTargets(targets)
+        guard !targets.isEmpty else {
+            return SVNRepositoryPathNormalizationResult(
+                renamedTargets: [],
+                skippedTargets: [],
+                committedRevisions: []
+            )
+        }
+
+        let invalidTargets = targets.filter { target in
+            let expected = target.repositoryPath.precomposedStringWithCanonicalMapping
+            return Data(target.repositoryPath.utf8) == Data(expected.utf8)
+                || Data(target.normalizedPath.utf8) != Data(expected.utf8)
+        }
+        guard invalidTargets.isEmpty else {
+            throw SVNRepositoryPathNormalizationError.invalidTargets(
+                paths: invalidTargets.map(\.repositoryPath)
+            )
+        }
+
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        let blockingLocalPaths = snapshot.statuses.compactMap { entry -> String? in
+            switch entry.item {
+            case .modified, .added, .deleted, .missing, .conflicted, .replaced:
+                break
+            case .unversioned, .ignored, .unknown:
+                return nil
+            }
+            return targets.contains(where: {
+                SVNRepositoryPathNormalization.isAtOrBelowCanonicalPath(
+                    entry.path,
+                    root: $0.repositoryPath
+                )
+            }) ? entry.path : nil
+        }
+        guard blockingLocalPaths.isEmpty else {
+            throw SVNRepositoryPathNormalizationError.blockedByLocalChanges(
+                paths: blockingLocalPaths
+            )
+        }
+
+        let locks = try await repositoryLocks(
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        let blockingLockPaths = locks.compactMap { lock in
+            targets.contains(where: {
+                SVNRepositoryPathNormalization.isAtOrBelowCanonicalPath(
+                    lock.path,
+                    root: $0.repositoryPath
+                )
+            }) ? lock.path : nil
+        }
+        guard blockingLockPaths.isEmpty else {
+            throw SVNRepositoryPathNormalizationError.blockedByLocks(paths: blockingLockPaths)
+        }
+
+        let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: credentials)
+        let listResult = try await checkedRun(
+            ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+        let repositoryEntries = try SVNXMLParser.repositoryListEntries(
+            from: Data(listResult.output.utf8)
+        )
+        let repositoryPathBytes = Set(repositoryEntries.map { Data($0.path.utf8) })
+        let skippedTargets = targets.filter {
+            repositoryPathBytes.contains(Data($0.normalizedPath.utf8))
+        }
+        let skippedPathBytes = Set(skippedTargets.map { Data($0.repositoryPath.utf8) })
+
+        struct PendingTarget {
+            let original: SVNRepositoryPathNormalizationTarget
+            var repositoryPath: String
+            var normalizedPath: String
+        }
+        var pending = targets.compactMap { target -> PendingTarget? in
+            guard !skippedPathBytes.contains(Data(target.repositoryPath.utf8)) else { return nil }
+            return PendingTarget(
+                original: target,
+                repositoryPath: target.repositoryPath,
+                normalizedPath: target.normalizedPath
+            )
+        }
+        var renamedTargets: [SVNRepositoryPathNormalizationTarget] = []
+        var committedRevisions: [String] = []
+
+        while !pending.isEmpty {
+            let current = pending.removeFirst()
+            let sourceURL = SVNRepositoryPathNormalization.repositoryURL(
+                repositoryURL,
+                appending: current.repositoryPath
+            )
+            let destinationURL = SVNRepositoryPathNormalization.repositoryURL(
+                repositoryURL,
+                appending: current.normalizedPath
+            )
+            let result: SVNCommandResult
+            do {
+                result = try await run(
+                    [
+                        "move", "--message", message, "--",
+                        Self.svnPathEscapingPegSyntax(sourceURL),
+                        Self.svnPathEscapingPegSyntax(destinationURL),
+                    ],
+                    at: path,
+                    credentials: credentials,
+                    allowUntrustedServerCertificate: allowUntrustedServerCertificate
+                )
+            } catch {
+                throw SVNRepositoryPathNormalizationError.failed(
+                    result: SVNRepositoryPathNormalizationResult(
+                        renamedTargets: renamedTargets,
+                        skippedTargets: skippedTargets,
+                        committedRevisions: committedRevisions
+                    ),
+                    failedTarget: current.original,
+                    details: String(describing: error)
+                )
+            }
+            guard result.exitCode == 0,
+                  let revision = SVNRepositoryPathNormalization.committedRevision(
+                      from: result.output
+                  ) else {
+                let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
+                throw SVNRepositoryPathNormalizationError.failed(
+                    result: SVNRepositoryPathNormalizationResult(
+                        renamedTargets: renamedTargets,
+                        skippedTargets: skippedTargets,
+                        committedRevisions: committedRevisions
+                    ),
+                    failedTarget: current.original,
+                    details: detail.isEmpty ? result.output : detail
+                )
+            }
+
+            renamedTargets.append(current.original)
+            committedRevisions.append(revision)
+            for index in pending.indices {
+                pending[index].repositoryPath = SVNRepositoryPathNormalization.replacingRawPrefix(
+                    in: pending[index].repositoryPath,
+                    sourcePrefix: current.repositoryPath,
+                    destinationPrefix: current.normalizedPath
+                )
+                pending[index].normalizedPath = SVNRepositoryPathNormalization.replacingRawPrefix(
+                    in: pending[index].normalizedPath,
+                    sourcePrefix: current.repositoryPath,
+                    destinationPrefix: current.normalizedPath
+                )
+            }
+        }
+
+        return SVNRepositoryPathNormalizationResult(
+            renamedTargets: renamedTargets,
+            skippedTargets: skippedTargets,
+            committedRevisions: committedRevisions
+        )
+    }
+
     /// 주어진 자격 증명으로 저장소에 실제로 접근할 수 있는지 확인합니다.
     ///
     /// 작업 복사본 대상 `info`는 로컬 메타데이터만 읽어 인증을 거치지 않으므로,

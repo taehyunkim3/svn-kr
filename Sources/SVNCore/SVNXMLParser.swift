@@ -1,6 +1,14 @@
 import Foundation
 
 public enum SVNXMLParser {
+    static func repositoryListEntries(from data: Data) throws -> [SVNRepositoryListEntry] {
+        let delegate = RepositoryListDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.entries
+    }
+
     /// 로컬 작업 복사본의 변경 항목만 읽습니다. 정상 항목과 external은 UI에
     /// 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
     public static func statuses(from data: Data) throws -> [SVNStatusEntry] {
@@ -113,6 +121,46 @@ public enum SVNXMLParser {
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.details
+    }
+}
+
+private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
+    var entries: [SVNRepositoryListEntry] = []
+    private var isDirectory = false
+    private var name: String?
+    private var text = ""
+
+    func parser(
+        _ parser: XMLParser,
+        didStartElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
+    ) {
+        text = ""
+        if elementName == "entry" {
+            isDirectory = attributeDict["kind"] == "dir"
+            name = nil
+        }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        text += string
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didEndElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?
+    ) {
+        if elementName == "name" {
+            name = text
+        } else if elementName == "entry", let name {
+            entries.append(SVNRepositoryListEntry(path: name, isDirectory: isDirectory))
+            self.name = nil
+        }
+        text = ""
     }
 }
 
