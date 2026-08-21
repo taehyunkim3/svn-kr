@@ -1778,13 +1778,32 @@ import Testing
 }
 
 @MainActor
+@Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() {
+    let warningProject = SVNProject(name: "HFS 프로젝트", path: "/Volumes/HFS/project")
+    let unknownProject = SVNProject(name: "알 수 없는 프로젝트", path: "/Volumes/Unknown/project")
+    let probe = StubVolumeNormalizationProbe(results: [
+        warningProject.path: false,
+        unknownProject.path: nil,
+    ])
+
+    let store = makeStore(
+        projects: [warningProject, unknownProject],
+        volumeNormalizationProbe: probe
+    )
+
+    #expect(store.filenameNormalizationWarningProjectIDs == [warningProject.id])
+    #expect(probe.probedPaths == [warningProject.path, unknownProject.path])
+}
+
+@MainActor
 private func makeStore(
     projects: [SVNProject],
     client: StubSVNClient = StubSVNClient(),
     fileService: any WorkingCopyFileListing = WorkingCopyFileService(),
     conflictFileService: ConflictFileService = ConflictFileService(),
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
-    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker()
+    projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
+    volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe()
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -1794,7 +1813,8 @@ private func makeStore(
         conflictFileService: conflictFileService,
         workingCopyFileService: fileService,
         workspaceOpener: workspaceOpener,
-        projectPathChecker: projectPathChecker
+        projectPathChecker: projectPathChecker,
+        volumeNormalizationProbe: volumeNormalizationProbe
     )
 }
 
@@ -1818,6 +1838,20 @@ private enum TestError: Error {
     case lockInfoFailed
     case automaticRefreshFailed
     case staleRepositoryLocksFailed
+}
+
+private final class StubVolumeNormalizationProbe: VolumeNormalizationProbing {
+    private let results: [String: Bool?]
+    private(set) var probedPaths: [String] = []
+
+    init(results: [String: Bool?] = [:]) {
+        self.results = results
+    }
+
+    func preservesPrecomposedFilenames(at directoryPath: String) -> Bool? {
+        probedPaths.append(directoryPath)
+        return results[directoryPath] ?? nil
+    }
 }
 
 private actor AsyncTestGate {

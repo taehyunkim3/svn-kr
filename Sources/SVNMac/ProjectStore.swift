@@ -94,6 +94,7 @@ final class ProjectStore {
     var requiresGlobalIgnoreImportConfirmation = false
     var selectedBrowserPath: String?
     var projectSummaries: [SVNProject.ID: ProjectStatusSummary] = [:]
+    private(set) var filenameNormalizationWarningProjectIDs: Set<SVNProject.ID> = []
     private(set) var activeOperations: [ProjectOperation] = []
     var isShowingAddRepository = false
     var isShowingCredentials = false
@@ -256,6 +257,7 @@ final class ProjectStore {
     let conflictFileService: ConflictFileService
     private let workspaceOpener: any WorkspaceOpening
     private let projectPathChecker: any ProjectPathChecking
+    private let volumeNormalizationProbe: any VolumeNormalizationProbing
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
     private var unavailableProjectID: SVNProject.ID?
@@ -445,6 +447,7 @@ final class ProjectStore {
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
+        volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
         isDemoMode: Bool = false
     ) {
         self.isDemoMode = isDemoMode
@@ -456,11 +459,13 @@ final class ProjectStore {
         self.workingCopyFileService = workingCopyFileService
         self.workspaceOpener = workspaceOpener
         self.projectPathChecker = projectPathChecker
+        self.volumeNormalizationProbe = volumeNormalizationProbe
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
         projects = saved
         selectedProjectID = saved.first?.id
+        for project in saved { probeFilenameNormalization(for: project) }
     }
 
     // MARK: - 프로젝트 등록과 삭제
@@ -589,6 +594,7 @@ final class ProjectStore {
         )
         projects.append(project)
         selectedProjectID = project.id
+        probeFilenameNormalization(for: project)
         notice = checkoutNotice
 
         var keychainWarning: String?
@@ -623,6 +629,7 @@ final class ProjectStore {
                 let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
                 selectedProjectID = project.id
+                probeFilenameNormalization(for: project)
                 await refresh()
             } catch {
                 projectAccessManager.endAccessing(projectID: projectID)
@@ -663,6 +670,7 @@ final class ProjectStore {
             projects[index].path = destinationPath
             projects[index].name = destination.lastPathComponent
             projects[index].bookmarkData = bookmarkData
+            probeFilenameNormalization(for: projects[index])
             notice = AppLanguage.current.localized(
                 "ui.the.working.folder.was.changed.to.9c6f01b2",
                 destinationPath
@@ -683,9 +691,18 @@ final class ProjectStore {
         try? credentialStore.deletePassword(for: projectID)
         projectAccessManager.endAccessing(projectID: projectID)
         projectSummaries[projectID] = nil
+        filenameNormalizationWarningProjectIDs.remove(projectID)
         projects.removeAll { $0.id == projectID }
         if selectedProjectID == projectID {
             selectedProjectID = projects.first?.id
+        }
+    }
+
+    private func probeFilenameNormalization(for project: SVNProject) {
+        if volumeNormalizationProbe.preservesPrecomposedFilenames(at: project.path) == false {
+            filenameNormalizationWarningProjectIDs.insert(project.id)
+        } else {
+            filenameNormalizationWarningProjectIDs.remove(project.id)
         }
     }
 

@@ -38,7 +38,11 @@ struct ContentView: View {
                                 if let username = project.username, !username.isEmpty {
                                     Text(username).font(.caption).foregroundStyle(.secondary)
                                 }
-                                ProjectStatusBadges(summary: store.projectSummaries[project.id])
+                                ProjectStatusBadges(
+                                    summary: store.projectSummaries[project.id],
+                                    hasFilenameNormalizationWarning:
+                                        store.filenameNormalizationWarningProjectIDs.contains(project.id)
+                                )
                             }
                         } icon: {
                             Image(systemName: "shippingbox")
@@ -226,6 +230,14 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(project.name).font(.title2.bold())
                     Text(project.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    if store.filenameNormalizationWarningProjectIDs.contains(project.id) {
+                        Label(
+                            appLanguage.localized("ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66"),
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    }
                 }
                 Spacer()
                 repositoryLocksButton
