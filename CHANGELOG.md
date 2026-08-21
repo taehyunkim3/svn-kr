@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed Korean filenames added on Mac appearing as separated letters on Windows.
+- Added a warning for working folders on disks that can only store Korean filenames in separated form.
+
 ## 0.5.26 (2026-08-04)
 
 - Showed a progress spinner inside every long-running action button instead of only disabling it.
