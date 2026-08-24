@@ -14,6 +14,18 @@ struct WorkingCopyBrowserNavigationResult: Equatable, Sendable {
     var fileToOpen: WorkingCopyFileNode?
 }
 
+struct WorkingCopyBrowserRefreshPlan: Equatable, Sendable {
+    let directoryPaths: [String]
+    let selectionAncestorPaths: Set<String>
+
+    func shouldRestoreDirectory(
+        _ relativePath: String,
+        expandedPaths: Set<String>
+    ) -> Bool {
+        expandedPaths.contains(relativePath) || selectionAncestorPaths.contains(relativePath)
+    }
+}
+
 enum WorkingCopyFileSortColumn: Hashable, Sendable {
     case name
     case modificationDate
@@ -94,6 +106,48 @@ struct WorkingCopyBrowserTreeState: Equatable, Sendable {
         childrenByDirectory.removeAll()
         loadingPaths.removeAll()
         generation = UUID()
+    }
+
+    /// 같은 작업 사본을 새로고침할 때 펼침 상태는 남기고, 다시 읽어야 하는
+    /// 디렉터리 캐시와 진행 중 요청만 폐기합니다.
+    mutating func prepareForRefresh() {
+        rootNodes = rootNodes.map(\.withoutLoadedChildren)
+        childrenByDirectory.removeAll()
+        loadingPaths.removeAll()
+        generation = UUID()
+    }
+
+    /// 새 루트를 적용하는 순간 그 사이 시작된 자식 읽기도 무효화합니다.
+    /// 사용자가 새로고침 중 바꾼 펼침 상태는 그대로 둡니다.
+    mutating func replaceRootNodesForRefresh(_ rootNodes: [WorkingCopyFileNode]) {
+        self.rootNodes = rootNodes.map(\.withoutLoadedChildren)
+        childrenByDirectory.removeAll()
+        loadingPaths.removeAll()
+        generation = UUID()
+    }
+
+    func refreshPlan(selectedPath: String?) -> WorkingCopyBrowserRefreshPlan {
+        let selectionAncestors = selectedPath.map(directoryAncestors) ?? []
+        let paths = expandedPaths
+            .union(selectionAncestors)
+            .sorted {
+                let lhsDepth = pathDepth($0)
+                let rhsDepth = pathDepth($1)
+                return lhsDepth == rhsDepth ? $0 < $1 : lhsDepth < rhsDepth
+            }
+        return WorkingCopyBrowserRefreshPlan(
+            directoryPaths: paths,
+            selectionAncestorPaths: selectionAncestors
+        )
+    }
+
+    mutating func finishRefresh(selectedPath: String?) -> String? {
+        expandedPaths = expandedPaths.filter { path in
+            guard let node = node(at: path) else { return false }
+            return node.isDirectory && node.hasChildren
+        }
+        guard let selectedPath, node(at: selectedPath) != nil else { return nil }
+        return selectedPath
     }
 
     mutating func replace(withRecursiveTree tree: [WorkingCopyFileNode], expanded: Bool = false) {
@@ -269,6 +323,20 @@ struct WorkingCopyBrowserTreeState: Equatable, Sendable {
     private func parentPath(of relativePath: String) -> String? {
         guard let separator = relativePath.lastIndex(of: "/") else { return nil }
         return String(relativePath[..<separator])
+    }
+
+    private func directoryAncestors(of relativePath: String) -> Set<String> {
+        var result: Set<String> = []
+        var ancestor = parentPath(of: relativePath)
+        while let path = ancestor {
+            result.insert(path)
+            ancestor = parentPath(of: path)
+        }
+        return result
+    }
+
+    private func pathDepth(_ relativePath: String) -> Int {
+        relativePath.split(separator: "/").count
     }
 }
 

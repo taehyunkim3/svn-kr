@@ -38,10 +38,10 @@ extension ProjectStore {
         let operationID = beginOperation(.browseFiles(project.id))
         defer { endOperation(operationID) }
 
-        var clearedState = workingCopyBrowserTreeState
-        clearedState.reset()
-        workingCopyBrowserTreeState = clearedState
-        workingCopyBrowserSVNEntries = []
+        let selectionBeforeRefresh = selectedBrowserPath
+        var refreshingState = workingCopyBrowserTreeState
+        refreshingState.prepareForRefresh()
+        workingCopyBrowserTreeState = refreshingState
 
         do {
             let svnEntries = try await client.workingCopyEntries(at: project.path, credentials: nil)
@@ -52,13 +52,57 @@ extension ProjectStore {
             )
             guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
             var state = workingCopyBrowserTreeState
-            state.reset(rootNodes: rootNodes)
+            state.replaceRootNodesForRefresh(rootNodes)
             workingCopyBrowserTreeState = state
             workingCopyBrowserSVNEntries = svnEntries
-            if let selectedBrowserPath,
-               state.node(at: selectedBrowserPath) == nil {
-                self.selectedBrowserPath = nil
+
+            let selectionToRestore = selectedBrowserPath ?? selectionBeforeRefresh
+            let refreshPlan = state.refreshPlan(selectedPath: selectionToRestore)
+            let generation = state.generation
+
+            for relativeDirectory in refreshPlan.directoryPaths {
+                guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                      workingCopyBrowserTreeState.generation == generation else { return }
+                var currentState = workingCopyBrowserTreeState
+                guard refreshPlan.shouldRestoreDirectory(
+                    relativeDirectory,
+                    expandedPaths: currentState.expandedPaths
+                ),
+                    let node = currentState.node(at: relativeDirectory),
+                    node.isDirectory,
+                    node.hasChildren,
+                    !currentState.hasCachedChildren(for: relativeDirectory) else { continue }
+
+                currentState.setLoading(true, for: relativeDirectory)
+                workingCopyBrowserTreeState = currentState
+                do {
+                    let children = try await workingCopyFileService.directoryContents(
+                        at: project.path,
+                        relativeDirectory: relativeDirectory,
+                        svnEntries: svnEntries
+                    )
+                    guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                          workingCopyBrowserTreeState.generation == generation else { return }
+                    var loadedState = workingCopyBrowserTreeState
+                    loadedState.cache(children, for: relativeDirectory)
+                    workingCopyBrowserTreeState = loadedState
+                } catch {
+                    guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                          workingCopyBrowserTreeState.generation == generation else { return }
+                    var failedState = workingCopyBrowserTreeState
+                    failedState.setLoading(false, for: relativeDirectory)
+                    workingCopyBrowserTreeState = failedState
+                    throw error
+                }
             }
+
+            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                  workingCopyBrowserTreeState.generation == generation else { return }
+            var restoredState = workingCopyBrowserTreeState
+            selectedBrowserPath = restoredState.finishRefresh(
+                selectedPath: selectedBrowserPath ?? selectionBeforeRefresh
+            )
+            workingCopyBrowserTreeState = restoredState
         } catch {
             guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
             publishRefreshError(error, projectID: project.id, policy: errorPolicy)
