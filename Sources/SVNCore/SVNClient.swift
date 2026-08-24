@@ -114,9 +114,7 @@ public actor SVNClient {
         }
 
         let invalidTargets = targets.filter { target in
-            let expected = target.repositoryPath.precomposedStringWithCanonicalMapping
-            return Data(target.repositoryPath.utf8) == Data(expected.utf8)
-                || Data(target.normalizedPath.utf8) != Data(expected.utf8)
+            !SVNRepositoryPathNormalization.isValidTarget(target)
         }
         guard invalidTargets.isEmpty else {
             throw SVNRepositoryPathNormalizationError.invalidTargets(

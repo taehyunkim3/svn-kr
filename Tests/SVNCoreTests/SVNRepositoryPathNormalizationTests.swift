@@ -19,7 +19,7 @@ import Testing
     #expect(Data(nfd.utf8) != Data(nfc.utf8))
 }
 
-@Test func repositoryNormalizationExcludesDescendantsOfSelectedAncestor() {
+@Test func repositoryNormalizationIncludesNFDDescendantsOfSelectedAncestor() {
     let directory = "한글폴더".decomposedStringWithCanonicalMapping
     let child = "하위파일.txt".decomposedStringWithCanonicalMapping
 
@@ -28,8 +28,26 @@ import Testing
         SVNRepositoryListEntry(path: directory, isDirectory: true),
     ])
 
+    #expect(targets.count == 2)
+    #expect(Data(targets[0].repositoryPath.utf8) == Data(directory.utf8))
+    #expect(targets[0].isDirectory)
+    #expect(Data(targets[1].repositoryPath.utf8) == Data((directory + "/" + child).utf8))
+    #expect(Data(targets[1].normalizedPath.utf8) == Data((directory + "/하위파일.txt").utf8))
+    #expect(!targets[1].isDirectory)
+}
+
+@Test func repositoryNormalizationExcludesNFCDescendantOfSelectedAncestor() {
+    let directory = "한글폴더".decomposedStringWithCanonicalMapping
+    let child = "하위파일.txt"
+
+    let targets = SVNRepositoryPathNormalization.targets(from: [
+        SVNRepositoryListEntry(path: directory + "/" + child, isDirectory: false),
+        SVNRepositoryListEntry(path: directory, isDirectory: true),
+    ])
+
     #expect(targets.count == 1)
     #expect(Data(targets[0].repositoryPath.utf8) == Data(directory.utf8))
+    #expect(Data(targets[0].normalizedPath.utf8) == Data("한글폴더".utf8))
     #expect(targets[0].isDirectory)
 }
 

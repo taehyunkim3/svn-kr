@@ -11,6 +11,8 @@ import Testing
     let nfcDirectory = "한글폴더"
     let nfdDirectory = nfcDirectory.decomposedStringWithCanonicalMapping
     let nfcChild = "하위파일.txt"
+    let nfdChild = nfcChild.decomposedStringWithCanonicalMapping
+    let nfcSibling = "완성형파일.txt"
 
     try writeRepositoryNormalizationFile(
         Data("root".utf8),
@@ -21,7 +23,11 @@ import Testing
     )
     try writeRepositoryNormalizationFile(
         Data("child".utf8),
-        atPath: fixture.workingCopy.path + "/" + nfdDirectory + "/" + nfcChild
+        atPath: fixture.workingCopy.path + "/" + nfdDirectory + "/" + nfdChild
+    )
+    try writeRepositoryNormalizationFile(
+        Data("sibling".utf8),
+        atPath: fixture.workingCopy.path + "/" + nfdDirectory + "/" + nfcSibling
     )
     _ = try runRepositoryNormalizationCommand(
         fixture.svnPath,
@@ -35,12 +41,15 @@ import Testing
     let targets = try await fixture.client.repositoryPathsNeedingNormalization(
         at: fixture.workingCopy.path
     )
-    #expect(targets.count == 2)
-    #expect(targets.allSatisfy { $0.repositoryPath.split(separator: "/").count == 1 })
+    #expect(targets.count == 3)
+    #expect(targets.map { $0.repositoryPath.split(separator: "/").count } == [1, 1, 2])
     #expect(targets.contains { Data($0.repositoryPath.utf8) == Data(nfdFile.utf8) })
     #expect(targets.contains { Data($0.repositoryPath.utf8) == Data(nfdDirectory.utf8) })
+    #expect(targets.contains {
+        Data($0.repositoryPath.utf8) == Data((nfdDirectory + "/" + nfdChild).utf8)
+    })
     #expect(!targets.contains {
-        Data($0.repositoryPath.utf8) == Data((nfdDirectory + "/" + nfcChild).utf8)
+        Data($0.repositoryPath.utf8) == Data((nfdDirectory + "/" + nfcSibling).utf8)
     })
 
     let revisionBefore = try fixture.repositoryRevision()
@@ -53,8 +62,8 @@ import Testing
 
     #expect(result.renamedTargets == targets)
     #expect(result.skippedTargets.isEmpty)
-    #expect(result.committedRevisions.count == 2)
-    #expect(revisionAfter - revisionBefore == 2)
+    #expect(result.committedRevisions.count == 3)
+    #expect(revisionAfter - revisionBefore == 3)
 
     let repositoryPaths = try fixture.repositoryPaths()
     #expect(repositoryPaths.allSatisfy {
@@ -62,6 +71,68 @@ import Testing
     })
     #expect(repositoryPaths.map { Data($0.utf8) }.contains(Data(nfcFile.utf8)))
     #expect(repositoryPaths.map { Data($0.utf8) }.contains(Data((nfcDirectory + "/" + nfcChild).utf8)))
+    #expect(repositoryPaths.map { Data($0.utf8) }.contains(Data((nfcDirectory + "/" + nfcSibling).utf8)))
+
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["update", fixture.workingCopy.path]
+    )
+    let status = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["status", fixture.workingCopy.path]
+    )
+    #expect(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+}
+
+@Test func realSVNNormalizesEveryNFDComponentInThreeLevelTree() async throws {
+    let fixture = try RepositoryNormalizationFixture()
+    defer { fixture.remove() }
+    let nfcComponents = ["첫폴더", "둘째폴더", "셋째파일.txt"]
+    let nfdComponents = nfcComponents.map(\.decomposedStringWithCanonicalMapping)
+    let nfdDirectory = nfdComponents.dropLast().joined(separator: "/")
+    let nfdPath = nfdComponents.joined(separator: "/")
+
+    try createRepositoryNormalizationDirectory(
+        atPath: fixture.workingCopy.path + "/" + nfdComponents[0]
+    )
+    try createRepositoryNormalizationDirectory(
+        atPath: fixture.workingCopy.path + "/" + nfdDirectory
+    )
+    try writeRepositoryNormalizationFile(
+        Data("nested".utf8),
+        atPath: fixture.workingCopy.path + "/" + nfdPath
+    )
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["add", "--force", fixture.workingCopy.path]
+    )
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["commit", fixture.workingCopy.path, "-m", "three-level NFD seed"]
+    )
+
+    let targets = try await fixture.client.repositoryPathsNeedingNormalization(
+        at: fixture.workingCopy.path
+    )
+    #expect(targets.count == 3)
+    #expect(targets.map { $0.repositoryPath.split(separator: "/").count } == [1, 2, 3])
+
+    let result = try await fixture.client.normalizeRepositoryPaths(
+        targets,
+        at: fixture.workingCopy.path,
+        message: "3단계 저장소 경로 NFC 정규화"
+    )
+
+    #expect(result.renamedTargets == targets)
+    #expect(result.skippedTargets.isEmpty)
+    #expect(result.committedRevisions.count == 3)
+    let repositoryPaths = try fixture.repositoryPaths()
+    #expect(repositoryPaths.allSatisfy {
+        Data($0.utf8) == Data($0.precomposedStringWithCanonicalMapping.utf8)
+    })
+    #expect(repositoryPaths.map { Data($0.utf8) }.contains(
+        Data(nfcComponents.joined(separator: "/").utf8)
+    ))
 
     _ = try runRepositoryNormalizationCommand(
         fixture.svnPath,
