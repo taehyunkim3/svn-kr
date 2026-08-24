@@ -1401,6 +1401,7 @@ import Testing
     await store.prepareToOpen(path: "report.xlsx", isVersioned: true)
 
     let request = try #require(store.documentOpenRequest)
+    #expect(request.lockInformationWasUnavailable)
     #expect(store.errorMessage == nil)
     #expect(store.notice == "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다.")
 

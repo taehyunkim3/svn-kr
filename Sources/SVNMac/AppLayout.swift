@@ -11,7 +11,7 @@ enum AppLayout {
     static let windowDefaultWidth: CGFloat = 1_280
     static let windowDefaultHeight: CGFloat = 780
     static let aboutWindowSize = CGSize(width: 420, height: 330)
-    static let settingsWindowSize = CGSize(width: 560, height: 230)
+    static let settingsWindowSize = CGSize(width: 560, height: 350)
 
     static let sidebarMinimumWidth: CGFloat = 190
     static let sidebarIdealWidth: CGFloat = 230
@@ -61,6 +61,7 @@ enum AppLayout {
     static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
     static let ignoreRulesSheetMinimumSize = CGSize(width: 760, height: 620)
     static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
+    static let documentOpenConfirmationSheetMinimumSize = CGSize(width: 620, height: 320)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)

@@ -563,6 +563,57 @@
         }
       }
     },
+    "ui.always.lock.and.open.documents.2f9a7c11": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always Lock and Open Without Asking"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "묻지 않고 항상 잠그고 열기"
+          }
+        }
+      }
+    },
+    "ui.always.open.documents.without.locking.8b6e42d0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always Open Without Locking or Asking"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "묻지 않고 항상 잠그지 않고 열기"
+          }
+        }
+      }
+    },
+    "ui.ask.every.time.before.opening.documents.31c4d8a2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask Every Time"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "매번 물어보기"
+          }
+        }
+      }
+    },
     "ui.add.a.local.working.folder.816116ca": {
       "extractionState": "manual",
       "localizations": {
@@ -2365,6 +2416,23 @@
         }
       }
     },
+    "ui.document.opening.method.9d73be41": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When Opening Documents"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문서 열기 방식"
+          }
+        }
+      }
+    },
     "ui.download.the.latest.server.changes.into.the.curr.17974067": {
       "extractionState": "manual",
       "localizations": {
@@ -3708,6 +3776,23 @@
         }
       }
     },
+    "ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other users cannot modify a locked file until you commit it or release it from the lock list."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠긴 파일은 커밋하거나 잠금 목록에서 해제하기 전까지 다른 사람이 그 파일을 수정할 수 없습니다."
+          }
+        }
+      }
+    },
     "ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c": {
       "extractionState": "manual",
       "localizations": {
@@ -4435,6 +4520,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 SVN 로컬 작업 폴더를 Finder에서 엽니다."
+          }
+        }
+      }
+    },
+    "ui.open.without.lock.and.do.not.ask.again.4c6f8a20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Without Locking and Don't Ask Again"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠그지 않고 열고, 다시 묻지 않기"
           }
         }
       }

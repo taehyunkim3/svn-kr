@@ -6,6 +6,7 @@ struct DocumentOpenRequest: Identifiable, Equatable, Sendable {
     let relativePath: String
     let repositoryRelativePath: String
     let existingLock: SVNLockInfo?
+    var lockInformationWasUnavailable = false
 }
 
 extension ProjectStore {
@@ -51,7 +52,8 @@ extension ProjectStore {
             let request = DocumentOpenRequest(
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
-                existingLock: nil
+                existingLock: nil,
+                lockInformationWasUnavailable: true
             )
             switch AppSettings.documentOpenLockPolicy(in: settingsDefaults) {
             case .askEveryTime:

@@ -53,6 +53,9 @@
 "ui.a.conflict.file.path.points.outside.the.working..137a7ed6" = "충돌 파일 경로가 작업 사본 밖을 가리킵니다.";
 "ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309" = "잠금 파일은 편집 중인 파일에 다른 사용자가 동시에 커밋하지 못하도록 SVN 서버에 표시한 파일입니다. 내가 잠근 파일은 커밋에 성공하면 자동으로 잠금이 해제됩니다.";
 "ui.a.password.for.this.folder.is.stored.in.macos.ke.676ba875" = "이 폴더의 비밀번호가 macOS Keychain에 저장되어 있습니다.";
+"ui.always.lock.and.open.documents.2f9a7c11" = "묻지 않고 항상 잠그고 열기";
+"ui.always.open.documents.without.locking.8b6e42d0" = "묻지 않고 항상 잠그지 않고 열기";
+"ui.ask.every.time.before.opening.documents.31c4d8a2" = "매번 물어보기";
 "ui.about.svn.kr.ddc63e52" = "SVN KR 정보";
 "ui.add.a.local.working.folder.816116ca" = "로컬 작업 폴더를 추가하세요";
 "ui.add.svn.repository.8b9639fa" = "SVN 저장소 추가";
@@ -160,6 +163,7 @@
 "ui.deleted.6826dd28" = "삭제";
 "ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5" = "아직 SVN에 추가되지 않은 파일은 diff를 표시할 수 없습니다. 커밋할 때 자동으로 추가됩니다.";
 "ui.discard.changes.and.close.4e12b8a7" = "변경 취소하고 닫기";
+"ui.document.opening.method.9d73be41" = "문서 열기 방식";
 "ui.download.the.latest.server.changes.into.the.curr.17974067" = "서버의 최신 변경 사항을 현재 로컬 작업 폴더에 내려받습니다.";
 "ui.earlier.history.da5e45b0" = "… 이전 기록";
 "ui.editing.document.in.svn.kr.5e6ac9cc" = "SVN KR에서 문서 편집 중";
@@ -238,6 +242,7 @@
 "ui.locked.by.192b78cf" = "%1$@ 사용자가 잠근 파일";
 "ui.locked.by.you.f2a7c3f2" = "내가 잠근 파일";
 "ui.locked.files.457daf19" = "잠긴 파일 %1$@개";
+"ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf" = "잠긴 파일은 커밋하거나 잠금 목록에서 해제하기 전까지 다른 사람이 그 파일을 수정할 수 없습니다.";
 "ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c" = "잠그면 다른 사용자의 동시 커밋을 방지해 문서 충돌을 줄일 수 있습니다. 커밋에 성공하면 잠금은 자동으로 해제됩니다.";
 "ui.locks.46e6922e" = "잠금 %1$@개";
 "ui.locks.dac8d38d" = "잠금 목록";
@@ -281,6 +286,7 @@
 "ui.open.server.file.252d515b" = "서버 파일 열기";
 "ui.open.the.app.wide.settings.window.6b0d5a17" = "앱 전체 설정 창을 엽니다.";
 "ui.open.this.svn.local.working.folder.in.finder.9befff0f" = "이 SVN 로컬 작업 폴더를 Finder에서 엽니다.";
+"ui.open.without.lock.and.do.not.ask.again.4c6f8a20" = "잠그지 않고 열고, 다시 묻지 않기";
 "ui.open.without.lock.e650efbf" = "잠그지 않고 열기";
 "ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344" = "잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다.";
 "ui.opening.a.file.locked.by.you.742588ff" = "내가 잠근 파일을 엽니다.";
