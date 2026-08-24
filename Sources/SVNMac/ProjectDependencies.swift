@@ -221,6 +221,8 @@ struct ProjectOperation: Identifiable, Equatable {
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
         case recover(SVNProject.ID)
+        case scanRepositoryPaths(SVNProject.ID)
+        case normalizeRepositoryPaths(SVNProject.ID)
     }
 
     let id: UUID

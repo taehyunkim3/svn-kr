@@ -104,6 +104,13 @@ final class ProjectStore {
     var isShowingFileHistory = false
     var isShowingPathRecovery = false
     var pathRecoveryPreview: SVNRecoveryPreview?
+    var isShowingRepositoryPathNormalization = false
+    var isConfirmingRepositoryPathNormalization = false
+    var repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = []
+    var selectedRepositoryPathNormalizationTargets: Set<SVNRepositoryPathNormalizationTarget> = []
+    var repositoryPathNormalizationCommitMessage = ""
+    var repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult?
+    var repositoryPathNormalizationIssue: RepositoryPathNormalizationIssue?
     var documentOpenRequest: DocumentOpenRequest?
     var activeConflictSession: ConflictResolutionSession?
     var resolvingConflictSessionID: ConflictResolutionSession.ID?
@@ -260,6 +267,7 @@ final class ProjectStore {
     private let volumeNormalizationProbe: any VolumeNormalizationProbing
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
+    var repositoryPathNormalizationSourceProjectID: SVNProject.ID?
     private var unavailableProjectID: SVNProject.ID?
     /// 요청 종류별 최신 토큰만 보존해 늦게 끝난 비동기 결과를 공통 규칙으로 폐기합니다.
     private var latestRequestIDs: [ProjectRequestKind: UUID] = [:]
@@ -321,6 +329,18 @@ final class ProjectStore {
         operationIsActive { .recover($0) }
     }
 
+    var isScanningRepositoryPaths: Bool {
+        operationIsActive { .scanRepositoryPaths($0) }
+    }
+
+    var isNormalizingRepositoryPaths: Bool {
+        operationIsActive { .normalizeRepositoryPaths($0) }
+    }
+
+    var isRepositoryPathNormalizationRunning: Bool {
+        isScanningRepositoryPaths || isNormalizingRepositoryPaths
+    }
+
     var isRelocatingProject: Bool {
         activeOperations.contains { operation in
             if case .relocate = operation.kind { return true }
@@ -374,7 +394,8 @@ final class ProjectStore {
                  .revert(let operationProjectID),
                  .update(let operationProjectID),
                  .commit(let operationProjectID),
-                 .recover(let operationProjectID):
+                 .recover(let operationProjectID),
+                 .normalizeRepositoryPaths(let operationProjectID):
                 operationProjectID == projectID
             default:
                 false
@@ -383,7 +404,9 @@ final class ProjectStore {
     }
 
     var isSelectedProjectActionBlocked: Bool {
-        isRefreshingSelectedProject || isMutatingSelectedProject
+        isRefreshingSelectedProject
+            || isMutatingSelectedProject
+            || isScanningRepositoryPaths
     }
 
     var isPathRecoveryRunning: Bool {
@@ -411,6 +434,7 @@ final class ProjectStore {
             || isShowingIgnoreRules
             || isShowingFileHistory
             || isShowingPathRecovery
+            || isShowingRepositoryPathNormalization
             || activeConflictSession != nil
             || deletionRequest != nil
             || revertRequest != nil
@@ -1234,6 +1258,14 @@ final class ProjectStore {
         resolvingConflictProjectID = nil
         revertRequest = nil
         deletionRequest = nil
+        isShowingRepositoryPathNormalization = false
+        isConfirmingRepositoryPathNormalization = false
+        repositoryPathNormalizationTargets = []
+        selectedRepositoryPathNormalizationTargets = []
+        repositoryPathNormalizationCommitMessage = ""
+        repositoryPathNormalizationResult = nil
+        repositoryPathNormalizationIssue = nil
+        repositoryPathNormalizationSourceProjectID = nil
         notice = nil
         errorMessage = nil
         authenticationRequest = nil
