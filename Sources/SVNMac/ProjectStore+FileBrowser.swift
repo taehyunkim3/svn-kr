@@ -33,6 +33,7 @@ extension ProjectStore {
     ) async {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
+        workingCopyBrowserRefreshGeneration &+= 1
         let requestID = beginRequest(.fileTree)
         let operationID = beginOperation(.browseFiles(project.id))
         defer { endOperation(operationID) }
@@ -61,6 +62,30 @@ extension ProjectStore {
         } catch {
             guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
             publishRefreshError(error, projectID: project.id, policy: errorPolicy)
+        }
+    }
+
+    func loadWorkingCopyDirectoryContents(
+        at relativeDirectory: String,
+        errorPolicy: RefreshErrorPolicy = .standalone
+    ) async -> [WorkingCopyFileNode]? {
+        guard let project = selectedProject,
+              ensureWorkingCopyDirectoryExists(for: project) else { return nil }
+        let operationID = beginOperation(.browseFiles(project.id))
+        defer { endOperation(operationID) }
+
+        do {
+            let svnEntries = try await client.workingCopyEntries(at: project.path, credentials: nil)
+            let contents = try await workingCopyFileService.directoryContents(
+                at: project.path,
+                relativeDirectory: relativeDirectory,
+                svnEntries: svnEntries
+            )
+            guard selectedProjectID == project.id else { return nil }
+            return contents
+        } catch {
+            publishRefreshError(error, projectID: project.id, policy: errorPolicy)
+            return nil
         }
     }
 

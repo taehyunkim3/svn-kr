@@ -24,6 +24,7 @@ final class ProjectBrowserStore {
     var repositoryLocks: [SVNLockInfo] = []
     var treeState = WorkingCopyBrowserTreeState()
     var svnEntries: [SVNWorkingCopyEntry] = []
+    var refreshGeneration = 0
 }
 
 @Observable

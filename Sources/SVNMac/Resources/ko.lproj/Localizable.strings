@@ -175,6 +175,13 @@
 "ui.file.browser.modified.column.84d3d7f2" = "수정일";
 "ui.file.browser.name.column.0d7638cb" = "이름";
 "ui.file.browser.size.column.a6810d75" = "크기";
+"ui.file.browser.actions.14f5c2a1" = "작업";
+"ui.file.browser.items.count.86dc65fe" = "%1$@개 항목";
+"ui.file.browser.kind.98b7d2e4" = "종류";
+"ui.file.browser.modified.date.6cb3548f" = "수정일";
+"ui.file.browser.name.03fe9d71" = "이름";
+"ui.file.browser.size.a77c1e02" = "크기";
+"ui.file.browser.working.copy.root.731fa805" = "작업 폴더";
 "ui.file.commit.history.342bfaac" = "이 파일의 커밋 기록";
 "ui.file.commit.history.ab024244" = "파일 커밋 기록";
 "ui.files.6075adef" = "파일";

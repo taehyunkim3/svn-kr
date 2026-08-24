@@ -175,6 +175,13 @@
 "ui.file.browser.modified.column.84d3d7f2" = "Date Modified";
 "ui.file.browser.name.column.0d7638cb" = "Name";
 "ui.file.browser.size.column.a6810d75" = "Size";
+"ui.file.browser.actions.14f5c2a1" = "Actions";
+"ui.file.browser.items.count.86dc65fe" = "%1$@ items";
+"ui.file.browser.kind.98b7d2e4" = "Kind";
+"ui.file.browser.modified.date.6cb3548f" = "Date Modified";
+"ui.file.browser.name.03fe9d71" = "Name";
+"ui.file.browser.size.a77c1e02" = "Size";
+"ui.file.browser.working.copy.root.731fa805" = "Working Copy";
 "ui.file.commit.history.342bfaac" = "File Commit History";
 "ui.file.commit.history.ab024244" = "File Commit History";
 "ui.files.6075adef" = "Files";

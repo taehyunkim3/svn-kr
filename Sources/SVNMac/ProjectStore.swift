@@ -207,6 +207,10 @@ final class ProjectStore {
         get { browserState.svnEntries }
         set { browserState.svnEntries = newValue }
     }
+    var workingCopyBrowserRefreshGeneration: Int {
+        get { browserState.refreshGeneration }
+        set { browserState.refreshGeneration = newValue }
+    }
     var logs: [SVNLogEntry] {
         get { historyState.logs }
         set { historyState.logs = newValue }
