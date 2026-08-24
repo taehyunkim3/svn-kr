@@ -99,19 +99,46 @@ private enum DemoData {
     static let fileTree = [
         WorkingCopyFileNode(
             name: "Sources", relativePath: "Sources", isDirectory: true, isSymbolicLink: false,
+            modificationDate: Date(timeIntervalSince1970: 1_768_173_600),
+            fileSize: nil,
+            typeDescription: "Folder",
             svnEntry: SVNWorkingCopyEntry(path: "Sources", status: "normal", revision: "1842"),
             children: [
                 WorkingCopyFileNode(
                     name: "Features", relativePath: "Sources/Features", isDirectory: true, isSymbolicLink: false,
+                    modificationDate: Date(timeIntervalSince1970: 1_768_173_600),
+                    fileSize: nil,
+                    typeDescription: "Folder",
                     svnEntry: SVNWorkingCopyEntry(path: "Sources/Features", status: "normal", revision: "1842"),
                     children: [
-                        WorkingCopyFileNode(name: "LoginView.swift", relativePath: "Sources/Features/LoginView.swift", isDirectory: false, isSymbolicLink: false, svnEntry: SVNWorkingCopyEntry(path: "Sources/Features/LoginView.swift", status: "modified", revision: "1842"), children: nil),
-                        WorkingCopyFileNode(name: "BiometricButton.swift", relativePath: "Sources/Features/BiometricButton.swift", isDirectory: false, isSymbolicLink: false, svnEntry: SVNWorkingCopyEntry(path: "Sources/Features/BiometricButton.swift", status: "added", revision: nil), children: nil)
+                        WorkingCopyFileNode(
+                            name: "LoginView.swift", relativePath: "Sources/Features/LoginView.swift", isDirectory: false, isSymbolicLink: false,
+                            modificationDate: Date(timeIntervalSince1970: 1_768_173_600),
+                            fileSize: 6_248,
+                            typeDescription: "Swift Source File",
+                            svnEntry: SVNWorkingCopyEntry(path: "Sources/Features/LoginView.swift", status: "modified", revision: "1842"),
+                            children: nil
+                        ),
+                        WorkingCopyFileNode(
+                            name: "BiometricButton.swift", relativePath: "Sources/Features/BiometricButton.swift", isDirectory: false, isSymbolicLink: false,
+                            modificationDate: Date(timeIntervalSince1970: 1_768_001_400),
+                            fileSize: 2_816,
+                            typeDescription: "Swift Source File",
+                            svnEntry: SVNWorkingCopyEntry(path: "Sources/Features/BiometricButton.swift", status: "added", revision: nil),
+                            children: nil
+                        )
                     ]
                 )
             ]
         ),
-        WorkingCopyFileNode(name: "README.md", relativePath: "README.md", isDirectory: false, isSymbolicLink: false, svnEntry: SVNWorkingCopyEntry(path: "README.md", status: "normal", revision: "1842"), children: nil)
+        WorkingCopyFileNode(
+            name: "README.md", relativePath: "README.md", isDirectory: false, isSymbolicLink: false,
+            modificationDate: Date(timeIntervalSince1970: 1_767_828_600),
+            fileSize: 4_392,
+            typeDescription: "Markdown Document",
+            svnEntry: SVNWorkingCopyEntry(path: "README.md", status: "normal", revision: "1842"),
+            children: nil
+        )
     ]
 
     static let repositoryPathNormalizationTargets = [
@@ -176,6 +203,17 @@ private struct DemoWorkspaceOpener: WorkspaceOpening {
 
 private struct DemoWorkingCopyFileService: WorkingCopyFileListing {
     func tree(at _: String, svnEntries _: [SVNWorkingCopyEntry]) async throws -> [WorkingCopyFileNode] { DemoData.fileTree }
+
+    func directoryContents(
+        at _: String,
+        relativeDirectory: String,
+        svnEntries _: [SVNWorkingCopyEntry]
+    ) async throws -> [WorkingCopyFileNode] {
+        let contents = relativeDirectory.isEmpty
+            ? DemoData.fileTree
+            : DemoData.fileTree.node(at: relativeDirectory)?.children ?? []
+        return contents.map(\.withoutLoadedChildren)
+    }
 }
 
 private actor DemoSVNClient: SVNClientServing {
