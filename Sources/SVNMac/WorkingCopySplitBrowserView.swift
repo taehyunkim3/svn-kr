@@ -164,9 +164,6 @@ struct WorkingCopySplitBrowserView: View {
                     contextualCell(for: row.node) {
                         fileNameCell(row.node)
                     }
-                    .onTapGesture(count: 2) {
-                        Task { await activate(row.node) }
-                    }
                 }
                 .width(
                     min: AppLayout.fileBrowserNameColumnMinimumWidth,
@@ -202,6 +199,18 @@ struct WorkingCopySplitBrowserView: View {
                         rowActions(row.node)
                     }
                 }
+                .width(
+                    min: AppLayout.fileBrowserActionsColumnMinimumWidth,
+                    ideal: AppLayout.fileBrowserActionsColumnMinimumWidth
+                )
+            }
+            .contextMenu(forSelectionType: String.self) { ids in
+                if let id = ids.first, ids.count == 1, let node = contentNode(at: id) {
+                    contextMenuItems(for: node)
+                }
+            } primaryAction: { ids in
+                guard let id = ids.first, ids.count == 1, let node = contentNode(at: id) else { return }
+                Task { await activate(node) }
             }
             .overlay {
                 if isLoadingCurrentDirectory && !browserState.isDirectoryCached(browserState.currentDirectoryPath) {
@@ -214,21 +223,14 @@ struct WorkingCopySplitBrowserView: View {
                     )
                 }
             }
+            // 컨테이너가 포커스를 들면 포커스가 없을 때의 첫 클릭이 포커스만 먹고
+            // 선택이 되지 않습니다. Table 이 직접 포커스를 갖게 해 한 번에 처리합니다.
+            .focused($focusedPanel, equals: .contents)
         }
         .background(panelBackground(for: .contents))
         .overlay { focusBorder(for: .contents) }
-        .contentShape(Rectangle())
-        .focusable()
-        .focused($focusedPanel, equals: .contents)
-        .simultaneousGesture(TapGesture().onEnded { focus(.contents) })
         .onKeyPress(keys: [.tab]) { press in
             moveFocus(reverse: press.modifiers.contains(.shift))
-        }
-        .onKeyPress(.upArrow) {
-            moveContentSelection(by: -1)
-        }
-        .onKeyPress(.downArrow) {
-            moveContentSelection(by: 1)
         }
         .onKeyPress(.return) {
             guard let node = selectedContentNode else { return .ignored }
@@ -287,11 +289,17 @@ struct WorkingCopySplitBrowserView: View {
         .padding(.leading, CGFloat(row.depth) * 16)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(
-            browserState.selectedFolderPath == row.relativePath
-                ? Color.accentColor.opacity(0.18)
-                : Color.clear
-        )
+        // 선택 표시를 채우면 트리 배경과 대비가 과해 눈에 거슬리므로 테두리만 그립니다.
+        .overlay {
+            RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(
+                    browserState.selectedFolderPath == row.relativePath
+                        ? Color.accentColor
+                        : Color.clear,
+                    lineWidth: 1
+                )
+                .allowsHitTesting(false)
+        }
         .contextMenu {
             if let node = folderNode(at: row.relativePath) {
                 contextMenuItems(for: node)
@@ -339,21 +347,34 @@ struct WorkingCopySplitBrowserView: View {
                 Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
                     Task { await openFile(node) }
                 }
+                // 열 폭이 좁아 이름이 줄어들 수 있으므로 전체 이름을 툴팁으로 남깁니다.
+                .help(appLanguage.localized("ui.open.file.ea89b4b3"))
+                .fixedSize()
             }
             Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
                 store.revealInFinder(node.relativePath)
             }
+            .help(appLanguage.localized("ui.reveal.in.finder.52d4a206"))
+            .fixedSize()
         }
     }
 
+    /// 셀에 히트 테스트나 제스처를 붙이면 Table 의 행 선택이 가려집니다.
+    /// 선택과 더블클릭, 우클릭은 Table 쪽에서 한 번만 처리합니다.
+    ///
+    /// 패널 컨테이너가 포커스를 들고 있어 Table 이 first responder 가 되지 못하므로
+    /// 기본 선택 강조가 거의 보이지 않습니다. 선택 행 배경을 직접 칠합니다.
     private func contextualCell<Content: View>(
         for node: WorkingCopyFileNode,
         @ViewBuilder content: () -> Content
     ) -> some View {
         content()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .contextMenu { contextMenuItems(for: node) }
+            .background(
+                browserState.selectedContentPath == node.relativePath
+                    ? Color.accentColor.opacity(0.22)
+                    : Color.clear
+            )
     }
 
     @ViewBuilder
@@ -415,11 +436,19 @@ struct WorkingCopySplitBrowserView: View {
         return browserState.currentDirectoryContents.first { $0.relativePath == path }
     }
 
+    private func contentNode(at relativePath: String) -> WorkingCopyFileNode? {
+        sortedTableRows.first { $0.node.relativePath == relativePath }?.node
+    }
+
     private var contentSelection: Binding<String?> {
         Binding(
             get: { browserState.selectedContentPath },
             set: { path in
                 browserState.selectContent(path)
+                // 표를 클릭해 선택한 것이므로 포커스도 이 패널로 옮깁니다.
+                if path != nil, browserState.focusedPanel != .contents {
+                    focus(.contents)
+                }
                 if browserState.focusedPanel == .contents {
                     store.selectedBrowserPath = path
                 }

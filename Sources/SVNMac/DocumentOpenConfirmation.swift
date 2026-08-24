@@ -46,9 +46,12 @@ private struct DocumentOpenConfirmationView: View {
                 .keyboardShortcut(.cancelAction)
 
                 if request.existingLock == nil {
+                    // 다시 묻지 않기를 켜면 앞으로 잠그지 않고 여는 선택이므로
+                    // 이 자리에서 잠그고 열기를 고를 수 없게 합니다.
                     Button(appLanguage.localized("ui.lock.and.open.c64beb29")) {
                         Task { await store.lockAndOpen(request) }
                     }
+                    .disabled(remembersOpenWithoutLock)
                 }
 
                 // 잠그고 열기는 다른 사람의 편집을 막으므로 Return 기본 동작으로 두지 않습니다.

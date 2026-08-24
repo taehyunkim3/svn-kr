@@ -51,6 +51,8 @@ enum AppLayout {
     /// 파일 이름은 경로가 길어 가장 자주 잘리므로 다른 열보다 넓게 잡습니다.
     static let fileBrowserNameColumnMinimumWidth: CGFloat = 200
     static let fileBrowserNameColumnIdealWidth: CGFloat = 320
+    /// 작업 열은 두 버튼 이름이 줄임표 없이 들어가야 합니다.
+    static let fileBrowserActionsColumnMinimumWidth: CGFloat = 230
 
     /// 기록 상세의 파일 목록은 사용자가 조절하는 분할 영역이 아닙니다.
     /// 높이를 한곳에서 고정해 로딩/빈 화면/diff 상태 전환에도 아래 패널이 흔들리지 않게 합니다.
