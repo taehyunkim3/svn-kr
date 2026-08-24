@@ -9,6 +9,8 @@ struct ContentView: View {
     @Environment(\.appLanguage) private var appLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
+    @AppStorage(AppSettings.fileBrowserViewModeKey)
+    private var fileBrowserViewModeIdentifier = AppSettings.defaultFileBrowserViewMode
     @State private var selectedProjectTab: ProjectTab = .changes
     @State private var fileSearchText = ""
     @State private var historySearchText = ""
@@ -278,7 +280,10 @@ struct ContentView: View {
                 ChangesView()
                     .tabItem { Label(appLanguage.localized("ui.changes.0e19f519"), systemImage: "checklist") }
                     .tag(ProjectTab.changes)
-                WorkingCopyBrowserView(searchText: $fileSearchText)
+                FileBrowserTabView(
+                    searchText: $fileSearchText,
+                    viewModeIdentifier: $fileBrowserViewModeIdentifier
+                )
                     .tabItem { Label(appLanguage.localized("ui.files.6075adef"), systemImage: "folder") }
                     .tag(ProjectTab.files)
                 HistoryView(searchText: $historySearchText)
@@ -333,6 +338,86 @@ struct ContentView: View {
         .help(appLanguage.localized("ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51"))
     }
 
+}
+
+private struct FileBrowserTabView: View {
+    @Environment(\.appLanguage) private var appLanguage
+    @Binding var searchText: String
+    @Binding var viewModeIdentifier: String
+    @State private var hasActivatedSplitView: Bool
+
+    init(searchText: Binding<String>, viewModeIdentifier: Binding<String>) {
+        _searchText = searchText
+        _viewModeIdentifier = viewModeIdentifier
+        _hasActivatedSplitView = State(
+            initialValue: viewModeIdentifier.wrappedValue == FileBrowserViewMode.split.rawValue
+        )
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Picker(
+                    appLanguage.localized("ui.choose.file.browser.view.mode.2c78a451"),
+                    selection: $viewModeIdentifier
+                ) {
+                    Label(
+                        appLanguage.localized("ui.file.browser.tree.view.4a29bf3c"),
+                        systemImage: "list.bullet.indent"
+                    )
+                    .tag(FileBrowserViewMode.tree.rawValue)
+                    Label(
+                        appLanguage.localized("ui.file.browser.split.view.6f8e13d2"),
+                        systemImage: "sidebar.left"
+                    )
+                    .tag(FileBrowserViewMode.split.rawValue)
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .help(appLanguage.localized("ui.choose.file.browser.view.mode.2c78a451"))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            ZStack {
+                WorkingCopyBrowserView(searchText: $searchText)
+                    .opacity(showsTreeBrowser ? 1 : 0)
+                    .allowsHitTesting(showsTreeBrowser)
+                    .accessibilityHidden(!showsTreeBrowser)
+
+                if hasActivatedSplitView {
+                    WorkingCopySplitBrowserView()
+                        .opacity(showsSplitBrowser ? 1 : 0)
+                        .allowsHitTesting(showsSplitBrowser)
+                        .accessibilityHidden(!showsSplitBrowser)
+                }
+            }
+        }
+        .onChange(of: viewModeIdentifier, initial: true) { _, identifier in
+            if identifier == FileBrowserViewMode.split.rawValue {
+                hasActivatedSplitView = true
+            }
+        }
+    }
+
+    private var viewMode: FileBrowserViewMode {
+        FileBrowserViewMode(rawValue: viewModeIdentifier) ?? .tree
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var showsTreeBrowser: Bool {
+        viewMode == .tree || !normalizedSearchText.isEmpty
+    }
+
+    private var showsSplitBrowser: Bool {
+        viewMode == .split && normalizedSearchText.isEmpty
+    }
 }
 
 private enum ProjectTab: Hashable {
