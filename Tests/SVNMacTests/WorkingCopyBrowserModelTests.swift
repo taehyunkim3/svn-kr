@@ -149,6 +149,39 @@ import Testing
     #expect(state.finishRefresh(selectedPath: "Missing/file.txt") == nil)
 }
 
+@Test func refreshedTreeMergesOnlyExpansionChangesFromPublishedState() {
+    var state = WorkingCopyBrowserTreeState()
+    state.expandedPaths = ["First"]
+    state.replaceRootNodesForRefresh([
+        browserNode("First", directory: true, hasChildren: true),
+        browserNode("Second", directory: true, hasChildren: true),
+    ])
+    state.cache([browserNode("First/fresh.txt")], for: "First")
+
+    var publishedState = WorkingCopyBrowserTreeState(recursiveTree: [
+        browserNode(
+            "First",
+            directory: true,
+            children: [browserNode("First/stale.txt")]
+        ),
+        browserNode(
+            "Second",
+            directory: true,
+            children: [browserNode("Second/kept.txt")]
+        ),
+    ])
+    publishedState.expandedPaths = ["Second"]
+
+    state.preserveExpansionChanges(
+        from: publishedState,
+        refreshStartedWith: ["First"]
+    )
+
+    #expect(state.expandedPaths == ["Second"])
+    #expect(state.childrenByDirectory["First"]?.map(\.relativePath) == ["First/fresh.txt"])
+    #expect(state.childrenByDirectory["Second"]?.map(\.relativePath) == ["Second/kept.txt"])
+}
+
 private func browserTestTree() -> [WorkingCopyFileNode] {
     [
         browserNode(
