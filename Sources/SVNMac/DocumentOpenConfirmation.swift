@@ -49,15 +49,16 @@ private struct DocumentOpenConfirmationView: View {
                     Button(appLanguage.localized("ui.lock.and.open.c64beb29")) {
                         Task { await store.lockAndOpen(request) }
                     }
-                    .keyboardShortcut(.defaultAction)
                 }
 
+                // 잠그고 열기는 다른 사람의 편집을 막으므로 Return 기본 동작으로 두지 않습니다.
                 Button(appLanguage.localized("ui.open.without.lock.e650efbf")) {
                     store.openWithoutLock(
                         request,
                         rememberingChoice: remembersOpenWithoutLock
                     )
                 }
+                .keyboardShortcut(.defaultAction)
             }
         }
         .padding()
