@@ -196,8 +196,16 @@ final class ProjectStore {
         set { browserState.repositoryLocks = newValue }
     }
     var workingCopyFileTree: [WorkingCopyFileNode] {
-        get { browserState.workingCopyFileTree }
-        set { browserState.workingCopyFileTree = newValue }
+        get { browserState.treeState.materializedTree }
+        set { browserState.treeState = WorkingCopyBrowserTreeState(recursiveTree: newValue) }
+    }
+    var workingCopyBrowserTreeState: WorkingCopyBrowserTreeState {
+        get { browserState.treeState }
+        set { browserState.treeState = newValue }
+    }
+    var workingCopyBrowserSVNEntries: [SVNWorkingCopyEntry] {
+        get { browserState.svnEntries }
+        set { browserState.svnEntries = newValue }
     }
     var logs: [SVNLogEntry] {
         get { historyState.logs }

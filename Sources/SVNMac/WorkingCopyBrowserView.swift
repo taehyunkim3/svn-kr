@@ -5,41 +5,83 @@ struct WorkingCopyBrowserView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Binding var searchText: String
-    @State private var filteredSearchTree: [WorkingCopyFileNode] = []
+    @State private var searchTreeState = WorkingCopyBrowserTreeState()
+    @State private var isSearching = false
+    @State private var sortOrder = [WorkingCopyFileSortComparator(column: .name)]
 
     var body: some View {
         @Bindable var store = store
-        List(selection: $store.selectedBrowserPath) {
-            OutlineGroup(displayedTree, children: \.children) { node in
-                fileRow(node)
-                    .tag(node.relativePath)
+        Table(
+            of: WorkingCopyFileNode.self,
+            selection: $store.selectedBrowserPath,
+            sortOrder: $sortOrder
+        ) {
+            TableColumn(
+                appLanguage.localized("ui.file.browser.name.column.0d7638cb"),
+                sortUsing: WorkingCopyFileSortComparator(column: .name)
+            ) { node in
+                fileNameCell(node)
             }
+            TableColumn(
+                appLanguage.localized("ui.file.browser.modified.column.84d3d7f2"),
+                sortUsing: WorkingCopyFileSortComparator(column: .modificationDate)
+            ) { node in
+                Text(modificationDateText(for: node))
+                    .lineLimit(1)
+            }
+            TableColumn(
+                appLanguage.localized("ui.file.browser.size.column.a6810d75"),
+                sortUsing: WorkingCopyFileSortComparator(column: .size)
+            ) { node in
+                Text(WorkingCopyFileMetadataFormatting.sizeText(for: node))
+                    .lineLimit(1)
+            }
+            TableColumn(
+                appLanguage.localized("ui.file.browser.kind.column.b51d25fc"),
+                sortUsing: WorkingCopyFileSortComparator(column: .kind)
+            ) { node in
+                Text(node.typeDescription ?? "")
+                    .lineLimit(1)
+            }
+        } rows: {
+            WorkingCopyBrowserTableRows(
+                nodes: displayedState.rootNodes,
+                state: displayedState,
+                comparator: currentSortComparator,
+                onExpansionChanged: setDirectory(_:expanded:)
+            )
         }
         .overlay {
-            if isLoading, store.workingCopyFileTree.isEmpty {
+            if showsInitialProgress {
                 ProgressView(appLanguage.localized("ui.loading.files.a3268fef"))
-            } else if displayedTree.isEmpty {
+            } else if displayedState.rootNodes.isEmpty {
                 ContentUnavailableView(
-                    searchText.isEmpty
+                    normalizedSearchText.isEmpty
                         ? appLanguage.localized("ui.no.files.5245ffcc")
                         : appLanguage.localized("ui.no.search.results.e40b4a06"),
-                    systemImage: searchText.isEmpty ? "folder" : "magnifyingglass"
+                    systemImage: normalizedSearchText.isEmpty ? "folder" : "magnifyingglass"
                 )
             }
+        }
+        .onKeyPress(.leftArrow) {
+            handleKey(.left)
+        }
+        .onKeyPress(.rightArrow) {
+            handleKey(.right)
+        }
+        .onKeyPress(.return) {
+            handleKey(.activate)
         }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environment(store)
         }
-        .task(id: FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)) {
-            let input = FileTreeFilterInput(tree: store.workingCopyFileTree, query: searchText)
-            filteredSearchTree = await Task.detached {
-                input.filteredTree
-            }.value
+        .task(id: searchRequest) {
+            await updateSearchResults()
         }
         .documentOpenConfirmation()
     }
 
-    private func fileRow(_ node: WorkingCopyFileNode) -> some View {
+    private func fileNameCell(_ node: WorkingCopyFileNode) -> some View {
         HStack(spacing: 8) {
             Image(systemName: iconName(for: node))
                 .foregroundStyle(node.isDirectory ? Color.accentColor : Color.secondary)
@@ -50,6 +92,10 @@ struct WorkingCopyBrowserView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if displayedState.loadingPaths.contains(node.relativePath) {
+                ProgressView()
+                    .controlSize(.small)
+            }
             if let lock = lockInfo(for: node) {
                 Label(lock.owner, systemImage: "lock.fill")
                     .font(.caption)
@@ -64,38 +110,15 @@ struct WorkingCopyBrowserView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-            guard !node.isDirectory else { return }
-            Task {
-                await store.prepareToOpen(
-                    path: node.relativePath,
-                    repositoryPath: node.repositoryRelativePath,
-                    isVersioned: node.isVersioned,
-                    isRegularFile: node.isRegularFile
-                )
-            }
+            open(node)
         }
         .accessibilityAction(named: appLanguage.localized("ui.open.file.ea89b4b3")) {
-            guard !node.isDirectory else { return }
-            Task {
-                await store.prepareToOpen(
-                    path: node.relativePath,
-                    repositoryPath: node.repositoryRelativePath,
-                    isVersioned: node.isVersioned,
-                    isRegularFile: node.isRegularFile
-                )
-            }
+            open(node)
         }
         .contextMenu {
             if !node.isDirectory {
                 Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
-                    Task {
-                        await store.prepareToOpen(
-                            path: node.relativePath,
-                            repositoryPath: node.repositoryRelativePath,
-                            isVersioned: node.isVersioned,
-                            isRegularFile: node.isRegularFile
-                        )
-                    }
+                    open(node)
                 }
                 if let lock = lockInfo(for: node),
                    lock.owner == store.selectedProject?.username {
@@ -120,15 +143,103 @@ struct WorkingCopyBrowserView: View {
         }
     }
 
-    private var displayedTree: [WorkingCopyFileNode] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return store.workingCopyFileTree }
-        return filteredSearchTree
+    private var displayedState: WorkingCopyBrowserTreeState {
+        normalizedSearchText.isEmpty ? store.workingCopyBrowserTreeState : searchTreeState
     }
 
-    private var isLoading: Bool {
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var currentSortComparator: WorkingCopyFileSortComparator {
+        sortOrder.first ?? WorkingCopyFileSortComparator(column: .name)
+    }
+
+    private var searchRequest: WorkingCopyBrowserSearchRequest {
+        WorkingCopyBrowserSearchRequest(
+            projectID: store.selectedProjectID,
+            generation: store.workingCopyBrowserTreeState.generation,
+            query: normalizedSearchText
+        )
+    }
+
+    private var showsInitialProgress: Bool {
+        if !normalizedSearchText.isEmpty { return isSearching }
         guard let projectID = store.selectedProjectID else { return false }
-        return store.activeOperations.contains { $0.kind == .browseFiles(projectID) }
+        return store.workingCopyBrowserTreeState.rootNodes.isEmpty
+            && store.activeOperations.contains { $0.kind == .browseFiles(projectID) }
+    }
+
+    private func updateSearchResults() async {
+        guard !normalizedSearchText.isEmpty else {
+            isSearching = false
+            searchTreeState = WorkingCopyBrowserTreeState()
+            return
+        }
+
+        isSearching = true
+        guard let tree = await store.searchWorkingCopyFiles(query: normalizedSearchText),
+              !Task.isCancelled else { return }
+        searchTreeState = WorkingCopyBrowserTreeState(recursiveTree: tree, expanded: true)
+        isSearching = false
+    }
+
+    private func setDirectory(_ relativePath: String, expanded: Bool) {
+        if normalizedSearchText.isEmpty {
+            if let directoryToLoad = store.setWorkingCopyDirectory(relativePath, expanded: expanded) {
+                Task { await store.loadWorkingCopyDirectory(directoryToLoad) }
+            }
+        } else {
+            var state = searchTreeState
+            _ = state.setExpanded(expanded, for: relativePath)
+            searchTreeState = state
+        }
+    }
+
+    private func handleKey(_ command: WorkingCopyBrowserKeyCommand) -> KeyPress.Result {
+        guard store.selectedBrowserPath != nil else { return .ignored }
+
+        let result: WorkingCopyBrowserNavigationResult
+        if normalizedSearchText.isEmpty {
+            result = store.applyWorkingCopyBrowserKey(command, sortedBy: currentSortComparator)
+        } else {
+            var state = searchTreeState
+            result = state.handle(
+                command,
+                selectedPath: store.selectedBrowserPath,
+                sortedBy: currentSortComparator
+            )
+            searchTreeState = state
+            store.selectedBrowserPath = result.selectedPath
+        }
+
+        if let directoryToLoad = result.directoryToLoad, normalizedSearchText.isEmpty {
+            Task { await store.loadWorkingCopyDirectory(directoryToLoad) }
+        }
+        if let fileToOpen = result.fileToOpen {
+            open(fileToOpen)
+        }
+        return .handled
+    }
+
+    private func open(_ node: WorkingCopyFileNode) {
+        guard !node.isDirectory else { return }
+        Task {
+            await store.prepareToOpen(
+                path: node.relativePath,
+                repositoryPath: node.repositoryRelativePath,
+                isVersioned: node.isVersioned,
+                isRegularFile: node.isRegularFile
+            )
+        }
+    }
+
+    private func modificationDateText(for node: WorkingCopyFileNode) -> String {
+        guard let modificationDate = node.modificationDate else { return "" }
+        return WorkingCopyFileDateFormatting.shared.string(
+            from: modificationDate,
+            language: appLanguage
+        )
     }
 
     private func iconName(for node: WorkingCopyFileNode) -> String {
@@ -167,31 +278,39 @@ struct WorkingCopyBrowserView: View {
     }
 }
 
-private struct FileTreeFilterInput: Hashable, Sendable {
-    let tree: [WorkingCopyFileNode]
-    let query: String
+private struct WorkingCopyBrowserTableRows: TableRowContent {
+    let nodes: [WorkingCopyFileNode]
+    let state: WorkingCopyBrowserTreeState
+    let comparator: WorkingCopyFileSortComparator
+    let onExpansionChanged: (String, Bool) -> Void
 
-    var filteredTree: [WorkingCopyFileNode] {
-        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedQuery.isEmpty else { return tree }
-        return tree.compactMap { $0.filtering(query: normalizedQuery) }
+    @TableRowBuilder<WorkingCopyFileNode>
+    var tableRowBody: some TableRowContent<WorkingCopyFileNode> {
+        ForEach(nodes.sorted(using: comparator)) { node in
+            if node.isDirectory, node.hasChildren {
+                DisclosureTableRow(
+                    node,
+                    isExpanded: Binding(
+                        get: { state.expandedPaths.contains(node.relativePath) },
+                        set: { onExpansionChanged(node.relativePath, $0) }
+                    )
+                ) {
+                    WorkingCopyBrowserTableRows(
+                        nodes: state.children(of: node),
+                        state: state,
+                        comparator: comparator,
+                        onExpansionChanged: onExpansionChanged
+                    )
+                }
+            } else {
+                TableRow(node)
+            }
+        }
     }
 }
 
-private extension WorkingCopyFileNode {
-    func filtering(query: String) -> WorkingCopyFileNode? {
-        let filteredChildren = children?.compactMap { $0.filtering(query: query) }
-        let matches = name.localizedCaseInsensitiveContains(query)
-            || relativePath.localizedCaseInsensitiveContains(query)
-        guard matches || filteredChildren?.isEmpty == false else { return nil }
-        return WorkingCopyFileNode(
-            name: name,
-            relativePath: relativePath,
-            isDirectory: isDirectory,
-            isSymbolicLink: isSymbolicLink,
-            isRegularFile: isRegularFile,
-            svnEntry: svnEntry,
-            children: filteredChildren
-        )
-    }
+private struct WorkingCopyBrowserSearchRequest: Hashable {
+    let projectID: SVNProject.ID?
+    let generation: UUID
+    let query: String
 }

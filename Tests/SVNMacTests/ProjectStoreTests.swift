@@ -949,6 +949,38 @@ import Testing
 }
 
 @MainActor
+@Test func refreshingFileBrowserClearsExpandedChildCache() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-cache-refresh")
+    let store = makeStore(
+        projects: [project],
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+    store.workingCopyFileTree = [WorkingCopyFileNode(
+        name: "Folder",
+        relativePath: "Folder",
+        isDirectory: true,
+        isSymbolicLink: false,
+        svnEntry: nil,
+        children: [WorkingCopyFileNode(
+            name: "child.txt",
+            relativePath: "Folder/child.txt",
+            isDirectory: false,
+            isSymbolicLink: false,
+            svnEntry: nil,
+            children: nil
+        )]
+    )]
+    var state = store.workingCopyBrowserTreeState
+    state.expandedPaths = ["Folder"]
+    store.workingCopyBrowserTreeState = state
+
+    await store.loadWorkingCopyFiles()
+
+    #expect(store.workingCopyBrowserTreeState.childrenByDirectory.isEmpty)
+    #expect(store.workingCopyBrowserTreeState.expandedPaths.isEmpty)
+}
+
+@MainActor
 @Test func unversionedDocumentOpensWithoutRequestingALock() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let opener = StubWorkspaceOpener()
