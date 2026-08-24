@@ -27,8 +27,21 @@ enum AppLayout {
 
     /// 분할 보기의 폴더 트리는 이름만 보여주므로 좁게 시작하고, 내용 표가 넓게 열립니다.
     static let fileBrowserFolderPaneMinimumWidth: CGFloat = 180
-    static let fileBrowserFolderPaneIdealWidth: CGFloat = 260
     static let fileBrowserContentsPaneMinimumWidth: CGFloat = 520
+    /// 좌측 대 우측을 1:3으로 시작합니다. 창 크기가 달라도 같은 비율을 유지하려면
+    /// 고정 너비가 아니라 사용 가능한 너비에서 계산해야 합니다.
+    static let fileBrowserFolderPaneWidthFraction: CGFloat = 0.25
+
+    static func fileBrowserFolderPaneIdealWidth(availableWidth: CGFloat) -> CGFloat {
+        guard availableWidth > 0 else { return fileBrowserFolderPaneMinimumWidth }
+        let proportional = availableWidth * fileBrowserFolderPaneWidthFraction
+        // 내용 표가 최소 너비를 지킬 수 있는 범위 안에서만 비율을 적용합니다.
+        let maximum = max(
+            fileBrowserFolderPaneMinimumWidth,
+            availableWidth - fileBrowserContentsPaneMinimumWidth
+        )
+        return min(max(proportional, fileBrowserFolderPaneMinimumWidth), maximum)
+    }
 
     /// 파일 이름은 경로가 길어 가장 자주 잘리므로 다른 열보다 넓게 잡습니다.
     static let fileBrowserNameColumnMinimumWidth: CGFloat = 200

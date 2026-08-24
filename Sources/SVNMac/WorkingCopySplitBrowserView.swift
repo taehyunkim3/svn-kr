@@ -12,14 +12,18 @@ struct WorkingCopySplitBrowserView: View {
 
     var body: some View {
         @Bindable var store = store
-        WorkspaceSplitView(
-            primaryMinWidth: AppLayout.fileBrowserFolderPaneMinimumWidth,
-            primaryIdealWidth: AppLayout.fileBrowserFolderPaneIdealWidth,
-            detailMinWidth: AppLayout.fileBrowserContentsPaneMinimumWidth
-        ) {
-            folderPanel
-        } detail: {
-            contentsPanel
+        GeometryReader { proxy in
+            WorkspaceSplitView(
+                primaryMinWidth: AppLayout.fileBrowserFolderPaneMinimumWidth,
+                primaryIdealWidth: AppLayout.fileBrowserFolderPaneIdealWidth(
+                    availableWidth: proxy.size.width
+                ),
+                detailMinWidth: AppLayout.fileBrowserContentsPaneMinimumWidth
+            ) {
+                folderPanel
+            } detail: {
+                contentsPanel
+            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $store.isShowingFileHistory) {
@@ -41,7 +45,8 @@ struct WorkingCopySplitBrowserView: View {
 
     private var folderPanel: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            // 깊게 들여쓴 폴더 이름이 잘리지 않도록 좌우 스크롤도 허용합니다.
+            ScrollView([.vertical, .horizontal]) {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(browserState.visibleFolderRows(rootName: rootFolderName)) { row in
                         folderRow(row)
@@ -221,7 +226,7 @@ struct WorkingCopySplitBrowserView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
                         .foregroundStyle(Color.accentColor)
-                    Text(row.name).lineLimit(1)
+                    Text(row.name).fixedSize(horizontal: true, vertical: false)
                     if let node = folderNode(at: row.relativePath),
                        let status = visibleStatus(for: node) {
                         Text(status)
@@ -389,15 +394,22 @@ struct WorkingCopySplitBrowserView: View {
             : Color(nsColor: .controlBackgroundColor)
     }
 
+    /// HSplitView는 AppKit NSSplitView가 그리므로, 분할선을 옮겨도 안쪽 SwiftUI
+    /// 오버레이가 재그리기 요청을 못 받아 옛 경계선이 남습니다. 측정한 크기를
+    /// 그리기에 직접 반영해 너비가 바뀔 때마다 다시 그리게 합니다.
     private func focusBorder(
         for panel: WorkingCopySplitBrowserState.FocusedPanel
     ) -> some View {
-        Rectangle()
-            .stroke(
-                browserState.focusedPanel == panel ? Color.accentColor : Color.clear,
-                lineWidth: 2
-            )
-            .allowsHitTesting(false)
+        GeometryReader { proxy in
+            Rectangle()
+                .strokeBorder(
+                    browserState.focusedPanel == panel ? Color.accentColor : Color.clear,
+                    lineWidth: 2
+                )
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .id(proxy.size.width)
+        }
+        .allowsHitTesting(false)
     }
 
     private func focus(_ panel: WorkingCopySplitBrowserState.FocusedPanel) {

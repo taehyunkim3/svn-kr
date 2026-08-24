@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import SVNMac
 
@@ -59,4 +60,27 @@ import Testing
     #expect(AppLayout.checkoutLogHeight < AppLayout.addRepositorySheetMinimumSize.height)
     #expect(AppLayout.inlineErrorMaximumHeight > 0)
     #expect(AppLayout.inlineErrorMaximumHeight < AppLayout.pathRecoverySheetMinimumSize.height)
+}
+
+@Test func fileBrowserFolderPaneStartsAtAQuarterOfTheSplitWidth() {
+    // 넉넉한 창에서는 좌측 대 우측이 1:3으로 시작해야 합니다.
+    let wide: CGFloat = 1_600
+    let idealForWide = AppLayout.fileBrowserFolderPaneIdealWidth(availableWidth: wide)
+    #expect(idealForWide == wide * AppLayout.fileBrowserFolderPaneWidthFraction)
+    #expect(wide - idealForWide >= AppLayout.fileBrowserContentsPaneMinimumWidth)
+
+    // 좁은 창에서는 비율보다 두 패널의 최소 너비가 우선합니다.
+    let narrow = AppLayout.fileBrowserFolderPaneMinimumWidth
+        + AppLayout.fileBrowserContentsPaneMinimumWidth
+    let idealForNarrow = AppLayout.fileBrowserFolderPaneIdealWidth(availableWidth: narrow)
+    #expect(idealForNarrow >= AppLayout.fileBrowserFolderPaneMinimumWidth)
+    #expect(narrow - idealForNarrow >= AppLayout.fileBrowserContentsPaneMinimumWidth)
+
+    // 아직 크기를 모르는 첫 배치에서도 최소 너비로 안전하게 시작합니다.
+    #expect(
+        AppLayout.fileBrowserFolderPaneIdealWidth(availableWidth: 0)
+            == AppLayout.fileBrowserFolderPaneMinimumWidth
+    )
+
+    #expect(AppLayout.fileBrowserNameColumnIdealWidth > AppLayout.fileBrowserNameColumnMinimumWidth)
 }
