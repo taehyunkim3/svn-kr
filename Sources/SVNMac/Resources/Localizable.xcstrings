@@ -205,6 +205,244 @@
         }
       }
     },
+    "repository.path.normalization.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fix Korean Names" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "한글 이름 정리" } }
+      }
+    },
+    "repository.path.normalization.action.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Find decomposed Korean paths in the repository and rename selected paths to Windows-compatible names." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소의 자모 분리 한글 경로를 찾아 선택한 경로를 윈도우 호환 이름으로 바꿉니다." } }
+      }
+    },
+    "repository.path.normalization.after": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "After" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개명 후" } }
+      }
+    },
+    "repository.path.normalization.before": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Before" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개명 전" } }
+      }
+    },
+    "repository.path.normalization.confirmation.commits": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This creates %1$@ repository commit(s), one for each selected path." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "선택한 경로마다 하나씩, 저장소에 커밋 %1$@개가 생성됩니다." } }
+      }
+    },
+    "repository.path.normalization.confirmation.delete.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "In other team members' working copies, these changes appear as file deletions and additions." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "다른 팀원의 작업 복사본에서는 이 변경이 파일 삭제와 추가로 보입니다." } }
+      }
+    },
+    "repository.path.normalization.confirmation.directory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Renaming a folder moves everything below it together." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "폴더를 개명하면 그 아래의 모든 항목이 함께 이동합니다." } }
+      }
+    },
+    "repository.path.normalization.confirmation.run": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Create %1$@ Commit(s)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "커밋 %1$@개 생성" } }
+      }
+    },
+    "repository.path.normalization.confirmation.team": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ask team members to commit their in-progress changes before continuing." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "진행 전에 팀원들이 작업 중인 변경을 커밋해 두는 것이 좋습니다." } }
+      }
+    },
+    "repository.path.normalization.confirmation.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Confirm Repository Renames" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 개명 실행 확인" } }
+      }
+    },
+    "repository.path.normalization.default.commit.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Normalize Korean filenames for Windows compatibility" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "한글 파일 이름을 윈도우 호환 형식으로 정리" } }
+      }
+    },
+    "repository.path.normalization.deselect.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Deselect All" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "전체 선택 해제" } }
+      }
+    },
+    "repository.path.normalization.directory.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Renaming a folder moves all files and folders below it together." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "폴더를 개명하면 하위의 모든 파일과 폴더가 함께 이동합니다." } }
+      }
+    },
+    "repository.path.normalization.error.invalid.targets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Some rename targets are no longer valid. Scan the repository again and review the paths below." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "일부 개명 대상이 더 이상 유효하지 않습니다. 저장소를 다시 탐지하고 아래 경로를 확인하세요." } }
+      }
+    },
+    "repository.path.normalization.error.local.changes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Local changes block these renames. Commit or revert the paths below before trying again." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "로컬 변경 때문에 개명을 실행할 수 없습니다. 아래 경로를 먼저 커밋하거나 되돌린 뒤 다시 실행하세요." } }
+      }
+    },
+    "repository.path.normalization.error.locks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Repository locks block these renames. Release the locks on the paths below before trying again." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 잠금 때문에 개명을 실행할 수 없습니다. 아래 경로의 잠금을 먼저 해제한 뒤 다시 실행하세요." } }
+      }
+    },
+    "repository.path.normalization.error.partial.failure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$@ rename(s) were already committed to the server and cannot be undone here. The operation stopped at %2$@: %3$@. Run the scan again to continue with the remaining paths; do not treat the completed commits as failed." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개명 %1$@개는 이미 서버에 커밋되어 여기서 되돌릴 수 없습니다. %2$@에서 중단되었습니다: %3$@. 다시 탐지해 실행하면 남은 경로부터 이어서 처리됩니다. 완료된 커밋을 실패로 취급하지 마세요." } }
+      }
+    },
+    "repository.path.normalization.error.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Repository path normalization failed." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 경로 정리에 실패했습니다." } }
+      }
+    },
+    "repository.path.normalization.no.paths": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "There are no repository paths to fix." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "정리할 경로가 없습니다." } }
+      }
+    },
+    "repository.path.normalization.problem": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Action Required" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "확인할 문제" } }
+      }
+    },
+    "repository.path.normalization.result": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Result" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "실행 결과" } }
+      }
+    },
+    "repository.path.normalization.result.revisions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Committed revisions: %1$@" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "생성된 리비전: %1$@" } }
+      }
+    },
+    "repository.path.normalization.result.summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$@ path(s) were renamed in %2$@ commit(s)." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "경로 %1$@개를 커밋 %2$@개로 개명했습니다." } }
+      }
+    },
+    "repository.path.normalization.review.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review and Continue" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "확인하고 계속" } }
+      }
+    },
+    "repository.path.normalization.running": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Renaming repository paths…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 경로 개명 중…" } }
+      }
+    },
+    "repository.path.normalization.same.appearance.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Before and after paths may look identical on macOS, but their names are stored differently in the repository." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개명 전후 경로는 화면상 같아 보여도 저장소에 저장된 이름 형식이 다릅니다." } }
+      }
+    },
+    "repository.path.normalization.scan.again": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scan Again" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "다시 탐지" } }
+      }
+    },
+    "repository.path.normalization.scanning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scanning…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탐지 중…" } }
+      }
+    },
+    "repository.path.normalization.scanning.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scanning all repository paths…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 전체 경로를 탐지하는 중…" } }
+      }
+    },
+    "repository.path.normalization.skipped": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Skipped (%1$@)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "건너뜀 (%1$@)" } }
+      }
+    },
+    "repository.path.normalization.skipped.reason": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Skipped because a path with the normalized name already exists in the repository." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "같은 정규화 이름의 경로가 저장소에 이미 있어 건너뛰었습니다." } }
+      }
+    },
+    "repository.path.normalization.targets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rename Targets" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개명 대상" } }
+      }
+    },
+    "repository.path.normalization.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fix Korean Repository Paths" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 한글 경로 정리" } }
+      }
+    },
+    "repository.path.normalization.waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Waiting for repository paths" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 경로를 기다리는 중" } }
+      }
+    },
     "ui.a.clean.working.copy.is.checked.out.from.the.ser.a49ce026": {
       "extractionState": "manual",
       "localizations": {

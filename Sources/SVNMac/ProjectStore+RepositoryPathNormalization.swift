@@ -15,6 +15,26 @@ struct RepositoryPathNormalizationIssue {
     let result: SVNRepositoryPathNormalizationResult?
     let failedTarget: SVNRepositoryPathNormalizationTarget?
     let details: String?
+
+    func localizedMessage(_ language: AppLanguage) -> String {
+        switch kind {
+        case .blockedByLocalChanges:
+            language.localized("repository.path.normalization.error.local.changes")
+        case .blockedByLocks:
+            language.localized("repository.path.normalization.error.locks")
+        case .invalidTargets:
+            language.localized("repository.path.normalization.error.invalid.targets")
+        case .partiallyFailed:
+            language.localized(
+                "repository.path.normalization.error.partial.failure",
+                result?.renamedTargets.count ?? 0,
+                failedTarget?.repositoryPath ?? paths.first ?? "",
+                details ?? ""
+            )
+        case .other:
+            details ?? language.localized("repository.path.normalization.error.unknown")
+        }
+    }
 }
 
 extension ProjectStore {

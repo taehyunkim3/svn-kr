@@ -35,6 +35,24 @@ import Testing
     #expect(locksButton.lowerBound < finderButton.lowerBound)
 }
 
+@Test func repositoryPathNormalizationRequiresAnExplicitProjectHeaderAction() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+    let normalizationView = try source(
+        named: "RepositoryPathNormalizationView.swift",
+        in: sources
+    )
+
+    #expect(contentView.contains("private var repositoryPathNormalizationButton"))
+    #expect(contentView.contains("Task { await store.beginRepositoryPathNormalization() }"))
+    #expect(contentView.contains(".sheet(isPresented: $store.isShowingRepositoryPathNormalization)"))
+    #expect(!normalizationView.contains(".task"))
+}
+
 @Test func frequentToolbarActionsKeepVisibleTextLabels() throws {
     let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

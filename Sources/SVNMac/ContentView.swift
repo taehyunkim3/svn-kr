@@ -207,6 +207,10 @@ struct ContentView: View {
             RepositoryLocksView()
                 .environment(store)
         }
+        .sheet(isPresented: $store.isShowingRepositoryPathNormalization) {
+            RepositoryPathNormalizationView()
+                .environment(store)
+        }
         .sheet(item: $store.authenticationRequest) { request in
             AuthenticationRequiredView(request: request)
                 .environment(store)
@@ -240,6 +244,7 @@ struct ContentView: View {
                     }
                 }
                 Spacer()
+                repositoryPathNormalizationButton
                 repositoryLocksButton
                 Button(appLanguage.localized("ui.open.in.finder.35aa9225"), systemImage: "folder") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
@@ -272,6 +277,22 @@ struct ContentView: View {
                 historyPrompt: appLanguage.localized("ui.search.author.file.message.or.revision.6c2b5d76")
             ))
         }
+    }
+
+    /// 저장소 전체를 검사하는 작업이므로 자동 실행하지 않고 공통 머리글의 명시적 액션으로 제공합니다.
+    private var repositoryPathNormalizationButton: some View {
+        Button {
+            Task { await store.beginRepositoryPathNormalization() }
+        } label: {
+            ActionProgressLabel(
+                title: appLanguage.localized("repository.path.normalization.action"),
+                inProgressTitle: appLanguage.localized("repository.path.normalization.scanning"),
+                systemImage: "character.book.closed",
+                isInProgress: store.isScanningRepositoryPaths
+            )
+        }
+        .disabled(store.isSelectedProjectActionBlocked)
+        .help(appLanguage.localized("repository.path.normalization.action.help"))
     }
 
     /// 탭 바깥의 프로젝트 공통 머리글에 두어 어느 탭에서도 잠금 현황을 확인할 수 있게 합니다.

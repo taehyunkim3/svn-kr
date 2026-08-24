@@ -38,6 +38,8 @@ enum AppLayout {
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
     static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)
+    static let repositoryPathNormalizationSheetMinimumSize = CGSize(width: 820, height: 620)
+    static let repositoryPathNormalizationConfirmationSheetMinimumSize = CGSize(width: 680, height: 480)
     static let errorDetailsSheetMinimumSize = CGSize(width: 640, height: 380)
     static let authenticationSheetWidth: CGFloat = 620
     static let credentialsSheetWidth: CGFloat = 560
