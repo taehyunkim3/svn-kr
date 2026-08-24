@@ -112,6 +112,7 @@
 "ui.choose.action.60c39cbd" = "처리 선택…";
 "ui.choose.an.empty.folder.8f9acb6e" = "비어 있는 폴더를 선택하세요.";
 "ui.choose.an.empty.recovery.folder.c2b4a175" = "복구할 빈 폴더 선택";
+"ui.choose.file.browser.view.mode.2c78a451" = "파일 표시 방식을 선택합니다";
 "ui.choose.folder.54647179" = "폴더 선택…";
 "ui.choose.local.checkout.folder.c649aa9f" = "체크아웃할 로컬 폴더 선택";
 "ui.choose.svn.local.working.folders.6d104bc9" = "SVN 로컬 작업 폴더 선택";
@@ -177,10 +178,8 @@
 "ui.file.browser.size.column.a6810d75" = "크기";
 "ui.file.browser.actions.14f5c2a1" = "작업";
 "ui.file.browser.items.count.86dc65fe" = "%1$@개 항목";
-"ui.file.browser.kind.98b7d2e4" = "종류";
-"ui.file.browser.modified.date.6cb3548f" = "수정일";
-"ui.file.browser.name.03fe9d71" = "이름";
-"ui.file.browser.size.a77c1e02" = "크기";
+"ui.file.browser.split.view.6f8e13d2" = "분할 보기";
+"ui.file.browser.tree.view.4a29bf3c" = "트리 보기";
 "ui.file.browser.working.copy.root.731fa805" = "작업 폴더";
 "ui.file.commit.history.342bfaac" = "이 파일의 커밋 기록";
 "ui.file.commit.history.ab024244" = "파일 커밋 기록";

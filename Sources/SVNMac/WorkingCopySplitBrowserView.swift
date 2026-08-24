@@ -106,7 +106,7 @@ struct WorkingCopySplitBrowserView: View {
 
             Table(sortedTableRows, selection: contentSelection, sortOrder: $sortOrder) {
                 TableColumn(
-                    appLanguage.localized("ui.file.browser.name.03fe9d71"),
+                    appLanguage.localized("ui.file.browser.name.column.0d7638cb"),
                     value: \.name
                 ) { row in
                     contextualCell(for: row.node) {
@@ -117,7 +117,7 @@ struct WorkingCopySplitBrowserView: View {
                     }
                 }
                 TableColumn(
-                    appLanguage.localized("ui.file.browser.kind.98b7d2e4"),
+                    appLanguage.localized("ui.file.browser.kind.column.b51d25fc"),
                     value: \.kind
                 ) { row in
                     contextualCell(for: row.node) {
@@ -125,7 +125,7 @@ struct WorkingCopySplitBrowserView: View {
                     }
                 }
                 TableColumn(
-                    appLanguage.localized("ui.file.browser.size.a77c1e02"),
+                    appLanguage.localized("ui.file.browser.size.column.a6810d75"),
                     value: \.fileSizeSortValue
                 ) { row in
                     contextualCell(for: row.node) {
@@ -133,7 +133,7 @@ struct WorkingCopySplitBrowserView: View {
                     }
                 }
                 TableColumn(
-                    appLanguage.localized("ui.file.browser.modified.date.6cb3548f"),
+                    appLanguage.localized("ui.file.browser.modified.column.84d3d7f2"),
                     value: \.modificationDateSortValue
                 ) { row in
                     contextualCell(for: row.node) {

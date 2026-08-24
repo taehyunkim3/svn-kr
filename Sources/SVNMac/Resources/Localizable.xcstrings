@@ -1549,6 +1549,23 @@
         }
       }
     },
+    "ui.choose.file.browser.view.mode.2c78a451": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose how files are displayed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 표시 방식을 선택합니다"
+          }
+        }
+      }
+    },
     "ui.choose.folder.54647179": {
       "extractionState": "manual",
       "localizations": {
@@ -2569,74 +2586,6 @@
         }
       }
     },
-    "ui.file.browser.kind.98b7d2e4": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kind"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "종류"
-          }
-        }
-      }
-    },
-    "ui.file.browser.modified.date.6cb3548f": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Date Modified"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "수정일"
-          }
-        }
-      }
-    },
-    "ui.file.browser.name.03fe9d71": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이름"
-          }
-        }
-      }
-    },
-    "ui.file.browser.size.a77c1e02": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Size"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "크기"
-          }
-        }
-      }
-    },
     "ui.file.browser.working.copy.root.731fa805": {
       "extractionState": "manual",
       "localizations": {
@@ -2735,6 +2684,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "크기"
+          }
+        }
+      }
+    },
+    "ui.file.browser.split.view.6f8e13d2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split View"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분할 보기"
+          }
+        }
+      }
+    },
+    "ui.file.browser.tree.view.4a29bf3c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tree View"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "트리 보기"
           }
         }
       }

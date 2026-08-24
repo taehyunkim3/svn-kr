@@ -112,6 +112,7 @@
 "ui.choose.action.60c39cbd" = "Choose Action…";
 "ui.choose.an.empty.folder.8f9acb6e" = "Choose an empty folder.";
 "ui.choose.an.empty.recovery.folder.c2b4a175" = "Choose an Empty Recovery Folder";
+"ui.choose.file.browser.view.mode.2c78a451" = "Choose how files are displayed";
 "ui.choose.folder.54647179" = "Choose Folder…";
 "ui.choose.local.checkout.folder.c649aa9f" = "Choose Local Checkout Folder";
 "ui.choose.svn.local.working.folders.6d104bc9" = "Choose SVN Local Working Folders";
@@ -177,10 +178,8 @@
 "ui.file.browser.size.column.a6810d75" = "Size";
 "ui.file.browser.actions.14f5c2a1" = "Actions";
 "ui.file.browser.items.count.86dc65fe" = "%1$@ items";
-"ui.file.browser.kind.98b7d2e4" = "Kind";
-"ui.file.browser.modified.date.6cb3548f" = "Date Modified";
-"ui.file.browser.name.03fe9d71" = "Name";
-"ui.file.browser.size.a77c1e02" = "Size";
+"ui.file.browser.split.view.6f8e13d2" = "Split View";
+"ui.file.browser.tree.view.4a29bf3c" = "Tree View";
 "ui.file.browser.working.copy.root.731fa805" = "Working Copy";
 "ui.file.commit.history.342bfaac" = "File Commit History";
 "ui.file.commit.history.ab024244" = "File Commit History";

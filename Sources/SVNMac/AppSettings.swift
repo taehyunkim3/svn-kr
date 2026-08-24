@@ -11,12 +11,20 @@ enum AppSettings {
     static let systemHistoryTimeZone = "__system__"
     static let hideTemporaryFilesKey = "hide-temporary-files"
     static let defaultHideTemporaryFiles = true
+    static let fileBrowserViewModeKey = "file-browser-view-mode"
+    static let defaultFileBrowserViewMode = FileBrowserViewMode.tree.rawValue
 
     static func hideTemporaryFiles(in defaults: UserDefaults = .standard) -> Bool {
         guard defaults.object(forKey: hideTemporaryFilesKey) != nil else {
             return defaultHideTemporaryFiles
         }
         return defaults.bool(forKey: hideTemporaryFilesKey)
+    }
+
+    static func fileBrowserViewMode(in defaults: UserDefaults = .standard) -> FileBrowserViewMode {
+        let identifier = defaults.string(forKey: fileBrowserViewModeKey)
+            ?? defaultFileBrowserViewMode
+        return FileBrowserViewMode(rawValue: identifier) ?? .tree
     }
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
@@ -34,6 +42,11 @@ enum AppSettings {
             }
         }
     }
+}
+
+enum FileBrowserViewMode: String, CaseIterable {
+    case tree
+    case split
 }
 
 enum AppLanguage: String, CaseIterable {
