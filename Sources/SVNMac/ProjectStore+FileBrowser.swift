@@ -39,9 +39,9 @@ extension ProjectStore {
         defer { endOperation(operationID) }
 
         let selectionBeforeRefresh = selectedBrowserPath
-        var refreshingState = workingCopyBrowserTreeState
-        refreshingState.prepareForRefresh()
-        workingCopyBrowserTreeState = refreshingState
+        let stateBeforeRefresh = workingCopyBrowserTreeState
+        let generationBeforeRefresh = stateBeforeRefresh.generation
+        let refreshPlan = stateBeforeRefresh.refreshPlan(selectedPath: selectionBeforeRefresh)
 
         do {
             let svnEntries = try await client.workingCopyEntries(at: project.path, credentials: nil)
@@ -50,61 +50,48 @@ extension ProjectStore {
                 relativeDirectory: "",
                 svnEntries: svnEntries
             )
-            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
-            var state = workingCopyBrowserTreeState
-            state.replaceRootNodesForRefresh(rootNodes)
-            workingCopyBrowserTreeState = state
-            workingCopyBrowserSVNEntries = svnEntries
-
-            let selectionToRestore = selectedBrowserPath ?? selectionBeforeRefresh
-            let refreshPlan = state.refreshPlan(selectedPath: selectionToRestore)
-            let generation = state.generation
+            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                  workingCopyBrowserTreeState.generation == generationBeforeRefresh else { return }
+            var refreshedState = stateBeforeRefresh
+            refreshedState.replaceRootNodesForRefresh(rootNodes)
 
             for relativeDirectory in refreshPlan.directoryPaths {
                 guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
-                      workingCopyBrowserTreeState.generation == generation else { return }
-                var currentState = workingCopyBrowserTreeState
+                      workingCopyBrowserTreeState.generation == generationBeforeRefresh else { return }
                 guard refreshPlan.shouldRestoreDirectory(
                     relativeDirectory,
-                    expandedPaths: currentState.expandedPaths
+                    expandedPaths: stateBeforeRefresh.expandedPaths
                 ),
-                    let node = currentState.node(at: relativeDirectory),
+                    let node = refreshedState.node(at: relativeDirectory),
                     node.isDirectory,
                     node.hasChildren,
-                    !currentState.hasCachedChildren(for: relativeDirectory) else { continue }
+                    !refreshedState.hasCachedChildren(for: relativeDirectory) else { continue }
 
-                currentState.setLoading(true, for: relativeDirectory)
-                workingCopyBrowserTreeState = currentState
-                do {
-                    let children = try await workingCopyFileService.directoryContents(
-                        at: project.path,
-                        relativeDirectory: relativeDirectory,
-                        svnEntries: svnEntries
-                    )
-                    guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
-                          workingCopyBrowserTreeState.generation == generation else { return }
-                    var loadedState = workingCopyBrowserTreeState
-                    loadedState.cache(children, for: relativeDirectory)
-                    workingCopyBrowserTreeState = loadedState
-                } catch {
-                    guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
-                          workingCopyBrowserTreeState.generation == generation else { return }
-                    var failedState = workingCopyBrowserTreeState
-                    failedState.setLoading(false, for: relativeDirectory)
-                    workingCopyBrowserTreeState = failedState
-                    throw error
-                }
+                let children = try await workingCopyFileService.directoryContents(
+                    at: project.path,
+                    relativeDirectory: relativeDirectory,
+                    svnEntries: svnEntries
+                )
+                guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                      workingCopyBrowserTreeState.generation == generationBeforeRefresh else { return }
+                refreshedState.cache(children, for: relativeDirectory)
             }
 
             guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
-                  workingCopyBrowserTreeState.generation == generation else { return }
-            var restoredState = workingCopyBrowserTreeState
-            selectedBrowserPath = restoredState.finishRefresh(
-                selectedPath: selectedBrowserPath ?? selectionBeforeRefresh
+                  workingCopyBrowserTreeState.generation == generationBeforeRefresh else { return }
+            refreshedState.preserveExpansionChanges(
+                from: workingCopyBrowserTreeState,
+                refreshStartedWith: stateBeforeRefresh.expandedPaths
             )
-            workingCopyBrowserTreeState = restoredState
+            let selectedPathAfterRefresh = refreshedState.finishRefresh(
+                selectedPath: selectedBrowserPath
+            )
+            workingCopyBrowserSVNEntries = svnEntries
+            workingCopyBrowserTreeState = refreshedState
+            selectedBrowserPath = selectedPathAfterRefresh
         } catch {
-            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id) else { return }
+            guard canApplyRequest(requestID, kind: .fileTree, projectID: project.id),
+                  workingCopyBrowserTreeState.generation == generationBeforeRefresh else { return }
             publishRefreshError(error, projectID: project.id, policy: errorPolicy)
         }
     }
@@ -176,9 +163,15 @@ extension ProjectStore {
                 relativeDirectory: relativePath,
                 svnEntries: svnEntries
             )
-            guard selectedProjectID == project.id,
-                  workingCopyBrowserTreeState.generation == generation else { return }
+            guard selectedProjectID == project.id else { return }
             var currentState = workingCopyBrowserTreeState
+            if currentState.generation != generation {
+                guard currentState.expandedPaths.contains(relativePath),
+                      let node = currentState.node(at: relativePath),
+                      node.isDirectory,
+                      node.hasChildren,
+                      !currentState.hasCachedChildren(for: relativePath) else { return }
+            }
             currentState.cache(children, for: relativePath)
             workingCopyBrowserTreeState = currentState
         } catch {

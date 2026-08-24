@@ -150,6 +150,31 @@ struct WorkingCopyBrowserTreeState: Equatable, Sendable {
         return selectedPath
     }
 
+    /// 새 트리를 준비하는 동안 사용자가 바꾼 펼침 상태를 최종 스냅샷에 합칩니다.
+    /// 새로 펼친 폴더의 기존 캐시는 새로고침 대상이 아니었던 경우에만 이어받습니다.
+    mutating func preserveExpansionChanges(
+        from currentState: WorkingCopyBrowserTreeState,
+        refreshStartedWith initialExpandedPaths: Set<String>
+    ) {
+        let newlyExpandedPaths = currentState.expandedPaths
+            .subtracting(initialExpandedPaths)
+            .sorted {
+                let lhsDepth = pathDepth($0)
+                let rhsDepth = pathDepth($1)
+                return lhsDepth == rhsDepth ? $0 < $1 : lhsDepth < rhsDepth
+            }
+        expandedPaths = currentState.expandedPaths
+
+        for path in newlyExpandedPaths {
+            guard !hasCachedChildren(for: path),
+                  let node = node(at: path),
+                  node.isDirectory,
+                  node.hasChildren,
+                  let children = currentState.childrenByDirectory[path] else { continue }
+            cache(children, for: path)
+        }
+    }
+
     mutating func replace(withRecursiveTree tree: [WorkingCopyFileNode], expanded: Bool = false) {
         reset(rootNodes: tree)
         cacheRecursively(tree, expandDirectories: expanded)

@@ -159,6 +159,24 @@ import Testing
     #expect(state.directoryContentsByPath.isEmpty)
 }
 
+@Test func splitBrowserRefreshReplacesCacheInOneSnapshotAndPreservesNewInteractionCache() {
+    var state = WorkingCopySplitBrowserState()
+    state.cache([makeSplitBrowserNode("Old.txt", isDirectory: false)], for: "")
+    state.cache([
+        makeSplitBrowserNode("Kept.txt", parent: "NewlyExpanded", isDirectory: false),
+    ], for: "NewlyExpanded")
+
+    let stateBeforeReplacement = state
+    state.replaceCacheForRefresh(
+        ["": [makeSplitBrowserNode("Fresh.txt", isDirectory: false)]],
+        preservingCachedPaths: ["NewlyExpanded"]
+    )
+
+    #expect(stateBeforeReplacement.directoryContentsByPath[""]?.map(\.name) == ["Old.txt"])
+    #expect(state.directoryContentsByPath[""]?.map(\.name) == ["Fresh.txt"])
+    #expect(state.directoryContentsByPath["NewlyExpanded"]?.map(\.name) == ["Kept.txt"])
+}
+
 private func makeSplitBrowserNode(
     _ name: String,
     parent: String = "",

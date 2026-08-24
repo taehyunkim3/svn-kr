@@ -1029,6 +1029,170 @@ import Testing
 }
 
 @MainActor
+@Test func refreshingFileBrowserKeepsPublishedTreeUntilAtomicReplacement() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-atomic-refresh")
+    let folderGate = AsyncTestGate()
+    let fileService = ControlledWorkingCopyFileService(
+        contentsByDirectory: [
+            "": [makeBrowserRefreshNode("Folder", directory: true, hasChildren: true)],
+            "Folder": [makeBrowserRefreshNode("Folder/fresh.txt")],
+        ],
+        gatesByDirectory: ["Folder": folderGate]
+    )
+    let store = makeStore(projects: [project], fileService: fileService)
+    store.workingCopyFileTree = [makeBrowserRefreshNode(
+        "Folder",
+        directory: true,
+        children: [makeBrowserRefreshNode("Folder/original.txt")]
+    )]
+    var originalState = store.workingCopyBrowserTreeState
+    originalState.expandedPaths = ["Folder"]
+    store.workingCopyBrowserTreeState = originalState
+    store.selectedBrowserPath = "Folder/original.txt"
+
+    let refresh = Task { await store.loadWorkingCopyFiles() }
+    await waitForDirectoryRequest(fileService, path: "Folder")
+
+    #expect(store.workingCopyBrowserTreeState == originalState)
+    #expect(store.workingCopyBrowserTreeState.visibleRows().map(\.relativePath) == [
+        "Folder",
+        "Folder/original.txt",
+    ])
+    #expect(store.selectedBrowserPath == "Folder/original.txt")
+
+    await folderGate.release()
+    await refresh.value
+
+    #expect(store.workingCopyBrowserTreeState.visibleRows().map(\.relativePath) == [
+        "Folder",
+        "Folder/fresh.txt",
+    ])
+    #expect(store.selectedBrowserPath == nil)
+}
+
+@MainActor
+@Test func failedFileBrowserRefreshKeepsExistingTreeExpansionAndSelection() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-failed-refresh")
+    let fileService = ControlledWorkingCopyFileService(
+        contentsByDirectory: [
+            "": [makeBrowserRefreshNode("Folder", directory: true, hasChildren: true)],
+        ],
+        failingDirectories: ["Folder"]
+    )
+    let store = makeStore(projects: [project], fileService: fileService)
+    store.workingCopyFileTree = [makeBrowserRefreshNode(
+        "Folder",
+        directory: true,
+        children: [makeBrowserRefreshNode("Folder/original.txt")]
+    )]
+    var originalState = store.workingCopyBrowserTreeState
+    originalState.expandedPaths = ["Folder"]
+    store.workingCopyBrowserTreeState = originalState
+    store.selectedBrowserPath = "Folder/original.txt"
+
+    await store.loadWorkingCopyFiles()
+
+    #expect(store.workingCopyBrowserTreeState == originalState)
+    #expect(store.selectedBrowserPath == "Folder/original.txt")
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func fileBrowserRefreshPreservesExpansionChangesMadeWhileLoading() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-interaction-refresh")
+    let folderGate = AsyncTestGate()
+    let fileService = ControlledWorkingCopyFileService(
+        contentsByDirectory: [
+            "": [
+                makeBrowserRefreshNode("First", directory: true, hasChildren: true),
+                makeBrowserRefreshNode("Second", directory: true, hasChildren: true),
+            ],
+            "First": [makeBrowserRefreshNode("First/fresh.txt")],
+        ],
+        gatesByDirectory: ["First": folderGate]
+    )
+    let store = makeStore(projects: [project], fileService: fileService)
+    store.workingCopyFileTree = [
+        makeBrowserRefreshNode(
+            "First",
+            directory: true,
+            children: [makeBrowserRefreshNode("First/original.txt")]
+        ),
+        makeBrowserRefreshNode(
+            "Second",
+            directory: true,
+            children: [makeBrowserRefreshNode("Second/kept.txt")]
+        ),
+    ]
+    var state = store.workingCopyBrowserTreeState
+    state.expandedPaths = ["First"]
+    store.workingCopyBrowserTreeState = state
+
+    let refresh = Task { await store.loadWorkingCopyFiles() }
+    await waitForDirectoryRequest(fileService, path: "First")
+    _ = store.setWorkingCopyDirectory("First", expanded: false)
+    _ = store.setWorkingCopyDirectory("Second", expanded: true)
+    store.selectedBrowserPath = "Second/kept.txt"
+    await folderGate.release()
+    await refresh.value
+
+    #expect(store.workingCopyBrowserTreeState.expandedPaths == ["Second"])
+    #expect(store.workingCopyBrowserTreeState.childrenByDirectory["Second"]?.map(\.relativePath) == [
+        "Second/kept.txt",
+    ])
+    #expect(store.selectedBrowserPath == "Second/kept.txt")
+}
+
+@MainActor
+@Test func directoryLoadStartedDuringRefreshRebasesOntoAtomicReplacement() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-rebased-directory-load")
+    let refreshGate = AsyncTestGate()
+    let userLoadGate = AsyncTestGate()
+    let fileService = ControlledWorkingCopyFileService(
+        contentsByDirectory: [
+            "": [
+                makeBrowserRefreshNode("First", directory: true, hasChildren: true),
+                makeBrowserRefreshNode("Second", directory: true, hasChildren: true),
+            ],
+            "First": [makeBrowserRefreshNode("First/fresh.txt")],
+            "Second": [makeBrowserRefreshNode("Second/loaded.txt")],
+        ],
+        gatesByDirectory: [
+            "First": refreshGate,
+            "Second": userLoadGate,
+        ]
+    )
+    let store = makeStore(projects: [project], fileService: fileService)
+    var state = WorkingCopyBrowserTreeState()
+    state.reset(rootNodes: [
+        makeBrowserRefreshNode("First", directory: true, hasChildren: true),
+        makeBrowserRefreshNode("Second", directory: true, hasChildren: true),
+    ])
+    state.cache([makeBrowserRefreshNode("First/original.txt")], for: "First")
+    state.expandedPaths = ["First"]
+    store.workingCopyBrowserTreeState = state
+
+    let refresh = Task { await store.loadWorkingCopyFiles() }
+    await waitForDirectoryRequest(fileService, path: "First")
+    _ = store.setWorkingCopyDirectory("First", expanded: false)
+    let directoryToLoad = store.setWorkingCopyDirectory("Second", expanded: true)
+    #expect(directoryToLoad == "Second")
+    let userLoad = Task { await store.loadWorkingCopyDirectory("Second") }
+    await waitForDirectoryRequest(fileService, path: "Second")
+
+    await refreshGate.release()
+    await refresh.value
+    #expect(store.workingCopyBrowserTreeState.expandedPaths == ["Second"])
+    #expect(!store.workingCopyBrowserTreeState.hasCachedChildren(for: "Second"))
+
+    await userLoadGate.release()
+    await userLoad.value
+    #expect(store.workingCopyBrowserTreeState.childrenByDirectory["Second"]?.map(\.relativePath) == [
+        "Second/loaded.txt",
+    ])
+}
+
+@MainActor
 @Test func refreshingFileBrowserClearsSelectionWhenRestoredPathDisappears() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/browser-selection-refresh")
     let fileService = RecordingWorkingCopyFileService(contentsByDirectory: ["": []])
@@ -2952,6 +3116,63 @@ private actor RecordingWorkingCopyFileService: WorkingCopyFileListing {
     func requestedDirectories() -> [String] {
         directoryRequests
     }
+}
+
+private actor ControlledWorkingCopyFileService: WorkingCopyFileListing {
+    let contentsByDirectory: [String: [WorkingCopyFileNode]]
+    let gatesByDirectory: [String: AsyncTestGate]
+    let failingDirectories: Set<String>
+    private var directoryRequests: [String] = []
+
+    init(
+        contentsByDirectory: [String: [WorkingCopyFileNode]],
+        gatesByDirectory: [String: AsyncTestGate] = [:],
+        failingDirectories: Set<String> = []
+    ) {
+        self.contentsByDirectory = contentsByDirectory
+        self.gatesByDirectory = gatesByDirectory
+        self.failingDirectories = failingDirectories
+    }
+
+    func tree(
+        at rootPath: String,
+        svnEntries: [SVNWorkingCopyEntry]
+    ) async throws -> [WorkingCopyFileNode] {
+        try await directoryContents(
+            at: rootPath,
+            relativeDirectory: "",
+            svnEntries: svnEntries
+        )
+    }
+
+    func directoryContents(
+        at rootPath: String,
+        relativeDirectory: String,
+        svnEntries: [SVNWorkingCopyEntry]
+    ) async throws -> [WorkingCopyFileNode] {
+        directoryRequests.append(relativeDirectory)
+        await gatesByDirectory[relativeDirectory]?.wait()
+        if failingDirectories.contains(relativeDirectory) {
+            throw TestError.automaticRefreshFailed
+        }
+        return contentsByDirectory[relativeDirectory] ?? []
+    }
+
+    func requestedDirectories() -> [String] {
+        directoryRequests
+    }
+}
+
+private func waitForDirectoryRequest(
+    _ service: ControlledWorkingCopyFileService,
+    path: String
+) async {
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
+        if await service.requestedDirectories().contains(path) { return }
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+    Issue.record("파일 브라우저 디렉터리 요청이 시작되지 않았습니다: \(path)")
 }
 
 private func makeBrowserRefreshNode(

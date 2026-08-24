@@ -38,6 +38,18 @@ struct WorkingCopySplitBrowserState: Equatable {
         directoryContentsByPath.removeAll()
     }
 
+    mutating func replaceCacheForRefresh(
+        _ refreshedContentsByPath: [String: [WorkingCopyFileNode]],
+        preservingCachedPaths: Set<String> = []
+    ) {
+        let preservedContents = directoryContentsByPath.filter {
+            preservingCachedPaths.contains($0.key) && refreshedContentsByPath[$0.key] == nil
+        }
+        directoryContentsByPath = refreshedContentsByPath.merging(preservedContents) { refreshed, _ in
+            refreshed
+        }
+    }
+
     func folderChildren(of relativeDirectory: String) -> [WorkingCopyFileNode] {
         (directoryContentsByPath[relativeDirectory] ?? []).filter(\.isDirectory)
     }

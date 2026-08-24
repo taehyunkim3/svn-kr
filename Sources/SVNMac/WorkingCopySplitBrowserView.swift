@@ -486,12 +486,48 @@ struct WorkingCopySplitBrowserView: View {
     private func reloadCachedDirectories() async {
         let directoriesToReload = browserState.expandedDirectoryPaths
             .union([browserState.currentDirectoryPath])
-            .sorted { directoryDepth($0) < directoryDepth($1) }
+            .sorted {
+                let lhsDepth = directoryDepth($0)
+                let rhsDepth = directoryDepth($1)
+                return lhsDepth == rhsDepth ? $0 < $1 : lhsDepth < rhsDepth
+            }
         cacheGeneration &+= 1
+        let requestedGeneration = cacheGeneration
         loadingDirectoryGenerations.removeAll()
-        browserState.clearCacheForRefresh()
         for directory in directoriesToReload {
-            await loadDirectory(directory)
+            loadingDirectoryGenerations[directory] = requestedGeneration
+        }
+
+        var refreshedContentsByPath: [String: [WorkingCopyFileNode]] = [:]
+        for directory in directoriesToReload {
+            guard requestedGeneration == cacheGeneration,
+                  let contents = await store.loadWorkingCopyDirectoryContents(at: directory) else {
+                if requestedGeneration == cacheGeneration {
+                    for pendingDirectory in directoriesToReload {
+                        if loadingDirectoryGenerations[pendingDirectory] == requestedGeneration {
+                            loadingDirectoryGenerations[pendingDirectory] = nil
+                        }
+                    }
+                }
+                return
+            }
+            refreshedContentsByPath[directory] = contents
+        }
+
+        guard requestedGeneration == cacheGeneration else { return }
+        let currentCachedPaths = browserState.expandedDirectoryPaths
+            .union([browserState.currentDirectoryPath])
+        let pathsAddedDuringRefresh = currentCachedPaths.subtracting(directoriesToReload)
+        var refreshedState = browserState
+        refreshedState.replaceCacheForRefresh(
+            refreshedContentsByPath,
+            preservingCachedPaths: pathsAddedDuringRefresh
+        )
+        browserState = refreshedState
+        for directory in directoriesToReload {
+            if loadingDirectoryGenerations[directory] == requestedGeneration {
+                loadingDirectoryGenerations[directory] = nil
+            }
         }
     }
 
