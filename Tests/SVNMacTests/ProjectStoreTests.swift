@@ -2212,6 +2212,14 @@ private actor StubSVNClient: SVNClientServing {
         recoveryPaths = [sourcePath, destinationPath]
         return recoveryResultValue
     }
+    func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] { [] }
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRepositoryPathNormalizationResult {
+        SVNRepositoryPathNormalizationResult(
+            renamedTargets: targets,
+            skippedTargets: [],
+            committedRevisions: []
+        )
+    }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { ignoreRulesValue }
