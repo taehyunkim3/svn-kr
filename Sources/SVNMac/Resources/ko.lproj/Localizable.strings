@@ -171,6 +171,10 @@
 "ui.failed.to.remove.an.incomplete.conflict.backup.65753038" = "불완전한 충돌 백업 정리에 실패했습니다: %1$@";
 "ui.false.aliases.excluded.85d448dd" = "제외할 가짜 경로";
 "ui.file.811b7680" = "파일";
+"ui.file.browser.kind.column.b51d25fc" = "종류";
+"ui.file.browser.modified.column.84d3d7f2" = "수정일";
+"ui.file.browser.name.column.0d7638cb" = "이름";
+"ui.file.browser.size.column.a6810d75" = "크기";
 "ui.file.commit.history.342bfaac" = "이 파일의 커밋 기록";
 "ui.file.commit.history.ab024244" = "파일 커밋 기록";
 "ui.files.6075adef" = "파일";
