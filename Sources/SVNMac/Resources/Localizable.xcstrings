@@ -233,6 +233,13 @@
         "ko": { "stringUnit": { "state": "translated", "value": "개명 전" } }
       }
     },
+    "repository.path.normalization.codepoints.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$@, %2$@ scalars" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%1$@, %2$@자" } }
+      }
+    },
     "repository.path.normalization.confirmation.commits": {
       "extractionState": "manual",
       "localizations": {
@@ -289,6 +296,13 @@
         "ko": { "stringUnit": { "state": "translated", "value": "전체 선택 해제" } }
       }
     },
+    "repository.path.normalization.different.component": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Different component" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "다른 부분" } }
+      }
+    },
     "repository.path.normalization.directory.note": {
       "extractionState": "manual",
       "localizations": {
@@ -331,11 +345,25 @@
         "ko": { "stringUnit": { "state": "translated", "value": "저장소 경로 정리에 실패했습니다." } }
       }
     },
+    "repository.path.normalization.form.composed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Composed characters (NFC)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "완성형 (NFC)" } }
+      }
+    },
+    "repository.path.normalization.form.decomposed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Decomposed characters (NFD)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "자모 분리 (NFD)" } }
+      }
+    },
     "repository.path.normalization.no.paths": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "There are no repository paths to fix." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "정리할 경로가 없습니다." } }
+        "en": { "stringUnit": { "state": "translated", "value": "This repository has no decomposed Korean paths that would appear broken on Windows." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 저장소에는 윈도우에서 깨져 보일 자모 분리 한글 경로가 없습니다." } }
       }
     },
     "repository.path.normalization.problem": {
@@ -383,8 +411,8 @@
     "repository.path.normalization.same.appearance.note": {
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Before and after paths may look identical on macOS, but their names are stored differently in the repository." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "개명 전후 경로는 화면상 같아 보여도 저장소에 저장된 이름 형식이 다릅니다." } }
+        "en": { "stringUnit": { "state": "translated", "value": "On macOS, decomposed (NFD) and composed (NFC) names can look identical, making the problem hard to notice. Compare each path's format badge and the code points for the differing components." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "맥에서는 자모 분리(NFD)와 완성형(NFC) 이름이 똑같이 보여 문제를 알아채기 어렵습니다. 각 경로의 형식 배지와 다른 부분의 코드포인트를 비교하세요." } }
       }
     },
     "repository.path.normalization.scan.again": {
@@ -441,6 +469,13 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Waiting for repository paths" } },
         "ko": { "stringUnit": { "state": "translated", "value": "저장소 경로를 기다리는 중" } }
+      }
+    },
+    "repository.path.normalization.windows.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Korean names stored with decomposed characters can appear as separate letters such as ‘ㅎㅏㄴㄱㅡㄹ’ on Windows. Fixing them makes the names display normally in Korean on Windows." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소의 자모 분리 이름은 윈도우에서 ‘ㅎㅏㄴㄱㅡㄹ’처럼 낱자로 깨져 보입니다. 정리하면 윈도우에서도 정상적인 한글 이름으로 표시됩니다." } }
       }
     },
     "ui.a.clean.working.copy.is.checked.out.from.the.ser.a49ce026": {

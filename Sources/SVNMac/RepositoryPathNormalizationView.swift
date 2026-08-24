@@ -49,6 +49,10 @@ struct RepositoryPathNormalizationView: View {
     private var guidance: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(
+                appLanguage.localized("repository.path.normalization.windows.note"),
+                systemImage: "desktopcomputer"
+            )
+            Label(
                 appLanguage.localized("repository.path.normalization.same.appearance.note"),
                 systemImage: "info.circle"
             )
@@ -124,7 +128,12 @@ struct RepositoryPathNormalizationView: View {
     }
 
     private func targetRow(_ target: SVNRepositoryPathNormalizationTarget) -> some View {
-        Toggle(
+        let differences = repositoryPathNormalizationComponentDifferences(
+            repositoryPath: target.repositoryPath,
+            normalizedPath: target.normalizedPath
+        )
+
+        return Toggle(
             isOn: Binding(
                 get: {
                     store.selectedRepositoryPathNormalizationTargets.contains(target)
@@ -151,6 +160,12 @@ struct RepositoryPathNormalizationView: View {
                         path: target.normalizedPath
                     )
                 }
+                if !differences.isEmpty {
+                    Divider()
+                    ForEach(differences, id: \.componentIndex) { difference in
+                        componentDifference(difference)
+                    }
+                }
             }
             .padding(.vertical, 4)
         }
@@ -164,9 +179,84 @@ struct RepositoryPathNormalizationView: View {
     private func pathRow(_ label: String, path: String) -> some View {
         GridRow {
             Text(label).foregroundStyle(.secondary)
-            Text(path)
-                .font(.body.monospaced())
-                .textSelection(.enabled)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(path)
+                    .font(.body.monospaced())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                normalizationFormBadge(repositoryPathNormalizationForm(of: path))
+            }
+        }
+    }
+
+    private func normalizationFormBadge(
+        _ form: RepositoryPathNormalizationForm
+    ) -> some View {
+        Text(normalizationFormLabel(form))
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.secondary.opacity(0.12), in: Capsule())
+            .fixedSize()
+    }
+
+    private func componentDifference(
+        _ difference: RepositoryPathNormalizationComponentDifference
+    ) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+            GridRow {
+                Text(appLanguage.localized("repository.path.normalization.different.component"))
+                    .foregroundStyle(.secondary)
+                Text(difference.normalizedDifference)
+                    .font(.body.monospaced())
+                    .textSelection(.enabled)
+            }
+            codePointRow(
+                appLanguage.localized("repository.path.normalization.before"),
+                component: difference.repositoryDifference,
+                summary: difference.repositoryCodePoints
+            )
+            codePointRow(
+                appLanguage.localized("repository.path.normalization.after"),
+                component: difference.normalizedDifference,
+                summary: difference.normalizedCodePoints
+            )
+        }
+        .padding(.top, 4)
+    }
+
+    private func codePointRow(
+        _ label: String,
+        component: String,
+        summary: RepositoryPathCodePointSummary
+    ) -> some View {
+        GridRow {
+            Text(label).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summary.codePoints)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                Text(
+                    appLanguage.localized(
+                        "repository.path.normalization.codepoints.detail",
+                        normalizationFormLabel(repositoryPathNormalizationForm(of: component)),
+                        summary.scalarCount
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func normalizationFormLabel(
+        _ form: RepositoryPathNormalizationForm
+    ) -> String {
+        switch form {
+        case .decomposed:
+            appLanguage.localized("repository.path.normalization.form.decomposed")
+        case .composed:
+            appLanguage.localized("repository.path.normalization.form.composed")
         }
     }
 

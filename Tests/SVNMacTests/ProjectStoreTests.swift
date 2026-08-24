@@ -84,18 +84,44 @@ import Testing
 }
 
 @MainActor
-@Test func emptyRepositoryPathNormalizationScanClosesReviewWithNotice() async {
+@Test func emptyRepositoryPathNormalizationScanNeverOpensReviewAndShowsNotice() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/empty-normalization")
-    let client = StubSVNClient()
+    let scanGate = AsyncTestGate()
+    let client = StubSVNClient(repositoryPathNormalizationScanGate: scanGate)
     let store = makeStore(projects: [project], client: client)
 
-    await store.beginRepositoryPathNormalization()
+    let scanTask = Task { await store.beginRepositoryPathNormalization() }
+    for _ in 0..<100 {
+        if await client.repositoryPathNormalizationScanRequestCount() == 1 { break }
+        await Task.yield()
+    }
+
+    #expect(!store.isShowingRepositoryPathNormalization)
+    #expect(store.isScanningRepositoryPaths)
+
+    await scanGate.release()
+    await scanTask.value
 
     #expect(await client.repositoryPathNormalizationScanRequestCount() == 1)
     #expect(store.repositoryPathNormalizationTargets.isEmpty)
     #expect(store.selectedRepositoryPathNormalizationTargets.isEmpty)
     #expect(!store.isShowingRepositoryPathNormalization)
     #expect(store.notice != nil)
+}
+
+@MainActor
+@Test func failedRepositoryPathNormalizationScanExposesErrorWithoutOpeningReview() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/failed-normalization")
+    let client = StubSVNClient(
+        repositoryPathNormalizationScanError: TestError.repositoryPathNormalizationScanFailed
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+
+    #expect(await client.repositoryPathNormalizationScanRequestCount() == 1)
+    #expect(!store.isShowingRepositoryPathNormalization)
+    #expect(store.errorMessage != nil)
 }
 
 @MainActor
@@ -117,7 +143,7 @@ import Testing
         if await client.repositoryPathNormalizationScanRequestCount() == 1 { break }
         await Task.yield()
     }
-    #expect(store.isShowingRepositoryPathNormalization)
+    #expect(!store.isShowingRepositoryPathNormalization)
     #expect(store.isScanningRepositoryPaths)
     #expect(store.repositoryPathNormalizationTargets.isEmpty)
 
@@ -2062,6 +2088,7 @@ private enum TestError: Error {
     case lockInfoFailed
     case automaticRefreshFailed
     case staleRepositoryLocksFailed
+    case repositoryPathNormalizationScanFailed
 }
 
 private actor StubVolumeNormalizationProbe: VolumeNormalizationProbing {
@@ -2265,6 +2292,7 @@ private actor StubSVNClient: SVNClientServing {
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
     let repositoryPathNormalizationResultValue: SVNRepositoryPathNormalizationResult?
     let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
+    let repositoryPathNormalizationScanError: Error?
     let repositoryPathNormalizationScanGate: AsyncTestGate?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
@@ -2325,6 +2353,7 @@ private actor StubSVNClient: SVNClientServing {
         repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = [],
         repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
         repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
+        repositoryPathNormalizationScanError: Error? = nil,
         repositoryPathNormalizationScanGate: AsyncTestGate? = nil
     ) {
         self.statusesByPath = statusesByPath
@@ -2357,6 +2386,7 @@ private actor StubSVNClient: SVNClientServing {
         repositoryPathNormalizationTargetsValue = repositoryPathNormalizationTargets
         repositoryPathNormalizationResultValue = repositoryPathNormalizationResult
         self.repositoryPathNormalizationError = repositoryPathNormalizationError
+        self.repositoryPathNormalizationScanError = repositoryPathNormalizationScanError
         self.repositoryPathNormalizationScanGate = repositoryPathNormalizationScanGate
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
@@ -2449,6 +2479,7 @@ private actor StubSVNClient: SVNClientServing {
     func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] {
         repositoryPathNormalizationScanRequests += 1
         await repositoryPathNormalizationScanGate?.wait()
+        if let repositoryPathNormalizationScanError { throw repositoryPathNormalizationScanError }
         return repositoryPathNormalizationTargetsValue
     }
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRepositoryPathNormalizationResult {

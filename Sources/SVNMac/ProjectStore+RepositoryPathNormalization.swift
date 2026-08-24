@@ -65,7 +65,7 @@ extension ProjectStore {
         repositoryPathNormalizationResult = nil
         repositoryPathNormalizationIssue = nil
         isConfirmingRepositoryPathNormalization = false
-        isShowingRepositoryPathNormalization = true
+        isShowingRepositoryPathNormalization = false
 
         let operationID = beginOperation(.scanRepositoryPaths(project.id))
         defer { endOperation(operationID) }
@@ -81,21 +81,16 @@ extension ProjectStore {
                 notice = AppLanguage.current.localized(
                     "repository.path.normalization.no.paths"
                 )
-                isShowingRepositoryPathNormalization = false
                 repositoryPathNormalizationSourceProjectID = nil
                 return
             }
             repositoryPathNormalizationTargets = targets
             selectedRepositoryPathNormalizationTargets = Set(targets)
+            isShowingRepositoryPathNormalization = true
         } catch {
             guard selectedProjectID == project.id else { return }
-            repositoryPathNormalizationIssue = RepositoryPathNormalizationIssue(
-                kind: .other,
-                paths: [],
-                result: nil,
-                failedTarget: nil,
-                details: localizedError(error)
-            )
+            repositoryPathNormalizationSourceProjectID = nil
+            errorMessage = localizedError(error)
         }
     }
 
