@@ -17,6 +17,8 @@ protocol SVNClientServing: Sendable {
     func repairCanonicalAliases(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot
     func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview
     func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRecoveryResult
+    func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNRepositoryPathNormalizationTarget]
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRepositoryPathNormalizationResult
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws
@@ -219,6 +221,8 @@ struct ProjectOperation: Identifiable, Equatable {
         case update(SVNProject.ID)
         case commit(SVNProject.ID)
         case recover(SVNProject.ID)
+        case scanRepositoryPaths(SVNProject.ID)
+        case normalizeRepositoryPaths(SVNProject.ID)
     }
 
     let id: UUID

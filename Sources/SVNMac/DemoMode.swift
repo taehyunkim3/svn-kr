@@ -114,6 +114,23 @@ private enum DemoData {
         WorkingCopyFileNode(name: "README.md", relativePath: "README.md", isDirectory: false, isSymbolicLink: false, svnEntry: SVNWorkingCopyEntry(path: "README.md", status: "normal", revision: "1842"), children: nil)
     ]
 
+    static let repositoryPathNormalizationTargets = [
+        normalizationTarget("Docs/한글 사용자 안내서.md", isDirectory: false),
+        normalizationTarget("Resources/제품 화면", isDirectory: true),
+        normalizationTarget("Tests/로그인 흐름 테스트.swift", isDirectory: false)
+    ]
+
+    private static func normalizationTarget(
+        _ path: String,
+        isDirectory: Bool
+    ) -> SVNRepositoryPathNormalizationTarget {
+        SVNRepositoryPathNormalizationTarget(
+            repositoryPath: path.decomposedStringWithCanonicalMapping,
+            normalizedPath: path.precomposedStringWithCanonicalMapping,
+            isDirectory: isDirectory
+        )
+    }
+
     static let diff = """
     Index: Sources/Features/Login/LoginView.swift
     ===================================================================
@@ -163,6 +180,7 @@ private struct DemoWorkingCopyFileService: WorkingCopyFileListing {
 
 private actor DemoSVNClient: SVNClientServing {
     private var scheduledDeletionPaths: Set<String> = []
+    private var repositoryPathNormalizationTargets = DemoData.repositoryPathNormalizationTargets
 
     func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
@@ -188,6 +206,17 @@ private actor DemoSVNClient: SVNClientServing {
             destinationPath: destinationPath,
             snapshot: try await workingCopySnapshot(at: destinationPath, credentials: nil),
             migratedPaths: []
+        )
+    }
+    func repositoryPathsNeedingNormalization(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] {
+        repositoryPathNormalizationTargets
+    }
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at _: String, message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNRepositoryPathNormalizationResult {
+        repositoryPathNormalizationTargets.removeAll { targets.contains($0) }
+        return SVNRepositoryPathNormalizationResult(
+            renamedTargets: targets,
+            skippedTargets: [],
+            committedRevisions: targets.indices.map { String(1846 + $0) }
         )
     }
     func ignoredStatus(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { [SVNStatusEntry(path: ".build/", item: .ignored)] }

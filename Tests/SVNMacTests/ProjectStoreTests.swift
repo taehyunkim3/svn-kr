@@ -30,6 +30,214 @@ import Testing
 }
 
 @MainActor
+@Test func repositoryPathNormalizationDoesNotScanAutomatically() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/no-automatic-normalization")
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: [
+            makeRepositoryPathNormalizationTarget("문서/한글 안내.md")
+        ]
+    )
+    _ = makeStore(projects: [project], client: client)
+
+    #expect(await client.repositoryPathNormalizationScanRequestCount() == 0)
+}
+
+@Test func repositoryPathNormalizationIssuesHaveKoreanAndEnglishGuidance() {
+    let target = makeRepositoryPathNormalizationTarget("문서/실패.md")
+    let partialResult = SVNRepositoryPathNormalizationResult(
+        renamedTargets: [makeRepositoryPathNormalizationTarget("문서/완료.md")],
+        skippedTargets: [],
+        committedRevisions: ["41"]
+    )
+    let issues = [
+        RepositoryPathNormalizationIssue(
+            kind: .blockedByLocalChanges,
+            paths: ["로컬.txt"], result: nil, failedTarget: nil, details: nil
+        ),
+        RepositoryPathNormalizationIssue(
+            kind: .blockedByLocks,
+            paths: ["잠김.txt"], result: nil, failedTarget: nil, details: nil
+        ),
+        RepositoryPathNormalizationIssue(
+            kind: .invalidTargets,
+            paths: ["무효.txt"], result: nil, failedTarget: nil, details: nil
+        ),
+        RepositoryPathNormalizationIssue(
+            kind: .partiallyFailed,
+            paths: [target.repositoryPath],
+            result: partialResult,
+            failedTarget: target,
+            details: "server move failed"
+        ),
+    ]
+
+    for issue in issues {
+        #expect(!issue.localizedMessage(.korean).isEmpty)
+        #expect(!issue.localizedMessage(.english).isEmpty)
+        #expect(issue.localizedMessage(.korean) != issue.localizedMessage(.english))
+    }
+    #expect(issues[0].localizedMessage(.korean).contains("커밋"))
+    #expect(issues[1].localizedMessage(.english).contains("Release the locks"))
+    #expect(issues[2].localizedMessage(.korean).contains("유효하지"))
+    #expect(issues[3].localizedMessage(.english).contains("already committed"))
+    #expect(issues[3].localizedMessage(.korean).contains("남은 경로부터"))
+}
+
+@MainActor
+@Test func emptyRepositoryPathNormalizationScanClosesReviewWithNotice() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/empty-normalization")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+
+    #expect(await client.repositoryPathNormalizationScanRequestCount() == 1)
+    #expect(store.repositoryPathNormalizationTargets.isEmpty)
+    #expect(store.selectedRepositoryPathNormalizationTargets.isEmpty)
+    #expect(!store.isShowingRepositoryPathNormalization)
+    #expect(store.notice != nil)
+}
+
+@MainActor
+@Test func repositoryPathNormalizationScanSelectsAllAndSupportsSelectionToggles() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-selection")
+    let targets = [
+        makeRepositoryPathNormalizationTarget("문서/한글 안내.md"),
+        makeRepositoryPathNormalizationTarget("자료/제품 화면", isDirectory: true),
+    ]
+    let scanGate = AsyncTestGate()
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: targets,
+        repositoryPathNormalizationScanGate: scanGate
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    let scanTask = Task { await store.beginRepositoryPathNormalization() }
+    for _ in 0..<100 {
+        if await client.repositoryPathNormalizationScanRequestCount() == 1 { break }
+        await Task.yield()
+    }
+    #expect(store.isShowingRepositoryPathNormalization)
+    #expect(store.isScanningRepositoryPaths)
+    #expect(store.repositoryPathNormalizationTargets.isEmpty)
+
+    await scanGate.release()
+    await scanTask.value
+
+    #expect(!store.isScanningRepositoryPaths)
+    #expect(store.isShowingRepositoryPathNormalization)
+    #expect(store.repositoryPathNormalizationTargets == targets)
+    #expect(store.selectedRepositoryPathNormalizationTargets == Set(targets))
+    #expect(store.allRepositoryPathNormalizationTargetsAreSelected)
+
+    store.toggleRepositoryPathNormalizationTarget(targets[0])
+    #expect(!store.selectedRepositoryPathNormalizationTargets.contains(targets[0]))
+    #expect(!store.allRepositoryPathNormalizationTargetsAreSelected)
+
+    store.setAllRepositoryPathNormalizationTargetsSelected(false)
+    #expect(store.selectedRepositoryPathNormalizationTargets.isEmpty)
+    store.setAllRepositoryPathNormalizationTargetsSelected(true)
+    #expect(store.selectedRepositoryPathNormalizationTargets == Set(targets))
+}
+
+@MainActor
+@Test func repositoryPathNormalizationExposesLocalChangeBlockingPaths() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-local-block")
+    let target = makeRepositoryPathNormalizationTarget("문서/한글 안내.md")
+    let blockingPaths = ["Sources/작업 중.swift", "Docs/메모.md"]
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: [target],
+        repositoryPathNormalizationError: .blockedByLocalChanges(paths: blockingPaths)
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+    store.requestRepositoryPathNormalizationConfirmation()
+    await store.normalizeSelectedRepositoryPaths()
+
+    #expect(store.repositoryPathNormalizationIssue?.kind == .blockedByLocalChanges)
+    #expect(store.repositoryPathNormalizationIssue?.paths == blockingPaths)
+    #expect(await client.repositoryPathNormalizationRequestCount() == 1)
+    #expect(await client.updateRequestCount() == 0)
+}
+
+@MainActor
+@Test func repositoryPathNormalizationExposesLockBlockingPaths() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-lock-block")
+    let target = makeRepositoryPathNormalizationTarget("문서/한글 안내.md")
+    let blockingPaths = ["문서/잠긴 안내.md"]
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: [target],
+        repositoryPathNormalizationError: .blockedByLocks(paths: blockingPaths)
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+    store.requestRepositoryPathNormalizationConfirmation()
+    await store.normalizeSelectedRepositoryPaths()
+
+    #expect(store.repositoryPathNormalizationIssue?.kind == .blockedByLocks)
+    #expect(store.repositoryPathNormalizationIssue?.paths == blockingPaths)
+    #expect(await client.updateRequestCount() == 0)
+}
+
+@MainActor
+@Test func repositoryPathNormalizationPreservesPartialSuccessAndUpdatesWorkingCopy() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-partial")
+    let succeeded = makeRepositoryPathNormalizationTarget("문서/완료.md")
+    let failed = makeRepositoryPathNormalizationTarget("문서/실패.md")
+    let partialResult = SVNRepositoryPathNormalizationResult(
+        renamedTargets: [succeeded],
+        skippedTargets: [],
+        committedRevisions: ["41"]
+    )
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: [succeeded, failed],
+        repositoryPathNormalizationError: .failed(
+            result: partialResult,
+            failedTarget: failed,
+            details: "server move failed"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+    store.requestRepositoryPathNormalizationConfirmation()
+    await store.normalizeSelectedRepositoryPaths()
+
+    #expect(store.repositoryPathNormalizationIssue?.kind == .partiallyFailed)
+    #expect(store.repositoryPathNormalizationIssue?.result?.renamedTargets.count == 1)
+    #expect(store.repositoryPathNormalizationResult?.renamedTargets.count == 1)
+    #expect(store.repositoryPathNormalizationIssue?.failedTarget == failed)
+    #expect(await client.updateRequestCount() == 1)
+}
+
+@MainActor
+@Test func successfulRepositoryPathNormalizationUpdatesWorkingCopy() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-success")
+    let target = makeRepositoryPathNormalizationTarget("문서/한글 안내.md")
+    let result = SVNRepositoryPathNormalizationResult(
+        renamedTargets: [target],
+        skippedTargets: [],
+        committedRevisions: ["42"]
+    )
+    let client = StubSVNClient(
+        repositoryPathNormalizationTargets: [target],
+        repositoryPathNormalizationResult: result
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.beginRepositoryPathNormalization()
+    store.requestRepositoryPathNormalizationConfirmation()
+    await store.normalizeSelectedRepositoryPaths()
+
+    #expect(store.repositoryPathNormalizationResult?.renamedTargets.count == 1)
+    #expect(store.repositoryPathNormalizationIssue == nil)
+    #expect(await client.repositoryPathNormalizationRequestCount() == 1)
+    #expect(await client.updateRequestCount() == 1)
+}
+
+@MainActor
 @Test func removingCapturedProjectKeepsANewerSelection() {
     let first = SVNProject(name: "첫 프로젝트", path: "/tmp/remove-first")
     let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/remove-second")
@@ -1836,6 +2044,17 @@ private func makePathCollision(path: String, repairable: Bool) -> SVNPathCollisi
     )
 }
 
+private func makeRepositoryPathNormalizationTarget(
+    _ path: String,
+    isDirectory: Bool = false
+) -> SVNRepositoryPathNormalizationTarget {
+    SVNRepositoryPathNormalizationTarget(
+        repositoryPath: path.decomposedStringWithCanonicalMapping,
+        normalizedPath: path.precomposedStringWithCanonicalMapping,
+        isDirectory: isDirectory
+    )
+}
+
 private enum TestError: Error {
     case credentialWriteFailed
     case backupFailed
@@ -2043,6 +2262,10 @@ private actor StubSVNClient: SVNClientServing {
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
     let commitError: SVNError?
+    let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
+    let repositoryPathNormalizationResultValue: SVNRepositoryPathNormalizationResult?
+    let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
+    let repositoryPathNormalizationScanGate: AsyncTestGate?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var lockInfoPaths: [String] = []
@@ -2061,6 +2284,9 @@ private actor StubSVNClient: SVNClientServing {
     private var resolvedPaths: [String] = []
     private var addedIgnoreRules: [SVNIgnoreRule] = []
     private var scheduleDeletionRequests = 0
+    private var repositoryPathNormalizationScanRequests = 0
+    private var repositoryPathNormalizationRequests = 0
+    private var updateRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -2095,7 +2321,11 @@ private actor StubSVNClient: SVNClientServing {
         resolveGate: AsyncTestGate? = nil,
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
         ignoreRules: [SVNIgnoreRule] = [],
-        commitError: SVNError? = nil
+        commitError: SVNError? = nil,
+        repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = [],
+        repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
+        repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
+        repositoryPathNormalizationScanGate: AsyncTestGate? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -2124,6 +2354,10 @@ private actor StubSVNClient: SVNClientServing {
         self.resolveError = resolveError
         self.resolveGate = resolveGate
         self.commitError = commitError
+        repositoryPathNormalizationTargetsValue = repositoryPathNormalizationTargets
+        repositoryPathNormalizationResultValue = repositoryPathNormalizationResult
+        self.repositoryPathNormalizationError = repositoryPathNormalizationError
+        self.repositoryPathNormalizationScanGate = repositoryPathNormalizationScanGate
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
         recoveryPreviewValue = recoveryPreview
@@ -2212,6 +2446,22 @@ private actor StubSVNClient: SVNClientServing {
         recoveryPaths = [sourcePath, destinationPath]
         return recoveryResultValue
     }
+    func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] {
+        repositoryPathNormalizationScanRequests += 1
+        await repositoryPathNormalizationScanGate?.wait()
+        return repositoryPathNormalizationTargetsValue
+    }
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRepositoryPathNormalizationResult {
+        repositoryPathNormalizationRequests += 1
+        if let repositoryPathNormalizationError { throw repositoryPathNormalizationError }
+        return repositoryPathNormalizationResultValue ?? SVNRepositoryPathNormalizationResult(
+            renamedTargets: targets,
+            skippedTargets: [],
+            committedRevisions: []
+        )
+    }
+    func repositoryPathNormalizationScanRequestCount() -> Int { repositoryPathNormalizationScanRequests }
+    func repositoryPathNormalizationRequestCount() -> Int { repositoryPathNormalizationRequests }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { ignoreRulesValue }
@@ -2296,7 +2546,11 @@ private actor StubSVNClient: SVNClientServing {
         await delay(for: path)
         return remoteChangesByPath[path] ?? []
     }
-    func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "updated" }
+    func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        updateRequests += 1
+        return "updated"
+    }
+    func updateRequestCount() -> Int { updateRequests }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
         await delay(for: path)
