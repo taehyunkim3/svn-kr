@@ -22,6 +22,10 @@ struct WorkingCopyBrowserView: View {
             ) { node in
                 fileNameCell(node)
             }
+            .width(
+                min: AppLayout.fileBrowserNameColumnMinimumWidth,
+                ideal: AppLayout.fileBrowserNameColumnIdealWidth
+            )
             TableColumn(
                 appLanguage.localized("ui.file.browser.modified.column.84d3d7f2"),
                 sortUsing: WorkingCopyFileSortComparator(column: .modificationDate)

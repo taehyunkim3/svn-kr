@@ -12,12 +12,15 @@ struct WorkingCopySplitBrowserView: View {
 
     var body: some View {
         @Bindable var store = store
-        HStack(spacing: 0) {
+        WorkspaceSplitView(
+            primaryMinWidth: AppLayout.fileBrowserFolderPaneMinimumWidth,
+            primaryIdealWidth: AppLayout.fileBrowserFolderPaneIdealWidth,
+            detailMinWidth: AppLayout.fileBrowserContentsPaneMinimumWidth
+        ) {
             folderPanel
-            Divider()
+        } detail: {
             contentsPanel
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environment(store)
@@ -50,7 +53,6 @@ struct WorkingCopySplitBrowserView: View {
                 withAnimation { proxy.scrollTo(path, anchor: .center) }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(panelBackground(for: .folders))
         .overlay {
             if loadingDirectoryGenerations[""] == cacheGeneration
@@ -116,6 +118,10 @@ struct WorkingCopySplitBrowserView: View {
                         Task { await activate(row.node) }
                     }
                 }
+                .width(
+                    min: AppLayout.fileBrowserNameColumnMinimumWidth,
+                    ideal: AppLayout.fileBrowserNameColumnIdealWidth
+                )
                 TableColumn(
                     appLanguage.localized("ui.file.browser.kind.column.b51d25fc"),
                     value: \.kind
@@ -159,7 +165,6 @@ struct WorkingCopySplitBrowserView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(panelBackground(for: .contents))
         .overlay { focusBorder(for: .contents) }
         .contentShape(Rectangle())

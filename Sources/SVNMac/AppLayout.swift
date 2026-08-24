@@ -25,6 +25,15 @@ enum AppLayout {
     static let historyPrimaryMinimumWidth: CGFloat = 520
     static let historyDetailMinimumWidth: CGFloat = 380
 
+    /// 분할 보기의 폴더 트리는 이름만 보여주므로 좁게 시작하고, 내용 표가 넓게 열립니다.
+    static let fileBrowserFolderPaneMinimumWidth: CGFloat = 180
+    static let fileBrowserFolderPaneIdealWidth: CGFloat = 260
+    static let fileBrowserContentsPaneMinimumWidth: CGFloat = 520
+
+    /// 파일 이름은 경로가 길어 가장 자주 잘리므로 다른 열보다 넓게 잡습니다.
+    static let fileBrowserNameColumnMinimumWidth: CGFloat = 200
+    static let fileBrowserNameColumnIdealWidth: CGFloat = 320
+
     /// 기록 상세의 파일 목록은 사용자가 조절하는 분할 영역이 아닙니다.
     /// 높이를 한곳에서 고정해 로딩/빈 화면/diff 상태 전환에도 아래 패널이 흔들리지 않게 합니다.
     static let historyChangedFilesHeight: CGFloat = 220
@@ -73,17 +82,22 @@ extension View {
 /// 콘텐츠의 고유 크기가 달라져도 위·아래 빈 공간이 생기지 않습니다.
 struct WorkspaceSplitView<Primary: View, Detail: View>: View {
     private let primaryMinWidth: CGFloat
+    private let primaryIdealWidth: CGFloat?
     private let detailMinWidth: CGFloat
     private let primary: Primary
     private let detail: Detail
 
+    /// `primaryIdealWidth`를 주면 분할선의 시작 위치만 정해집니다. 사용자가 옮긴
+    /// 뒤에는 그 값이 우선하므로 조절 가능성은 그대로 유지됩니다.
     init(
         primaryMinWidth: CGFloat,
+        primaryIdealWidth: CGFloat? = nil,
         detailMinWidth: CGFloat,
         @ViewBuilder primary: () -> Primary,
         @ViewBuilder detail: () -> Detail
     ) {
         self.primaryMinWidth = primaryMinWidth
+        self.primaryIdealWidth = primaryIdealWidth
         self.detailMinWidth = detailMinWidth
         self.primary = primary()
         self.detail = detail()
@@ -92,7 +106,11 @@ struct WorkspaceSplitView<Primary: View, Detail: View>: View {
     var body: some View {
         HSplitView {
             primary
-                .frame(minWidth: primaryMinWidth, maxHeight: .infinity)
+                .frame(
+                    minWidth: primaryMinWidth,
+                    idealWidth: primaryIdealWidth,
+                    maxHeight: .infinity
+                )
 
             detail
                 .frame(minWidth: detailMinWidth, maxHeight: .infinity)
