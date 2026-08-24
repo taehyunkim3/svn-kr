@@ -9,21 +9,58 @@ struct WorkingCopySplitBrowserView: View {
     @State private var cacheGeneration = 0
     @State private var sortOrder = [KeyPathComparator(\WorkingCopySplitTableRow.name)]
     @FocusState private var focusedPanel: WorkingCopySplitBrowserState.FocusedPanel?
+    /// 사용자가 분할선을 옮기기 전에는 nil이고, 그때만 1:3 시작 비율을 씁니다.
+    @State private var folderPaneWidth: CGFloat?
+    @State private var folderPaneWidthWhenDragBegan: CGFloat?
+
+    private func resolvedFolderPaneWidth(availableWidth: CGFloat) -> CGFloat {
+        AppLayout.fileBrowserFolderPaneWidth(
+            requested: folderPaneWidth,
+            availableWidth: availableWidth
+        )
+    }
+
+    private func splitDivider(availableWidth: CGFloat) -> some View {
+        Divider()
+            .frame(width: 1)
+            .overlay(Color.clear.frame(width: 8).contentShape(Rectangle()))
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let base = folderPaneWidthWhenDragBegan
+                            ?? resolvedFolderPaneWidth(availableWidth: availableWidth)
+                        folderPaneWidthWhenDragBegan = base
+                        folderPaneWidth = AppLayout.fileBrowserFolderPaneWidth(
+                            requested: base + value.translation.width,
+                            availableWidth: availableWidth
+                        )
+                    }
+                    .onEnded { _ in folderPaneWidthWhenDragBegan = nil }
+            )
+            .onHover { isInside in
+                if isInside {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+    }
 
     var body: some View {
         @Bindable var store = store
+        // HSplitView는 AppKit이 너비를 정해 시작 비율을 지정할 수 없고, 분할선을
+        // 옮겨도 안쪽 SwiftUI 오버레이가 갱신되지 않습니다. 너비를 직접 들고
+        // 분할선을 그려야 1:3 시작 비율과 즉시 갱신을 함께 얻습니다.
         GeometryReader { proxy in
-            WorkspaceSplitView(
-                primaryMinWidth: AppLayout.fileBrowserFolderPaneMinimumWidth,
-                primaryIdealWidth: AppLayout.fileBrowserFolderPaneIdealWidth(
-                    availableWidth: proxy.size.width
-                ),
-                detailMinWidth: AppLayout.fileBrowserContentsPaneMinimumWidth
-            ) {
+            let paneWidth = resolvedFolderPaneWidth(availableWidth: proxy.size.width)
+            HStack(spacing: 0) {
                 folderPanel
-            } detail: {
+                    .frame(width: paneWidth)
+                splitDivider(availableWidth: proxy.size.width)
                 contentsPanel
+                    .frame(maxWidth: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $store.isShowingFileHistory) {
@@ -44,18 +81,26 @@ struct WorkingCopySplitBrowserView: View {
     }
 
     private var folderPanel: some View {
-        ScrollViewReader { proxy in
-            // 깊게 들여쓴 폴더 이름이 잘리지 않도록 좌우 스크롤도 허용합니다.
-            ScrollView([.vertical, .horizontal]) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(browserState.visibleFolderRows(rootName: rootFolderName)) { row in
-                        folderRow(row)
-                            .id(row.relativePath)
+        // 깊게 들여쓴 폴더 이름이 잘리지 않도록 좌우 스크롤을 허용합니다. 내용이
+        // 뷰포트보다 작을 때 가운데로 모이지 않게 최소 너비와 좌상단 정렬을 줍니다.
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ScrollView([.vertical, .horizontal]) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(browserState.visibleFolderRows(rootName: rootFolderName)) { row in
+                            folderRow(row)
+                                .id(row.relativePath)
+                        }
                     }
+                    .frame(
+                        minWidth: viewport.size.width,
+                        minHeight: viewport.size.height,
+                        alignment: .topLeading
+                    )
                 }
-            }
-            .onChange(of: browserState.selectedFolderPath) { _, path in
-                withAnimation { proxy.scrollTo(path, anchor: .center) }
+                .onChange(of: browserState.selectedFolderPath) { _, path in
+                    withAnimation { proxy.scrollTo(path, anchor: .center) }
+                }
             }
         }
         .background(panelBackground(for: .folders))
@@ -394,22 +439,15 @@ struct WorkingCopySplitBrowserView: View {
             : Color(nsColor: .controlBackgroundColor)
     }
 
-    /// HSplitView는 AppKit NSSplitView가 그리므로, 분할선을 옮겨도 안쪽 SwiftUI
-    /// 오버레이가 재그리기 요청을 못 받아 옛 경계선이 남습니다. 측정한 크기를
-    /// 그리기에 직접 반영해 너비가 바뀔 때마다 다시 그리게 합니다.
     private func focusBorder(
         for panel: WorkingCopySplitBrowserState.FocusedPanel
     ) -> some View {
-        GeometryReader { proxy in
-            Rectangle()
-                .strokeBorder(
-                    browserState.focusedPanel == panel ? Color.accentColor : Color.clear,
-                    lineWidth: 2
-                )
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .id(proxy.size.width)
-        }
-        .allowsHitTesting(false)
+        Rectangle()
+            .strokeBorder(
+                browserState.focusedPanel == panel ? Color.accentColor : Color.clear,
+                lineWidth: 2
+            )
+            .allowsHitTesting(false)
     }
 
     private func focus(_ panel: WorkingCopySplitBrowserState.FocusedPanel) {

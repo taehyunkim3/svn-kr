@@ -32,15 +32,20 @@ enum AppLayout {
     /// 고정 너비가 아니라 사용 가능한 너비에서 계산해야 합니다.
     static let fileBrowserFolderPaneWidthFraction: CGFloat = 0.25
 
-    static func fileBrowserFolderPaneIdealWidth(availableWidth: CGFloat) -> CGFloat {
+    /// `requested`가 nil이면 1:3 시작 비율을, 값이 있으면 사용자가 옮긴 위치를
+    /// 두 패널의 최소 너비 안으로 가둔 결과를 돌려줍니다.
+    static func fileBrowserFolderPaneWidth(
+        requested: CGFloat?,
+        availableWidth: CGFloat
+    ) -> CGFloat {
         guard availableWidth > 0 else { return fileBrowserFolderPaneMinimumWidth }
-        let proportional = availableWidth * fileBrowserFolderPaneWidthFraction
-        // 내용 표가 최소 너비를 지킬 수 있는 범위 안에서만 비율을 적용합니다.
+        let target = requested ?? availableWidth * fileBrowserFolderPaneWidthFraction
+        // 내용 표가 최소 너비를 지킬 수 있는 범위 안에서만 요청을 반영합니다.
         let maximum = max(
             fileBrowserFolderPaneMinimumWidth,
             availableWidth - fileBrowserContentsPaneMinimumWidth
         )
-        return min(max(proportional, fileBrowserFolderPaneMinimumWidth), maximum)
+        return min(max(target, fileBrowserFolderPaneMinimumWidth), maximum)
     }
 
     /// 파일 이름은 경로가 길어 가장 자주 잘리므로 다른 열보다 넓게 잡습니다.
@@ -95,22 +100,17 @@ extension View {
 /// 콘텐츠의 고유 크기가 달라져도 위·아래 빈 공간이 생기지 않습니다.
 struct WorkspaceSplitView<Primary: View, Detail: View>: View {
     private let primaryMinWidth: CGFloat
-    private let primaryIdealWidth: CGFloat?
     private let detailMinWidth: CGFloat
     private let primary: Primary
     private let detail: Detail
 
-    /// `primaryIdealWidth`를 주면 분할선의 시작 위치만 정해집니다. 사용자가 옮긴
-    /// 뒤에는 그 값이 우선하므로 조절 가능성은 그대로 유지됩니다.
     init(
         primaryMinWidth: CGFloat,
-        primaryIdealWidth: CGFloat? = nil,
         detailMinWidth: CGFloat,
         @ViewBuilder primary: () -> Primary,
         @ViewBuilder detail: () -> Detail
     ) {
         self.primaryMinWidth = primaryMinWidth
-        self.primaryIdealWidth = primaryIdealWidth
         self.detailMinWidth = detailMinWidth
         self.primary = primary()
         self.detail = detail()
@@ -119,11 +119,7 @@ struct WorkspaceSplitView<Primary: View, Detail: View>: View {
     var body: some View {
         HSplitView {
             primary
-                .frame(
-                    minWidth: primaryMinWidth,
-                    idealWidth: primaryIdealWidth,
-                    maxHeight: .infinity
-                )
+                .frame(minWidth: primaryMinWidth, maxHeight: .infinity)
 
             detail
                 .frame(minWidth: detailMinWidth, maxHeight: .infinity)
