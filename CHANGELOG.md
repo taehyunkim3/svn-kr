@@ -9,6 +9,12 @@
 - Hid Mac and Office temporary files from the changes list by default, and excluded them from commit targets so they can no longer be uploaded by accident.
 - Added a settings toggle that reveals temporary files again when they need to be committed or inspected deliberately.
 - Offered an optional cleanup commit after an update that deletes Mac and Office temporary files already stored in the repository, gated by name patterns, magic-byte checks, and a per-file review step.
+- Rebuilt the file browser list with modification date, size, and kind columns that sort by header.
+- Made the file list fully keyboard driven: arrow keys expand, collapse, and move between folders, and Return opens a file.
+- Added a split view that keeps a folder tree on the left and the selected folder's contents with per-row actions on the right, switchable from the Files tab.
+- Kept expanded folders and the current selection after a refresh, instead of collapsing the whole tree on every action.
+- Fixed clicking a file name not selecting the row, and made double-click open a file or toggle a folder.
+- Added a settings button to the sidebar so the app-wide settings are reachable without the menu bar.
 
 ## 0.5.26 (2026-08-04)
 
