@@ -39,19 +39,43 @@ extension ProjectStore {
                 openFile(relativePath, in: project)
                 return
             }
-            documentOpenRequest = DocumentOpenRequest(
+            let request = DocumentOpenRequest(
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
                 existingLock: existingLock
             )
+            await handleDocumentOpen(request)
         } catch {
             guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.localized("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
-            documentOpenRequest = DocumentOpenRequest(
+            let request = DocumentOpenRequest(
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
                 existingLock: nil
             )
+            switch AppSettings.documentOpenLockPolicy(in: settingsDefaults) {
+            case .askEveryTime:
+                documentOpenRequest = request
+            case .alwaysOpenWithoutLock:
+                openFile(relativePath, in: project)
+            case .alwaysLockAndOpen:
+                await lockAndOpen(request)
+            }
+        }
+    }
+
+    private func handleDocumentOpen(_ request: DocumentOpenRequest) async {
+        switch AppSettings.documentOpenLockPolicy(in: settingsDefaults) {
+        case .askEveryTime:
+            documentOpenRequest = request
+        case .alwaysOpenWithoutLock:
+            openWithoutLock(request)
+        case .alwaysLockAndOpen:
+            if request.existingLock == nil {
+                await lockAndOpen(request)
+            } else {
+                openWithoutLock(request)
+            }
         }
     }
 
@@ -79,11 +103,27 @@ extension ProjectStore {
         }
     }
 
-    func openWithoutLock(_ request: DocumentOpenRequest) {
+    func openWithoutLock(
+        _ request: DocumentOpenRequest,
+        rememberingChoice: Bool = false
+    ) {
         documentOpenRequest = nil
+        if rememberingChoice {
+            AppSettings.setDocumentOpenLockPolicy(
+                .alwaysOpenWithoutLock,
+                in: settingsDefaults
+            )
+        }
         guard let project = selectedProject else { return }
         openFile(request.relativePath, in: project)
-        notice = AppLanguage.current.localized("ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344")
+        if let existingLock = request.existingLock {
+            notice = AppLanguage.current.localized(
+                "ui.this.file.is.currently.locked.by.opening.without.ca1f8e9a",
+                existingLock.owner
+            )
+        } else {
+            notice = AppLanguage.current.localized("ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344")
+        }
     }
 
     func loadRepositoryLocks(

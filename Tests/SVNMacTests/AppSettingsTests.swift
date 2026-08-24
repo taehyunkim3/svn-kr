@@ -26,6 +26,25 @@ import Testing
     #expect(!AppSettings.hideTemporaryFiles(in: defaults))
 }
 
+@Test func documentOpenLockPolicyDefaultsToAskingEveryTime() {
+    let defaults = UserDefaults(suiteName: "document-open-policy-default-\(UUID().uuidString)")!
+
+    #expect(AppSettings.defaultDocumentOpenLockPolicy == DocumentOpenLockPolicy.askEveryTime.rawValue)
+    #expect(AppSettings.documentOpenLockPolicy(in: defaults) == .askEveryTime)
+}
+
+@Test func documentOpenLockPoliciesAreStoredAndRestored() {
+    let defaults = UserDefaults(suiteName: "document-open-policy-storage-\(UUID().uuidString)")!
+
+    for policy in DocumentOpenLockPolicy.allCases {
+        AppSettings.setDocumentOpenLockPolicy(policy, in: defaults)
+        #expect(AppSettings.documentOpenLockPolicy(in: defaults) == policy)
+    }
+
+    defaults.set("unknown-policy", forKey: AppSettings.documentOpenLockPolicyKey)
+    #expect(AppSettings.documentOpenLockPolicy(in: defaults) == .askEveryTime)
+}
+
 @Test func stringCatalogHonorsExplicitAppLanguageAndFormatArguments() {
     #expect(AppLanguage.korean.localized("ui.close.3ea43db3") == "닫기")
     #expect(AppLanguage.english.localized("ui.close.3ea43db3") == "Close")

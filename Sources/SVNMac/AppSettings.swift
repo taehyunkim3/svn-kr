@@ -13,6 +13,8 @@ enum AppSettings {
     static let defaultHideTemporaryFiles = true
     static let fileBrowserViewModeKey = "file-browser-view-mode"
     static let defaultFileBrowserViewMode = FileBrowserViewMode.tree.rawValue
+    static let documentOpenLockPolicyKey = "document-open-lock-policy"
+    static let defaultDocumentOpenLockPolicy = DocumentOpenLockPolicy.askEveryTime.rawValue
 
     static func hideTemporaryFiles(in defaults: UserDefaults = .standard) -> Bool {
         guard defaults.object(forKey: hideTemporaryFilesKey) != nil else {
@@ -25,6 +27,21 @@ enum AppSettings {
         let identifier = defaults.string(forKey: fileBrowserViewModeKey)
             ?? defaultFileBrowserViewMode
         return FileBrowserViewMode(rawValue: identifier) ?? .tree
+    }
+
+    static func documentOpenLockPolicy(
+        in defaults: UserDefaults = .standard
+    ) -> DocumentOpenLockPolicy {
+        let identifier = defaults.string(forKey: documentOpenLockPolicyKey)
+            ?? defaultDocumentOpenLockPolicy
+        return DocumentOpenLockPolicy(rawValue: identifier) ?? .askEveryTime
+    }
+
+    static func setDocumentOpenLockPolicy(
+        _ policy: DocumentOpenLockPolicy,
+        in defaults: UserDefaults = .standard
+    ) {
+        defaults.set(policy.rawValue, forKey: documentOpenLockPolicyKey)
     }
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
@@ -42,6 +59,12 @@ enum AppSettings {
             }
         }
     }
+}
+
+enum DocumentOpenLockPolicy: String, CaseIterable {
+    case askEveryTime = "ask-every-time"
+    case alwaysOpenWithoutLock = "always-open-without-lock"
+    case alwaysLockAndOpen = "always-lock-and-open"
 }
 
 enum FileBrowserViewMode: String, CaseIterable {

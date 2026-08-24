@@ -302,6 +302,7 @@ final class ProjectStore {
     private let workspaceOpener: any WorkspaceOpening
     private let projectPathChecker: any ProjectPathChecking
     private let volumeNormalizationProbe: any VolumeNormalizationProbing
+    let settingsDefaults: UserDefaults
     var sessionPasswords: [SVNProject.ID: String] = [:]
     var pathRecoverySourceProjectID: SVNProject.ID?
     var repositoryPathNormalizationSourceProjectID: SVNProject.ID?
@@ -534,6 +535,7 @@ final class ProjectStore {
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
         volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
+        settingsDefaults: UserDefaults = .standard,
         hideTemporaryFiles: Bool = AppSettings.hideTemporaryFiles(),
         isDemoMode: Bool = false
     ) {
@@ -548,6 +550,7 @@ final class ProjectStore {
         self.workspaceOpener = workspaceOpener
         self.projectPathChecker = projectPathChecker
         self.volumeNormalizationProbe = volumeNormalizationProbe
+        self.settingsDefaults = settingsDefaults
 
         var saved = persistence.loadProjects()
         projectAccessManager.restoreAccess(for: &saved)
