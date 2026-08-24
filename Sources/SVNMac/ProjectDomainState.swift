@@ -23,6 +23,7 @@ final class ProjectChangesStore {
 final class ProjectBrowserStore {
     var repositoryLocks: [SVNLockInfo] = []
     var workingCopyFileTree: [WorkingCopyFileNode] = []
+    var refreshGeneration = 0
 }
 
 @Observable

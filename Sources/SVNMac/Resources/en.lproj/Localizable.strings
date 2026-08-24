@@ -171,6 +171,13 @@
 "ui.failed.to.remove.an.incomplete.conflict.backup.65753038" = "Failed to remove an incomplete conflict backup: %1$@";
 "ui.false.aliases.excluded.85d448dd" = "False aliases excluded";
 "ui.file.811b7680" = "File";
+"ui.file.browser.actions.14f5c2a1" = "Actions";
+"ui.file.browser.items.count.86dc65fe" = "%1$@ items";
+"ui.file.browser.kind.98b7d2e4" = "Kind";
+"ui.file.browser.modified.date.6cb3548f" = "Date Modified";
+"ui.file.browser.name.03fe9d71" = "Name";
+"ui.file.browser.size.a77c1e02" = "Size";
+"ui.file.browser.working.copy.root.731fa805" = "Working Copy";
 "ui.file.commit.history.342bfaac" = "File Commit History";
 "ui.file.commit.history.ab024244" = "File Commit History";
 "ui.files.6075adef" = "Files";
