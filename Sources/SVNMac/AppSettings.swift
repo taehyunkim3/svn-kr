@@ -13,6 +13,8 @@ enum AppSettings {
     static let defaultHideTemporaryFiles = true
     static let fileBrowserViewModeKey = "file-browser-view-mode"
     static let defaultFileBrowserViewMode = FileBrowserViewMode.tree.rawValue
+    static let documentOpenLockPolicyKey = "document-open-lock-policy"
+    static let defaultDocumentOpenLockPolicy = DocumentOpenLockPolicy.askEveryTime.rawValue
 
     static func hideTemporaryFiles(in defaults: UserDefaults = .standard) -> Bool {
         guard defaults.object(forKey: hideTemporaryFilesKey) != nil else {
@@ -25,6 +27,21 @@ enum AppSettings {
         let identifier = defaults.string(forKey: fileBrowserViewModeKey)
             ?? defaultFileBrowserViewMode
         return FileBrowserViewMode(rawValue: identifier) ?? .tree
+    }
+
+    static func documentOpenLockPolicy(
+        in defaults: UserDefaults = .standard
+    ) -> DocumentOpenLockPolicy {
+        let identifier = defaults.string(forKey: documentOpenLockPolicyKey)
+            ?? defaultDocumentOpenLockPolicy
+        return DocumentOpenLockPolicy(rawValue: identifier) ?? .askEveryTime
+    }
+
+    static func setDocumentOpenLockPolicy(
+        _ policy: DocumentOpenLockPolicy,
+        in defaults: UserDefaults = .standard
+    ) {
+        defaults.set(policy.rawValue, forKey: documentOpenLockPolicyKey)
     }
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
@@ -42,6 +59,12 @@ enum AppSettings {
             }
         }
     }
+}
+
+enum DocumentOpenLockPolicy: String, CaseIterable {
+    case askEveryTime = "ask-every-time"
+    case alwaysOpenWithoutLock = "always-open-without-lock"
+    case alwaysLockAndOpen = "always-lock-and-open"
 }
 
 enum FileBrowserViewMode: String, CaseIterable {
@@ -114,9 +137,15 @@ struct AppSettingsView: View {
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
     @AppStorage(AppSettings.hideTemporaryFilesKey)
     private var hideTemporaryFiles = AppSettings.defaultHideTemporaryFiles
+    @AppStorage(AppSettings.documentOpenLockPolicyKey)
+    private var documentOpenLockPolicyIdentifier = AppSettings.defaultDocumentOpenLockPolicy
 
     private var appLanguage: AppLanguage {
         AppLanguage(rawValue: languageIdentifier) ?? .korean
+    }
+
+    private var documentOpenLockPolicy: DocumentOpenLockPolicy {
+        DocumentOpenLockPolicy(rawValue: documentOpenLockPolicyIdentifier) ?? .askEveryTime
     }
 
     var body: some View {
@@ -143,6 +172,35 @@ struct AppSettingsView: View {
                 isOn: $hideTemporaryFiles
             )
             .help(appLanguage.localized("ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4"))
+
+            Picker(
+                appLanguage.localized("ui.document.opening.method.9d73be41"),
+                selection: $documentOpenLockPolicyIdentifier
+            ) {
+                Text(
+                    appLanguage.localized("ui.ask.every.time.before.opening.documents.31c4d8a2")
+                )
+                    .tag(DocumentOpenLockPolicy.askEveryTime.rawValue)
+                Text(
+                    appLanguage.localized("ui.always.open.documents.without.locking.8b6e42d0")
+                )
+                    .tag(DocumentOpenLockPolicy.alwaysOpenWithoutLock.rawValue)
+                Text(
+                    appLanguage.localized("ui.always.lock.and.open.documents.2f9a7c11")
+                )
+                    .tag(DocumentOpenLockPolicy.alwaysLockAndOpen.rawValue)
+            }
+
+            if documentOpenLockPolicy == .alwaysLockAndOpen {
+                Label(
+                    appLanguage.localized(
+                        "ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf"
+                    ),
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
         }
         .formStyle(.grouped)
         .padding()

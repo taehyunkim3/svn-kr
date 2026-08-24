@@ -53,6 +53,9 @@
 "ui.a.conflict.file.path.points.outside.the.working..137a7ed6" = "A conflict file path points outside the working copy.";
 "ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309" = "A locked file is marked on the SVN server to prevent another user from committing to it while it is being edited. Your lock is released automatically after a successful commit.";
 "ui.a.password.for.this.folder.is.stored.in.macos.ke.676ba875" = "A password for this folder is stored in macOS Keychain.";
+"ui.always.lock.and.open.documents.2f9a7c11" = "Always Lock and Open Without Asking";
+"ui.always.open.documents.without.locking.8b6e42d0" = "Always Open Without Locking or Asking";
+"ui.ask.every.time.before.opening.documents.31c4d8a2" = "Ask Every Time";
 "ui.about.svn.kr.ddc63e52" = "About SVN KR";
 "ui.add.a.local.working.folder.816116ca" = "Add a local working folder";
 "ui.add.svn.repository.8b9639fa" = "Add SVN Repository";
@@ -160,6 +163,7 @@
 "ui.deleted.6826dd28" = "Deleted";
 "ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5" = "Diff is unavailable until this file is added to SVN. It will be added automatically when committed.";
 "ui.discard.changes.and.close.4e12b8a7" = "Discard Changes and Close";
+"ui.document.opening.method.9d73be41" = "When Opening Documents";
 "ui.download.the.latest.server.changes.into.the.curr.17974067" = "Download the latest server changes into the current local working folder.";
 "ui.earlier.history.da5e45b0" = "… Earlier history";
 "ui.editing.document.in.svn.kr.5e6ac9cc" = "Editing document in SVN KR";
@@ -238,6 +242,7 @@
 "ui.locked.by.192b78cf" = "Locked by %1$@";
 "ui.locked.by.you.f2a7c3f2" = "Locked by you";
 "ui.locked.files.457daf19" = "%1$@ locked files";
+"ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf" = "Other users cannot modify a locked file until you commit it or release it from the lock list.";
 "ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c" = "Locking prevents concurrent commits by other users and reduces document conflicts. A successful commit automatically releases the lock.";
 "ui.locks.46e6922e" = "%1$@ locks";
 "ui.locks.dac8d38d" = "Locks";
@@ -281,6 +286,7 @@
 "ui.open.server.file.252d515b" = "Open Server File";
 "ui.open.the.app.wide.settings.window.6b0d5a17" = "Open the app-wide settings window.";
 "ui.open.this.svn.local.working.folder.in.finder.9befff0f" = "Open this SVN local working folder in Finder.";
+"ui.open.without.lock.and.do.not.ask.again.4c6f8a20" = "Open Without Locking and Don't Ask Again";
 "ui.open.without.lock.e650efbf" = "Open Without Lock";
 "ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344" = "Opened without a lock. A concurrent commit by another user may cause a conflict.";
 "ui.opening.a.file.locked.by.you.742588ff" = "Opening a file locked by you.";

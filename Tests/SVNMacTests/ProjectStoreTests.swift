@@ -1242,6 +1242,104 @@ import Testing
 }
 
 @MainActor
+@Test func documentOpenPolicyChoosesPromptOpenOrLockAndOpen() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+
+    for policy in DocumentOpenLockPolicy.allCases {
+        let defaults = makeDocumentOpenPolicyDefaults(policy)
+        let opener = StubWorkspaceOpener()
+        let client = StubSVNClient()
+        let store = makeStore(
+            projects: [project],
+            client: client,
+            workspaceOpener: opener,
+            settingsDefaults: defaults
+        )
+
+        await store.prepareToOpen(path: "policy.docx", isVersioned: true)
+
+        switch policy {
+        case .askEveryTime:
+            #expect(store.documentOpenRequest?.relativePath == "policy.docx")
+            #expect(opener.openedURLs.isEmpty)
+            #expect(await client.requestedLockPaths().isEmpty)
+        case .alwaysOpenWithoutLock:
+            #expect(store.documentOpenRequest == nil)
+            #expect(opener.openedURLs.map(\.lastPathComponent) == ["policy.docx"])
+            #expect(await client.requestedLockPaths().isEmpty)
+        case .alwaysLockAndOpen:
+            #expect(store.documentOpenRequest == nil)
+            #expect(opener.openedURLs.map(\.lastPathComponent) == ["policy.docx"])
+            #expect(await client.requestedLockPaths() == ["policy.docx"])
+        }
+    }
+}
+
+@MainActor
+@Test func alwaysLockAndOpenOpensWithoutLockAndNamesTheOtherOwner() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient(lockInfoByPath: [
+        "shared.xlsx": SVNLockInfo(path: "shared.xlsx", owner: "other-user"),
+    ])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        workspaceOpener: opener,
+        settingsDefaults: makeDocumentOpenPolicyDefaults(.alwaysLockAndOpen)
+    )
+
+    await store.prepareToOpen(path: "shared.xlsx", isVersioned: true)
+
+    #expect(await client.requestedLockPaths().isEmpty)
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["shared.xlsx"])
+    #expect(store.documentOpenRequest == nil)
+    #expect(store.notice?.contains("other-user") == true)
+}
+
+@MainActor
+@Test func documentLockedByCurrentUserOpensImmediatelyForEveryPolicy() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
+
+    for policy in DocumentOpenLockPolicy.allCases {
+        let opener = StubWorkspaceOpener()
+        let client = StubSVNClient(lockInfoByPath: [
+            "owned.pptx": SVNLockInfo(path: "owned.pptx", owner: "tester"),
+        ])
+        let store = makeStore(
+            projects: [project],
+            client: client,
+            workspaceOpener: opener,
+            settingsDefaults: makeDocumentOpenPolicyDefaults(policy)
+        )
+
+        await store.prepareToOpen(path: "owned.pptx", isVersioned: true)
+
+        #expect(opener.openedURLs.map(\.lastPathComponent) == ["owned.pptx"])
+        #expect(store.documentOpenRequest == nil)
+        #expect(await client.requestedLockPaths().isEmpty)
+    }
+}
+
+@MainActor
+@Test func rememberingOpenWithoutLockUsesTheSettingsPolicyAndCanBeReset() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let defaults = makeDocumentOpenPolicyDefaults(.askEveryTime)
+    let store = makeStore(projects: [project], settingsDefaults: defaults)
+    let request = DocumentOpenRequest(
+        relativePath: "remember.docx",
+        repositoryRelativePath: "remember.docx",
+        existingLock: nil
+    )
+
+    store.openWithoutLock(request, rememberingChoice: true)
+    #expect(AppSettings.documentOpenLockPolicy(in: defaults) == .alwaysOpenWithoutLock)
+
+    AppSettings.setDocumentOpenLockPolicy(.askEveryTime, in: defaults)
+    #expect(AppSettings.documentOpenLockPolicy(in: defaults) == .askEveryTime)
+}
+
+@MainActor
 @Test func canonicalAliasUsesRepositoryPathForLockAndLocalPathForOpen() async throws {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let opener = StubWorkspaceOpener()
@@ -1303,6 +1401,7 @@ import Testing
     await store.prepareToOpen(path: "report.xlsx", isVersioned: true)
 
     let request = try #require(store.documentOpenRequest)
+    #expect(request.lockInformationWasUnavailable)
     #expect(store.errorMessage == nil)
     #expect(store.notice == "잠금 정보를 확인하지 못했습니다. 잠그지 않고 파일을 열 수 있습니다.")
 
@@ -2491,6 +2590,7 @@ private func makeStore(
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
     projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
     volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe(),
+    settingsDefaults: UserDefaults = UserDefaults(suiteName: "project-store-settings-\(UUID().uuidString)")!,
     hideTemporaryFiles: Bool = true
 ) -> ProjectStore {
     ProjectStore(
@@ -2503,8 +2603,17 @@ private func makeStore(
         workspaceOpener: workspaceOpener,
         projectPathChecker: projectPathChecker,
         volumeNormalizationProbe: volumeNormalizationProbe,
+        settingsDefaults: settingsDefaults,
         hideTemporaryFiles: hideTemporaryFiles
     )
+}
+
+private func makeDocumentOpenPolicyDefaults(
+    _ policy: DocumentOpenLockPolicy
+) -> UserDefaults {
+    let defaults = UserDefaults(suiteName: "document-open-policy-\(UUID().uuidString)")!
+    AppSettings.setDocumentOpenLockPolicy(policy, in: defaults)
+    return defaults
 }
 
 private func makeLog(revision: String) -> SVNLogEntry {
