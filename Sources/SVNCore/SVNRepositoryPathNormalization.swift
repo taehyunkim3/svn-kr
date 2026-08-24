@@ -63,8 +63,14 @@ enum SVNRepositoryPathNormalization {
         from entries: [SVNRepositoryListEntry]
     ) -> [SVNRepositoryPathNormalizationTarget] {
         let candidates = entries.compactMap { entry -> SVNRepositoryPathNormalizationTarget? in
-            let normalized = entry.path.precomposedStringWithCanonicalMapping
-            guard Data(entry.path.utf8) != Data(normalized.utf8) else { return nil }
+            let components = rawComponents(entry.path)
+            guard let lastComponent = components.last else { return nil }
+            let normalizedLastComponent = lastComponent.precomposedStringWithCanonicalMapping
+            guard Data(lastComponent.utf8) != Data(normalizedLastComponent.utf8) else {
+                return nil
+            }
+            let normalized = (components.dropLast() + [normalizedLastComponent])
+                .joined(separator: "/")
             return SVNRepositoryPathNormalizationTarget(
                 repositoryPath: entry.path,
                 normalizedPath: normalized,
@@ -96,12 +102,29 @@ enum SVNRepositoryPathNormalization {
         for (_, target) in ordered {
             let pathBytes = Data(target.repositoryPath.utf8)
             guard selectedPathBytes.insert(pathBytes).inserted else { continue }
-            guard !selected.contains(where: {
-                isRawAncestor($0.repositoryPath, of: target.repositoryPath)
-            }) else { continue }
             selected.append(target)
         }
         return selected
+    }
+
+    static func isValidTarget(_ target: SVNRepositoryPathNormalizationTarget) -> Bool {
+        let repositoryComponents = rawComponents(target.repositoryPath)
+        let normalizedComponents = rawComponents(target.normalizedPath)
+        guard repositoryComponents.count == normalizedComponents.count,
+              let repositoryLastComponent = repositoryComponents.last,
+              let normalizedLastComponent = normalizedComponents.last else {
+            return false
+        }
+
+        let expectedLastComponent = repositoryLastComponent.precomposedStringWithCanonicalMapping
+        guard Data(repositoryLastComponent.utf8) != Data(expectedLastComponent.utf8),
+              Data(normalizedLastComponent.utf8) == Data(expectedLastComponent.utf8) else {
+            return false
+        }
+
+        return zip(repositoryComponents.dropLast(), normalizedComponents.dropLast()).allSatisfy {
+            Data($0.utf8) == Data($1.utf8)
+        }
     }
 
     static func isAtOrBelowCanonicalPath(_ path: String, root: String) -> Bool {
@@ -144,15 +167,6 @@ enum SVNRepositoryPathNormalization {
             return nil
         }
         return String(output[revisionRange])
-    }
-
-    private static func isRawAncestor(_ ancestor: String, of path: String) -> Bool {
-        let ancestorComponents = rawComponents(ancestor)
-        let pathComponents = rawComponents(path)
-        guard ancestorComponents.count < pathComponents.count else { return false }
-        return zip(ancestorComponents, pathComponents).allSatisfy {
-            Data($0.utf8) == Data($1.utf8)
-        }
     }
 
     private static func rawComponents(_ path: String) -> [String] {
