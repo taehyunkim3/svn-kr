@@ -911,6 +911,11 @@ import Testing
     store.notice = "완료"
     store.errorMessage = "이전 프로젝트 오류"
     store.authenticationRequest = SVNAuthenticationRequest(projectID: first.id, action: .update)
+    store.workingCopyFileTree = [makeBrowserRefreshNode("Folder", directory: true, hasChildren: true)]
+    var browserTreeState = store.workingCopyBrowserTreeState
+    browserTreeState.expandedPaths = ["Folder"]
+    store.workingCopyBrowserTreeState = browserTreeState
+    store.selectedBrowserPath = "Folder"
 
     store.selectedProjectID = second.id
 
@@ -926,6 +931,8 @@ import Testing
     #expect(store.notice == nil)
     #expect(store.errorMessage == nil)
     #expect(store.authenticationRequest == nil)
+    #expect(store.workingCopyBrowserTreeState.expandedPaths.isEmpty)
+    #expect(store.selectedBrowserPath == nil)
 }
 
 @MainActor
@@ -978,6 +985,68 @@ import Testing
 
     #expect(store.workingCopyBrowserTreeState.childrenByDirectory.isEmpty)
     #expect(store.workingCopyBrowserTreeState.expandedPaths.isEmpty)
+}
+
+@MainActor
+@Test func refreshingFileBrowserRestoresExpandedDirectoriesAndSelectionShallowestFirst() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-expansion-refresh")
+    let fileService = RecordingWorkingCopyFileService(contentsByDirectory: [
+        "": [makeBrowserRefreshNode("Folder", directory: true, hasChildren: true)],
+        "Folder": [
+            makeBrowserRefreshNode("Folder/Nested", directory: true, hasChildren: true),
+            makeBrowserRefreshNode("Folder/fresh.txt"),
+        ],
+        "Folder/Nested": [makeBrowserRefreshNode("Folder/Nested/deep.txt")],
+    ])
+    let store = makeStore(projects: [project], fileService: fileService)
+    store.workingCopyFileTree = [makeBrowserRefreshNode(
+        "Folder",
+        directory: true,
+        children: [
+            makeBrowserRefreshNode(
+                "Folder/Nested",
+                directory: true,
+                children: [makeBrowserRefreshNode("Folder/Nested/deep.txt")]
+            ),
+            makeBrowserRefreshNode("Folder/stale.txt"),
+        ]
+    )]
+    var state = store.workingCopyBrowserTreeState
+    state.expandedPaths = ["Folder", "Folder/Nested", "Removed"]
+    store.workingCopyBrowserTreeState = state
+    store.selectedBrowserPath = "Folder/Nested/deep.txt"
+
+    await store.loadWorkingCopyFiles()
+
+    #expect(await fileService.requestedDirectories() == ["", "Folder", "Folder/Nested"])
+    #expect(store.workingCopyBrowserTreeState.expandedPaths == ["Folder", "Folder/Nested"])
+    #expect(store.workingCopyBrowserTreeState.childrenByDirectory["Folder"]?.map(\.relativePath) == [
+        "Folder/Nested",
+        "Folder/fresh.txt",
+    ])
+    #expect(store.workingCopyBrowserTreeState.node(at: "Folder/stale.txt") == nil)
+    #expect(store.selectedBrowserPath == "Folder/Nested/deep.txt")
+}
+
+@MainActor
+@Test func refreshingFileBrowserClearsSelectionWhenRestoredPathDisappears() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/browser-selection-refresh")
+    let fileService = RecordingWorkingCopyFileService(contentsByDirectory: ["": []])
+    let store = makeStore(projects: [project], fileService: fileService)
+    store.workingCopyFileTree = [makeBrowserRefreshNode(
+        "Removed",
+        directory: true,
+        children: [makeBrowserRefreshNode("Removed/file.txt")]
+    )]
+    var state = store.workingCopyBrowserTreeState
+    state.expandedPaths = ["Removed"]
+    store.workingCopyBrowserTreeState = state
+    store.selectedBrowserPath = "Removed/file.txt"
+
+    await store.loadWorkingCopyFiles()
+
+    #expect(store.workingCopyBrowserTreeState.expandedPaths.isEmpty)
+    #expect(store.selectedBrowserPath == nil)
 }
 
 @MainActor
@@ -2854,6 +2923,52 @@ private actor StubWorkingCopyFileService: WorkingCopyFileListing {
             children: []
         )]
     }
+}
+
+private actor RecordingWorkingCopyFileService: WorkingCopyFileListing {
+    let contentsByDirectory: [String: [WorkingCopyFileNode]]
+    private var directoryRequests: [String] = []
+
+    init(contentsByDirectory: [String: [WorkingCopyFileNode]]) {
+        self.contentsByDirectory = contentsByDirectory
+    }
+
+    func tree(
+        at rootPath: String,
+        svnEntries: [SVNWorkingCopyEntry]
+    ) async throws -> [WorkingCopyFileNode] {
+        contentsByDirectory[""] ?? []
+    }
+
+    func directoryContents(
+        at rootPath: String,
+        relativeDirectory: String,
+        svnEntries: [SVNWorkingCopyEntry]
+    ) async throws -> [WorkingCopyFileNode] {
+        directoryRequests.append(relativeDirectory)
+        return contentsByDirectory[relativeDirectory] ?? []
+    }
+
+    func requestedDirectories() -> [String] {
+        directoryRequests
+    }
+}
+
+private func makeBrowserRefreshNode(
+    _ path: String,
+    directory: Bool = false,
+    hasChildren: Bool? = nil,
+    children: [WorkingCopyFileNode]? = nil
+) -> WorkingCopyFileNode {
+    WorkingCopyFileNode(
+        name: path.split(separator: "/").last.map(String.init) ?? path,
+        relativePath: path,
+        isDirectory: directory,
+        isSymbolicLink: false,
+        hasChildren: hasChildren,
+        svnEntry: nil,
+        children: children
+    )
 }
 
 @MainActor

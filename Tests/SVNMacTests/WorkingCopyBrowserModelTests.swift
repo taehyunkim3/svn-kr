@@ -105,6 +105,50 @@ import Testing
     #expect(state.rootNodes.map(\.relativePath) == ["new.txt"])
 }
 
+@Test func preparingTreeRefreshPreservesExpansionButClearsChildCache() {
+    var state = WorkingCopyBrowserTreeState(recursiveTree: browserTestTree())
+    state.expandedPaths = ["Folder", "Folder/Nested"]
+    state.setLoading(true, for: "Folder/Nested")
+    let previousGeneration = state.generation
+
+    state.prepareForRefresh()
+
+    #expect(state.expandedPaths == ["Folder", "Folder/Nested"])
+    #expect(state.childrenByDirectory.isEmpty)
+    #expect(state.loadingPaths.isEmpty)
+    #expect(state.generation != previousGeneration)
+}
+
+@Test func treeRefreshPlanRestoresDirectoriesShallowestFirst() {
+    var state = WorkingCopyBrowserTreeState()
+    state.expandedPaths = ["Sources/App", "Tests", "Sources"]
+
+    let plan = state.refreshPlan(selectedPath: "Sources/App/Feature/file.swift")
+
+    #expect(plan.directoryPaths == ["Sources", "Tests", "Sources/App", "Sources/App/Feature"])
+    #expect(plan.selectionAncestorPaths == ["Sources", "Sources/App", "Sources/App/Feature"])
+}
+
+@Test func finishingTreeRefreshRemovesMissingExpansionAndValidatesSelection() {
+    var state = WorkingCopyBrowserTreeState()
+    state.expandedPaths = ["Existing", "Existing/Nested", "Missing"]
+    state.replaceRootNodesForRefresh([
+        browserNode("Existing", directory: true, hasChildren: true),
+    ])
+    state.cache([
+        browserNode("Existing/Nested", directory: true, hasChildren: true),
+    ], for: "Existing")
+    state.cache([
+        browserNode("Existing/Nested/file.txt"),
+    ], for: "Existing/Nested")
+
+    let preservedSelection = state.finishRefresh(selectedPath: "Existing/Nested/file.txt")
+
+    #expect(state.expandedPaths == ["Existing", "Existing/Nested"])
+    #expect(preservedSelection == "Existing/Nested/file.txt")
+    #expect(state.finishRefresh(selectedPath: "Missing/file.txt") == nil)
+}
+
 private func browserTestTree() -> [WorkingCopyFileNode] {
     [
         browserNode(
