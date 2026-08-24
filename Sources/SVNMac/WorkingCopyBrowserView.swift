@@ -63,6 +63,18 @@ struct WorkingCopyBrowserView: View {
                 )
             }
         }
+        .contextMenu(forSelectionType: String.self) { ids in
+            rowMenu(for: ids)
+        } primaryAction: { ids in
+            activateRows(ids)
+        }
+        // 선택이 없을 때도 위아래 키로 첫 행부터 고를 수 있어야 하므로 직접 처리합니다.
+        .onKeyPress(.upArrow) {
+            handleKey(.up)
+        }
+        .onKeyPress(.downArrow) {
+            handleKey(.down)
+        }
         .onKeyPress(.leftArrow) {
             handleKey(.left)
         }
@@ -108,14 +120,16 @@ struct WorkingCopyBrowserView: View {
                     .help(appLanguage.localized("ui.symbolic.link.0dc00212"))
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            open(node)
-        }
+        // 셀에 탭 제스처를 붙이면 이름 열을 클릭할 때 Table의 행 선택이 가려집니다.
+        // 선택과 더블클릭은 Table의 선택 처리와 primaryAction에 맡깁니다.
         .accessibilityAction(named: appLanguage.localized("ui.open.file.ea89b4b3")) {
             open(node)
         }
-        .contextMenu {
+    }
+
+    @ViewBuilder
+    private func rowMenu(for ids: Set<String>) -> some View {
+        if let id = ids.first, ids.count == 1, let node = displayedState.node(at: id) {
             if !node.isDirectory {
                 Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
                     open(node)
@@ -141,6 +155,16 @@ struct WorkingCopyBrowserView: View {
                 }
             }
         }
+    }
+
+    /// 더블클릭은 파일이면 열고 폴더면 펼침 상태를 토글합니다.
+    private func activateRows(_ ids: Set<String>) {
+        guard let id = ids.first, ids.count == 1, let node = displayedState.node(at: id) else { return }
+        guard node.isDirectory else {
+            open(node)
+            return
+        }
+        setDirectory(node.relativePath, expanded: !displayedState.expandedPaths.contains(node.relativePath))
     }
 
     private var displayedState: WorkingCopyBrowserTreeState {
@@ -197,7 +221,10 @@ struct WorkingCopyBrowserView: View {
     }
 
     private func handleKey(_ command: WorkingCopyBrowserKeyCommand) -> KeyPress.Result {
-        guard store.selectedBrowserPath != nil else { return .ignored }
+        // 선택이 없을 때는 위아래 키만 받아 첫 행을 고르고, 나머지 키는 흘려보냅니다.
+        guard store.selectedBrowserPath != nil || command == .up || command == .down else {
+            return .ignored
+        }
 
         let result: WorkingCopyBrowserNavigationResult
         if normalizedSearchText.isEmpty {
