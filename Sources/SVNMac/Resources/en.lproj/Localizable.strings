@@ -269,6 +269,7 @@
 "ui.open.in.finder.35aa9225" = "Open in Finder";
 "ui.open.my.file.537a87cb" = "Open My File";
 "ui.open.server.file.252d515b" = "Open Server File";
+"ui.open.the.app.wide.settings.window.6b0d5a17" = "Open the app-wide settings window.";
 "ui.open.this.svn.local.working.folder.in.finder.9befff0f" = "Open this SVN local working folder in Finder.";
 "ui.open.without.lock.e650efbf" = "Open Without Lock";
 "ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344" = "Opened without a lock. A concurrent commit by another user may cause a conflict.";
@@ -340,6 +341,7 @@
 "ui.server.latest.52ad60d5" = "Server latest";
 "ui.server.latest.r.e1c092b2" = "Server latest r%1$@";
 "ui.server.revision.c11b62aa" = "Server revision %1$@";
+"ui.settings.2f7c48b3" = "Settings";
 "ui.show.ignored.files.508dbd97" = "Show Ignored Files";
 "ui.show.password.9b3d2e71" = "Show password";
 "ui.show.the.macos.keychain.access.prompt.again.d57d9f96" = "Show the macOS Keychain access prompt again.";

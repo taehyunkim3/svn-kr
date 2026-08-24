@@ -53,6 +53,29 @@ import Testing
     #expect(!normalizationView.contains(".task"))
 }
 
+@Test func appSettingsAreReachableFromTheSidebarFooter() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+
+    // 상단 메뉴에만 있던 전체 설정을 사이드바 하단에서도 열 수 있어야 합니다.
+    #expect(contentView.contains("SettingsLink"))
+    #expect(contentView.contains("\"ui.settings.2f7c48b3\""))
+    #expect(contentView.contains("systemImage: \"gearshape\""))
+
+    // 작업 폴더 추가/삭제 버튼과 같은 묶음에 있어야 합니다.
+    let removeButton = try #require(
+        contentView.range(of: "projectPendingRemoval = store.selectedProject")
+    )
+    let settingsLink = try #require(contentView.range(of: "SettingsLink"))
+    let sidebarSpacer = try #require(contentView.range(of: "Spacer()"))
+    #expect(removeButton.lowerBound < settingsLink.lowerBound)
+    #expect(settingsLink.lowerBound < sidebarSpacer.lowerBound)
+}
+
 @Test func frequentToolbarActionsKeepVisibleTextLabels() throws {
     let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

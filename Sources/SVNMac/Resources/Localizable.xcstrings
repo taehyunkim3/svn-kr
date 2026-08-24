@@ -4235,6 +4235,23 @@
         }
       }
     },
+    "ui.open.the.app.wide.settings.window.6b0d5a17": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the app-wide settings window."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 전체 설정 창을 엽니다."
+          }
+        }
+      }
+    },
     "ui.open.this.svn.local.working.folder.in.finder.9befff0f": {
       "extractionState": "manual",
       "localizations": {
@@ -5438,6 +5455,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "서버 리비전 %1$@"
+          }
+        }
+      }
+    },
+    "ui.settings.2f7c48b3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정"
           }
         }
       }

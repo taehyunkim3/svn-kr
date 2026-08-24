@@ -72,6 +72,18 @@ struct ContentView: View {
                     .frame(width: 30, height: 24)
                     .disabled(store.selectedProject == nil)
                     .help(appLanguage.localized("ui.remove.the.selected.working.folder.from.the.app..ffe092ae"))
+
+                    // 전체 설정은 상단 메뉴에만 있어 찾기 어려우므로 사이드바에도 노출합니다.
+                    SettingsLink {
+                        Label(
+                            appLanguage.localized("ui.settings.2f7c48b3"),
+                            systemImage: "gearshape"
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .frame(height: 24)
+                    .help(appLanguage.localized("ui.open.the.app.wide.settings.window.6b0d5a17"))
                     Spacer()
                 }
                 .padding(8)

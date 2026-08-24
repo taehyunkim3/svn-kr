@@ -269,6 +269,7 @@
 "ui.open.in.finder.35aa9225" = "Finder에서 열기";
 "ui.open.my.file.537a87cb" = "내 파일 열기";
 "ui.open.server.file.252d515b" = "서버 파일 열기";
+"ui.open.the.app.wide.settings.window.6b0d5a17" = "앱 전체 설정 창을 엽니다.";
 "ui.open.this.svn.local.working.folder.in.finder.9befff0f" = "이 SVN 로컬 작업 폴더를 Finder에서 엽니다.";
 "ui.open.without.lock.e650efbf" = "잠그지 않고 열기";
 "ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344" = "잠그지 않고 열었습니다. 다른 사용자의 동시 커밋으로 충돌할 수 있습니다.";
@@ -340,6 +341,7 @@
 "ui.server.latest.52ad60d5" = "서버 최신";
 "ui.server.latest.r.e1c092b2" = "서버 최신 r%1$@";
 "ui.server.revision.c11b62aa" = "서버 리비전 %1$@";
+"ui.settings.2f7c48b3" = "설정";
 "ui.show.ignored.files.508dbd97" = "무시된 파일 보기";
 "ui.show.password.9b3d2e71" = "비밀번호 표시";
 "ui.show.the.macos.keychain.access.prompt.again.d57d9f96" = "macOS Keychain 접근 창을 다시 표시합니다.";
