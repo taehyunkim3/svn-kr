@@ -129,7 +129,7 @@
 "ui.close.without.saving.credential.changes.97c00986" = "Close without saving credential changes.";
 "ui.commit.changes.79414e6d" = "Commit Changes";
 "ui.commit.history.07e0f8de" = "Commit History";
-"ui.commit.history.time.zone.9e3260bf" = "Commit history time zone";
+"ui.commit.history.time.zone.9e3260bf" = "Commit display time zone";
 "ui.commit.message.c5139167" = "Commit message";
 "ui.commit.not.found.0f4a8385" = "Commit Not Found";
 "ui.commit.selected.29bc2086" = "Commit Selected";

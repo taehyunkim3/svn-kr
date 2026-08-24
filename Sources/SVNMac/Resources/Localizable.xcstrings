@@ -1844,13 +1844,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Commit history time zone"
+            "value": "Commit display time zone"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "커밋 기록 시간대"
+            "value": "커밋 표시 시간대"
           }
         }
       }

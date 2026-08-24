@@ -129,7 +129,7 @@
 "ui.close.without.saving.credential.changes.97c00986" = "인증 설정 변경을 저장하지 않고 창을 닫습니다.";
 "ui.commit.changes.79414e6d" = "커밋 변경 내용";
 "ui.commit.history.07e0f8de" = "커밋 기록";
-"ui.commit.history.time.zone.9e3260bf" = "커밋 기록 시간대";
+"ui.commit.history.time.zone.9e3260bf" = "커밋 표시 시간대";
 "ui.commit.message.c5139167" = "커밋 메시지";
 "ui.commit.not.found.0f4a8385" = "커밋 기록을 찾을 수 없습니다";
 "ui.commit.selected.29bc2086" = "선택 항목 커밋";
