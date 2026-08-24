@@ -16,6 +16,16 @@ import Testing
     #expect(AppLanguage.english.displayName == "English")
 }
 
+@Test func temporaryFilesAreHiddenByDefault() {
+    let defaults = UserDefaults(suiteName: "temporary-files-default-\(UUID().uuidString)")!
+
+    #expect(AppSettings.defaultHideTemporaryFiles)
+    #expect(AppSettings.hideTemporaryFiles(in: defaults))
+
+    defaults.set(false, forKey: AppSettings.hideTemporaryFilesKey)
+    #expect(!AppSettings.hideTemporaryFiles(in: defaults))
+}
+
 @Test func stringCatalogHonorsExplicitAppLanguageAndFormatArguments() {
     #expect(AppLanguage.korean.localized("ui.close.3ea43db3") == "닫기")
     #expect(AppLanguage.english.localized("ui.close.3ea43db3") == "Close")

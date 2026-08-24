@@ -1856,7 +1856,7 @@ import Testing
     ))
 }
 
-@Test func recognizesOnlyConservativeUnversionedTemporaryFiles() {
+@Test func recognizesTemporaryFileNamesButOnlyHidesKnownUnversionedFiles() {
     let temporaryPaths = [
         "문서/~$보고서.xlsx",
         ".DS_Store",
@@ -1870,39 +1870,222 @@ import Testing
 
     for path in temporaryPaths {
         let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
-        #expect(entry.isTemporaryFile, "임시 파일로 분류되지 않음: \(path)")
+        #expect(TemporaryFilePolicy.isTemporaryFile(entry), "임시 파일로 분류되지 않음: \(path)")
     }
 
     let ordinaryPaths = ["보고서.xlsx", "cache.tmp", "cache.temp", "DS_Store"]
     for path in ordinaryPaths {
         let entry = SVNStatusEntry(path: path, item: .unversioned, nodeKind: .file)
-        #expect(!entry.isTemporaryFile, "일반 파일이 임시 파일로 분류됨: \(path)")
+        #expect(!TemporaryFilePolicy.isTemporaryFile(entry), "일반 파일이 임시 파일로 분류됨: \(path)")
     }
 
-    #expect(!SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file).isTemporaryFile)
-    #expect(!SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory).isTemporaryFile)
-    #expect(!SVNStatusEntry(path: "~$종류미상", item: .unversioned).isTemporaryFile)
+    let versioned = SVNStatusEntry(path: "~$관리.xlsx", item: .modified, nodeKind: .file)
+    let directory = SVNStatusEntry(path: "~$폴더", item: .unversioned, nodeKind: .directory)
+    let unknownKind = SVNStatusEntry(path: "~$종류미상", item: .unversioned)
+
+    #expect(TemporaryFilePolicy.isTemporaryFile(versioned))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(versioned))
+    #expect(!TemporaryFilePolicy.isTemporaryFile(
+        directory
+    ))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(directory))
+    #expect(TemporaryFilePolicy.isTemporaryFile(unknownKind))
+    #expect(!TemporaryFilePolicy.isHideableTemporaryFile(unknownKind))
+}
+
+@Test func repositoryCleanupUsesOnlyStrongTemporaryFileNames() {
+    let strongPaths = [
+        ".DS_Store",
+        "자료/._원본.pdf",
+        "문서/~$보고서.DOCX",
+        "Icon\r",
+        ".Spotlight-V100",
+        ".Trashes",
+        ".fseventsd",
+        ".TemporaryItems",
+        ".apdisk",
+    ]
+    let weakPaths = [
+        "메모.txt~",
+        ".main.swift.swp",
+        ".main.swift.swo",
+        "#메모.txt#",
+        ".#메모.txt",
+        "~$그림.png",
+    ]
+
+    for path in strongPaths {
+        #expect(TemporaryFilePolicy.isRepositoryCleanupCandidate(
+            SVNStatusEntry(path: path, item: .added)
+        ), "강한 정리 후보가 누락됨: \(path)")
+    }
+    for path in weakPaths {
+        #expect(!TemporaryFilePolicy.isRepositoryCleanupCandidate(
+            SVNStatusEntry(path: path, item: .added)
+        ), "약한 이름이 정리 후보로 포함됨: \(path)")
+    }
+}
+
+@Test func repositoryCleanupValidatesMagicBytesAndOfficeLockSize() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("repository-cleanup-validation-\(UUID().uuidString)", isDirectory: true)
+    let validDirectory = root.appendingPathComponent("valid", isDirectory: true)
+    let fakeDirectory = root.appendingPathComponent("fake", isDirectory: true)
+    try FileManager.default.createDirectory(at: validDirectory, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: fakeDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    try Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31, 0x00])
+        .write(to: validDirectory.appendingPathComponent(".DS_Store"))
+    try Data("not a DS Store".utf8)
+        .write(to: fakeDirectory.appendingPathComponent(".DS_Store"))
+    try Data([0x00, 0x05, 0x16, 0x07, 0x00])
+        .write(to: root.appendingPathComponent("._원본.pdf"))
+    try Data(repeating: 0x41, count: TemporaryFilePolicy.maximumOfficeLockFileSize + 1)
+        .write(to: root.appendingPathComponent("~$보고서.xlsx"))
+    try Data("owner".utf8)
+        .write(to: root.appendingPathComponent("~$작은파일.xlsx"))
+
+    let assessments = TemporaryFilePolicy.validateRepositoryCleanupCandidates(
+        paths: [
+            "valid/.DS_Store",
+            "fake/.DS_Store",
+            "._원본.pdf",
+            "~$보고서.xlsx",
+            "~$작은파일.xlsx",
+        ],
+        in: root
+    )
+    let byPath = Dictionary(uniqueKeysWithValues: assessments.map { ($0.path, $0) })
+
+    #expect(byPath["valid/.DS_Store"]?.isEligible == true)
+    #expect(byPath["._원본.pdf"]?.isEligible == true)
+    #expect(byPath["~$작은파일.xlsx"]?.isEligible == true)
+    #expect(byPath["fake/.DS_Store"]?.failure == .invalidDSStoreSignature)
+    #expect(
+        byPath["~$보고서.xlsx"]?.failure
+            == .officeLockFileTooLarge(maximumBytes: TemporaryFilePolicy.maximumOfficeLockFileSize)
+    )
+    #expect(Set(assessments.lazy.filter(\.isEligible).map(\.path)) == [
+        "valid/.DS_Store",
+        "._원본.pdf",
+        "~$작은파일.xlsx",
+    ])
 }
 
 @MainActor
-@Test func selectAllExcludesTemporaryFilesWithoutBlockingManualSelection() {
-    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+@Test func updateCleanupReviewExcludesValidationFailuresAndDefaultsToOff() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("repository-cleanup-update-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31])
+        .write(to: root.appendingPathComponent(".DS_Store"))
+    try Data("fake".utf8).write(to: root.appendingPathComponent("._fake"))
+
+    let project = SVNProject(name: "프로젝트", path: root.path)
+    let changes = [
+        SVNStatusEntry(path: ".DS_Store", item: .added),
+        SVNStatusEntry(path: "._fake", item: .added),
+    ]
+    let client = StubSVNClient(remoteChangesByPath: [project.path: changes])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.previewUpdate()
+    #expect(store.shouldOfferRepositoryTemporaryFileCleanup)
+    #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
+
+    store.cleansRepositoryTemporaryFilesAfterUpdate = true
+    await store.update()
+
+    #expect(store.isShowingTemporaryFileCleanup)
+    #expect(store.selectedTemporaryFileCleanupPaths == [".DS_Store"])
+    #expect(
+        store.temporaryFileCleanupAssessments.first { $0.path == "._fake" }?.failure
+            == .invalidAppleDoubleSignature
+    )
+
+    await store.confirmRepositoryTemporaryFileCleanup()
+    #expect(await client.requestedRepositoryCleanupDeletionPaths() == [".DS_Store"])
+    let commit = await client.lastCommitRequest()
+    #expect(commit?.paths == [".DS_Store"])
+    #expect(commit?.message == "Mac/Office 임시파일 정리\n\n- .DS_Store")
+}
+
+@MainActor
+@Test func updatePreviewDoesNotOfferCleanupWithoutStrongCandidates() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/no-cleanup-candidates")
+    let client = StubSVNClient(remoteChangesByPath: [project.path: [
+        SVNStatusEntry(path: "메모.txt~", item: .added),
+        SVNStatusEntry(path: ".DS_Store", item: .deleted),
+    ]])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.previewUpdate()
+
+    #expect(!store.shouldOfferRepositoryTemporaryFileCleanup)
+    #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
+}
+
+@MainActor
+@Test func hiddenTemporaryFilesAreAbsentAndCannotBeCommitted() async {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: true
+    )
     let modified = SVNStatusEntry(path: "보고서.xlsx", item: .modified, nodeKind: .file)
     let unversioned = SVNStatusEntry(path: "새 문서.xlsx", item: .unversioned, nodeKind: .file)
     let temporary = SVNStatusEntry(path: "~$보고서.xlsx", item: .unversioned, nodeKind: .file)
     store.statuses = [modified, unversioned, temporary]
 
-    #expect(store.selectableStatusPaths == [modified.path, unversioned.path, temporary.path])
+    #expect(store.visibleStatuses == [modified, unversioned])
+    #expect(store.selectableStatusPaths == [modified.path, unversioned.path])
     #expect(store.selectAllStatusPaths == [modified.path, unversioned.path])
 
     store.selectedPaths.insert(temporary.path)
+    #expect(!store.canCommitSelectedPaths)
+    #expect(!(await store.commit(message: "임시파일 제외")))
+}
+
+@MainActor
+@Test func hiddenModeKeepsVersionedTemporaryFilesVisibleAndCommittable() async {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: true
+    )
+    let versionedTemporary = SVNStatusEntry(
+        path: "~$기존문서.xlsx",
+        item: .modified,
+        nodeKind: .file
+    )
+    let unknownKindTemporary = SVNStatusEntry(path: "~$종류미상", item: .unversioned)
+    store.statuses = [versionedTemporary, unknownKindTemporary]
+
+    #expect(store.visibleStatuses == [versionedTemporary, unknownKindTemporary])
+    #expect(store.selectableStatusPaths == [versionedTemporary.path, unknownKindTemporary.path])
+    #expect(store.selectAllStatusPaths == [versionedTemporary.path, unknownKindTemporary.path])
+
+    store.selectedPaths = [versionedTemporary.path]
     #expect(store.canCommitSelectedPaths)
+    #expect(await store.commit(message: "버전관리 임시파일 수정"))
+}
 
-    store.selectedPaths = store.selectAllStatusPaths
-    #expect(store.selectedPaths == [modified.path, unversioned.path])
+@MainActor
+@Test func shownTemporaryFilesRemainManualCommitCandidatesButNotSelectAllCandidates() {
+    let store = makeStore(
+        projects: [SVNProject(name: "프로젝트", path: "/tmp/project")],
+        hideTemporaryFiles: false
+    )
+    let modified = SVNStatusEntry(path: "보고서.xlsx", item: .modified, nodeKind: .file)
+    let temporary = SVNStatusEntry(path: "~$보고서.xlsx", item: .unversioned, nodeKind: .file)
+    store.statuses = [modified, temporary]
 
-    store.selectedPaths.removeAll()
-    #expect(store.selectedPaths.isEmpty)
+    #expect(store.visibleStatuses == [modified, temporary])
+    #expect(store.selectableStatusPaths == [modified.path, temporary.path])
+    #expect(store.selectAllStatusPaths == [modified.path])
+
+    store.selectedPaths = [temporary.path]
+    #expect(store.canCommitSelectedPaths)
 }
 
 @MainActor
@@ -2042,7 +2225,8 @@ private func makeStore(
     conflictFileService: ConflictFileService = ConflictFileService(),
     workspaceOpener: any WorkspaceOpening = StubWorkspaceOpener(),
     projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
-    volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe()
+    volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe(),
+    hideTemporaryFiles: Bool = true
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -2053,7 +2237,8 @@ private func makeStore(
         workingCopyFileService: fileService,
         workspaceOpener: workspaceOpener,
         projectPathChecker: projectPathChecker,
-        volumeNormalizationProbe: volumeNormalizationProbe
+        volumeNormalizationProbe: volumeNormalizationProbe,
+        hideTemporaryFiles: hideTemporaryFiles
     )
 }
 
@@ -2254,6 +2439,11 @@ private struct RevisionDiffRequest: Equatable, Sendable {
     let pegRevision: String
 }
 
+private struct CommitRequest: Equatable, Sendable {
+    let paths: [String]
+    let message: String
+}
+
 private actor StubSVNClient: SVNClientServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
@@ -2315,6 +2505,8 @@ private actor StubSVNClient: SVNClientServing {
     private var repositoryPathNormalizationScanRequests = 0
     private var repositoryPathNormalizationRequests = 0
     private var updateRequests = 0
+    private var repositoryCleanupDeletionPaths: [String] = []
+    private var commitRequests: [CommitRequest] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -2506,6 +2698,10 @@ private actor StubSVNClient: SVNClientServing {
         return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
     func scheduleDeletionRequestCount() -> Int { scheduleDeletionRequests }
+    func scheduleRepositoryCleanupDeletion(at path: String, relativePath: String, credentials: SVNCredentials?) async throws {
+        repositoryCleanupDeletionPaths.append(relativePath)
+    }
+    func requestedRepositoryCleanupDeletionPaths() -> [String] { repositoryCleanupDeletionPaths }
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
         repositoryLocksRequests += 1
         await delay(for: path)
@@ -2594,6 +2790,7 @@ private actor StubSVNClient: SVNClientServing {
         return fileLogsByPath[path] ?? []
     }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        commitRequests.append(CommitRequest(paths: paths, message: message))
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(
                 output: commitCompletedWarning.output,
@@ -2603,6 +2800,7 @@ private actor StubSVNClient: SVNClientServing {
         if let commitError { throw commitError }
         return "committed"
     }
+    func lastCommitRequest() -> CommitRequest? { commitRequests.last }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {

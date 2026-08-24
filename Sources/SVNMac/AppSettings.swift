@@ -9,6 +9,15 @@ enum AppSettings {
     static let historyTimeZoneKey = "history-time-zone"
     static let defaultHistoryTimeZone = "Asia/Seoul"
     static let systemHistoryTimeZone = "__system__"
+    static let hideTemporaryFilesKey = "hide-temporary-files"
+    static let defaultHideTemporaryFiles = true
+
+    static func hideTemporaryFiles(in defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: hideTemporaryFilesKey) != nil else {
+            return defaultHideTemporaryFiles
+        }
+        return defaults.bool(forKey: hideTemporaryFilesKey)
+    }
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
         [
@@ -90,6 +99,8 @@ struct AppSettingsView: View {
     private var languageIdentifier = AppSettings.defaultLanguage
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
+    @AppStorage(AppSettings.hideTemporaryFilesKey)
+    private var hideTemporaryFiles = AppSettings.defaultHideTemporaryFiles
 
     private var appLanguage: AppLanguage {
         AppLanguage(rawValue: languageIdentifier) ?? .korean
@@ -113,6 +124,12 @@ struct AppSettingsView: View {
             Text(appLanguage.localized("ui.the.default.is.korea.standard.time.kst.this.does.02bc8ed0"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Toggle(
+                appLanguage.localized("ui.hide.mac.office.temporary.files.875f35d1"),
+                isOn: $hideTemporaryFiles
+            )
+            .help(appLanguage.localized("ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4"))
         }
         .formStyle(.grouped)
         .padding()

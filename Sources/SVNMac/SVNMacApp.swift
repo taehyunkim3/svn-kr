@@ -11,6 +11,8 @@ struct SVNMacApp: App {
     @State private var isShowingContactSupport = false
     @AppStorage(AppSettings.languageKey)
     private var languageIdentifier = AppSettings.defaultLanguage
+    @AppStorage(AppSettings.hideTemporaryFilesKey)
+    private var hideTemporaryFiles = AppSettings.defaultHideTemporaryFiles
 
     private var appLanguage: AppLanguage {
         AppLanguage(rawValue: languageIdentifier) ?? .korean
@@ -42,6 +44,10 @@ struct SVNMacApp: App {
                 )
                 .task {
                     updateChecker.checkAutomaticallyIfNeeded()
+                }
+                .onChange(of: hideTemporaryFiles, initial: true) { _, value in
+                    liveStore.hideTemporaryFiles = value
+                    demoStore.hideTemporaryFiles = value
                 }
                 .alert(
                     appLanguage.localized("ui.an.update.is.available.f3c3a4e9"),

@@ -2739,6 +2739,23 @@
         }
       }
     },
+    "ui.hide.mac.office.temporary.files.875f35d1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Mac/Office temporary files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac/Office 임시파일 숨기기"
+          }
+        }
+      }
+    },
     "ui.hide.password.4c8a1f60": {
       "extractionState": "manual",
       "localizations": {
@@ -2752,6 +2769,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "비밀번호 가리기"
+          }
+        }
+      }
+    },
+    "ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide temporary files from Changes and prevent them from being committed. Versioned files remain visible in Update Preview because SVN update may still download them."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "임시파일을 변경 사항에서 숨기고 커밋되지 않게 합니다. SVN 업데이트에서 내려올 수 있는 버전관리 파일은 업데이트 미리보기에 계속 표시됩니다."
           }
         }
       }
@@ -7057,6 +7091,25 @@
         }
       }
     },
+    "ui.add.repository.temporary.file.cleanup.commit.a19da94a": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add a repository temporary-file cleanup commit after updating"}},"ko":{"stringUnit":{"state":"translated","value":"업데이트 후 저장소 임시파일 정리 커밋 추가"}}}},
+    "ui.after.update.verify.candidates.then.review.and.c.89b37719": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"After the update, candidate contents are verified and you review the final list before any repository commit."}},"ko":{"stringUnit":{"state":"translated","value":"업데이트 후 후보 내용을 검증하고 최종 목록을 확인한 뒤에만 저장소에 커밋합니다."}}}},
+    "ui.cleaned.repository.temporary.files.75d9479a": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Cleaned %1$@ repository temporary file(s). %2$@"}},"ko":{"stringUnit":{"state":"translated","value":"저장소 임시파일 %1$@개를 정리했습니다. %2$@"}}}},
+    "ui.cleaning.and.committing.6578bec9": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Cleaning and committing…"}},"ko":{"stringUnit":{"state":"translated","value":"정리 후 커밋 중…"}}}},
+    "ui.cleanup.commit.failed.update.succeeded.f59c27fb": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The update succeeded, but the cleanup commit failed. Scheduled deletions were restored: %1$@"}},"ko":{"stringUnit":{"state":"translated","value":"업데이트는 성공했지만 정리 커밋에 실패했습니다. 삭제 예약은 복원했습니다: %1$@"}}}},
+    "ui.cleanup.could.not.start.update.succeeded.bfae6b76": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The update succeeded, but cleanup could not start: %1$@"}},"ko":{"stringUnit":{"state":"translated","value":"업데이트는 성공했지만 정리를 시작하지 못했습니다: %1$@"}}}},
+    "ui.cleanup.reason.file.missing.64ae4838": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The file was not found after the update."}},"ko":{"stringUnit":{"state":"translated","value":"업데이트 후 파일을 찾을 수 없습니다."}}}},
+    "ui.cleanup.reason.invalid.appledouble.signature.96cdf550": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The file does not have the AppleDouble magic bytes."}},"ko":{"stringUnit":{"state":"translated","value":"AppleDouble 매직 바이트가 아닙니다."}}}},
+    "ui.cleanup.reason.invalid.ds.store.signature.2832697d": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The file does not have the .DS_Store Bud1 signature."}},"ko":{"stringUnit":{"state":"translated","value":".DS_Store Bud1 시그니처가 아닙니다."}}}},
+    "ui.cleanup.reason.locked.by.5ee975b0": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Locked by %1$@ on the repository."}},"ko":{"stringUnit":{"state":"translated","value":"저장소에서 %1$@ 사용자가 잠근 파일입니다."}}}},
+    "ui.cleanup.reason.not.regular.file.98aa0f60": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The candidate is not a regular file."}},"ko":{"stringUnit":{"state":"translated","value":"일반 파일이 아닙니다."}}}},
+    "ui.cleanup.reason.office.lock.too.large.38b4ef17": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The Office lock file exceeds the %1$@ byte safety limit."}},"ko":{"stringUnit":{"state":"translated","value":"Office 잠금 파일이 안전 상한 %1$@바이트를 초과합니다."}}}},
+    "ui.cleanup.reason.symbolic.link.95821786": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Symbolic links are never cleaned automatically."}},"ko":{"stringUnit":{"state":"translated","value":"심볼릭 링크는 자동 정리하지 않습니다."}}}},
+    "ui.cleanup.reason.unreadable.85df36fb": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The file contents could not be read."}},"ko":{"stringUnit":{"state":"translated","value":"파일 내용을 읽을 수 없습니다."}}}},
+    "ui.cleanup.reason.unsafe.path.5dce44a1": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The path is outside the working-copy safety boundary."}},"ko":{"stringUnit":{"state":"translated","value":"작업 복사본 안전 범위를 벗어난 경로입니다."}}}},
+    "ui.cleanup.some.items.failed.2bdf30af": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Some temporary files were not cleaned:\n%1$@"}},"ko":{"stringUnit":{"state":"translated","value":"일부 임시파일을 정리하지 못했습니다:\n%1$@"}}}},
+    "ui.delete.and.commit.cleanup.146a3cd1": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Delete and Commit Cleanup"}},"ko":{"stringUnit":{"state":"translated","value":"삭제 후 정리 커밋"}}}},
+    "ui.repository.temporary.file.cleanup.4dd78db2": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Repository Temporary-File Cleanup"}},"ko":{"stringUnit":{"state":"translated","value":"저장소 임시파일 정리"}}}},
+    "ui.review.verified.files.before.deleting.and.committ.9aac943d": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Only verified candidates are selected. Review every path before deleting and committing it to the repository."}},"ko":{"stringUnit":{"state":"translated","value":"검증을 통과한 후보만 선택했습니다. 저장소에서 삭제하고 커밋하기 전에 각 경로를 확인하세요."}}}},
     "ui.your.local.update.base.falls.between.two.server..5815a927": {
       "extractionState": "manual",
       "localizations": {

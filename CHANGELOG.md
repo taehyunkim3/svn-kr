@@ -1,9 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.0.4 (2026-08-24)
 
 - Fixed Korean filenames added on Mac appearing as separated letters on Windows.
 - Added a warning for working folders on disks that can only store Korean filenames in separated form.
+- Added a repository cleanup that finds Korean paths already stored in the separated form and renames them so they display correctly on Windows.
+- Showed the stored name form and the differing characters for each rename target, because the two forms look identical on Mac.
+- Hid Mac and Office temporary files from the changes list by default, and excluded them from commit targets so they can no longer be uploaded by accident.
+- Added a settings toggle that reveals temporary files again when they need to be committed or inspected deliberately.
+- Offered an optional cleanup commit after an update that deletes Mac and Office temporary files already stored in the repository, gated by name patterns, magic-byte checks, and a per-file review step.
 
 ## 0.5.26 (2026-08-04)
 

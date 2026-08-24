@@ -62,8 +62,8 @@ struct HistoryView: View {
                 HStack(spacing: 14) {
                     historyLegend(color: .blue, label: appLanguage.localized("ui.server.commit.952e9a4a"))
                     historyLegend(color: .green, label: localRevisionLegendLabel)
-                    if !store.statuses.isEmpty {
-                        historyLegend(color: .orange, label: appLanguage.localized("ui.uncommitted.changes.35359722", store.statuses.count))
+                    if !store.visibleStatuses.isEmpty {
+                        historyLegend(color: .orange, label: appLanguage.localized("ui.uncommitted.changes.35359722", store.visibleStatuses.count))
                     }
                     Spacer()
                 }
@@ -134,7 +134,7 @@ struct HistoryView: View {
                 isLast: index == totalCount - 1 && (!searchText.isEmpty || !timeline.isBeforeLoadedHistory),
                 showsServerCommit: true,
                 isWorkingCopyRevision: isWorkingCopyEntry,
-                hasLocalChanges: isWorkingCopyEntry && !store.statuses.isEmpty
+                hasLocalChanges: isWorkingCopyEntry && !store.visibleStatuses.isEmpty
             )
             .frame(width: 76)
             .help(historyGraphHelp)
@@ -167,8 +167,8 @@ struct HistoryView: View {
             }
             if isWorkingCopyEntry {
                 historyBadge(workingCopyEntryBadge(for: entry.revision), color: .green)
-                if !store.statuses.isEmpty {
-                    historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.statuses.count), color: .orange)
+                if !store.visibleStatuses.isEmpty {
+                    historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.visibleStatuses.count), color: .orange)
                 }
             }
             Spacer()
@@ -257,7 +257,7 @@ struct HistoryView: View {
                 isLast: isBeforeLoadedHistory,
                 showsServerCommit: false,
                 isWorkingCopyRevision: true,
-                hasLocalChanges: !store.statuses.isEmpty
+                hasLocalChanges: !store.visibleStatuses.isEmpty
             )
             .frame(width: 76, height: 72)
 
@@ -268,8 +268,8 @@ struct HistoryView: View {
                 HStack {
                     Text("r\(revision)").font(.headline.monospacedDigit())
                     historyBadge(localRevisionMarkerLabel, color: .green)
-                    if !store.statuses.isEmpty {
-                        historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.statuses.count), color: .orange)
+                    if !store.visibleStatuses.isEmpty {
+                        historyBadge(appLanguage.localized("ui.local.changes.60d75f36", store.visibleStatuses.count), color: .orange)
                     }
                 }
                 Text(localRevisionMarkerDescription(isBeforeLoadedHistory: isBeforeLoadedHistory))

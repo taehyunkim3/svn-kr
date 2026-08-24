@@ -37,22 +37,33 @@ struct UpdatePreviewView: View {
             }
 
             Divider()
-            HStack {
-                Text(appLanguage.localized("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e"))
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                if !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true {
-                    Button {
-                        Task { await store.update() }
-                    } label: {
-                        ActionProgressLabel(
-                            title: appLanguage.localized("ui.run.update.e17c8217"),
-                            inProgressTitle: appLanguage.localized("ui.updating.4d2f9a11"),
-                            isInProgress: store.isUpdatingSelectedProject
-                        )
+            VStack(alignment: .leading, spacing: 8) {
+                if store.shouldOfferRepositoryTemporaryFileCleanup {
+                    Toggle(
+                        appLanguage.localized("ui.add.repository.temporary.file.cleanup.commit.a19da94a"),
+                        isOn: $store.cleansRepositoryTemporaryFilesAfterUpdate
+                    )
+                    .toggleStyle(.checkbox)
+                    .help(appLanguage.localized("ui.after.update.verify.candidates.then.review.and.c.89b37719"))
+                }
+
+                HStack {
+                    Text(appLanguage.localized("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e"))
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    if !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true {
+                        Button {
+                            Task { await store.update() }
+                        } label: {
+                            ActionProgressLabel(
+                                title: appLanguage.localized("ui.run.update.e17c8217"),
+                                inProgressTitle: appLanguage.localized("ui.updating.4d2f9a11"),
+                                isInProgress: store.isUpdatingSelectedProject
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(store.isUpdatingSelectedProject)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(store.isUpdatingSelectedProject)
                 }
             }
             .padding()
