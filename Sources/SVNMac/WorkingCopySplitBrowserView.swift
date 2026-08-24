@@ -103,7 +103,7 @@ struct WorkingCopySplitBrowserView: View {
                 }
             }
         }
-        .background(panelBackground(for: .folders))
+        .background(panelBackground)
         .overlay {
             if loadingDirectoryGenerations[""] == cacheGeneration
                 && !browserState.isDirectoryCached("") {
@@ -227,7 +227,7 @@ struct WorkingCopySplitBrowserView: View {
             // 선택이 되지 않습니다. Table 이 직접 포커스를 갖게 해 한 번에 처리합니다.
             .focused($focusedPanel, equals: .contents)
         }
-        .background(panelBackground(for: .contents))
+        .background(panelBackground)
         .overlay { focusBorder(for: .contents) }
         .onKeyPress(keys: [.tab]) { press in
             moveFocus(reverse: press.modifiers.contains(.shift))
@@ -289,17 +289,11 @@ struct WorkingCopySplitBrowserView: View {
         .padding(.leading, CGFloat(row.depth) * 16)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        // 선택 표시를 채우면 트리 배경과 대비가 과해 눈에 거슬리므로 테두리만 그립니다.
-        .overlay {
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(
-                    browserState.selectedFolderPath == row.relativePath
-                        ? Color.accentColor
-                        : Color.clear,
-                    lineWidth: 1
-                )
-                .allowsHitTesting(false)
-        }
+        .background(
+            browserState.selectedFolderPath == row.relativePath
+                ? Color.accentColor.opacity(0.18)
+                : Color.clear
+        )
         .contextMenu {
             if let node = folderNode(at: row.relativePath) {
                 contextMenuItems(for: node)
@@ -375,6 +369,9 @@ struct WorkingCopySplitBrowserView: View {
                     ? Color.accentColor.opacity(0.22)
                     : Color.clear
             )
+            // 셀 빈 영역도 클릭을 받아야 행 어디를 눌러도 선택됩니다.
+            // 제스처와 우클릭 메뉴는 붙이지 않습니다. Table 의 선택 처리를 가리기 때문입니다.
+            .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -460,12 +457,10 @@ struct WorkingCopySplitBrowserView: View {
         loadingDirectoryGenerations[browserState.currentDirectoryPath] == cacheGeneration
     }
 
-    private func panelBackground(
-        for panel: WorkingCopySplitBrowserState.FocusedPanel
-    ) -> Color {
-        browserState.focusedPanel == panel
-            ? Color.accentColor.opacity(0.05)
-            : Color(nsColor: .controlBackgroundColor)
+    /// 포커스된 패널은 테두리로만 표시합니다. 배경까지 칠하면 패널 전체가
+    /// 파랗게 물들어 안쪽 선택 행과 구분이 되지 않습니다.
+    private var panelBackground: Color {
+        Color(nsColor: .controlBackgroundColor)
     }
 
     private func focusBorder(

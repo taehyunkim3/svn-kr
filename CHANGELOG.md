@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 (2026-08-24)
+
+- Added a split file browser view with a resizable divider, starting at a one-to-three ratio, and switchable from the Files tab.
+- Made a single click select a row in the file list, even when the panel was not focused, and made the selection visible.
+- Showed folder names in full with horizontal scrolling instead of truncating them, and widened the name and action columns.
+- Added a choice of how documents open: ask every time, always open without locking, or always lock and open.
+- Added a do-not-ask-again checkbox to the open confirmation, with a warning that locked files block other users until commit or unlock.
+
 ## 1.0.4 (2026-08-24)
 
 - Fixed Korean filenames added on Mac appearing as separated letters on Windows.
