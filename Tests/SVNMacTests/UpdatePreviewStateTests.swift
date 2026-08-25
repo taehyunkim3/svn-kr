@@ -51,6 +51,73 @@ import Testing
     #expect(state.canRunUpdate(hasRemoteChanges: false, isWorkingCopyOutOfDate: false))
 }
 
+@MainActor
+@Test func updatePreviewCleanupFailureOffersWorkingCopyRecovery() async {
+    let project = SVNProject(
+        name: "프로젝트",
+        path: "/tmp/update-preview-cleanup",
+        username: "office.user"
+    )
+    let error = SVNError.commandFailed(
+        command: "svn status --show-updates",
+        message: "svn: E155004: Working copy locked"
+    )
+    let store = makeUpdatePreviewFailureStore(project: project, error: error)
+
+    await store.previewUpdate()
+
+    #expect(store.workingCopyCleanupRequest?.projectID == project.id)
+    #expect(store.workingCopyCleanupRequest?.originalMessage.contains("E155004") == true)
+    #expect(!store.automaticRefreshCanRun(for: project))
+    #expect(!store.isShowingUpdatePreview)
+    #expect(store.errorMessage == nil)
+    #expect(store.recoveryState.updatePreview.errorMessage?.contains("E155004") == true)
+}
+
+@MainActor
+@Test func updatePreviewKeychainFailureOpensAuthentication() async {
+    let project = SVNProject(
+        name: "프로젝트",
+        path: "/tmp/update-preview-authentication",
+        username: "office.user"
+    )
+    let store = makeUpdatePreviewFailureStore(
+        project: project,
+        error: KeychainStoreError.accessDenied,
+        mode: .incomingAndRemote
+    )
+
+    await store.previewUpdate()
+
+    #expect(store.authenticationRequest?.projectID == project.id)
+    #expect(store.authenticationRequest?.action == .update)
+    #expect(!store.isShowingUpdatePreview)
+    #expect(store.recoveryState.updatePreview.errorMessage != nil)
+}
+
+@MainActor
+@Test func updatePreviewRemoteFailureUsesInlineErrorWithoutDuplicatePresenter() async {
+    let project = SVNProject(
+        name: "프로젝트",
+        path: "/tmp/update-preview-network",
+        username: "office.user"
+    )
+    let error = SVNError.commandFailed(
+        command: "svn status --show-updates",
+        message: "svn: E170013: Unable to connect to a repository"
+    )
+    let store = makeUpdatePreviewFailureStore(project: project, error: error)
+
+    await store.previewUpdate()
+
+    #expect(store.isShowingUpdatePreview)
+    #expect(store.recoveryState.updatePreview.errorMessage?.contains("E170013") == true)
+    #expect(store.errorMessage == nil)
+    #expect(store.workingCopyCleanupRequest == nil)
+    #expect(store.authenticationRequest == nil)
+    #expect(!store.automaticRefreshCanRun(for: project))
+}
+
 @Test func updatePreviewReportsCommitLimit() {
     let commits = (1 ... UpdatePreviewState.maximumVisibleCommitCount + 1).map {
         makeUpdatePreviewCommit(revision: String($0))
@@ -79,6 +146,10 @@ import Testing
     #expect(view.contains("$store.cleansRepositoryTemporaryFilesAfterUpdate"))
     #expect(update.contains("let preparesCleanup = cleansRepositoryTemporaryFilesAfterUpdate"))
     #expect(update.contains("try await client.update("))
+    #expect(
+        update.components(separatedBy: "recordUpdatePreviewFailure(error, project: project)").count - 1
+            == 2
+    )
 }
 
 @Test func updatePreviewUsesSharedHistoryPresentationAndLocalizedNotices() throws {
@@ -147,4 +218,57 @@ private func svnMacSourcesForUpdatePreviewTests() throws -> URL {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+}
+
+@MainActor
+private func makeUpdatePreviewFailureStore(
+    project: SVNProject,
+    error: Error,
+    mode: UpdatePreviewFailureMode = .remoteOnly
+) -> ProjectStore {
+    ProjectStore(
+        credentialStore: UpdatePreviewFailingCredentialStore(error: error),
+        persistence: UpdatePreviewProjectPersistence(projects: [project]),
+        isDemoMode: mode == .remoteOnly,
+        updateBadgeRefreshInterval: nil
+    )
+}
+
+private enum UpdatePreviewFailureMode {
+    case remoteOnly
+    case incomingAndRemote
+}
+
+private final class UpdatePreviewFailingCredentialStore: CredentialStoring {
+    let error: Error
+
+    init(error: Error) {
+        self.error = error
+    }
+
+    func password(for _: UUID) throws -> String? {
+        throw error
+    }
+
+    func setPassword(_: String, for _: UUID) throws {
+        throw error
+    }
+
+    func deletePassword(for _: UUID) throws {
+        throw error
+    }
+}
+
+private final class UpdatePreviewProjectPersistence: ProjectPersisting {
+    let projects: [SVNProject]
+
+    init(projects: [SVNProject]) {
+        self.projects = projects
+    }
+
+    func loadProjects() -> [SVNProject] {
+        projects
+    }
+
+    func saveProjects(_: [SVNProject]) {}
 }

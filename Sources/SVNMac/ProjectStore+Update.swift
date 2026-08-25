@@ -66,7 +66,7 @@ extension ProjectStore {
             recoveryState.updatePreview.receive(commits)
         } catch {
             guard selectedProjectID == project.id else { return }
-            recoveryState.updatePreview.recordFailure(localizedError(error))
+            recordUpdatePreviewFailure(error, project: project)
         }
 
         do {
@@ -79,7 +79,7 @@ extension ProjectStore {
             remoteChanges = changes
         } catch {
             guard selectedProjectID == project.id else { return }
-            recoveryState.updatePreview.recordFailure(localizedError(error))
+            recordUpdatePreviewFailure(error, project: project)
         }
 
         guard selectedProjectID == project.id else { return }
@@ -87,7 +87,15 @@ extension ProjectStore {
             for: project.id,
             needsUpdate: recoveryState.updatePreview.totalCommitCount > 0 || !remoteChanges.isEmpty
         )
-        isShowingUpdatePreview = true
+        isShowingUpdatePreview = workingCopyCleanupRequest == nil && authenticationRequest == nil
+    }
+
+    private func recordUpdatePreviewFailure(_ error: Error, project: SVNProject) {
+        recoveryState.updatePreview.recordFailure(localizedError(error))
+        handleRemoteError(error, project: project, action: .update)
+        if workingCopyCleanupRequest == nil, authenticationRequest == nil {
+            errorMessage = nil
+        }
     }
 
     func confirmRepositoryTemporaryFileCleanup() async {
