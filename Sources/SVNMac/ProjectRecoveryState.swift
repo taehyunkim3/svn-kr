@@ -14,4 +14,5 @@ struct ProjectRecoveryState {
     var needsLockPaths: Set<String> = []
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
+    var repositoryBrowseSelectedURL: String?
 }

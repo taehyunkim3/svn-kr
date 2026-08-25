@@ -2,6 +2,12 @@ import Foundation
 
 public enum SVNXMLParser {
     static func repositoryListEntries(from data: Data) throws -> [SVNRepositoryListEntry] {
+        try repositoryEntries(from: data).map {
+            SVNRepositoryListEntry(path: $0.name, isDirectory: $0.kind == .directory)
+        }
+    }
+
+    public static func repositoryEntries(from data: Data) throws -> [SVNRepositoryEntry] {
         let delegate = RepositoryListDelegate()
         let parser = XMLParser(data: data)
         parser.delegate = delegate
@@ -181,10 +187,20 @@ private final class PropertyListDelegate: NSObject, XMLParserDelegate {
 }
 
 private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
-    var entries: [SVNRepositoryListEntry] = []
-    private var isDirectory = false
+    var entries: [SVNRepositoryEntry] = []
+    private var kind: SVNRepositoryEntryKind?
     private var name: String?
+    private var size: Int64?
+    private var lastChangedRevision: String?
+    private var lastChangedAuthor: String?
+    private var lastChangedDate: Date?
     private var text = ""
+    private let fractionalDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private let dateFormatter = ISO8601DateFormatter()
 
     func parser(
         _ parser: XMLParser,
@@ -195,8 +211,18 @@ private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
     ) {
         text = ""
         if elementName == "entry" {
-            isDirectory = attributeDict["kind"] == "dir"
+            kind = switch attributeDict["kind"] {
+            case "file": .file
+            case "dir": .directory
+            default: nil
+            }
             name = nil
+            size = nil
+            lastChangedRevision = nil
+            lastChangedAuthor = nil
+            lastChangedDate = nil
+        } else if elementName == "commit" {
+            lastChangedRevision = attributeDict["revision"]
         }
     }
 
@@ -210,11 +236,36 @@ private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
         namespaceURI: String?,
         qualifiedName qName: String?
     ) {
-        if elementName == "name" {
+        switch elementName {
+        case "name":
             name = text
-        } else if elementName == "entry", let name {
-            entries.append(SVNRepositoryListEntry(path: name, isDirectory: isDirectory))
+        case "size":
+            guard let parsedSize = Int64(text) else {
+                parser.abortParsing()
+                return
+            }
+            size = parsedSize
+        case "author":
+            lastChangedAuthor = text
+        case "date":
+            lastChangedDate = fractionalDateFormatter.date(from: text)
+                ?? dateFormatter.date(from: text)
+        case "entry":
+            guard let name, let kind, let lastChangedRevision else {
+                parser.abortParsing()
+                return
+            }
+            entries.append(SVNRepositoryEntry(
+                name: name,
+                kind: kind,
+                size: size,
+                lastChangedRevision: lastChangedRevision,
+                lastChangedAuthor: lastChangedAuthor,
+                lastChangedDate: lastChangedDate
+            ))
             self.name = nil
+        default:
+            break
         }
         text = ""
     }

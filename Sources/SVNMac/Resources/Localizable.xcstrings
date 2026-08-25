@@ -1106,6 +1106,23 @@
         }
       }
     },
+    "ui.allow.certificate.failure.for.project.0d91bc52": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow for This Project"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 프로젝트에서 허용"
+          }
+        }
+      }
+    },
     "ui.allow.self.signed.and.certificate.name.mismatch..0bfb9514": {
       "extractionState": "manual",
       "localizations": {
@@ -1531,6 +1548,40 @@
         }
       }
     },
+    "ui.browse.5f8b6e21": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탐색"
+          }
+        }
+      }
+    },
+    "ui.browse.repository.before.checkout.7c2e1b84": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check folders and files before choosing the repository path to check out."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크아웃할 저장소 경로를 고르기 전에 폴더와 파일을 확인합니다."
+          }
+        }
+      }
+    },
     "ui.browse.sample.project.9ad211da": {
       "extractionState": "manual",
       "localizations": {
@@ -1544,6 +1595,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "샘플 프로젝트 둘러보기"
+          }
+        }
+      }
+    },
+    "ui.browse.svn.repository.4a9d3c10": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse SVN Repository"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 저장소 탐색"
           }
         }
       }
@@ -1663,6 +1731,142 @@
           "stringUnit": {
             "state": "translated",
             "value": "취소해도 로컬 변경 사항과 diff는 계속 확인할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.certificate.exception.not.allowed.d47c92a1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The certificate exception was not allowed. No project setting changed."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증서 예외를 허용하지 않았습니다. 프로젝트 설정은 바뀌지 않았습니다."
+          }
+        }
+      }
+    },
+    "ui.certificate.exception.saved.for.project.16e0ad73": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved the certificate exception for %1$@. Retry the SVN operation."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 인증서 예외를 저장했습니다. SVN 작업을 다시 실행하세요."
+          }
+        }
+      }
+    },
+    "ui.certificate.exception.security.warning.b82d4a16": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowing this exception weakens server identity verification for this project. A malicious server could impersonate your SVN server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 예외를 허용하면 해당 프로젝트의 서버 신원 검증이 약해집니다. 악성 서버가 SVN 서버를 사칭할 수 있습니다."
+          }
+        }
+      }
+    },
+    "ui.certificate.expired.guidance.a83d5e91": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server certificate has expired. Renewing it is safest. Allowing it lets this project connect without rejecting that expiration."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 인증서가 만료됐습니다. 인증서를 갱신하는 것이 가장 안전합니다. 허용하면 이 프로젝트는 해당 만료 오류를 무시하고 연결합니다."
+          }
+        }
+      }
+    },
+    "ui.certificate.name.mismatch.guidance.74c11a2b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The certificate was issued for a different hostname. Check the repository URL and certificate hostname before allowing this mismatch."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증서가 다른 서버 이름으로 발급됐습니다. 허용하기 전에 저장소 URL과 인증서의 서버 이름을 확인하세요."
+          }
+        }
+      }
+    },
+    "ui.certificate.not.yet.valid.guidance.5fb1c4d8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The certificate is not yet valid. Check the server and Mac clocks and the certificate start date before allowing it; correcting the clocks is safer than trusting the certificate."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증서의 유효 기간이 아직 시작되지 않았습니다. 허용하기 전에 서버와 Mac의 시계 및 인증서 시작일을 확인하세요. 인증서를 신뢰하는 것보다 시계를 바로잡는 것이 안전합니다."
+          }
+        }
+      }
+    },
+    "ui.certificate.unclassified.guidance.c1974a30": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN reported a certificate problem but did not identify a supported reason. The app cannot safely create a specific exception. Contact the server administrator and replace or repair the certificate."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN이 인증서 문제를 보고했지만 지원하는 원인을 특정하지 않았습니다. 앱은 안전한 개별 예외를 만들 수 없습니다. 서버 관리자에게 문의해 인증서를 교체하거나 수정하세요."
+          }
+        }
+      }
+    },
+    "ui.certificate.unknown.ca.guidance.39a72e10": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The certificate issuer is not trusted. Confirm the issuer with your server administrator. Allowing it bypasses authority verification for this project."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증서 발급 기관을 신뢰할 수 없습니다. 서버 관리자에게 발급 기관을 확인하세요. 허용하면 이 프로젝트에서 발급 기관 검증을 건너뜁니다."
           }
         }
       }
@@ -3146,6 +3350,23 @@
         }
       }
     },
+    "ui.copy.current.repository.url.82c5d1f0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Current Repository URL"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 저장소 URL 복사"
+          }
+        }
+      }
+    },
     "ui.copy.error.details.7de3d319": {
       "extractionState": "manual",
       "localizations": {
@@ -3435,6 +3656,23 @@
         }
       }
     },
+    "ui.directory.9e3f2a70": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Directory"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더"
+          }
+        }
+      }
+    },
     "ui.discard.changes.and.close.4e12b8a7": {
       "extractionState": "manual",
       "localizations": {
@@ -3465,6 +3703,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "로컬 변경을 되돌리고 서버 파일을 되살립니다."
+          }
+        }
+      }
+    },
+    "ui.do.not.allow.certificate.exception.f4c01a6e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do Not Allow"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용하지 않음"
           }
         }
       }
@@ -3605,6 +3860,23 @@
         }
       }
     },
+    "ui.enter.repository.url.to.browse.3f6a9d20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a repository URL to browse."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탐색할 저장소 URL을 입력하세요."
+          }
+        }
+      }
+    },
     "ui.enter.valid.credentials.9a70c5b2": {
       "extractionState": "manual",
       "localizations": {
@@ -3652,6 +3924,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "데모 종료"
+          }
+        }
+      }
+    },
+    "ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expired and not-yet-valid certificates require separate consent after SVN reports the specific failure."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "만료되거나 아직 유효하지 않은 인증서는 SVN이 구체적인 실패를 보고한 뒤 별도 동의가 필요합니다."
           }
         }
       }
@@ -3720,6 +4009,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "제외할 가짜 경로"
+          }
+        }
+      }
+    },
+    "ui.file.6d4b8c21": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일"
           }
         }
       }
@@ -4846,6 +5152,23 @@
         }
       }
     },
+    "ui.loading.repository.contents.5e1c7a84": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading repository contents…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 목록 불러오는 중…"
+          }
+        }
+      }
+    },
     "ui.loading.repository.locks.3dd2dfdb": {
       "extractionState": "manual",
       "localizations": {
@@ -5781,6 +6104,23 @@
         }
       }
     },
+    "ui.no.items.in.repository.directory.4d8b1f63": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The repository returned no files or subdirectories for this path."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 저장소 경로에 파일이나 하위 폴더가 없습니다."
+          }
+        }
+      }
+    },
     "ui.no.locked.files.7d32eee0": {
       "extractionState": "manual",
       "localizations": {
@@ -6036,6 +6376,23 @@
         }
       }
     },
+    "ui.open.selected.directory.2c7e5a91": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Selected Directory"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 폴더 열기"
+          }
+        }
+      }
+    },
     "ui.open.server.file.252d515b": {
       "extractionState": "manual",
       "localizations": {
@@ -6202,6 +6559,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "내 것으로 덮어쓰기"
+          }
+        }
+      }
+    },
+    "ui.parent.directory.1b7e4a93": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parent Directory"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상위 폴더"
           }
         }
       }
@@ -6818,6 +7192,74 @@
         }
       }
     },
+    "ui.repository.authentication.failed.6b2e9c14": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repository Authentication Failed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 인증 실패"
+          }
+        }
+      }
+    },
+    "ui.repository.connection.failed.1e5a7c93": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Connect to the Repository"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소에 연결할 수 없습니다"
+          }
+        }
+      }
+    },
+    "ui.repository.contents.failed.3c8f2d61": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could Not Load Repository Contents"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 목록을 불러올 수 없습니다"
+          }
+        }
+      }
+    },
+    "ui.repository.directory.empty.7a2c5e90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Directory Is Empty"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "빈 폴더입니다"
+          }
+        }
+      }
+    },
     "ui.repository.locks.dff91f03": {
       "extractionState": "manual",
       "localizations": {
@@ -7090,6 +7532,57 @@
         }
       }
     },
+    "ui.restore.working.file.confirmation.0ab7e3c9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore the Working File?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 파일을 되돌릴까요?"
+          }
+        }
+      }
+    },
+    "ui.restore.working.file.to.revision.79c4a2e6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Working File to This Revision…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 파일을 이 버전으로 되돌리기…"
+          }
+        }
+      }
+    },
+    "ui.restore.working.file.warning.62d159af": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current contents of %1$@ will be discarded and replaced with r%2$@. A recovery copy is saved first. The result is a local change and must be committed to update the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@의 현재 내용이 사라지고 r%2$@ 내용으로 바뀝니다. 먼저 복구본을 보관합니다. 결과는 로컬 수정이며 서버에 반영하려면 커밋해야 합니다."
+          }
+        }
+      }
+    },
     "ui.restored.98d96c01": {
       "extractionState": "manual",
       "localizations": {
@@ -7103,6 +7596,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "복원됨"
+          }
+        }
+      }
+    },
+    "ui.restored.revision.commit.required.f9346b20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restored %1$@ to r%2$@. This is now a local change. Commit it to update the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 파일을 r%2$@로 되돌렸습니다. 현재 로컬 수정 상태입니다. 서버에 반영하려면 커밋하세요."
+          }
+        }
+      }
+    },
+    "ui.restoring.revision.c840d51f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restoring Revision…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리비전으로 되돌리는 중…"
           }
         }
       }
@@ -7260,6 +7787,159 @@
         }
       }
     },
+    "ui.revision.history.client.unavailable.5d7a91c2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This project's SVN client does not support reading historical file revisions."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다."
+          }
+        }
+      }
+    },
+    "ui.revision.optional.63ad9f02": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revision (Optional)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리비전(선택)"
+          }
+        }
+      }
+    },
+    "ui.revision.restore.backup.inside.working.copy.107e9c6a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revision recovery copies must be stored outside the local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리비전 복구본은 로컬 작업 폴더 밖에 보관해야 합니다."
+          }
+        }
+      }
+    },
+    "ui.revision.restore.backup.verification.failed.d9152a6c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current working file could not be verified in the recovery copy, so it was not replaced."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일과 복구본이 일치하지 않아 파일을 교체하지 않았습니다."
+          }
+        }
+      }
+    },
+    "ui.revision.restore.missing.working.file.346db8a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current working file could not be found, so a recovery copy could not be created."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 작업 파일을 찾지 못해 복구본을 만들 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.revision.restore.path.outside.working.copy.87d5e210": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file path points outside the local working folder."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 경로가 로컬 작업 폴더 밖을 가리킵니다."
+          }
+        }
+      }
+    },
+    "ui.revision.restore.replacement.verification.failed.b8714e35": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The restored file did not match the selected revision byte for byte. The recovery copy was preserved."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원한 파일이 선택한 리비전과 바이트 단위로 일치하지 않습니다. 복구본은 보존했습니다."
+          }
+        }
+      }
+    },
+    "ui.revision.restore.unsafe.working.file.4a960fb3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The working file must be a regular file, not a symbolic link."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.revision.save.invalid.destination.5f4d2c81": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected save location is not a safe regular-file destination."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 위치는 일반 파일을 안전하게 저장할 수 있는 경로가 아닙니다."
+          }
+        }
+      }
+    },
     "ui.run.update.e17c8217": {
       "extractionState": "manual",
       "localizations": {
@@ -7379,6 +8059,40 @@
         }
       }
     },
+    "ui.save.this.revision.as.3e8d79a1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save This Revision As…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 버전 다른 이름으로 저장…"
+          }
+        }
+      }
+    },
+    "ui.saved.historical.revision.76ec18b4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved r%1$@ to %2$@."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "r%1$@ 버전을 %2$@에 저장했습니다."
+          }
+        }
+      }
+    },
     "ui.saving.6a1b2f0c": {
       "extractionState": "manual",
       "localizations": {
@@ -7392,6 +8106,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "저장 중…"
+          }
+        }
+      }
+    },
+    "ui.saving.revision.4fb2c8d0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving Revision…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "리비전 저장 중…"
           }
         }
       }
@@ -7579,6 +8310,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "메일 보내기"
+          }
+        }
+      }
+    },
+    "ui.server.certificate.problem.6c18f2a9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server Certificate Problem"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 인증서 문제"
+          }
+        }
+      }
+    },
+    "ui.server.certificate.problem.detected.281e7d4c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN rejected the server certificate. Review the detected problem before deciding."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN이 서버 인증서를 거부했습니다. 감지된 문제를 확인한 뒤 결정하세요."
           }
         }
       }
@@ -9198,6 +9963,23 @@
         }
       }
     },
+    "ui.use.repository.path.8f1d4b62": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Repository Path"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 저장소 경로 사용"
+          }
+        }
+      }
+    },
     "ui.use.server.file.30c6c26c": {
       "extractionState": "manual",
       "localizations": {
@@ -9587,209 +10369,6 @@
             "value": "두 서버 커밋 사이의 내 로컬 갱신 기준입니다."
           }
         }
-      }
-    },
-    "ui.save.this.revision.as.3e8d79a1": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Save This Revision As…" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "이 버전 다른 이름으로 저장…" } }
-      }
-    },
-    "ui.saving.revision.4fb2c8d0": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Saving Revision…" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "리비전 저장 중…" } }
-      }
-    },
-    "ui.restore.working.file.to.revision.79c4a2e6": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Restore Working File to This Revision…" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일을 이 버전으로 되돌리기…" } }
-      }
-    },
-    "ui.restoring.revision.c840d51f": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Restoring Revision…" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "리비전으로 되돌리는 중…" } }
-      }
-    },
-    "ui.restore.working.file.confirmation.0ab7e3c9": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Restore the Working File?" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일을 되돌릴까요?" } }
-      }
-    },
-    "ui.restore.working.file.warning.62d159af": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The current contents of %1$@ will be discarded and replaced with r%2$@. A recovery copy is saved first. The result is a local change and must be committed to update the server." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "%1$@의 현재 내용이 사라지고 r%2$@ 내용으로 바뀝니다. 먼저 복구본을 보관합니다. 결과는 로컬 수정이며 서버에 반영하려면 커밋해야 합니다." } }
-      }
-    },
-    "ui.restored.revision.commit.required.f9346b20": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Restored %1$@ to r%2$@. This is now a local change. Commit it to update the server." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "%1$@ 파일을 r%2$@로 되돌렸습니다. 현재 로컬 수정 상태입니다. 서버에 반영하려면 커밋하세요." } }
-      }
-    },
-    "ui.saved.historical.revision.76ec18b4": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Saved r%1$@ to %2$@." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "r%1$@ 버전을 %2$@에 저장했습니다." } }
-      }
-    },
-    "ui.revision.restore.missing.working.file.346db8a7": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The current working file could not be found, so a recovery copy could not be created." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "현재 작업 파일을 찾지 못해 복구본을 만들 수 없습니다." } }
-      }
-    },
-    "ui.revision.restore.unsafe.working.file.4a960fb3": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The working file must be a regular file, not a symbolic link." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다." } }
-      }
-    },
-    "ui.revision.restore.path.outside.working.copy.87d5e210": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The file path points outside the local working folder." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "파일 경로가 로컬 작업 폴더 밖을 가리킵니다." } }
-      }
-    },
-    "ui.revision.restore.backup.inside.working.copy.107e9c6a": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Revision recovery copies must be stored outside the local working folder." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "리비전 복구본은 로컬 작업 폴더 밖에 보관해야 합니다." } }
-      }
-    },
-    "ui.revision.restore.backup.verification.failed.d9152a6c": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The current working file could not be verified in the recovery copy, so it was not replaced." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "현재 작업 파일과 복구본이 일치하지 않아 파일을 교체하지 않았습니다." } }
-      }
-    },
-    "ui.revision.restore.replacement.verification.failed.b8714e35": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The restored file did not match the selected revision byte for byte. The recovery copy was preserved." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "복원한 파일이 선택한 리비전과 바이트 단위로 일치하지 않습니다. 복구본은 보존했습니다." } }
-      }
-    },
-    "ui.revision.save.invalid.destination.5f4d2c81": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The selected save location is not a safe regular-file destination." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "선택한 위치는 일반 파일을 안전하게 저장할 수 있는 경로가 아닙니다." } }
-      }
-    },
-    "ui.revision.history.client.unavailable.5d7a91c2": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "This project's SVN client does not support reading historical file revisions." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다." } }
-      }
-    },
-    "ui.certificate.unknown.ca.guidance.39a72e10": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The certificate issuer is not trusted. Confirm the issuer with your server administrator. Allowing it bypasses authority verification for this project." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "인증서 발급 기관을 신뢰할 수 없습니다. 서버 관리자에게 발급 기관을 확인하세요. 허용하면 이 프로젝트에서 발급 기관 검증을 건너뜁니다." } }
-      }
-    },
-    "ui.certificate.name.mismatch.guidance.74c11a2b": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The certificate was issued for a different hostname. Check the repository URL and certificate hostname before allowing this mismatch." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "인증서가 다른 서버 이름으로 발급됐습니다. 허용하기 전에 저장소 URL과 인증서의 서버 이름을 확인하세요." } }
-      }
-    },
-    "ui.certificate.expired.guidance.a83d5e91": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The server certificate has expired. Renewing it is safest. Allowing it lets this project connect without rejecting that expiration." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "서버 인증서가 만료됐습니다. 인증서를 갱신하는 것이 가장 안전합니다. 허용하면 이 프로젝트는 해당 만료 오류를 무시하고 연결합니다." } }
-      }
-    },
-    "ui.certificate.not.yet.valid.guidance.5fb1c4d8": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The certificate is not yet valid. Check the server and Mac clocks and the certificate start date before allowing it; correcting the clocks is safer than trusting the certificate." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "인증서의 유효 기간이 아직 시작되지 않았습니다. 허용하기 전에 서버와 Mac의 시계 및 인증서 시작일을 확인하세요. 인증서를 신뢰하는 것보다 시계를 바로잡는 것이 안전합니다." } }
-      }
-    },
-    "ui.certificate.unclassified.guidance.c1974a30": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "SVN reported a certificate problem but did not identify a supported reason. The app cannot safely create a specific exception. Contact the server administrator and replace or repair the certificate." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "SVN이 인증서 문제를 보고했지만 지원하는 원인을 특정하지 않았습니다. 앱은 안전한 개별 예외를 만들 수 없습니다. 서버 관리자에게 문의해 인증서를 교체하거나 수정하세요." } }
-      }
-    },
-    "ui.certificate.exception.not.allowed.d47c92a1": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The certificate exception was not allowed. No project setting changed." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "인증서 예외를 허용하지 않았습니다. 프로젝트 설정은 바뀌지 않았습니다." } }
-      }
-    },
-    "ui.certificate.exception.saved.for.project.16e0ad73": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Saved the certificate exception for %1$@. Retry the SVN operation." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "%1$@의 인증서 예외를 저장했습니다. SVN 작업을 다시 실행하세요." } }
-      }
-    },
-    "ui.server.certificate.problem.6c18f2a9": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Server Certificate Problem" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "서버 인증서 문제" } }
-      }
-    },
-    "ui.server.certificate.problem.detected.281e7d4c": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "SVN rejected the server certificate. Review the detected problem before deciding." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "SVN이 서버 인증서를 거부했습니다. 감지된 문제를 확인한 뒤 결정하세요." } }
-      }
-    },
-    "ui.certificate.exception.security.warning.b82d4a16": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Allowing this exception weakens server identity verification for this project. A malicious server could impersonate your SVN server." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "이 예외를 허용하면 해당 프로젝트의 서버 신원 검증이 약해집니다. 악성 서버가 SVN 서버를 사칭할 수 있습니다." } }
-      }
-    },
-    "ui.do.not.allow.certificate.exception.f4c01a6e": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Do Not Allow" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "허용하지 않음" } }
-      }
-    },
-    "ui.allow.certificate.failure.for.project.0d91bc52": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Allow for This Project" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "이 프로젝트에서 허용" } }
-      }
-    },
-    "ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Expired and not-yet-valid certificates require separate consent after SVN reports the specific failure." } },
-        "ko": { "stringUnit": { "state": "translated", "value": "만료되거나 아직 유효하지 않은 인증서는 SVN이 구체적인 실패를 보고한 뒤 별도 동의가 필요합니다." } }
       }
     }
   },
