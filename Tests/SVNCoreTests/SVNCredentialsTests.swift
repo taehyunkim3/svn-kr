@@ -188,11 +188,10 @@ import Testing
     #!/bin/sh
     case "$*" in
       *"checkout --"*)
-        : > checkout-started
+        printf 'checkout-started\n'
         while [ ! -f continue-checkout ]; do sleep 0.02; done
         ;;
       *"info --show-item wc-root"*)
-        : > info-finished
         printf '%s\\n' "$PWD"
         ;;
     esac
@@ -204,25 +203,34 @@ import Testing
         configDirectoryPath: directory.appendingPathComponent("svn-config").path
     )
     let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+    let checkoutStarted = AsyncTestEvent()
     let checkout = Task {
         try await client.checkout(
             repositoryURL: "https://example.test/svn/project",
-            destinationPath: destination.path
+            destinationPath: destination.path,
+            progress: { output in
+                if output.contains("checkout-started") {
+                    checkoutStarted.signal()
+                }
+            }
         )
     }
-    #expect(await waitUntil(timeout: .seconds(15)) {
-        FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
-    })
+    await checkoutStarted.wait()
 
-    let validation = Task { try await client.validateWorkingCopy(at: destination.path) }
-    let infoFinished = await waitUntil(timeout: .seconds(5)) {
-        FileManager.default.fileExists(atPath: destination.appendingPathComponent("info-finished").path)
+    let validationFinished = AsyncTestEvent()
+    let validation = Task {
+        do {
+            try await client.validateWorkingCopy(at: destination.path)
+            validationFinished.signal()
+        } catch {
+            validationFinished.signal()
+            throw error
+        }
     }
+    await validationFinished.wait()
     try Data().write(to: destination.appendingPathComponent("continue-checkout"))
     _ = try await checkout.value
     try await validation.value
-
-    #expect(infoFinished)
 }
 
 @Test func cancellingCommandTerminatesProcess() async throws {
@@ -352,6 +360,38 @@ private final class CheckoutOutputRecorder: @unchecked Sendable {
 
     func append(_ output: String) {
         lock.withLock { storedOutput += output }
+    }
+}
+
+private final class AsyncTestEvent: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isSignaled = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func signal() {
+        lock.lock()
+        guard !isSignaled else {
+            lock.unlock()
+            return
+        }
+        isSignaled = true
+        let pending = waiters
+        waiters.removeAll()
+        lock.unlock()
+        pending.forEach { $0.resume() }
+    }
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if isSignaled {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                waiters.append(continuation)
+                lock.unlock()
+            }
+        }
     }
 }
 
@@ -532,6 +572,48 @@ private final class CheckoutOutputRecorder: @unchecked Sendable {
     let revision = try await client.workingCopyRevision(at: directory.path)
 
     #expect(revision == SVNWorkingCopyRevision(minimum: "37", maximum: "41"))
+}
+
+@Test func incomingCommitsStartsAfterMinimumWorkingCopyRevision() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-incoming-mixed-revision-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let intendedMessage = "혼합 리비전 커밋"
+    let mojibakeMessage = String(
+        data: Data(intendedMessage.decomposedStringWithCanonicalMapping.utf8),
+        encoding: .isoLatin1
+    )!
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="37"/></entry><entry path="file.txt"><wc-status item="normal" revision="41"/></entry></target></status>'
+        ;;
+      *"info --revision HEAD --show-item revision"*) printf '42\n' ;;
+      *"log --revision 38:HEAD --verbose --xml --with-all-revprops"*)
+        printf '%s' '<?xml version="1.0"?><log><logentry revision="42"><msg>\(mojibakeMessage)</msg></logentry></log>'
+        ;;
+      *)
+        printf 'unexpected arguments: %s\n' "$*" >&2
+        exit 1
+        ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let commits = try await client.incomingCommits(at: directory.path)
+
+    #expect(commits.map(\.revision) == ["42"])
+    #expect(commits[0].message == intendedMessage)
+    #expect(commits[0].originalMessage == mojibakeMessage)
 }
 
 @Test func readsWorkingCopyPathRelativeToRepositoryRoot() async throws {

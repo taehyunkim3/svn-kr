@@ -310,7 +310,7 @@ public actor SVNClient {
             at: path,
             credentials: credentials
         )
-        return try SVNAdditionalXMLParser.properties(from: Data(result.output.utf8))
+        return try SVNXMLParser.properties(from: Data(result.output.utf8))
     }
 
     private func runWorkingCopyCopyOrMove(
@@ -1441,7 +1441,7 @@ public actor SVNClient {
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let baseRevision = try await workingCopyRevision(at: path, credentials: credentials)
-        guard let base = Int(baseRevision.maximum) else { throw SVNError.malformedResponse }
+        guard let base = Int(baseRevision.minimum) else { throw SVNError.malformedResponse }
         let headResult = try await checkedRun(
             ["info", "--revision", "HEAD", "--show-item", "revision"],
             at: path,
@@ -1463,7 +1463,7 @@ public actor SVNClient {
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             allowedServerCertificateFailures: allowedServerCertificateFailures
         )
-        return try SVNAdditionalXMLParser.logs(from: Data(result.output.utf8))
+        return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
 
     public func workingCopyIsOutOfDate(

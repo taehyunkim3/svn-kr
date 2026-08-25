@@ -99,6 +99,14 @@ public enum SVNXMLParser {
         return delegate.rules
     }
 
+    static func properties(from data: Data) throws -> [SVNProperty] {
+        let delegate = PropertyListDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.properties
+    }
+
     public static func repositoryLocks(fromStatus data: Data) throws -> [SVNLockInfo] {
         let delegate = StatusLocksDelegate()
         let parser = XMLParser(data: data)
@@ -121,6 +129,54 @@ public enum SVNXMLParser {
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
         return delegate.details
+    }
+}
+
+private final class PropertyListDelegate: NSObject, XMLParserDelegate {
+    var properties: [SVNProperty] = []
+    private var propertyName: String?
+    private var propertyEncoding: String?
+    private var text = ""
+
+    func parser(
+        _ parser: XMLParser,
+        didStartElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
+    ) {
+        guard elementName == "property" else { return }
+        propertyName = attributeDict["name"]
+        propertyEncoding = attributeDict["encoding"]
+        text = ""
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        guard propertyName != nil else { return }
+        text += string
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didEndElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?
+    ) {
+        guard elementName == "property", let propertyName else { return }
+        let value: Data?
+        if propertyEncoding == "base64" {
+            value = Data(base64Encoded: text, options: .ignoreUnknownCharacters)
+        } else {
+            value = Data(text.utf8)
+        }
+        if let value {
+            properties.append(SVNProperty(name: propertyName, value: value))
+        } else {
+            parser.abortParsing()
+        }
+        self.propertyName = nil
+        propertyEncoding = nil
+        text = ""
     }
 }
 

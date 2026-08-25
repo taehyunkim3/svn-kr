@@ -206,11 +206,15 @@ import Testing
     try fixture.write(Data("one again".utf8), relativePath: "one.txt", in: fixture.secondWorkingCopy)
     try fixture.commit(message: "remote two", workingCopy: fixture.secondWorkingCopy)
 
+    let workingCopyRevision = try await fixture.client.workingCopyRevision(at: fixture.workingCopy.path)
     let commits = try await fixture.client.incomingCommits(at: fixture.workingCopy.path)
-    #expect(commits.map(\.revision) == ["3", "4"])
+    #expect(workingCopyRevision == SVNWorkingCopyRevision(minimum: "1", maximum: "2"))
+    #expect(commits.map(\.revision) == ["2", "3", "4"])
     #expect(commits[0].changedPaths.map(\.path).contains("/trunk/one.txt"))
     #expect(commits[0].changedPaths.map(\.path).contains("/trunk/two.txt"))
-    #expect(commits[1].changedPaths.map(\.path) == ["/trunk/one.txt"])
+    #expect(commits[1].changedPaths.map(\.path).contains("/trunk/one.txt"))
+    #expect(commits[1].changedPaths.map(\.path).contains("/trunk/two.txt"))
+    #expect(commits[2].changedPaths.map(\.path) == ["/trunk/one.txt"])
 
     let movedRepository = fixture.root.appendingPathComponent("repository-offline", isDirectory: true)
     try FileManager.default.moveItem(at: fixture.repository, to: movedRepository)

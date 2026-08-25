@@ -68,7 +68,7 @@ import Testing
     store.requestSelectedWorkingCopyCleanup()
 
     let firstCleanup = Task { await store.cleanupSelectedWorkingCopy() }
-    await waitForCleanupRequest(client)
+    await cleanupGate.waitUntilEntered()
     let duplicateResult = await store.cleanupSelectedWorkingCopy()
 
     #expect(store.isCleaningSelectedWorkingCopy)
@@ -850,7 +850,7 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     let resolution = Task { await store.resolveActiveTreeConflict(using: .keepWorkingState) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     store.selectedProjectID = otherProject.id
     store.errorMessage = "new-project-error"
     store.notice = "new-project-notice"
@@ -1012,7 +1012,7 @@ import Testing
     )
 
     let olderPreparation = Task { await store.prepareConflictResolution(for: olderDetails.path) }
-    await waitForConflictDetailsRequest(client, path: olderDetails.path)
+    await olderGate.waitUntilEntered()
     await store.prepareConflictResolution(for: newerDetails.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     #expect(store.activeConflictSession?.details.path == newerDetails.path)
@@ -1038,7 +1038,7 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     let resolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     store.selectedProjectID = otherProject.id
     store.errorMessage = "new-project-error"
     store.notice = "new-project-notice"
@@ -1067,7 +1067,7 @@ import Testing
     let firstSessionID = try #require(store.activeConflictSession?.id)
 
     let oldResolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     await store.prepareConflictResolution(for: fixture.details.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     #expect(newerSessionID != firstSessionID)
@@ -1096,7 +1096,7 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     let first = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     let duplicate = Task { await store.resolveActiveConflict(using: .theirsFull) }
     for _ in 0..<100 { await Task.yield() }
     store.openConflictVersion(.mineFull)
@@ -1128,7 +1128,7 @@ import Testing
     )
     await store.prepareConflictResolution(for: fixture.details.path)
     let oldResolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     await store.prepareConflictResolution(for: fixture.details.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     store.errorMessage = "newer-error"
@@ -1334,7 +1334,7 @@ import Testing
     store.selectedBrowserPath = "Folder/original.txt"
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "Folder")
+    await folderGate.waitUntilEntered()
 
     #expect(store.workingCopyBrowserTreeState == originalState)
     #expect(store.workingCopyBrowserTreeState.visibleRows().map(\.relativePath) == [
@@ -1412,7 +1412,7 @@ import Testing
     store.workingCopyBrowserTreeState = state
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "First")
+    await folderGate.waitUntilEntered()
     _ = store.setWorkingCopyDirectory("First", expanded: false)
     _ = store.setWorkingCopyDirectory("Second", expanded: true)
     store.selectedBrowserPath = "Second/kept.txt"
@@ -1456,12 +1456,12 @@ import Testing
     store.workingCopyBrowserTreeState = state
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "First")
+    await refreshGate.waitUntilEntered()
     _ = store.setWorkingCopyDirectory("First", expanded: false)
     let directoryToLoad = store.setWorkingCopyDirectory("Second", expanded: true)
     #expect(directoryToLoad == "Second")
     let userLoad = Task { await store.loadWorkingCopyDirectory("Second") }
-    await waitForDirectoryRequest(fileService, path: "Second")
+    await userLoadGate.waitUntilEntered()
 
     await refreshGate.release()
     await refresh.value
@@ -1739,6 +1739,7 @@ import Testing
 @MainActor
 @Test func updateBadgesRefreshOnConfiguredInterval() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/badge-interval")
+    let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 2)
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
         latestLogRevisionsByPath: [project.path: "11"]
@@ -1746,14 +1747,15 @@ import Testing
     let store = makeStore(
         projects: [project],
         client: client,
-        updateBadgeRefreshInterval: .milliseconds(10)
+        updateBadgeRefreshInterval: .milliseconds(10),
+        updateBadgeSleep: { duration in
+            try await sleeper.sleep(for: duration)
+        }
     )
 
-    let deadline = ContinuousClock.now + .seconds(15)
-    while store.projectSummaries[project.id] == nil, ContinuousClock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(1))
-    }
+    await sleeper.waitUntilRecorded(2)
 
+    #expect(await sleeper.recordedDurations() == [.milliseconds(10), .milliseconds(10)])
     #expect(store.projectSummaries[project.id]?.needsUpdate == true)
 }
 
@@ -1776,10 +1778,7 @@ import Testing
         }
     )
 
-    let deadline = ContinuousClock.now + .seconds(15)
-    while await sleeper.recordedDurations().count < 5, ContinuousClock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(1))
-    }
+    await sleeper.waitUntilRecorded(5)
 
     #expect(await sleeper.recordedDurations() == [
         .milliseconds(10),
@@ -2436,7 +2435,7 @@ import Testing
             allowsUntrustedServerCertificate: false
         )
     }
-    await waitUntilCheckoutStarts(client)
+    await client.waitUntilCheckoutStarts()
     store.cancelCheckout()
     let succeeded = await checkout.value
 
@@ -2469,7 +2468,7 @@ import Testing
             allowsUntrustedServerCertificate: false
         )
     }
-    await waitUntilCheckoutStarts(client)
+    await client.waitUntilCheckoutStarts()
     store.cancelCheckout()
     _ = await checkout.value
     let request = try #require(store.canceledCheckoutRecoveryRequest)
@@ -3148,20 +3147,33 @@ private actor StubVolumeNormalizationProbe: VolumeNormalizationProbing {
 
 private actor AsyncTestGate {
     private var isReleased = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var didEnter = false
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+    private var entryWaiters: [CheckedContinuation<Void, Never>] = []
 
     func wait() async {
         guard !isReleased else { return }
+        didEnter = true
+        let pendingEntryWaiters = entryWaiters
+        entryWaiters.removeAll()
+        pendingEntryWaiters.forEach { $0.resume() }
         await withCheckedContinuation { continuation in
-            waiters.append(continuation)
+            releaseWaiters.append(continuation)
+        }
+    }
+
+    func waitUntilEntered() async {
+        guard !didEnter else { return }
+        await withCheckedContinuation { continuation in
+            entryWaiters.append(continuation)
         }
     }
 
     func release() {
         guard !isReleased else { return }
         isReleased = true
-        let pending = waiters
-        waiters.removeAll()
+        let pending = releaseWaiters
+        releaseWaiters.removeAll()
         pending.forEach { $0.resume() }
     }
 }
@@ -3169,6 +3181,7 @@ private actor AsyncTestGate {
 private actor RecordingUpdateBadgeSleeper {
     private let stopsAfter: Int
     private var durations: [Duration] = []
+    private var waiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
 
     init(stopsAfter: Int) {
         self.stopsAfter = stopsAfter
@@ -3176,50 +3189,24 @@ private actor RecordingUpdateBadgeSleeper {
 
     func sleep(for duration: Duration) async throws {
         durations.append(duration)
+        let pending = waiters.filter { $0.count <= durations.count }
+        waiters.removeAll { $0.count <= durations.count }
+        pending.forEach { $0.continuation.resume() }
         if durations.count == stopsAfter {
             throw CancellationError()
+        }
+    }
+
+    func waitUntilRecorded(_ count: Int) async {
+        guard durations.count < count else { return }
+        await withCheckedContinuation { continuation in
+            waiters.append((count, continuation))
         }
     }
 
     func recordedDurations() -> [Duration] {
         durations
     }
-}
-
-private func waitForConflictDetailsRequest(_ client: StubSVNClient, path: String) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.conflictDetailsRequestCount(for: path) > 0 { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("충돌 상세 요청이 시작되지 않았습니다: \(path)")
-}
-
-private func waitUntilCheckoutStarts(_ client: StubSVNClient) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.hasStartedCheckout() { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("체크아웃이 시작되지 않았습니다.")
-}
-
-private func waitForCleanupRequest(_ client: StubSVNClient) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.cleanupRequestCount() > 0 { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("작업 복사본 정리가 시작되지 않았습니다.")
-}
-
-private func waitForResolveRequest(_ client: StubSVNClient) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.conflictChoiceCount() > 0 { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("충돌 해결 요청이 시작되지 않았습니다.")
 }
 
 private func workingRecoveryURLs(in directory: URL) throws -> [URL] {
@@ -3341,6 +3328,7 @@ private actor StubSVNClient: SVNClientServing {
     let validateWorkingCopyError: Error?
     let verifyCredentialsError: Error?
     private var checkoutStarted = false
+    private var checkoutStartWaiters: [CheckedContinuation<Void, Never>] = []
     private var validatedPaths: [String] = []
     private var verifiedCredentials: [SVNCredentials?] = []
     let lockInfoByPath: [String: SVNLockInfo]
@@ -3510,6 +3498,9 @@ private actor StubSVNClient: SVNClientServing {
         for output in checkoutProgress { progress?(output) }
         if checkoutRunsUntilCancelled {
             checkoutStarted = true
+            let pending = checkoutStartWaiters
+            checkoutStartWaiters.removeAll()
+            pending.forEach { $0.resume() }
             // 실제 SVNClient는 취소 시 svn 프로세스를 종료하고 CancellationError를
             // 던집니다. sleep도 같은 오류를 던지므로 취소 경로를 그대로 재현합니다.
             try await Task.sleep(for: .seconds(60))
@@ -3535,7 +3526,12 @@ private actor StubSVNClient: SVNClientServing {
 
     func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
     func recordedValidatedPaths() -> [String] { validatedPaths }
-    func hasStartedCheckout() -> Bool { checkoutStarted }
+    func waitUntilCheckoutStarts() async {
+        guard !checkoutStarted else { return }
+        await withCheckedContinuation { continuation in
+            checkoutStartWaiters.append(continuation)
+        }
+    }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {
         await delay(for: path)
         return statusesByPath[path] ?? []
@@ -3828,18 +3824,6 @@ private actor ControlledWorkingCopyFileService: WorkingCopyFileListing {
     func requestedDirectories() -> [String] {
         directoryRequests
     }
-}
-
-private func waitForDirectoryRequest(
-    _ service: ControlledWorkingCopyFileService,
-    path: String
-) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await service.requestedDirectories().contains(path) { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("파일 브라우저 디렉터리 요청이 시작되지 않았습니다: \(path)")
 }
 
 private func makeBrowserRefreshNode(
