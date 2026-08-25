@@ -44,6 +44,10 @@ struct ChangesView: View {
             TreeConflictResolutionView()
                 .environment(store)
         }
+        .sheet(item: $store.recoveryState.propertyConflictSession) { _ in
+            PropertyConflictResolutionView()
+                .environment(store)
+        }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView()
                 .environment(store)
@@ -131,11 +135,21 @@ struct ChangesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
+                    if entry.item == .obstructed {
+                        Text(appLanguage.localized("ui.move.or.rename.the.local.file.then.update.1e3c7a90"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .buttonStyle(.plain)
             .accessibilityHint(appLanguage.localized("ui.shows.the.diff.for.this.file.6f52b16a"))
             Spacer()
+            if entry.item == .obstructed {
+                Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
+                    store.revealInFinder(entry.path)
+                }
+            }
         }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
         .contextMenu {
@@ -162,7 +176,7 @@ struct ChangesView: View {
                 }
             }
             Divider()
-            if entry.item == .conflicted {
+            if entry.item == .conflicted || entry.propertyState == .conflicted {
                 Button(appLanguage.localized("ui.resolve.conflict.592b6d3a")) {
                     Task { await store.prepareConflictResolution(for: entry.path) }
                 }
@@ -187,10 +201,12 @@ struct ChangesView: View {
                     store.requestDeletion(entry)
                 }
             }
-            if entry.item != .unversioned && entry.item != .ignored && entry.item != .conflicted && entry.item != .missing {
+            if entry.item != .unversioned && entry.item != .ignored && entry.item != .missing {
                 Divider()
                 Button(
-                    entry.item == .deleted
+                    entry.item == .conflicted || entry.propertyState == .conflicted
+                        ? appLanguage.localized("ui.revert.conflict.discards.local.changes.and.conflict.51b3d907")
+                        : entry.item == .deleted
                         ? appLanguage.localized("ui.cancel.deletion.and.restore.ce07fc64")
                         : appLanguage.localized("ui.revert.local.changes.c62907ae"),
                     role: .destructive
@@ -272,12 +288,33 @@ struct ChangesView: View {
     // MARK: - 변경 상태 배지
 
     private func statusBadge(_ entry: SVNStatusEntry) -> some View {
-        StatusBadge(label: statusLabel(entry), color: statusColor(entry))
+        HStack(spacing: 4) {
+            if entry.item != .unknown("normal") {
+                StatusBadge(label: statusLabel(entry), color: statusColor(entry))
+            }
+            switch entry.propertyState {
+            case .none:
+                EmptyView()
+            case .modified:
+                StatusBadge(
+                    label: appLanguage.localized("ui.property.modified.4c9a78e1"),
+                    color: .orange
+                )
+            case .conflicted:
+                StatusBadge(
+                    label: appLanguage.localized("ui.property.conflict.2fd61b8a"),
+                    color: .red
+                )
+            }
+        }
     }
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {
         if TemporaryFilePolicy.isTemporaryFile(entry) {
             return appLanguage.localized("ui.temporary.5738ffab")
+        }
+        if entry.item == .obstructed {
+            return appLanguage.localized("ui.obstructed.local.file.74a9c2e5")
         }
         return switch entry.item {
         case .modified: appLanguage.localized("ui.modified.01365bb2")
@@ -295,6 +332,7 @@ struct ChangesView: View {
 
     private func statusColor(_ entry: SVNStatusEntry) -> Color {
         if TemporaryFilePolicy.isTemporaryFile(entry) { return .gray }
+        if entry.item == .obstructed { return .orange }
         return switch entry.item {
         case .modified: .orange
         case .added, .unversioned: .blue

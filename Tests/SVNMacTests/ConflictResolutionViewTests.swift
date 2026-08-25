@@ -59,6 +59,74 @@ import Testing
     #expect(changes.contains("TreeConflictResolutionView()"))
 }
 
+@Test func propertyConflictOffersTwoDestructivelyConfirmedChoices() throws {
+    let sources = try svnMacSources()
+    let view = try source(named: "PropertyConflictResolutionView.swift", in: sources)
+
+    #expect(view.contains("choice: .applyServerProperties"))
+    #expect(view.contains("choice: .keepMyProperties"))
+    #expect(view.contains("Button(confirmationActionTitle, role: .destructive)"))
+    #expect(view.contains("Task { await store.resolveActivePropertyConflict(using: choice) }"))
+    #expect(view.contains("systemImage: \"exclamationmark.triangle.fill\""))
+    #expect(view.contains(".foregroundStyle(.orange)"))
+    #expect(view.contains("AppLayout.conflictResolutionSheetMinimumSize"))
+}
+
+@Test func changesViewPresentsPropertyConflictAndRevertActions() throws {
+    let sources = try svnMacSources()
+    let changes = try source(named: "ChangesView.swift", in: sources)
+
+    #expect(changes.contains(".sheet(item: $store.recoveryState.propertyConflictSession)"))
+    #expect(changes.contains("PropertyConflictResolutionView()"))
+    #expect(changes.contains("entry.propertyState == .conflicted"))
+    #expect(!changes.contains("entry.item != .conflicted && entry.item != .missing"))
+    #expect(changes.contains("ui.property.modified.4c9a78e1"))
+    #expect(changes.contains("ui.property.conflict.2fd61b8a"))
+    #expect(changes.contains("ui.obstructed.local.file.74a9c2e5"))
+    #expect(changes.contains("ui.move.or.rename.the.local.file.then.update.1e3c7a90"))
+    #expect(changes.contains("store.revealInFinder(entry.path)"))
+}
+
+@Test func propertyConflictPreparationKeepsOtherConflictSessionsNil() throws {
+    let storeConflicts = try source(named: "ProjectStore+Conflicts.swift", in: try svnMacSources())
+
+    #expect(storeConflicts.contains("case \"property\":"))
+    #expect(storeConflicts.contains("activeConflictSession = nil"))
+    #expect(storeConflicts.contains("activeTreeConflictSession = nil"))
+    #expect(storeConflicts.contains("recoveryState.propertyConflictSession = session"))
+    #expect(storeConflicts.contains("canApplyConflictPreparation(requestID, projectID: projectID)"))
+    #expect(storeConflicts.contains("resolvedPath.precomposedStringWithCanonicalMapping"))
+}
+
+@Test func propertyConflictStringsExistInEveryLocalizationResource() throws {
+    let keys = [
+        "ui.apply.server.properties.51ad840e",
+        "ui.conflicted.properties.849bf370",
+        "ui.conflicted.property.name.unavailable.0cc5d784",
+        "ui.keep.my.properties.68b12ae4",
+        "ui.local.property.values.will.be.discarded.f98a7c20",
+        "ui.move.or.rename.the.local.file.then.update.1e3c7a90",
+        "ui.obstructed.local.file.74a9c2e5",
+        "ui.property.conflict.2fd61b8a",
+        "ui.property.modified.4c9a78e1",
+        "ui.revert.conflict.discards.local.changes.and.conflict.51b3d907",
+        "ui.server.property.values.will.be.discarded.84d6f2c1",
+    ]
+    let resources = try svnMacSources().appendingPathComponent("Resources", isDirectory: true)
+    let localizationFiles = [
+        resources.appendingPathComponent("Localizable.xcstrings"),
+        resources.appendingPathComponent("ko.lproj/Localizable.strings"),
+        resources.appendingPathComponent("en.lproj/Localizable.strings"),
+    ]
+
+    for file in localizationFiles {
+        let contents = try String(contentsOf: file, encoding: .utf8)
+        for key in keys {
+            #expect(contents.contains(key), "\(key) is missing from \(file.path)")
+        }
+    }
+}
+
 @Test func conflictResolutionStringsExistInEveryLocalizationResource() throws {
     let keys = [
         "ui.apply.server.version.61c5a01e",
