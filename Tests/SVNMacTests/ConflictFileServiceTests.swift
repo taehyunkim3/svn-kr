@@ -27,6 +27,33 @@ import Testing
     #expect(session.directoryURL == session.server.url.deletingLastPathComponent())
 }
 
+@Test func detectsBinaryConflictFromNullByteInServerBackupPrefix() throws {
+    let fixture = try ConflictFixture()
+    defer { fixture.remove() }
+    try Data([0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x00, 0xFF]).write(to: fixture.serverURL)
+
+    let session = try ConflictFileService(backupRootURL: fixture.backupRoot).prepareSession(
+        fixture.details,
+        projectID: fixture.projectID,
+        workingCopyPath: fixture.workingCopy.path
+    )
+
+    #expect(session.isBinary)
+}
+
+@Test func detectsTextConflictWhenServerBackupPrefixHasNoNullByte() throws {
+    let fixture = try ConflictFixture()
+    defer { fixture.remove() }
+
+    let session = try ConflictFileService(backupRootURL: fixture.backupRoot).prepareSession(
+        fixture.details,
+        projectID: fixture.projectID,
+        workingCopyPath: fixture.workingCopy.path
+    )
+
+    #expect(!session.isBinary)
+}
+
 @Test func usesWorkingFileAsBinaryMineWhenSVNOmitsMineArtifact() throws {
     let fixture = try ConflictFixture()
     defer { fixture.remove() }

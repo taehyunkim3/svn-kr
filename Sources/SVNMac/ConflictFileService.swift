@@ -18,10 +18,7 @@ struct ConflictResolutionSession: Identifiable, Hashable {
     let mine: ConflictVersionBackup
     let server: ConflictVersionBackup
     let mineResolveSourceURL: URL?
-
-    /// 충돌 마커를 사람이 직접 편집할 수 없는 파일인지 여부입니다.
-    /// 계약 스텁: 실제 판별은 ConflictFileService 구현 작업에서 저장 프로퍼티로 대체합니다.
-    var isBinary: Bool { false }
+    let isBinary: Bool
 }
 
 enum ConflictFileError: Error {
@@ -43,6 +40,7 @@ enum ConflictFileError: Error {
 
 /// SVN이 만든 충돌 보조 파일을 보존하고 사용자가 비교하기 쉬운 이름으로 복사합니다.
 struct ConflictFileService {
+    private static let binaryInspectionByteCount = 8_000
     private let fileManager: FileManager
     private let backupRootURL: URL?
     private let copyItem: (URL, URL) throws -> Void
@@ -133,6 +131,7 @@ struct ConflictFileService {
             if usesWorkingFileAsMine {
                 try copyItem(stagedMineURL, stagedMineResolveSourceURL)
             }
+            let isBinary = inspectBinaryBackup(server: stagedServerURL, mine: stagedMineURL)
             let mine = try backup(stagedMineURL, revision: nil)
             let server = try backup(stagedServerURL, revision: details.serverRevision)
             try fileManager.createDirectory(at: directory.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -159,7 +158,8 @@ struct ConflictFileService {
                 ),
                 mineResolveSourceURL: usesWorkingFileAsMine
                     ? directory.appendingPathComponent(stagedMineResolveSourceURL.lastPathComponent)
-                    : nil
+                    : nil,
+                isBinary: isBinary
             )
         } catch {
             do {
@@ -267,6 +267,18 @@ struct ConflictFileService {
             return nil
         }
         return revision
+    }
+
+    private func inspectBinaryBackup(server: URL, mine: URL) -> Bool {
+        let source = fileManager.fileExists(atPath: server.path) ? server : mine
+        do {
+            let handle = try FileHandle(forReadingFrom: source)
+            defer { try? handle.close() }
+            let prefix = try handle.read(upToCount: Self.binaryInspectionByteCount) ?? Data()
+            return prefix.contains(0)
+        } catch {
+            return true
+        }
     }
 
     private func replaceFileAtomically(

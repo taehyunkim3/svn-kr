@@ -28,25 +28,103 @@ extension ProjectStore {
                 throw ConflictFileError.unsupportedType("unknown")
             }
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
-            let session = try conflictFileService.prepareSession(
-                details,
-                projectID: projectID,
-                workingCopyPath: project.path,
-                requestedPath: relativePath,
-                versionedPath: versionedPath
-            )
-            guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
-            activeConflictSession = session
+            switch details.type {
+            case "text":
+                let session = try conflictFileService.prepareSession(
+                    details,
+                    projectID: projectID,
+                    workingCopyPath: project.path,
+                    requestedPath: relativePath,
+                    versionedPath: versionedPath
+                )
+                guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
+                activeTreeConflictSession = nil
+                activeConflictSession = session
+            case "tree":
+                let session = TreeConflictSession(
+                    details: details,
+                    requestedPath: relativePath,
+                    versionedPath: versionedPath,
+                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8)
+                )
+                guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
+                activeConflictSession = nil
+                activeTreeConflictSession = session
+            default:
+                throw ConflictFileError.unsupportedType(details.type)
+            }
         } catch {
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
         }
     }
 
-    /// 계약 스텁: 트리 충돌 해결 구현 작업에서 실제 동작으로 대체합니다.
-    /// keepWorkingState는 `svn resolve --accept working`,
-    /// restoreServerVersion은 `svn revert` 후 `svn update`에 해당합니다.
-    func resolveActiveTreeConflict(using _: TreeConflictResolutionChoice) async {}
+    func resolveActiveTreeConflict(using choice: TreeConflictResolutionChoice) async {
+        guard !isResolvingConflict,
+              let project = selectedProject,
+              let session = activeTreeConflictSession else { return }
+        let projectID = project.id
+        let sessionID = session.id
+        resolvingConflictProjectID = projectID
+        resolvingConflictSessionID = sessionID
+        let operationID = beginOperation(.resolveConflict(projectID))
+        defer {
+            endOperation(operationID)
+            if resolvingConflictProjectID == projectID,
+               resolvingConflictSessionID == sessionID {
+                resolvingConflictProjectID = nil
+                resolvingConflictSessionID = nil
+            }
+        }
+        do {
+            switch choice {
+            case .keepWorkingState:
+                _ = try await client.resolveConflict(
+                    at: project.path,
+                    relativePath: session.versionedPath,
+                    choice: .working,
+                    credentials: nil
+                )
+            case .restoreServerVersion:
+                let projectCredentials = try credentials(for: project)
+                _ = try await client.revert(
+                    at: project.path,
+                    relativePath: session.versionedPath,
+                    credentials: projectCredentials
+                )
+                guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
+                _ = try await client.update(
+                    at: project.path,
+                    credentials: projectCredentials,
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                )
+            }
+            guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
+            let verifiedSnapshot = try await client.workingCopySnapshot(
+                at: project.path,
+                credentials: nil
+            )
+            guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
+            let versionedPathIdentity = SVNPathIdentity(rawPath: session.versionedPath)
+            guard !verifiedSnapshot.statuses.contains(where: { entry in
+                entry.item == .conflicted
+                    && SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
+            }) else {
+                throw ConflictFileError.conflictResolutionVerificationFailed
+            }
+            activeTreeConflictSession = nil
+            await refresh()
+            guard canApplyCompletedTreeConflictResolution(sessionID, projectID: projectID) else { return }
+            notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+        } catch {
+            guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
+            if choice == .restoreServerVersion {
+                handleRemoteError(error, project: project, action: .update)
+            } else {
+                errorMessage = localizedError(error)
+            }
+        }
+    }
 
     func openConflictVersion(_ choice: SVNConflictChoice) {
         guard !isResolvingConflict, let session = activeConflictSession else { return }
@@ -170,12 +248,34 @@ extension ProjectStore {
             && resolvingConflictProjectID == projectID
     }
 
+    private func canApplyTreeConflictResolution(
+        _ sessionID: TreeConflictSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && activeTreeConflictSession?.id == sessionID
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
+    }
+
     private func canApplyCompletedConflictResolution(
         _ sessionID: ConflictResolutionSession.ID,
         projectID: SVNProject.ID
     ) -> Bool {
         selectedProjectID == projectID
             && activeConflictSession == nil
+            && activeTreeConflictSession == nil
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
+    }
+
+    private func canApplyCompletedTreeConflictResolution(
+        _ sessionID: TreeConflictSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && activeConflictSession == nil
+            && activeTreeConflictSession == nil
             && resolvingConflictSessionID == sessionID
             && resolvingConflictProjectID == projectID
     }

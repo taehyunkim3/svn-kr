@@ -9,7 +9,10 @@ import Testing
 
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .korean) == "현재 작업 파일을 찾을 수 없습니다.")
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .english) == "The current working file could not be found.")
-    #expect(store.localizedError(ConflictFileError.unsupportedType("tree"), language: .english) == "Unsupported conflict type: tree")
+    #expect(
+        store.localizedError(ConflictFileError.unsupportedType("property"), language: .english)
+            == "Unsupported conflict type: property\nRevert Local Changes… → Run Update"
+    )
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .korean) == "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다.")
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .english) == "The selected folder is not an SVN local working folder.")
 }
@@ -585,7 +588,7 @@ import Testing
 }
 
 @MainActor
-@Test func unsupportedConflictDoesNotCreateResolutionSession() async throws {
+@Test func treeConflictCreatesTreeSessionWithoutContentSession() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
     let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
@@ -598,6 +601,158 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession?.details.type == "tree")
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func propertyConflictRemainsUnsupported() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "property"))
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func treeKeepWorkingStateResolvesWithWorkingChoice() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(await client.lastConflictChoice() == .working)
+    #expect(await client.conflictOperationNames() == ["resolve"])
+    #expect(store.activeTreeConflictSession == nil)
+}
+
+@MainActor
+@Test func treeRestoreServerVersionRevertsBeforeUpdating() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(await client.conflictOperationNames() == ["revert", "update"])
+    #expect(await client.requestedReverts().map(\.relativePath) == [fixture.details.path])
+    #expect(store.activeTreeConflictSession == nil)
+}
+
+@MainActor
+@Test func treeResolveKeepsSessionWhenConflictRemains() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let treeDetails = fixture.details(replacingTypeWith: "tree")
+    let conflictedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: treeDetails.path, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [treeDetails.path: [treeDetails.path]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        postResolveSnapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        conflictDetailsValue: treeDetails
+    )
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: treeDetails.path)
+    let session = try #require(store.activeTreeConflictSession)
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(store.activeTreeConflictSession == session)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func canonicalAliasTreeConflictUsesExactVersionedPath() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let versionedPath = "문서/주간보고서.hwp"
+    let selectedPath = versionedPath.decomposedStringWithCanonicalMapping
+    let details = SVNConflictDetails(path: versionedPath, type: "tree", operation: "update")
+    let snapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: versionedPath, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [versionedPath: [versionedPath]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: snapshot],
+        conflictDetailsByRelativePath: [versionedPath: details]
+    )
+    let store = makeStore(projects: [fixture.project], client: client)
+
+    await store.prepareConflictResolution(for: selectedPath)
+    let session = try #require(store.activeTreeConflictSession)
+
+    #expect(Data(session.requestedPath.utf8) == Data(selectedPath.utf8))
+    #expect(Data(session.versionedPath.utf8) == Data(versionedPath.utf8))
+    #expect(session.wasCanonicallyResolved)
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+    #expect(await client.lastResolvedPath().map { Data($0.utf8) } == Data(versionedPath.utf8))
+}
+
+@MainActor
+@Test func treeResolveCompletionAfterProjectSwitchDoesNotMutateNewProject() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let otherProject = SVNProject(name: "다른 프로젝트", path: fixture.root.appendingPathComponent("other").path)
+    let resolveGate = AsyncTestGate()
+    let client = StubSVNClient(
+        conflictDetailsValue: fixture.details(replacingTypeWith: "tree"),
+        resolveGate: resolveGate
+    )
+    let store = makeStore(projects: [fixture.project, otherProject], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    let resolution = Task { await store.resolveActiveTreeConflict(using: .keepWorkingState) }
+    await waitForResolveRequest(client)
+    store.selectedProjectID = otherProject.id
+    store.errorMessage = "new-project-error"
+    store.notice = "new-project-notice"
+    let snapshotRequestsBeforeCompletion = await client.snapshotRequestCount()
+    await resolveGate.release()
+    await resolution.value
+
+    #expect(store.selectedProjectID == otherProject.id)
+    #expect(store.errorMessage == "new-project-error")
+    #expect(store.notice == "new-project-notice")
+    #expect(await client.snapshotRequestCount() == snapshotRequestsBeforeCompletion)
+}
+
+@MainActor
+@Test func treeRestoreUsesSavedCredentialsAndCertificateSetting() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    var project = fixture.project
+    project.username = "tester"
+    project.allowsUntrustedServerCertificate = true
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [project], client: client)
+    store.sessionPasswords[project.id] = "secret"
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(await client.lastRevertCredentialUsername() == "tester")
+    #expect(await client.lastUpdateCredentialUsername() == "tester")
+    #expect(await client.lastUpdateAllowedUntrustedCertificate() == true)
 }
 
 @MainActor
@@ -2870,6 +3025,7 @@ private actor StubSVNClient: SVNClientServing {
     private var logRequests = 0
     private var outOfDateRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
+    private var conflictOperations: [String] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
     private var revertCalls: [RevertCall] = []
     private var conflictDetailsRequestRawPaths: [Data] = []
@@ -2879,6 +3035,9 @@ private actor StubSVNClient: SVNClientServing {
     private var repositoryPathNormalizationScanRequests = 0
     private var repositoryPathNormalizationRequests = 0
     private var updateRequests = 0
+    private var revertCredentialUsernames: [String?] = []
+    private var updateCredentialUsernames: [String?] = []
+    private var updateAllowedUntrustedCertificates: [Bool] = []
     private var repositoryCleanupDeletionPaths: [String] = []
     private var commitRequests: [CommitRequest] = []
 
@@ -3011,7 +3170,7 @@ private actor StubSVNClient: SVNClientServing {
         snapshotRequests += 1
         await delay(for: path)
         if let snapshotError { throw snapshotError }
-        if !conflictChoices.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
+        if !conflictOperations.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
         if scheduleDeletionRequests > 0, let snapshot = postDeletionSnapshotsByPath[path] { return snapshot }
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
@@ -3104,6 +3263,7 @@ private actor StubSVNClient: SVNClientServing {
         return conflictDetailsByRelativePath[relativePath] ?? conflictDetailsValue
     }
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String {
+        conflictOperations.append("resolve")
         conflictChoices.append(choice)
         resolvedPaths.append(relativePath)
         if let resolveGate { await resolveGate.wait() }
@@ -3113,6 +3273,7 @@ private actor StubSVNClient: SVNClientServing {
     func lastConflictChoice() -> SVNConflictChoice? { conflictChoices.last }
     func lastResolvedPath() -> String? { resolvedPaths.last }
     func conflictChoiceCount() -> Int { conflictChoices.count }
+    func conflictOperationNames() -> [String] { conflictOperations }
     func conflictDetailsRequestCount(for path: String) -> Int { conflictDetailsRequestCounts[path, default: 0] }
     func exactConflictDetailsRequestCount(for path: String) -> Int {
         conflictDetailsRequestRawPaths.filter { $0 == Data(path.utf8) }.count
@@ -3148,17 +3309,25 @@ private actor StubSVNClient: SVNClientServing {
         return remoteChangesByPath[path] ?? []
     }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        conflictOperations.append("update")
+        updateCredentialUsernames.append(credentials?.username)
+        updateAllowedUntrustedCertificates.append(allowUntrustedServerCertificate)
         updateRequests += 1
         return "updated"
     }
     func updateRequestCount() -> Int { updateRequests }
+    func lastUpdateCredentialUsername() -> String? { updateCredentialUsernames.last ?? nil }
+    func lastUpdateAllowedUntrustedCertificate() -> Bool? { updateAllowedUntrustedCertificates.last }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
+        conflictOperations.append("revert")
+        revertCredentialUsernames.append(credentials?.username)
         await delay(for: path)
         revertCalls.append(RevertCall(workingCopyPath: path, relativePath: relativePath))
         return "reverted"
     }
     func requestedReverts() -> [RevertCall] { revertCalls }
+    func lastRevertCredentialUsername() -> String? { revertCredentialUsernames.last ?? nil }
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         await delay(for: path)
         return fileLogsByPath[path] ?? []
