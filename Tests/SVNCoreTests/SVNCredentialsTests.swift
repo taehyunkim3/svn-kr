@@ -188,11 +188,10 @@ import Testing
     #!/bin/sh
     case "$*" in
       *"checkout --"*)
-        : > checkout-started
+        printf 'checkout-started\n'
         while [ ! -f continue-checkout ]; do sleep 0.02; done
         ;;
       *"info --show-item wc-root"*)
-        : > info-finished
         printf '%s\\n' "$PWD"
         ;;
     esac
@@ -204,25 +203,34 @@ import Testing
         configDirectoryPath: directory.appendingPathComponent("svn-config").path
     )
     let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+    let checkoutStarted = AsyncTestEvent()
     let checkout = Task {
         try await client.checkout(
             repositoryURL: "https://example.test/svn/project",
-            destinationPath: destination.path
+            destinationPath: destination.path,
+            progress: { output in
+                if output.contains("checkout-started") {
+                    checkoutStarted.signal()
+                }
+            }
         )
     }
-    #expect(await waitUntil(timeout: .seconds(15)) {
-        FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
-    })
+    await checkoutStarted.wait()
 
-    let validation = Task { try await client.validateWorkingCopy(at: destination.path) }
-    let infoFinished = await waitUntil(timeout: .seconds(5)) {
-        FileManager.default.fileExists(atPath: destination.appendingPathComponent("info-finished").path)
+    let validationFinished = AsyncTestEvent()
+    let validation = Task {
+        do {
+            try await client.validateWorkingCopy(at: destination.path)
+            validationFinished.signal()
+        } catch {
+            validationFinished.signal()
+            throw error
+        }
     }
+    await validationFinished.wait()
     try Data().write(to: destination.appendingPathComponent("continue-checkout"))
     _ = try await checkout.value
     try await validation.value
-
-    #expect(infoFinished)
 }
 
 @Test func cancellingCommandTerminatesProcess() async throws {
@@ -352,6 +360,38 @@ private final class CheckoutOutputRecorder: @unchecked Sendable {
 
     func append(_ output: String) {
         lock.withLock { storedOutput += output }
+    }
+}
+
+private final class AsyncTestEvent: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isSignaled = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func signal() {
+        lock.lock()
+        guard !isSignaled else {
+            lock.unlock()
+            return
+        }
+        isSignaled = true
+        let pending = waiters
+        waiters.removeAll()
+        lock.unlock()
+        pending.forEach { $0.resume() }
+    }
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if isSignaled {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                waiters.append(continuation)
+                lock.unlock()
+            }
+        }
     }
 }
 
