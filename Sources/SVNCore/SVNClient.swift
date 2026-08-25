@@ -498,7 +498,7 @@ public actor SVNClient {
             do {
                 result = try await run(
                     [
-                        "move", "--message", message, "--",
+                        "move", "--message", message, "--force-log", "--",
                         Self.svnPathEscapingPegSyntax(sourceURL),
                         Self.svnPathEscapingPegSyntax(destinationURL),
                     ],
@@ -1103,7 +1103,7 @@ public actor SVNClient {
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkedRunWithSingleWorkingCopyPathArgument(
-            ["lock", "--message", comment],
+            ["lock", "--message", comment, "--force-log"],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
@@ -1121,7 +1121,7 @@ public actor SVNClient {
         allowUntrustedServerCertificate: Bool = false,
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
-        var arguments = ["lock", "--message", comment]
+        var arguments = ["lock", "--message", comment, "--force-log"]
         if force { arguments.append("--force") }
         return try await checkedRunWithMultipleWorkingCopyPathArguments(
             arguments,
@@ -1781,7 +1781,9 @@ public actor SVNClient {
                 )
             }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--message", message],
+                // GUI 입력 메시지는 항상 문자열입니다. 메시지가 존재하는 경로와 같으면
+                // SVN이 E205005로 거부하므로 --force-log로 그 검사를 끕니다.
+                ["commit", "--message", message, "--force-log"],
                 projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
