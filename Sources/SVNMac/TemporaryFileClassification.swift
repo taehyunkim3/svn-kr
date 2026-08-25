@@ -11,16 +11,16 @@ enum TemporaryFileCleanupValidationFailure: Hashable {
     case invalidAppleDoubleSignature
     case officeLockFileTooLarge(maximumBytes: Int)
 
-    var localizationKey: String {
+    var localizationKey: LocalizationKey {
         switch self {
-        case .unsafePath: "ui.cleanup.reason.unsafe.path.5dce44a1"
-        case .missing: "ui.cleanup.reason.file.missing.64ae4838"
-        case .symbolicLink: "ui.cleanup.reason.symbolic.link.95821786"
-        case .notRegularFile: "ui.cleanup.reason.not.regular.file.98aa0f60"
-        case .unreadable: "ui.cleanup.reason.unreadable.85df36fb"
-        case .invalidDSStoreSignature: "ui.cleanup.reason.invalid.ds.store.signature.2832697d"
-        case .invalidAppleDoubleSignature: "ui.cleanup.reason.invalid.appledouble.signature.96cdf550"
-        case .officeLockFileTooLarge: "ui.cleanup.reason.office.lock.too.large.38b4ef17"
+        case .unsafePath: .ui.cleanup.reasonUnsafePath
+        case .missing: .ui.cleanup.reasonFileMissing
+        case .symbolicLink: .ui.cleanup.reasonSymbolicLink
+        case .notRegularFile: .ui.cleanup.reasonNotRegularFile
+        case .unreadable: .ui.cleanup.reasonUnreadable
+        case .invalidDSStoreSignature: .ui.cleanup.reasonInvalidDsStoreSignature
+        case .invalidAppleDoubleSignature: .ui.cleanup.reasonInvalidAppledoubleSignature
+        case .officeLockFileTooLarge: .ui.cleanup.reasonOfficeLockTooLarge
         }
     }
 }

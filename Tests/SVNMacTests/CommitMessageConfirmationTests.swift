@@ -5,22 +5,22 @@ import Testing
 
 @Suite("CommitMessageConfirmationTests")
 struct CommitMessageConfirmationTests {
-    private let localizationKeys = [
-        "ui.commit.without.a.message.6f0f2d41",
-        "ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05",
-        "ui.review.commit.8b36485e",
-        "ui.server.deletion.count.793b7522",
-        "ui.server.deletion.warning.81e94f35",
-        "ui.restore.selected.server.files.4f2a7c91",
-        "ui.restore.selected.files.confirmation.6d81b3e4",
-        "ui.restore.selected.files.count.2c9f4a70",
-        "ui.restore.selected.files.action.7b3e1d95",
-        "ui.commit.deletion.restore.partial.5a8c2f64",
-        "ui.restore.target.not.deleted.1d6a4b82",
-        "ui.restored.selected.server.files.2e4c7a91",
-        "ui.no.server.deletions.remaining.3e7b9a12",
-        "ui.confirm.commit.7c2e5a90",
-        "ui.no.bafd7322",
+    private let localizationKeys: [(key: LocalizationKey, sourceExpression: String)] = [
+        (.ui.commit.withoutAMessage, ".ui.commit.withoutAMessage"),
+        (.ui.the.commitWillBeRecordedWithAnEmptyMessag, ".ui.the.commitWillBeRecordedWithAnEmptyMessag"),
+        (.ui.review.commit, ".ui.review.commit"),
+        (.ui.server.deletionCount, ".ui.server.deletionCount"),
+        (.ui.server.deletionWarning, ".ui.server.deletionWarning"),
+        (.ui.restore.selectedServerFiles, ".ui.restore.selectedServerFiles"),
+        (.ui.restore.selectedFilesConfirmation, ".ui.restore.selectedFilesConfirmation"),
+        (.ui.restore.selectedFilesCount, ".ui.restore.selectedFilesCount"),
+        (.ui.restore.selectedFilesAction, ".ui.restore.selectedFilesAction"),
+        (.ui.commit.deletionRestorePartial, ".ui.commit.deletionRestorePartial"),
+        (.ui.restore.targetNotDeleted, ".ui.restore.targetNotDeleted"),
+        (.ui.restored.selectedServerFiles, ".ui.restored.selectedServerFiles"),
+        (.ui.no.serverDeletionsRemaining, ".ui.no.serverDeletionsRemaining"),
+        (.ui.confirm.commit, ".ui.confirm.commit"),
+        (.ui.no.label, ".ui.no.label"),
     ]
 
     @Test func emptyMessageKeepsCommitButtonEnabled() throws {
@@ -45,14 +45,14 @@ struct CommitMessageConfirmationTests {
 
         #expect(commitControls.contains("store.prepareCommitConfirmation(message: message)"))
         #expect(commitControls.contains("store.commitConfirmationRequest"))
-        #expect(confirmation.contains("ui.commit.without.a.message.6f0f2d41"))
-        #expect(confirmation.contains("ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05"))
-        for key in localizationKeys {
+        #expect(confirmation.contains(".ui.commit.withoutAMessage"))
+        #expect(confirmation.contains(".ui.the.commitWillBeRecordedWithAnEmptyMessag"))
+        for entry in localizationKeys {
             #expect(
-                commitControls.contains(key)
-                    || confirmation.contains(key)
-                    || fileActions.contains(key)
-                    || restoreConfirmation.contains(key)
+                commitControls.contains(entry.sourceExpression)
+                    || confirmation.contains(entry.sourceExpression)
+                    || fileActions.contains(entry.sourceExpression)
+                    || restoreConfirmation.contains(entry.sourceExpression)
             )
         }
         #expect(confirmation.contains("store.confirmCommit(currentRequest)"))
@@ -76,7 +76,7 @@ struct CommitMessageConfirmationTests {
         #expect(confirmation.contains(".commitDeletionRestoreConfirmation()"))
         #expect(restoreConfirmation.contains("store.confirmCommitDeletionRestore(restoreRequest)"))
         #expect(restoreConfirmation.contains("restoreRequest.paths.count"))
-        #expect(confirmation.contains("ui.no.server.deletions.remaining.3e7b9a12"))
+        #expect(confirmation.contains(".ui.no.serverDeletionsRemaining"))
         #expect(confirmation.contains("AppLayout.commitConfirmationSheetMinimumSize"))
         #expect(!confirmation.contains("DisclosureGroup"))
     }
@@ -105,8 +105,8 @@ struct CommitMessageConfirmationTests {
 
         for path in localizationPaths {
             let localization = try source(at: path)
-            for key in localizationKeys {
-                #expect(localization.contains(key))
+            for entry in localizationKeys {
+                #expect(localization.contains(entry.key.rawValue))
             }
         }
     }

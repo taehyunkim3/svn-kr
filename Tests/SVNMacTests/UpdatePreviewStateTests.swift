@@ -183,20 +183,20 @@ import Testing
     #expect(view.contains("HistoryDateFormatting.shared.string("))
     #expect(view.contains("SVNLogMessageView(entry: entry)"))
     #expect(view.contains("ContentUnavailableView("))
-    #expect(view.contains("ui.preview.failed.update.still.available.2c71be90"))
+    #expect(view.contains(".ui.preview.failedUpdateStillAvailable"))
     #expect(view.contains("preview.canRunUpdate("))
     #expect(view.contains("UpdatePreviewState.maximumVisibleCommitCount"))
     #expect(
-        AppLanguage.korean.localized("ui.showing.first.commits.of.total.8d6f4a21", 100, 101)
+        AppLanguage.korean.localized(.ui.showing.firstCommitsOfTotal, 100, 101)
             == "전체 101개 커밋 중 처음 100개만 표시합니다."
     )
     #expect(
-        AppLanguage.english.localized("ui.showing.first.commits.of.total.8d6f4a21", 100, 101)
+        AppLanguage.english.localized(.ui.showing.firstCommitsOfTotal, 100, 101)
             == "Showing the first 100 of 101 commits."
     )
     #expect(
         AppLanguage.korean.localized(
-            "ui.preview.failed.update.still.available.2c71be90",
+            .ui.preview.failedUpdateStillAvailable,
             "네트워크 오류"
         ) == "업데이트 미리보기 전체를 불러오지 못했습니다. 그래도 업데이트를 시도할 수 있습니다.\n\n네트워크 오류"
     )

@@ -175,7 +175,7 @@ extension ProjectStore {
             recoveryState.propertyConflictSession = nil
             await refresh()
             guard canApplyCompletedPropertyConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized("ui.property.conflict.resolved.review.before.commit.7b5e91c4")
+            notice = AppLanguage.current.localized(.ui.property.conflictResolvedReviewBeforeCommit)
         } catch {
             guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
@@ -250,12 +250,12 @@ extension ProjectStore {
             guard canApplyCompletedTreeConflictResolution(sessionID, projectID: projectID) else { return }
             if let subtreeBackup {
                 notice = AppLanguage.current.localized(
-                    "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3",
+                    .ui.tree.conflictResolvedWithSubtreeBackup,
                     String(subtreeBackup.fileCount),
                     subtreeBackup.directoryURL.path
                 )
             } else {
-                notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+                notice = AppLanguage.current.localized(.ui.the.conflictWasResolvedReviewTheFileBefore)
             }
         } catch {
             guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
@@ -338,7 +338,7 @@ extension ProjectStore {
             activeConflictSession = nil
             await refresh()
             guard canApplyCompletedConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+            notice = AppLanguage.current.localized(.ui.the.conflictWasResolvedReviewTheFileBefore)
         } catch {
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)

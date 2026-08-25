@@ -42,13 +42,13 @@ struct ErrorCopyButton: View {
     var body: some View {
         Button(
             didCopy
-                ? appLanguage.localized("ui.copied.13a93949")
-                : appLanguage.localized("ui.copy.error.details.7de3d319"),
+                ? appLanguage.localized(.ui.copied.label)
+                : appLanguage.localized(.ui.copy.errorDetails),
             systemImage: didCopy ? "checkmark" : "doc.on.doc"
         ) {
             didCopy = ErrorClipboard.copy(message)
         }
-        .help(appLanguage.localized("ui.copy.all.displayed.error.details.to.the.clipboar.717f18da"))
+        .help(appLanguage.localized(.ui.copy.allDisplayedErrorDetailsToTheClipboar))
         .onChange(of: message) { _, _ in didCopy = false }
     }
 }
@@ -62,7 +62,7 @@ struct DetailedErrorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(appLanguage.localized("ui.error.a08d7e0d"), systemImage: "exclamationmark.triangle.fill")
+            Label(appLanguage.localized(.ui.error.label), systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.bold())
                 .foregroundStyle(.red)
 
@@ -71,7 +71,7 @@ struct DetailedErrorView: View {
             HStack {
                 ErrorCopyButton(message: message)
                 Spacer()
-                Button(appLanguage.localized("ui.close.3ea43db3"), role: .cancel) {
+                Button(appLanguage.localized(.ui.close.label), role: .cancel) {
                     onDismiss()
                 }
                 .keyboardShortcut(.cancelAction)

@@ -18,8 +18,8 @@ import Testing
     #expect(contentView.contains("label: \"\\(store.repositoryLocks.count)\""))
     #expect(!changesView.contains("$store.isShowingLocks"))
     #expect(!changesView.contains("\"잠금 목록\", \"Locks\""))
-    #expect(projectBadges.contains("\"ui.locked.files.457daf19\""))
-    #expect(locksView.contains("\"ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309\""))
+    #expect(projectBadges.contains(".ui.locked.files"))
+    #expect(locksView.contains(".ui.a.lockedFileIsMarkedOnTheSvnServerToPre"))
 }
 
 @Test func repositoryLocksActionAppearsBeforeOpenInFinder() throws {
@@ -31,7 +31,7 @@ import Testing
     let contentView = try source(named: "ContentView.swift", in: sources)
 
     let locksButton = try #require(contentView.range(of: "repositoryLocksButton"))
-    let finderButton = try #require(contentView.range(of: "Button(appLanguage.localized(\"ui.open.in.finder.35aa9225\""))
+    let finderButton = try #require(contentView.range(of: "Button(appLanguage.localized(.ui.localizationOpen.inFinder"))
     #expect(locksButton.lowerBound < finderButton.lowerBound)
 }
 
@@ -63,7 +63,7 @@ import Testing
 
     // 상단 메뉴에만 있던 전체 설정을 사이드바 하단에서도 열 수 있어야 합니다.
     #expect(contentView.contains("SettingsLink"))
-    #expect(contentView.contains("\"ui.settings.2f7c48b3\""))
+    #expect(contentView.contains(".ui.settings.label"))
     #expect(contentView.contains("systemImage: \"gearshape\""))
 
     // 작업 폴더 추가/삭제 버튼과 같은 묶음에 있어야 합니다.
@@ -85,12 +85,12 @@ import Testing
     let contentView = try source(named: "ContentView.swift", in: sources)
 
     #expect(contentView.contains("Image(systemName: \"arrow.clockwise\")"))
-    #expect(contentView.contains("Text(appLanguage.localized(\"ui.refresh.0aca6bd2\"))"))
+    #expect(contentView.contains("Text(appLanguage.localized(.ui.refresh.label))"))
     #expect(contentView.contains("Image(systemName: \"arrow.down.circle\")"))
-    #expect(contentView.contains("Text(appLanguage.localized(\"ui.update.0f38eb76\"))"))
+    #expect(contentView.contains("Text(appLanguage.localized(.ui.update.label))"))
     #expect(contentView.components(separatedBy: ".padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)").count == 4)
-    #expect(!contentView.contains("Button(appLanguage.localized(\"ui.refresh.0aca6bd2\"), systemImage:"))
-    #expect(!contentView.contains("Button(appLanguage.localized(\"ui.update.0f38eb76\"), systemImage:"))
+    #expect(!contentView.contains("Button(appLanguage.localized(.ui.refresh.label), systemImage:"))
+    #expect(!contentView.contains("Button(appLanguage.localized(.ui.update.label), systemImage:"))
 }
 
 @Test func updateAvailabilityUsesASeparatedButtonBadgeAndProgressStaysOutsideTheActionButtonGroup() throws {
@@ -104,7 +104,7 @@ import Testing
     let projectBadges = try source(named: "ProjectStatusBadges.swift", in: sources)
 
     let toolbarGroupEnd = try #require(contentView.range(of: """
-                .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
+                .help(appLanguage.localized(.ui.download.theLatestServerChangesIntoTheCurr))
                 .accessibilityValue(
 """))
     let progressItem = try #require(contentView.range(of: """
@@ -121,7 +121,7 @@ import Testing
     #expect(contentView.contains(".offset(y: -6)"))
     #expect(contentView.contains(".background(.red, in: Capsule())"))
     #expect(!historyView.contains("if store.isWorkingCopyOutOfDate == true"))
-    #expect(projectBadges.contains("\"ui.update.0f38eb76\""))
+    #expect(projectBadges.contains(".ui.update.label"))
 }
 
 @Test func mainToolbarHidesItsTitleAndKeepsProjectActionsLeading() throws {

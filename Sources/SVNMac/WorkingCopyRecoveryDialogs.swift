@@ -9,12 +9,12 @@ struct WorkingCopyCleanupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.localized("ui.working.copy.cleanup.62f3ac11"),
+                appLanguage.localized(.ui.working.copyCleanup),
                 systemImage: "wrench.and.screwdriver"
             )
             .font(.title2.bold())
 
-            Text(appLanguage.localized("ui.operation.was.interrupted.cleanup.prompt.c7f01d92"))
+            Text(appLanguage.localized(.ui.operation.wasInterruptedCleanupPrompt))
             Text(request.path)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
@@ -26,7 +26,7 @@ struct WorkingCopyCleanupView: View {
 
             HStack {
                 Spacer()
-                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                     store.dismissWorkingCopyCleanupRequest()
                     dismiss()
                 }
@@ -39,8 +39,8 @@ struct WorkingCopyCleanupView: View {
                     }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.run.working.copy.cleanup.b71c28de"),
-                        inProgressTitle: appLanguage.localized("ui.cleaning.working.copy.2a9ed647"),
+                        title: appLanguage.localized(.ui.run.workingCopyCleanup),
+                        inProgressTitle: appLanguage.localized(.ui.cleaning.workingCopy),
                         isInProgress: store.isCleaningSelectedWorkingCopy
                     )
                 }
@@ -65,12 +65,12 @@ struct CanceledCheckoutRecoveryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.localized("ui.checkout.was.interrupted.9d8a23c0"),
+                appLanguage.localized(.ui.checkout.wasInterrupted),
                 systemImage: "arrow.clockwise"
             )
             .font(.title2.bold())
 
-            Text(appLanguage.localized("ui.incomplete.checkout.recovery.options.f31ea907"))
+            Text(appLanguage.localized(.ui.incomplete.checkoutRecoveryOptions))
             Text(request.destinationPath)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
@@ -78,20 +78,20 @@ struct CanceledCheckoutRecoveryView: View {
 
             HStack {
                 if request.canEmptySafely {
-                    Button(appLanguage.localized("ui.empty.checkout.folder.7a1c8e53"), role: .destructive) {
+                    Button(appLanguage.localized(.ui.empty.checkoutFolder), role: .destructive) {
                         isConfirmingEmptyFolder = true
                     }
                     .disabled(store.isRecoveringCanceledCheckout)
                 } else {
                     Label(
-                        appLanguage.localized("ui.checkout.folder.was.not.empty.cannot.delete.0e6d49b2"),
+                        appLanguage.localized(.ui.checkout.folderWasNotEmptyCannotDelete),
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(appLanguage.localized("ui.close.3ea43db3"), role: .cancel) {
+                Button(appLanguage.localized(.ui.close.label), role: .cancel) {
                     store.dismissCanceledCheckoutRecovery(request)
                     dismiss()
                 }
@@ -100,8 +100,8 @@ struct CanceledCheckoutRecoveryView: View {
                     Task { _ = await store.resumeCanceledCheckout(request) }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.continue.checkout.84b37ce1"),
-                        inProgressTitle: appLanguage.localized("ui.cleaning.and.continuing.checkout.18fa2d6b"),
+                        title: appLanguage.localized(.ui.localizationContinue.checkout),
+                        inProgressTitle: appLanguage.localized(.ui.cleaning.andContinuingCheckout),
                         isInProgress: store.isRecoveringCanceledCheckout
                     )
                 }
@@ -114,16 +114,16 @@ struct CanceledCheckoutRecoveryView: View {
         .appSheetFrame(minimumSize: AppLayout.errorDetailsSheetMinimumSize)
         .interactiveDismissDisabled(store.isRecoveringCanceledCheckout)
         .alert(
-            appLanguage.localized("ui.empty.canceled.checkout.folder.confirmation.6e12c9ad"),
+            appLanguage.localized(.ui.empty.canceledCheckoutFolderConfirmation),
             isPresented: $isConfirmingEmptyFolder
         ) {
-            Button(appLanguage.localized("ui.empty.folder.destructive.30d295e8"), role: .destructive) {
+            Button(appLanguage.localized(.ui.empty.folderDestructive), role: .destructive) {
                 Task { await store.emptyCanceledCheckout(request) }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {}
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {}
         } message: {
             Text(appLanguage.localized(
-                "ui.only.verified.working.copy.will.be.deleted.path.d8c0a71e",
+                .ui.only.verifiedWorkingCopyWillBeDeletedPath,
                 request.destinationPath
             ))
         }

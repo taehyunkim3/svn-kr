@@ -35,7 +35,7 @@ extension ProjectStore {
             username: project.username
         ) {
         case .noAction:
-            notice = AppLanguage.current.localized("ui.all.selected.files.already.locked.by.you.6a91cd42")
+            notice = AppLanguage.current.localized(.ui.all.selectedFilesAlreadyLockedByYou)
         case let .run(command):
             await executeExplicitLock(command, project: project)
         case let .confirmForce(request):
@@ -87,7 +87,7 @@ extension ProjectStore {
 
         if result.failures.isEmpty {
             notice = AppLanguage.current.localized(
-                "ui.bulk.unlock.completed.4b7e0ad3",
+                .ui.bulk.unlockCompleted,
                 result.releasedPaths.count
             )
         } else {
@@ -103,7 +103,7 @@ extension ProjectStore {
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
-            let comment = AppLanguage.current.localized("ui.editing.document.in.svn.kr.5e6ac9cc")
+            let comment = AppLanguage.current.localized(.ui.editing.documentInSvnKr)
             if let multiplePathClient = client as? any MultiplePathLockServing {
                 try await ExplicitLockCommandRunner(client: multiplePathClient).run(
                     command,
@@ -130,7 +130,7 @@ extension ProjectStore {
             guard selectedProjectID == project.id else { return }
             recoveryState.explicitLockRequest = nil
             notice = AppLanguage.current.localized(
-                "ui.explicit.lock.completed.1c4f8e72",
+                .ui.explicit.lockCompleted,
                 command.paths.count
             )
             await loadRepositoryLocks()
@@ -183,7 +183,7 @@ extension ProjectStore {
                let username = project.username,
                !username.isEmpty,
                existingLock.owner == username {
-                notice = AppLanguage.current.localized("ui.opening.a.file.locked.by.you.742588ff")
+                notice = AppLanguage.current.localized(.ui.opening.aFileLockedByYou)
                 openFile(relativePath, in: project)
                 return
             }
@@ -197,7 +197,7 @@ extension ProjectStore {
         } catch {
             guard selectedProjectID == project.id else { return }
             if offerWorkingCopyCleanup(for: error, projectID: project.id) { return }
-            notice = AppLanguage.current.localized("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
+            notice = AppLanguage.current.localized(.ui.lock.informationCouldNotBeCheckedYouCanOp)
             let request = DocumentOpenRequest(
                 projectID: project.id,
                 relativePath: relativePath,
@@ -237,7 +237,7 @@ extension ProjectStore {
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
-            let comment = AppLanguage.current.localized("ui.editing.document.in.svn.kr.5e6ac9cc")
+            let comment = AppLanguage.current.localized(.ui.editing.documentInSvnKr)
             _ = try await client.lock(
                 at: project.path,
                 relativePath: request.repositoryRelativePath,
@@ -247,7 +247,7 @@ extension ProjectStore {
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized("ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd")
+            notice = AppLanguage.current.localized(.ui.the.fileIsLockedASuccessfulCommitAutomatic)
             openFile(request.relativePath, in: project)
             await loadRepositoryLocks()
         } catch {
@@ -273,11 +273,11 @@ extension ProjectStore {
         openFile(request.relativePath, in: project)
         if let existingLock = request.existingLock {
             notice = AppLanguage.current.localized(
-                "ui.this.file.is.currently.locked.by.opening.without.ca1f8e9a",
+                .ui.this.fileIsCurrentlyLockedByOpeningWithout,
                 existingLock.owner
             )
         } else {
-            notice = AppLanguage.current.localized("ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344")
+            notice = AppLanguage.current.localized(.ui.opened.withoutALockAConcurrentCommitByAno)
         }
     }
 
@@ -319,7 +319,7 @@ extension ProjectStore {
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized("ui.the.lock.was.released.3aee6b8e")
+            notice = AppLanguage.current.localized(.ui.the.lockWasReleased)
             forceUnlockRequest = nil
             await loadRepositoryLocks()
         } catch {
@@ -353,7 +353,7 @@ extension ProjectStore {
             )
             guard selectedProjectID == project.id else { return }
             forceUnlockRequest = nil
-            notice = AppLanguage.current.localized("ui.the.lock.was.force.released.16b02da9")
+            notice = AppLanguage.current.localized(.ui.the.lockWasForceReleased)
             await loadRepositoryLocks()
         } catch {
             guard selectedProjectID == project.id else { return }

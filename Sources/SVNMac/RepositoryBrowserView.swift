@@ -54,13 +54,13 @@ struct RepositoryBrowserView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.localized("ui.browse.svn.repository.4a9d3c10"))
+                Text(appLanguage.localized(.ui.browse.svnRepository))
                     .font(.title2.bold())
-                Text(appLanguage.localized("ui.browse.repository.before.checkout.7c2e1b84"))
+                Text(appLanguage.localized(.ui.browse.repositoryBeforeCheckout))
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }
+            Button(appLanguage.localized(.ui.close.label)) { dismiss() }
                 .keyboardShortcut(.cancelAction)
         }
         .padding()
@@ -70,7 +70,7 @@ struct RepositoryBrowserView: View {
         @Bindable var state = state
         return Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
             GridRow {
-                Text(appLanguage.localized("ui.repository.url.a29f5816"))
+                Text(appLanguage.localized(.ui.repository.url))
                 TextField("https://server/svn/project/trunk", text: $state.repositoryURLInput)
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
@@ -78,8 +78,8 @@ struct RepositoryBrowserView: View {
                     state.beginBrowse()
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.browse.5f8b6e21"),
-                        inProgressTitle: appLanguage.localized("ui.loading.b0a3fd42"),
+                        title: appLanguage.localized(.ui.browse.label),
+                        inProgressTitle: appLanguage.localized(.ui.loading.label),
                         isInProgress: state.isLoading
                     )
                 }
@@ -90,7 +90,7 @@ struct RepositoryBrowserView: View {
                 )
             }
             GridRow {
-                Text(appLanguage.localized("ui.revision.optional.63ad9f02"))
+                Text(appLanguage.localized(.ui.revision.optional))
                 TextField("HEAD", text: $state.revisionInput)
                     .textFieldStyle(.roundedBorder)
                 EmptyView()
@@ -105,14 +105,14 @@ struct RepositoryBrowserView: View {
                 state.beginNavigateUp()
             } label: {
                 Label(
-                    appLanguage.localized("ui.parent.directory.1b7e4a93"),
+                    appLanguage.localized(.ui.parent.directory),
                     systemImage: "arrow.up"
                 )
             }
             .disabled(!state.canNavigateUp || state.isLoading)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(appLanguage.localized("ui.current.repository.url.1a6f43d2"))
+                Text(appLanguage.localized(.ui.current.repositoryUrl))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(state.currentURL.isEmpty ? state.repositoryURLInput : state.currentURL)
@@ -126,7 +126,7 @@ struct RepositoryBrowserView: View {
                 copyCurrentURL()
             } label: {
                 Label(
-                    appLanguage.localized("ui.copy.current.repository.url.82c5d1f0"),
+                    appLanguage.localized(.ui.copy.currentRepositoryUrl),
                     systemImage: "doc.on.doc"
                 )
             }
@@ -157,8 +157,8 @@ struct RepositoryBrowserView: View {
                 .foregroundStyle(entry.kind == .directory ? .blue : .secondary)
                 .accessibilityLabel(appLanguage.localized(
                     entry.kind == .directory
-                        ? "ui.directory.9e3f2a70"
-                        : "ui.file.6d4b8c21"
+                        ? .ui.directory.label
+                        : .ui.file.labelFile
                 ))
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.name)
@@ -187,16 +187,16 @@ struct RepositoryBrowserView: View {
         switch state.phase {
         case .idle:
             ContentUnavailableView(
-                appLanguage.localized("ui.enter.repository.url.to.browse.3f6a9d20"),
+                appLanguage.localized(.ui.enter.repositoryUrlToBrowse),
                 systemImage: "externaldrive.connected.to.line.below"
             )
         case .loading:
-            ProgressView(appLanguage.localized("ui.loading.repository.contents.5e1c7a84"))
+            ProgressView(appLanguage.localized(.ui.loading.repositoryContents))
         case .loaded where state.entries.isEmpty:
             ContentUnavailableView(
-                appLanguage.localized("ui.repository.directory.empty.7a2c5e90"),
+                appLanguage.localized(.ui.repository.directoryEmpty),
                 systemImage: "folder",
-                description: Text(appLanguage.localized("ui.no.items.in.repository.directory.4d8b1f63"))
+                description: Text(appLanguage.localized(.ui.no.itemsInRepositoryDirectory))
             )
         case .failed(let failure):
             ContentUnavailableView {
@@ -215,17 +215,17 @@ struct RepositoryBrowserView: View {
                 state.beginRefresh()
             } label: {
                 ActionProgressLabel(
-                    title: appLanguage.localized("ui.refresh.0aca6bd2"),
+                    title: appLanguage.localized(.ui.refresh.label),
                     isInProgress: state.isLoading
                 )
             }
             .disabled(state.currentURL.isEmpty || state.isLoading)
             Spacer()
-            Button(appLanguage.localized("ui.open.selected.directory.2c7e5a91")) {
+            Button(appLanguage.localized(.ui.localizationOpen.selectedDirectory)) {
                 state.beginEnterSelectedDirectory()
             }
             .disabled(state.selectedEntry?.kind != .directory || state.isLoading)
-            Button(appLanguage.localized("ui.use.repository.path.8f1d4b62")) {
+            Button(appLanguage.localized(.ui.use.repositoryPath)) {
                 store.recoveryState.repositoryBrowseSelectedURL = state.checkoutURL
                 dismiss()
             }
@@ -238,13 +238,13 @@ struct RepositoryBrowserView: View {
     private func failureTitle(_ kind: RepositoryBrowserFailure.Kind) -> String {
         switch kind {
         case .authentication:
-            appLanguage.localized("ui.repository.authentication.failed.6b2e9c14")
+            appLanguage.localized(.ui.repository.authenticationFailed)
         case .invalidURL:
-            appLanguage.localized("ui.invalid.repository.url.8e4c1a70")
+            appLanguage.localized(.ui.invalid.repositoryUrl)
         case .connection:
-            appLanguage.localized("ui.repository.connection.failed.1e5a7c93")
+            appLanguage.localized(.ui.repository.connectionFailed)
         case .other:
-            appLanguage.localized("ui.repository.contents.failed.3c8f2d61")
+            appLanguage.localized(.ui.repository.contentsFailed)
         }
     }
 

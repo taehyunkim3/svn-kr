@@ -22,7 +22,7 @@ struct CommitDeletionRestoreResult: Equatable {
             .map { "\($0.path): \($0.message)" }
             .joined(separator: "\n")
         return language.localized(
-            "ui.commit.deletion.restore.partial.5a8c2f64",
+            .ui.commit.deletionRestorePartial,
             restoredPaths.count,
             failures.count,
             details
@@ -102,7 +102,7 @@ extension ProjectStore {
                 failures.append(CommitDeletionRestoreFailure(
                     path: path,
                     message: AppLanguage.current.localized(
-                        "ui.restore.target.not.deleted.1d6a4b82"
+                        .ui.restore.targetNotDeleted
                     )
                 ))
                 continue
@@ -139,7 +139,7 @@ extension ProjectStore {
         commitDeletionRestoreFailureMessage = result.localizedFailureMessage(.current)
         if failures.isEmpty {
             notice = AppLanguage.current.localized(
-                "ui.restored.selected.server.files.2e4c7a91",
+                .ui.restored.selectedServerFiles,
                 restoredPaths.count
             )
         }
@@ -166,7 +166,7 @@ extension ProjectStore {
             _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
             guard selectedProjectID == project.id else { return }
             selectedPaths.remove(request.entry.path)
-            notice = AppLanguage.current.localized("ui.reverted.local.changes.4b9ba3ac", request.entry.path)
+            notice = AppLanguage.current.localized(.ui.reverted.localChanges, request.entry.path)
             await refresh()
         } catch {
             guard selectedProjectID == project.id else { return }
@@ -208,6 +208,6 @@ extension ProjectStore {
         let path = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath).path
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects([path as NSString])
-        notice = AppLanguage.current.localized("ui.copied.the.file.path.5029ec9d")
+        notice = AppLanguage.current.localized(.ui.copied.theFilePath)
     }
 }

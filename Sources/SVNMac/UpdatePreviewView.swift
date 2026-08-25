@@ -18,7 +18,7 @@ struct UpdatePreviewView: View {
             HStack {
                 Text(sheetTitle(commitRecovery)).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized(.ui.close.label)) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
@@ -31,7 +31,7 @@ struct UpdatePreviewView: View {
                 if preview.isTruncated {
                     Label(
                         appLanguage.localized(
-                            "ui.showing.first.commits.of.total.8d6f4a21",
+                            .ui.showing.firstCommitsOfTotal,
                             UpdatePreviewState.maximumVisibleCommitCount,
                             preview.totalCommitCount
                         ),
@@ -50,10 +50,10 @@ struct UpdatePreviewView: View {
             }
             .overlay {
                 if preview.commits.isEmpty, store.isPreviewingSelectedProjectUpdate {
-                    ProgressView(appLanguage.localized("ui.checking.incoming.changes.a7a217e2"))
+                    ProgressView(appLanguage.localized(.ui.checking.incomingChanges))
                 } else if preview.commits.isEmpty, let errorMessage = preview.errorMessage {
                     ContentUnavailableView(
-                        appLanguage.localized("ui.unable.to.load.changes.78b04452"),
+                        appLanguage.localized(.ui.unable.toLoadChanges),
                         systemImage: "exclamationmark.triangle",
                         description: Text(previewFailureDescription(errorMessage))
                     )
@@ -70,19 +70,19 @@ struct UpdatePreviewView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if store.shouldOfferRepositoryTemporaryFileCleanup {
                     Toggle(
-                        appLanguage.localized("ui.add.repository.temporary.file.cleanup.commit.a19da94a"),
+                        appLanguage.localized(.ui.add.repositoryTemporaryFileCleanupCommit),
                         isOn: $store.cleansRepositoryTemporaryFilesAfterUpdate
                     )
                     .toggleStyle(.checkbox)
-                    .help(appLanguage.localized("ui.after.update.verify.candidates.then.review.and.c.89b37719"))
+                    .help(appLanguage.localized(.ui.after.updateVerifyCandidatesThenReviewAndC))
                 }
 
                 HStack {
-                    Text(appLanguage.localized("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e"))
+                    Text(appLanguage.localized(.ui.incoming.changesThatOverlapLocalEditsMayCr))
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     if commitRecovery?.conflictedPaths.isEmpty == false {
-                        Button(appLanguage.localized("ui.go.resolve.update.conflicts.2d9e4b71")) {
+                        Button(appLanguage.localized(.ui.go.resolveUpdateConflicts)) {
                             store.isShowingUpdatePreview = false
                         }
                         .buttonStyle(.borderedProminent)
@@ -95,9 +95,9 @@ struct UpdatePreviewView: View {
                         } label: {
                             ActionProgressLabel(
                                 title: commitRecovery == nil
-                                    ? appLanguage.localized("ui.run.update.e17c8217")
-                                    : appLanguage.localized("ui.update.and.retry.commit.4c6f1a82"),
-                                inProgressTitle: appLanguage.localized("ui.updating.4d2f9a11"),
+                                    ? appLanguage.localized(.ui.run.update)
+                                    : appLanguage.localized(.ui.update.andRetryCommit),
+                                inProgressTitle: appLanguage.localized(.ui.updating.label),
                                 isInProgress: store.isUpdatingSelectedProject
                             )
                         }
@@ -114,21 +114,21 @@ struct UpdatePreviewView: View {
 
     private func sheetTitle(_ recovery: OutOfDateCommitRecoveryRequest?) -> String {
         guard recovery != nil else {
-            return appLanguage.localized("ui.update.preview.3e2a4411")
+            return appLanguage.localized(.ui.update.preview)
         }
-        return appLanguage.localized("ui.commit.requires.update.before.retry.91b7e3c5")
+        return appLanguage.localized(.ui.commit.requiresUpdateBeforeRetry)
     }
 
     private func commitRecoveryNotice(_ recovery: OutOfDateCommitRecoveryRequest) -> some View {
         Label {
             if recovery.conflictedPaths.isEmpty {
                 Text(appLanguage.localized(
-                    "ui.commit.input.saved.update.then.retry.5e2a8d90",
+                    .ui.commit.inputSavedUpdateThenRetry,
                     recovery.paths.count
                 ))
             } else {
                 Text(appLanguage.localized(
-                    "ui.update.conflicts.blocked.commit.retry.8b3d6f20",
+                    .ui.update.conflictsBlockedCommitRetry,
                     recovery.conflictedPaths.joined(separator: ", ")
                 ))
             }
@@ -163,7 +163,7 @@ struct UpdatePreviewView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 } else {
-                    Text(appLanguage.localized("ui.commit.time.unavailable.59140fc5"))
+                    Text(appLanguage.localized(.ui.commit.timeUnavailable))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -172,14 +172,14 @@ struct UpdatePreviewView: View {
             VStack(alignment: .leading, spacing: 7) {
                 Label(
                     entry.author.isEmpty
-                        ? appLanguage.localized("ui.unknown.author.511030fa")
+                        ? appLanguage.localized(.ui.unknown.author)
                         : entry.author,
                     systemImage: "person"
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 SVNLogMessageView(entry: entry)
-                Text(appLanguage.localized("ui.changed.paths.89badc04", entry.changedPaths.count))
+                Text(appLanguage.localized(.ui.changed.paths, entry.changedPaths.count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -219,29 +219,29 @@ struct UpdatePreviewView: View {
 
     private func previewFailureDescription(_ errorMessage: String) -> String {
         appLanguage.localized(
-            "ui.preview.failed.update.still.available.2c71be90",
+            .ui.preview.failedUpdateStillAvailable,
             errorMessage
         )
     }
 
     private var emptyStateTitle: String {
         if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
-            return appLanguage.localized("ui.update.required.before.commit.retry.3f8c1d67")
+            return appLanguage.localized(.ui.update.requiredBeforeCommitRetry)
         }
         if store.isWorkingCopyOutOfDate == true {
-            return appLanguage.localized("ui.update.required.f846039b")
+            return appLanguage.localized(.ui.update.requiredSecondary)
         }
-        return appLanguage.localized("ui.no.incoming.changes.8302e8b6")
+        return appLanguage.localized(.ui.no.incomingChanges)
     }
 
     private var emptyStateDescription: String {
         if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
-            return appLanguage.localized("ui.review.update.then.retry.commit.6a1e9c43")
+            return appLanguage.localized(.ui.review.updateThenRetryCommit)
         }
         if store.isWorkingCopyOutOfDate == true {
-            return appLanguage.localized("ui.server.changes.inside.a.pending.deletion.may.not.475f8db6")
+            return appLanguage.localized(.ui.server.changesInsideAPendingDeletionMayNot)
         }
-        return appLanguage.localized("ui.the.working.copy.is.up.to.date.with.the.server.e31e447e")
+        return appLanguage.localized(.ui.the.workingCopyIsUpToDateWithTheServer)
     }
 
     private var historyTimeZone: TimeZone {
@@ -262,10 +262,10 @@ struct UpdatePreviewView: View {
 
     private func changedPathActionLabel(_ action: SVNChangeAction) -> String {
         switch action {
-        case .added: appLanguage.localized("ui.added.0dce7328")
-        case .modified: appLanguage.localized("ui.modified.01365bb2")
-        case .deleted: appLanguage.localized("ui.deleted.6826dd28")
-        case .replaced: appLanguage.localized("ui.replaced.6da39732")
+        case .added: appLanguage.localized(.ui.added.label)
+        case .modified: appLanguage.localized(.ui.modified.labelPrimary)
+        case .deleted: appLanguage.localized(.ui.deleted.label)
+        case .replaced: appLanguage.localized(.ui.replaced.label)
         case let .unknown(value): value
         }
     }

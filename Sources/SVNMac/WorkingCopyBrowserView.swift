@@ -17,7 +17,7 @@ struct WorkingCopyBrowserView: View {
             sortOrder: $sortOrder
         ) {
             TableColumn(
-                appLanguage.localized("ui.file.browser.name.column.0d7638cb"),
+                appLanguage.localized(.ui.file.browserNameColumn),
                 sortUsing: WorkingCopyFileSortComparator(column: .name)
             ) { node in
                 fileNameCell(node)
@@ -27,21 +27,21 @@ struct WorkingCopyBrowserView: View {
                 ideal: AppLayout.fileBrowserNameColumnIdealWidth
             )
             TableColumn(
-                appLanguage.localized("ui.file.browser.modified.column.84d3d7f2"),
+                appLanguage.localized(.ui.file.browserModifiedColumn),
                 sortUsing: WorkingCopyFileSortComparator(column: .modificationDate)
             ) { node in
                 Text(modificationDateText(for: node))
                     .lineLimit(1)
             }
             TableColumn(
-                appLanguage.localized("ui.file.browser.size.column.a6810d75"),
+                appLanguage.localized(.ui.file.browserSizeColumn),
                 sortUsing: WorkingCopyFileSortComparator(column: .size)
             ) { node in
                 Text(WorkingCopyFileMetadataFormatting.sizeText(for: node))
                     .lineLimit(1)
             }
             TableColumn(
-                appLanguage.localized("ui.file.browser.kind.column.b51d25fc"),
+                appLanguage.localized(.ui.file.browserKindColumn),
                 sortUsing: WorkingCopyFileSortComparator(column: .kind)
             ) { node in
                 Text(node.typeDescription ?? "")
@@ -57,12 +57,12 @@ struct WorkingCopyBrowserView: View {
         }
         .overlay {
             if showsInitialProgress {
-                ProgressView(appLanguage.localized("ui.loading.files.a3268fef"))
+                ProgressView(appLanguage.localized(.ui.loading.files))
             } else if displayedState.rootNodes.isEmpty {
                 ContentUnavailableView(
                     normalizedSearchText.isEmpty
-                        ? appLanguage.localized("ui.no.files.5245ffcc")
-                        : appLanguage.localized("ui.no.search.results.e40b4a06"),
+                        ? appLanguage.localized(.ui.no.files)
+                        : appLanguage.localized(.ui.no.searchResults),
                     systemImage: normalizedSearchText.isEmpty ? "folder" : "magnifyingglass"
                 )
             }
@@ -133,17 +133,17 @@ struct WorkingCopyBrowserView: View {
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized("ui.needs.lock.enabled.9a1f5c37"))
+                    .help(appLanguage.localized(.ui.needs.lockEnabled))
             }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized("ui.symbolic.link.0dc00212"))
+                    .help(appLanguage.localized(.ui.symbolic.link))
             }
         }
         // 셀에 탭 제스처를 붙이면 이름 열을 클릭할 때 Table의 행 선택이 가려집니다.
         // 선택과 더블클릭은 Table의 선택 처리와 primaryAction에 맡깁니다.
-        .accessibilityAction(named: appLanguage.localized("ui.open.file.ea89b4b3")) {
+        .accessibilityAction(named: appLanguage.localized(.ui.localizationOpen.file)) {
             open(node)
         }
     }
@@ -152,21 +152,21 @@ struct WorkingCopyBrowserView: View {
     private func rowMenu(for ids: Set<String>) -> some View {
         if let id = ids.first, ids.count == 1, let node = displayedState.node(at: id) {
             if !node.isDirectory {
-                Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
+                Button(appLanguage.localized(.ui.localizationOpen.file)) {
                     open(node)
                 }
                 if let lock = lockInfo(for: node),
                    lock.owner == store.selectedProject?.username {
-                    Button(appLanguage.localized("ui.release.lock.695a2075")) {
+                    Button(appLanguage.localized(.ui.release.lock)) {
                         Task { await store.unlock(lock) }
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 }
             }
-            Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
+            Button(appLanguage.localized(.ui.reveal.inFinder)) {
                 store.revealInFinder(node.relativePath)
             }
-            Button(appLanguage.localized("ui.copy.full.path.823e26e7")) {
+            Button(appLanguage.localized(.ui.copy.fullPath)) {
                 store.copyPath(node.relativePath)
             }
             if node.isRegularFile, node.isVersioned {
@@ -174,27 +174,27 @@ struct WorkingCopyBrowserView: View {
                 if lockInfo(for: node)?.owner != store.selectedProject?.username {
                     Button(
                         lockInfo(for: node) == nil
-                            ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
-                            : appLanguage.localized("ui.review.force.lock.6c91f2da")
+                            ? appLanguage.localized(.ui.lock.fileExplicitly)
+                            : appLanguage.localized(.ui.review.forceLock)
                     ) {
                         Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                     }
                 }
-                Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
+                Button(appLanguage.localized(.ui.file.commitHistoryFileCommitHistory)) {
                     Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
                 }
-                Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
+                Button(appLanguage.localized(.ui.rename.withHistory)) {
                     store.requestVersionedFileAction(.move, path: node.relativePath)
                 }
-                Button(appLanguage.localized("ui.copy.with.history.5f0d3b82")) {
+                Button(appLanguage.localized(.ui.copy.withHistory)) {
                     store.requestVersionedFileAction(.copy, path: node.relativePath)
                 }
                 if store.recoveryState.needsLockPaths.contains(node.relativePath) {
-                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                    Button(appLanguage.localized(.ui.needs.lockDisable)) {
                         Task { _ = await store.setNeedsLock(false, paths: [node.relativePath]) }
                     }
                 } else {
-                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                    Button(appLanguage.localized(.ui.needs.lockEnable)) {
                         Task { _ = await store.setNeedsLock(true, paths: [node.relativePath]) }
                     }
                 }
@@ -335,11 +335,11 @@ struct WorkingCopyBrowserView: View {
     private func visibleStatus(for node: WorkingCopyFileNode) -> String? {
         guard let status = node.svnEntry?.status, status != "normal" else { return nil }
         switch status {
-        case "modified": return appLanguage.localized("ui.modified.01365bb2")
-        case "added": return appLanguage.localized("ui.added.0dce7328")
-        case "unversioned": return appLanguage.localized("ui.unversioned.ffbcbcb7")
-        case "ignored": return appLanguage.localized("ui.ignored.b45ee0ef")
-        case "conflicted": return appLanguage.localized("ui.conflict.37edb628")
+        case "modified": return appLanguage.localized(.ui.modified.labelPrimary)
+        case "added": return appLanguage.localized(.ui.added.label)
+        case "unversioned": return appLanguage.localized(.ui.unversioned.label)
+        case "ignored": return appLanguage.localized(.ui.ignored.label)
+        case "conflicted": return appLanguage.localized(.ui.conflict.label)
         default: return status
         }
     }
@@ -350,9 +350,9 @@ struct WorkingCopyBrowserView: View {
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
         if lock.owner == store.selectedProject?.username {
-            return appLanguage.localized("ui.locked.by.you.f2a7c3f2")
+            return appLanguage.localized(.ui.locked.byYou)
         }
-        return appLanguage.localized("ui.locked.by.192b78cf", lock.owner)
+        return appLanguage.localized(.ui.locked.by, lock.owner)
     }
 }
 

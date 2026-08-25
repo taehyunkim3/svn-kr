@@ -37,9 +37,9 @@ import Testing
         encoding: .utf8
     )
 
-    #expect(source.contains("ui.browse.repository.6f2a9c41"))
-    #expect(AppLanguage.korean.localized("ui.browse.repository.6f2a9c41") == "저장소 둘러보기")
-    #expect(AppLanguage.english.localized("ui.browse.repository.6f2a9c41") == "Browse Repository")
+    #expect(source.contains(".ui.browse.repository"))
+    #expect(AppLanguage.korean.localized(.ui.browse.repository) == "저장소 둘러보기")
+    #expect(AppLanguage.english.localized(.ui.browse.repository) == "Browse Repository")
     #expect(source.contains(".sheet(isPresented: $isShowingRepositoryBrowser)"))
     #expect(source.contains("RepositoryBrowserView(\n                repositoryListing: store.client"))
     #expect(source.contains(".onChange(of: store.recoveryState.repositoryBrowseSelectedURL)"))

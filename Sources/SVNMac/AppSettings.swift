@@ -46,13 +46,13 @@ enum AppSettings {
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
         [
-            ("Asia/Seoul", language.localized("ui.korea.standard.time.kst.utc.9.74d019be")),
-            (systemHistoryTimeZone, language.localized("ui.mac.system.time.zone.df3e6992", TimeZone.current.identifier)),
-            ("UTC", language.localized("ui.coordinated.universal.time.utc.0b7fc6d7")),
-            ("Asia/Tokyo", language.localized("ui.japan.standard.time.jst.utc.9.04744dfc")),
-            ("America/Los_Angeles", language.localized("ui.us.pacific.time.5c9c3b6f")),
-            ("America/New_York", language.localized("ui.us.eastern.time.9e917cad")),
-            ("Europe/London", language.localized("ui.uk.time.46ba8995")),
+            ("Asia/Seoul", language.localized(.ui.korea.standardTimeKstUtc9)),
+            (systemHistoryTimeZone, language.localized(.ui.mac.systemTimeZone, TimeZone.current.identifier)),
+            ("UTC", language.localized(.ui.coordinated.universalTimeUtc)),
+            ("Asia/Tokyo", language.localized(.ui.japan.standardTimeJstUtc9)),
+            ("America/Los_Angeles", language.localized(.ui.us.pacificTime)),
+            ("America/New_York", language.localized(.ui.us.easternTime)),
+            ("Europe/London", language.localized(.ui.uk.time)),
         ].reduce(into: []) { result, item in
             if !result.contains(where: { $0.identifier == item.0 }) {
                 result.append((identifier: item.0, label: item.1))
@@ -87,21 +87,11 @@ enum AppLanguage: String, CaseIterable {
         AppLanguage(rawValue: UserDefaults.standard.string(forKey: AppSettings.languageKey) ?? AppSettings.defaultLanguage) ?? .korean
     }
 
-    func localized(_ key: String) -> String {
-        localizedBundle.localizedString(forKey: key, value: key, table: nil)
-    }
-
     func localized(_ key: LocalizationKey) -> String {
-        localized(key.rawValue)
-    }
-
-    func localized(_ key: String, _ arguments: Any...) -> String {
-        let format = localized(key)
-        let stringArguments: [CVarArg] = arguments.map { String(describing: $0) }
-        return String(
-            format: format,
-            locale: Locale(identifier: rawValue),
-            arguments: stringArguments
+        localizedBundle.localizedString(
+            forKey: key.rawValue,
+            value: key.rawValue,
+            table: nil
         )
     }
 
@@ -164,43 +154,43 @@ struct AppSettingsView: View {
 
     var body: some View {
         Form {
-            Picker(appLanguage.localized("ui.language.8e5b78fb"), selection: $languageIdentifier) {
+            Picker(appLanguage.localized(.ui.language.label), selection: $languageIdentifier) {
                 Text("한국어").tag(AppLanguage.korean.rawValue)
                 Text("English").tag(AppLanguage.english.rawValue)
             }
-            .help(appLanguage.localized("ui.choose.the.language.used.in.the.app.interface.16c2f863"))
+            .help(appLanguage.localized(.ui.choose.theLanguageUsedInTheAppInterface))
 
-            Picker(appLanguage.localized("ui.commit.history.time.zone.9e3260bf"), selection: $historyTimeZoneIdentifier) {
+            Picker(appLanguage.localized(.ui.commit.historyTimeZone), selection: $historyTimeZoneIdentifier) {
                 ForEach(AppSettings.historyTimeZones(for: appLanguage), id: \.identifier) { timeZone in
                     Text(timeZone.label).tag(timeZone.identifier)
                 }
             }
-            .help(appLanguage.localized("ui.choose.the.time.zone.used.for.commit.dates.and.t.ded46b04"))
+            .help(appLanguage.localized(.ui.choose.theTimeZoneUsedForCommitDatesAndT))
 
-            Text(appLanguage.localized("ui.the.default.is.korea.standard.time.kst.this.does.02bc8ed0"))
+            Text(appLanguage.localized(.ui.the.defaultIsKoreaStandardTimeKstThisDoes))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Toggle(
-                appLanguage.localized("ui.hide.mac.office.temporary.files.875f35d1"),
+                appLanguage.localized(.ui.hide.macOfficeTemporaryFiles),
                 isOn: $hideTemporaryFiles
             )
-            .help(appLanguage.localized("ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4"))
+            .help(appLanguage.localized(.ui.hide.temporaryFilesFromChangesAndCommitTarg))
 
             Picker(
-                appLanguage.localized("ui.document.opening.method.9d73be41"),
+                appLanguage.localized(.ui.document.openingMethod),
                 selection: $documentOpenLockPolicyIdentifier
             ) {
                 Text(
-                    appLanguage.localized("ui.ask.every.time.before.opening.documents.31c4d8a2")
+                    appLanguage.localized(.ui.ask.everyTimeBeforeOpeningDocuments)
                 )
                     .tag(DocumentOpenLockPolicy.askEveryTime.rawValue)
                 Text(
-                    appLanguage.localized("ui.always.open.documents.without.locking.8b6e42d0")
+                    appLanguage.localized(.ui.always.openDocumentsWithoutLocking)
                 )
                     .tag(DocumentOpenLockPolicy.alwaysOpenWithoutLock.rawValue)
                 Text(
-                    appLanguage.localized("ui.always.lock.and.open.documents.2f9a7c11")
+                    appLanguage.localized(.ui.always.lockAndOpenDocuments)
                 )
                     .tag(DocumentOpenLockPolicy.alwaysLockAndOpen.rawValue)
             }
@@ -208,7 +198,7 @@ struct AppSettingsView: View {
             if documentOpenLockPolicy == .alwaysLockAndOpen {
                 Label(
                     appLanguage.localized(
-                        "ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf"
+                        .ui.locked.filesBlockOtherUsersUntilCommitOrUnl
                     ),
                     systemImage: "exclamationmark.triangle.fill"
                 )

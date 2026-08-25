@@ -135,7 +135,10 @@ import Testing
             encoding: .utf8
         )
         for key in keys {
-            #expect(contents.contains(key), "\(key) is missing from \(relativePath)")
+            #expect(
+                contents.contains(key.rawValue),
+                "\(key.rawValue) is missing from \(relativePath)"
+            )
         }
     }
 }

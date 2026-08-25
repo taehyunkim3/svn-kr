@@ -9,7 +9,7 @@ import Testing
     #expect(confirmation.contains("content.sheet(item: $store.documentOpenRequest)"))
     #expect(!confirmation.contains("confirmationDialog("))
     #expect(confirmation.contains("@State private var remembersOpenWithoutLock = false"))
-    #expect(confirmation.contains("ui.open.without.lock.and.do.not.ask.again.4c6f8a20"))
+    #expect(confirmation.contains(".ui.localizationOpen.withoutLockAndDoNotAskAgain"))
     #expect(confirmation.contains("rememberingChoice: remembersOpenWithoutLock"))
     #expect(confirmation.contains("Task { await store.lockAndOpen(request) }"))
     #expect(confirmation.contains("if request.existingLock == nil"))
@@ -28,7 +28,7 @@ import Testing
     #expect(settings.contains("if documentOpenLockPolicy == .alwaysLockAndOpen"))
     #expect(settings.contains("systemImage: \"exclamationmark.triangle.fill\""))
     #expect(settings.contains(".foregroundStyle(.orange)"))
-    #expect(settings.contains("ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf"))
+    #expect(settings.contains(".ui.locked.filesBlockOtherUsersUntilCommitOrUnl"))
 }
 
 @Test func documentOpenPolicyStringsExistInEveryLocalizationResource() throws {
@@ -56,7 +56,7 @@ import Testing
 
     #expect(
         AppLanguage.korean.localized(
-            "ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf"
+            .ui.locked.filesBlockOtherUsersUntilCommitOrUnl
         ) == "잠긴 파일은 커밋하거나 잠금 목록에서 해제하기 전까지 다른 사람이 그 파일을 수정할 수 없습니다."
     )
 }

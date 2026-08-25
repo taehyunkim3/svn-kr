@@ -90,12 +90,12 @@ import SVNCore
 
 @Test func lockConfirmationsExplainOwnerImpactInBothLanguages() {
     let korean = AppLanguage.korean.localized(
-        "ui.force.lock.confirmation.details.27fb4d91",
+        .ui.force.lockConfirmationDetails,
         1,
         "Documents/a.xlsx — other.user"
     )
     let english = AppLanguage.english.localized(
-        "ui.bulk.unlock.partial.failure.details.71a6c5e8",
+        .ui.bulk.unlockPartialFailureDetails,
         7,
         10,
         "Documents/b.hwp"

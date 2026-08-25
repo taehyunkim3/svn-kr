@@ -102,9 +102,9 @@ struct ChangesView: View {
         .overlay {
             if store.pathCollisions.isEmpty && visibleStatuses.isEmpty && (!store.showsIgnoredFiles || visibleIgnoredStatuses.isEmpty) {
                 ContentUnavailableView(
-                    appLanguage.localized("ui.no.changes.ea917fd6"),
+                    appLanguage.localized(.ui.no.changes),
                     systemImage: "checkmark.circle",
-                    description: Text(appLanguage.localized("ui.there.are.no.locally.modified.files.8560ad60"))
+                    description: Text(appLanguage.localized(.ui.there.areNoLocallyModifiedFiles))
                 )
             }
         }
@@ -121,24 +121,24 @@ struct ChangesView: View {
                     }
                 ))
                 .labelsHidden()
-                .accessibilityLabel(appLanguage.localized("ui.include.in.commit.2aaaa224", entry.path))
-                .help(appLanguage.localized("ui.include.or.exclude.this.file.from.the.next.commi.273bb38e"))
+                .accessibilityLabel(appLanguage.localized(.ui.include.inCommit, entry.path))
+                .help(appLanguage.localized(.ui.include.orExcludeThisFileFromTheNextCommi))
             } else {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
             statusBadge(entry)
             if WorkingCopyStatusPolicy.showsSwitchedWarning(entry) {
                 StatusBadge(
-                    label: appLanguage.localized("ui.switched.path.8f2c4a71"),
+                    label: appLanguage.localized(.ui.switched.path),
                     color: WorkingCopyStatusTone.purple.color,
                     style: .tinted
                 )
-                .help(appLanguage.localized("ui.switched.path.commit.warning.3d7b91e6"))
+                .help(appLanguage.localized(.ui.switched.pathCommitWarning))
             }
             if store.recoveryState.needsLockPaths.contains(entry.path) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized("ui.needs.lock.enabled.9a1f5c37"))
+                    .help(appLanguage.localized(.ui.needs.lockEnabled))
             }
             if let lock = lockInfo(for: entry) {
                 Label(lock.owner, systemImage: "lock.fill")
@@ -154,31 +154,31 @@ struct ChangesView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.path.precomposedStringWithCanonicalMapping).lineLimit(1)
                     if entry.item == .unversioned && entry.nodeKind == .directory {
-                        Text(appLanguage.localized("ui.files.inside.this.folder.will.be.added.together.637444b8"))
+                        Text(appLanguage.localized(.ui.files.insideThisFolderWillBeAddedTogether))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
                     if WorkingCopyStatusPolicy.showsObstructionGuidance(entry) {
-                        Text(appLanguage.localized("ui.move.or.rename.the.local.file.then.update.1e3c7a90"))
+                        Text(appLanguage.localized(.ui.move.orRenameTheLocalFileThenUpdate))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     if WorkingCopyStatusPolicy.showsIncompleteRecovery(entry) {
-                        Text(appLanguage.localized("ui.continue.incomplete.by.updating.b64e2a19"))
+                        Text(appLanguage.localized(.ui.localizationContinue.incompleteByUpdating))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityHint(appLanguage.localized("ui.shows.the.diff.for.this.file.6f52b16a"))
+            .accessibilityHint(appLanguage.localized(.ui.shows.theDiffForThisFile))
             Spacer()
             if entry.item == .obstructed {
-                Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
+                Button(appLanguage.localized(.ui.reveal.inFinder)) {
                     store.revealInFinder(entry.path)
                 }
             } else if WorkingCopyStatusPolicy.showsIncompleteRecovery(entry) {
-                Button(appLanguage.localized("ui.continue.update.2ce71b84")) {
+                Button(appLanguage.localized(.ui.localizationContinue.update)) {
                     Task { await store.update() }
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
@@ -186,7 +186,7 @@ struct ChangesView: View {
         }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
         .contextMenu {
-            Button(appLanguage.localized("ui.open.file.ea89b4b3")) {
+            Button(appLanguage.localized(.ui.localizationOpen.file)) {
                 Task {
                     await store.prepareToOpen(
                         path: entry.path,
@@ -197,14 +197,14 @@ struct ChangesView: View {
                     )
                 }
             }
-            Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
+            Button(appLanguage.localized(.ui.reveal.inFinder)) {
                 store.revealInFinder(entry.path)
             }
-            Button(appLanguage.localized("ui.copy.full.path.823e26e7")) {
+            Button(appLanguage.localized(.ui.copy.fullPath)) {
                 store.copyPath(entry.path)
             }
             if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
-                Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
+                Button(appLanguage.localized(.ui.file.commitHistoryFileCommitHistory)) {
                     Task { await store.loadFileHistory(for: entry.path) }
                 }
             }
@@ -213,51 +213,51 @@ struct ChangesView: View {
                 if lockInfo(for: entry)?.owner != store.selectedProject?.username {
                     Button(
                         lockInfo(for: entry) == nil
-                            ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
-                            : appLanguage.localized("ui.review.force.lock.6c91f2da")
+                            ? appLanguage.localized(.ui.lock.fileExplicitly)
+                            : appLanguage.localized(.ui.review.forceLock)
                     ) {
                         Task { await store.prepareExplicitLock(paths: [lockPath(for: entry)]) }
                     }
                 }
-                Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
+                Button(appLanguage.localized(.ui.rename.withHistory)) {
                     store.requestVersionedFileAction(.move, path: entry.path)
                 }
-                Button(appLanguage.localized("ui.copy.with.history.5f0d3b82")) {
+                Button(appLanguage.localized(.ui.copy.withHistory)) {
                     store.requestVersionedFileAction(.copy, path: entry.path)
                 }
                 if store.recoveryState.needsLockPaths.contains(entry.path) {
-                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                    Button(appLanguage.localized(.ui.needs.lockDisable)) {
                         Task { _ = await store.setNeedsLock(false, paths: [entry.path]) }
                     }
                 } else {
-                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                    Button(appLanguage.localized(.ui.needs.lockEnable)) {
                         Task { _ = await store.setNeedsLock(true, paths: [entry.path]) }
                     }
                 }
             }
             Divider()
             if entry.item == .conflicted || entry.propertyState == .conflicted {
-                Button(appLanguage.localized("ui.resolve.conflict.592b6d3a")) {
+                Button(appLanguage.localized(.ui.resolve.conflictAction)) {
                     Task { await store.prepareConflictResolution(for: entry.path) }
                 }
                 Divider()
             }
             if entry.item == .unversioned {
-                Button(appLanguage.localized("ui.ignore.this.item.67c56906")) {
+                Button(appLanguage.localized(.ui.ignore.thisItem)) {
                     Task { await store.ignore(path: entry.path, byExtension: false) }
                 }
                 if !(entry.path as NSString).pathExtension.isEmpty {
-                    Button(appLanguage.localized("ui.ignore.this.extension.687c5df7")) {
+                    Button(appLanguage.localized(.ui.ignore.thisExtension)) {
                         Task { await store.ignore(path: entry.path, byExtension: true) }
                     }
                 }
             }
             if entry.canScheduleRepositoryDeletion {
                 Divider()
-                Button(appLanguage.localized("ui.restore.local.file.b40bfb4b")) {
+                Button(appLanguage.localized(.ui.restore.localFile)) {
                     store.requestRevert(entry)
                 }
-                Button(appLanguage.localized("ui.delete.from.repository.deb8c2a7"), role: .destructive) {
+                Button(appLanguage.localized(.ui.delete.fromRepository), role: .destructive) {
                     store.requestDeletion(entry)
                 }
             }
@@ -268,10 +268,10 @@ struct ChangesView: View {
                 Divider()
                 Button(
                     entry.item == .conflicted || entry.propertyState == .conflicted
-                        ? appLanguage.localized("ui.revert.conflict.discards.local.changes.and.conflict.51b3d907")
+                        ? appLanguage.localized(.ui.revert.conflictDiscardsLocalChangesAndConflict)
                         : entry.item == .deleted
-                        ? appLanguage.localized("ui.cancel.deletion.and.restore.ce07fc64")
-                        : appLanguage.localized("ui.revert.local.changes.c62907ae"),
+                        ? appLanguage.localized(.ui.cancel.deletionAndRestore)
+                        : appLanguage.localized(.ui.revert.localChangesAction),
                     role: .destructive
                 ) {
                     store.requestRevert(entry)
@@ -286,12 +286,12 @@ struct ChangesView: View {
                 .foregroundStyle(.orange)
                 .frame(width: 18)
             StatusBadge(
-                label: appLanguage.localized("ui.unicode.path.conflict.1ea3bdc6"),
+                label: appLanguage.localized(.ui.unicode.pathConflict),
                 color: .orange
             )
             Text(collision.displayPath).lineLimit(1)
             Spacer()
-            Text(appLanguage.localized("ui.affected.dbd64ef9", collision.affectedEntryCount))
+            Text(appLanguage.localized(.ui.affected.label, collision.affectedEntryCount))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if collision.id == store.pathCollisions.first?.id {
@@ -300,16 +300,16 @@ struct ChangesView: View {
                         Task { await store.repairCanonicalAliases() }
                     } label: {
                         ActionProgressLabel(
-                            title: appLanguage.localized("ui.clean.up.equivalent.path.11fce14e"),
+                            title: appLanguage.localized(.ui.clean.upEquivalentPath),
                             isInProgress: store.isRecoveringSelectedProject
                         )
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 } else {
-                    Text(appLanguage.localized("ui.resolve.duplicate.server.paths.manually.e8b5d352"))
+                    Text(appLanguage.localized(.ui.resolve.duplicateServerPathsManually))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized("ui.multiple.canonically.equivalent.server.paths.exi.55798f96"))
+                    .help(appLanguage.localized(.ui.multiple.canonicallyEquivalentServerPathsExi))
                 }
             }
         }
@@ -317,7 +317,7 @@ struct ChangesView: View {
 
     private var changesToolbar: some View {
         HStack {
-            Toggle(appLanguage.localized("ui.show.ignored.files.508dbd97"), isOn: Binding(
+            Toggle(appLanguage.localized(.ui.show.ignoredFiles), isOn: Binding(
                 get: { store.showsIgnoredFiles },
                 set: { value in Task { await store.setShowsIgnoredFiles(value) } }
             ))
@@ -329,7 +329,7 @@ struct ChangesView: View {
                     store.requestDeletion(missingEntries)
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.delete.missing.items.ab0ea8fc", missingEntries.count),
+                        title: appLanguage.localized(.ui.delete.missingItems, missingEntries.count),
                         systemImage: "trash",
                         isInProgress: store.isDeletingSelectedProject
                     )
@@ -346,7 +346,7 @@ struct ChangesView: View {
                 } label: {
                     ActionProgressLabel(
                         title: appLanguage.localized(
-                            "ui.restore.selected.pending.deletions.9c4f7a13",
+                            .ui.restore.selectedPendingDeletions,
                             restorableDeletionPaths.count
                         ),
                         systemImage: "arrow.uturn.backward",
@@ -360,21 +360,21 @@ struct ChangesView: View {
                 .map(lockPath)
             if !selectedVersionedFiles.isEmpty {
                 Button(appLanguage.localized(
-                    "ui.lock.selected.files.7a3e9c21",
+                    .ui.lock.selectedFiles,
                     selectedVersionedFiles.count
                 )) {
                     Task { await store.prepareExplicitLock(paths: selectedVersionedFiles) }
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
                 Menu {
-                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                    Button(appLanguage.localized(.ui.needs.lockEnable)) {
                         Task { _ = await store.setNeedsLock(true, paths: selectedVersionedFiles) }
                     }
-                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                    Button(appLanguage.localized(.ui.needs.lockDisable)) {
                         Task { _ = await store.setNeedsLock(false, paths: selectedVersionedFiles) }
                     }
                 } label: {
-                    Label(appLanguage.localized("ui.needs.lock.enable.0b7e4c91"), systemImage: "lock.square")
+                    Label(appLanguage.localized(.ui.needs.lockEnable), systemImage: "lock.square")
                 }
                 .disabled(store.isWorking)
             }
@@ -387,12 +387,12 @@ struct ChangesView: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
                     .help(repositoryURL)
-                Button(appLanguage.localized("ui.change.repository.location.8b21c7e4")) {
+                Button(appLanguage.localized(.ui.change.repositoryLocation)) {
                     Task { await store.requestRepositoryRelocation() }
                 }
                 .disabled(store.isWorking)
             }
-            Button(appLanguage.localized("ui.manage.ignore.rules.7eac76b1"), systemImage: "eye.slash") {
+            Button(appLanguage.localized(.ui.manage.ignoreRules), systemImage: "eye.slash") {
                 Task {
                     await store.loadIgnoreRules()
                     store.isShowingIgnoreRules = true
@@ -415,12 +415,12 @@ struct ChangesView: View {
                 EmptyView()
             case .modified:
                 StatusBadge(
-                    label: appLanguage.localized("ui.property.modified.4c9a78e1"),
+                    label: appLanguage.localized(.ui.property.modified),
                     color: .orange
                 )
             case .conflicted:
                 StatusBadge(
-                    label: appLanguage.localized("ui.property.conflict.2fd61b8a"),
+                    label: appLanguage.localized(.ui.property.conflict),
                     color: .red
                 )
             }
@@ -429,20 +429,20 @@ struct ChangesView: View {
 
     private func statusLabel(_ entry: SVNStatusEntry) -> String {
         if TemporaryFilePolicy.isTemporaryFile(entry) {
-            return appLanguage.localized("ui.temporary.5738ffab")
+            return appLanguage.localized(.ui.temporary.label)
         }
         return switch entry.item {
-        case .modified: appLanguage.localized("ui.modified.01365bb2")
-        case .added: appLanguage.localized("ui.added.0dce7328")
-        case .deleted: appLanguage.localized("ui.pending.deletion.1652cca1")
-        case .missing where entry.isMissingScheduledAddition: appLanguage.localized("ui.cleanup.needed.3c5f4e64")
-        case .missing: appLanguage.localized("ui.pending.deletion.1652cca1")
-        case .unversioned: appLanguage.localized("ui.unversioned.ffbcbcb7")
-        case .ignored: appLanguage.localized("ui.ignored.b45ee0ef")
-        case .conflicted: appLanguage.localized("ui.conflict.37edb628")
-        case .replaced: appLanguage.localized("ui.replaced.6da39732")
-        case .obstructed: appLanguage.localized("ui.obstructed.local.file.74a9c2e5")
-        case .incomplete: appLanguage.localized("ui.incomplete.update.required.c5e83d20")
+        case .modified: appLanguage.localized(.ui.modified.labelPrimary)
+        case .added: appLanguage.localized(.ui.added.label)
+        case .deleted: appLanguage.localized(.ui.pending.deletionPrimary)
+        case .missing where entry.isMissingScheduledAddition: appLanguage.localized(.ui.cleanup.needed)
+        case .missing: appLanguage.localized(.ui.pending.deletionPrimary)
+        case .unversioned: appLanguage.localized(.ui.unversioned.label)
+        case .ignored: appLanguage.localized(.ui.ignored.label)
+        case .conflicted: appLanguage.localized(.ui.conflict.label)
+        case .replaced: appLanguage.localized(.ui.replaced.label)
+        case .obstructed: appLanguage.localized(.ui.obstructed.localFile)
+        case .incomplete: appLanguage.localized(.ui.incomplete.updateRequired)
         case let .unknown(value): value
         }
     }
@@ -481,8 +481,8 @@ struct ChangesView: View {
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
         if lock.owner == store.selectedProject?.username {
-            return appLanguage.localized("ui.locked.by.you.f2a7c3f2")
+            return appLanguage.localized(.ui.locked.byYou)
         }
-        return appLanguage.localized("ui.locked.by.192b78cf", lock.owner)
+        return appLanguage.localized(.ui.locked.by, lock.owner)
     }
 }

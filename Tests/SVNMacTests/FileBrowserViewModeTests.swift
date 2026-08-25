@@ -77,18 +77,18 @@ import Testing
 }
 
 @Test func sharedFileBrowserColumnKeysAreLocalizedInKoreanAndEnglish() throws {
-    let expectedValues: [(key: String, korean: String, english: String)] = [
-        ("ui.file.browser.name.column.0d7638cb", "이름", "Name"),
-        ("ui.file.browser.modified.column.84d3d7f2", "수정일", "Date Modified"),
-        ("ui.file.browser.size.column.a6810d75", "크기", "Size"),
-        ("ui.file.browser.kind.column.b51d25fc", "종류", "Kind"),
+    let expectedValues: [(key: LocalizationKey, korean: String, english: String)] = [
+        (.ui.file.browserNameColumn, "이름", "Name"),
+        (.ui.file.browserModifiedColumn, "수정일", "Date Modified"),
+        (.ui.file.browserSizeColumn, "크기", "Size"),
+        (.ui.file.browserKindColumn, "종류", "Kind"),
     ]
     let koreanStrings = try source(at: "Sources/SVNMac/Resources/ko.lproj/Localizable.strings")
     let englishStrings = try source(at: "Sources/SVNMac/Resources/en.lproj/Localizable.strings")
 
     for entry in expectedValues {
-        #expect(koreanStrings.contains("\"\(entry.key)\" ="))
-        #expect(englishStrings.contains("\"\(entry.key)\" ="))
+        #expect(koreanStrings.contains("\"\(entry.key.rawValue)\" ="))
+        #expect(englishStrings.contains("\"\(entry.key.rawValue)\" ="))
         #expect(AppLanguage.korean.localized(entry.key) == entry.korean)
         #expect(AppLanguage.english.localized(entry.key) == entry.english)
     }

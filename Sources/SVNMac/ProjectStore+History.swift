@@ -157,7 +157,7 @@ extension ProjectStore {
             )
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
-                "ui.saved.historical.revision.76ec18b4",
+                .ui.saved.historicalRevision,
                 revision,
                 destinationURL.path
             )
@@ -211,7 +211,7 @@ extension ProjectStore {
             await refreshLocalWorkingCopy()
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
-                "ui.restored.revision.commit.required.f9346b20",
+                .ui.restored.revisionCommitRequired,
                 request.relativePath,
                 request.revision
             )

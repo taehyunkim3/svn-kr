@@ -74,7 +74,7 @@ enum ExplicitLockExecutionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .forceUnsupported:
-            AppLanguage.current.localized("ui.force.lock.client.unavailable.72be3a10")
+            AppLanguage.current.localized(.ui.force.lockClientUnavailable)
         }
     }
 }

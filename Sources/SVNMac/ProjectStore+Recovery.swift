@@ -44,7 +44,7 @@ extension ProjectStore {
               let sourceProject = projects.first(where: { $0.id == sourceID }) else { return false }
         let destination = destinationURL.standardizedFileURL
         guard !projects.contains(where: { $0.path == destination.path }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -85,7 +85,7 @@ extension ProjectStore {
             selectedProjectID = recoveredID
             await refresh()
             guard selectedProjectID == recoveredID else { return true }
-            notice = AppLanguage.current.localized("ui.path.recovery.completed.the.original.working.fol.2fde9c42")
+            notice = AppLanguage.current.localized(.ui.path.recoveryCompletedTheOriginalWorkingFol)
             return true
         } catch {
             projectAccessManager.endAccessing(projectID: recoveredID)
