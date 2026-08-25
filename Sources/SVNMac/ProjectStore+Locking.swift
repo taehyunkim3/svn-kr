@@ -9,6 +9,12 @@ struct DocumentOpenRequest: Identifiable, Equatable, Sendable {
     var lockInformationWasUnavailable = false
 }
 
+struct ForceUnlockRequest: Identifiable, Equatable {
+    let id = UUID()
+    let lock: SVNLockInfo
+    let originalMessage: String
+}
+
 extension ProjectStore {
     func prepareToOpen(
         path relativePath: String,
@@ -48,6 +54,7 @@ extension ProjectStore {
             await handleDocumentOpen(request)
         } catch {
             guard selectedProjectID == project.id else { return }
+            if offerWorkingCopyCleanup(for: error, projectID: project.id) { return }
             notice = AppLanguage.current.localized("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
             let request = DocumentOpenRequest(
                 relativePath: relativePath,
@@ -101,7 +108,9 @@ extension ProjectStore {
             await loadRepositoryLocks()
         } catch {
             guard selectedProjectID == project.id else { return }
-            errorMessage = localizedError(error)
+            if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                errorMessage = localizedError(error)
+            }
         }
     }
 
@@ -159,15 +168,51 @@ extension ProjectStore {
             _ = try await client.unlock(
                 at: project.path,
                 relativePath: lock.path,
+                force: false,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.localized("ui.the.lock.was.released.3aee6b8e")
+            forceUnlockRequest = nil
             await loadRepositoryLocks()
         } catch {
             guard selectedProjectID == project.id else { return }
-            errorMessage = localizedError(error)
+            if SVNErrorLocalization.suggestsForceUnlock(error) {
+                forceUnlockRequest = ForceUnlockRequest(
+                    lock: lock,
+                    originalMessage: SVNErrorLocalization.diagnosticDetails(for: error)
+                )
+                errorMessage = nil
+            } else if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                errorMessage = localizedError(error)
+            }
+        }
+    }
+
+    func forceUnlock(_ request: ForceUnlockRequest) async {
+        guard forceUnlockRequest?.id == request.id,
+              let project = selectedProject else { return }
+        let operationID = beginOperation(.lock(project.id))
+        defer { endOperation(operationID) }
+        do {
+            _ = try await client.unlock(
+                at: project.path,
+                relativePath: request.lock.path,
+                force: true,
+                credentials: credentials(for: project),
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            guard selectedProjectID == project.id else { return }
+            forceUnlockRequest = nil
+            notice = AppLanguage.current.localized("ui.the.lock.was.force.released.16b02da9")
+            await loadRepositoryLocks()
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            forceUnlockRequest = nil
+            if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                errorMessage = localizedError(error)
+            }
         }
     }
 }

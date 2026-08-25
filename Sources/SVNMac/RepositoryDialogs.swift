@@ -125,6 +125,7 @@ struct AddRepositoryView: View {
     }
 
     var body: some View {
+        @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -298,11 +299,14 @@ struct AddRepositoryView: View {
         ) {
             Button(appLanguage.localized("ui.stop.checkout.b0f4e2a7"), role: .destructive) {
                 store.cancelCheckout()
-                dismiss()
             }
             Button(appLanguage.localized("ui.keep.downloading.3c1de80f"), role: .cancel) {}
         } message: {
             Text(appLanguage.localized("ui.the.running.svn.checkout.will.be.stopped.already.4b7d5a19"))
+        }
+        .sheet(item: $store.canceledCheckoutRecoveryRequest) { request in
+            CanceledCheckoutRecoveryView(request: request)
+                .environment(store)
         }
     }
 
@@ -411,6 +415,18 @@ struct CredentialsView: View {
 
             Divider()
             HStack {
+                Button {
+                    store.requestSelectedWorkingCopyCleanup()
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized("ui.working.copy.cleanup.62f3ac11"),
+                        inProgressTitle: appLanguage.localized("ui.cleaning.working.copy.2a9ed647"),
+                        systemImage: "wrench.and.screwdriver",
+                        isInProgress: store.isCleaningSelectedWorkingCopy
+                    )
+                }
+                .disabled(isSaving || store.isCleaningSelectedWorkingCopy)
+                .help(appLanguage.localized("ui.cleanup.interrupted.working.copy.manually.46d93c1e"))
                 if hasSavedPassword {
                     Button(appLanguage.localized("ui.delete.saved.password.a38fa5cf"), role: .destructive) {
                         if store.deleteSavedPassword(for: project.id) {
@@ -443,6 +459,10 @@ struct CredentialsView: View {
         .padding(24)
         .frame(width: AppLayout.credentialsSheetWidth)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
+        .sheet(item: $store.workingCopyCleanupRequest) { request in
+            WorkingCopyCleanupView(request: request)
+                .environment(store)
+        }
         .alert(
             appLanguage.localized("ui.the.svn.account.or.password.is.not.valid.6d81e3f4"),
             isPresented: .isPresenting($credentialFailureMessage),
