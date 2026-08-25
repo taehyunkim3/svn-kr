@@ -259,6 +259,7 @@ struct WorkingCopySplitBrowserView: View {
                 } label: {
                     Image(systemName: browserState.expandedDirectoryPaths.contains(row.relativePath)
                           ? "chevron.down" : "chevron.right")
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             } else {
@@ -285,6 +286,12 @@ struct WorkingCopySplitBrowserView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded {
+                    browserState.enterDirectory(row.relativePath)
+                    synchronizeFolderSelection()
+                }
+            )
         }
         .padding(.leading, CGFloat(row.depth) * 16)
         .padding(.horizontal, 8)

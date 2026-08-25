@@ -18,6 +18,21 @@ import Testing
     #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
 }
 
+@Test func splitBrowserFolderRowsSupportDoubleClickAndChevronHitArea() throws {
+    let source = try source(at: "Sources/SVNMac/WorkingCopySplitBrowserView.swift")
+    let folderRowStart = try #require(source.range(of: "private func folderRow"))
+    let nextFunctionStart = try #require(
+        source.range(of: "private func fileNameCell", range: folderRowStart.upperBound..<source.endIndex)
+    )
+    let folderRow = source[folderRowStart.lowerBound..<nextFunctionStart.lowerBound]
+    let chevronBranchEnd = try #require(folderRow.range(of: "} else {"))
+    let chevronBranch = folderRow[..<chevronBranchEnd.lowerBound]
+
+    #expect(chevronBranch.contains(".contentShape(Rectangle())"))
+    #expect(folderRow.contains("TapGesture(count: 2)"))
+    #expect(folderRow.contains("browserState.enterDirectory(row.relativePath)"))
+}
+
 @Test func filesTabSwitchesBetweenPersistentTreeAndSplitBrowsers() throws {
     let contentView = try source(at: "Sources/SVNMac/ContentView.swift")
 
