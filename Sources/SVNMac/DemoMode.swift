@@ -275,7 +275,14 @@ private actor DemoSVNClient: SVNClientServing {
     func conflictDetails(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> SVNConflictDetails? { nil }
     func resolveConflict(at _: String, relativePath _: String, choice _: SVNConflictChoice, credentials _: SVNCredentials?) async throws -> String { "Resolved" }
     func log(at _: String, limit _: Int, endingAtRevision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
+    func updatePreviewIncomingCommits(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
     func revisionDiff(at _: String, revision _: String, repositoryPath _: String, workingCopyRepositoryPath _: String?, pegRevision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { DemoData.diff }
+    func fileContents(at _: String, relativePath _: String, revision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> Data {
+        throw RevisionFileError.historyClientUnavailable
+    }
+    func export(at _: String, relativePath _: String, revision _: String, destinationPath _: String, force _: Bool, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String {
+        throw RevisionFileError.historyClientUnavailable
+    }
     func workingCopyRevision(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopyRevision {
         SVNWorkingCopyRevision(minimum: "1842", maximum: "1842")
     }

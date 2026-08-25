@@ -143,9 +143,8 @@ extension ProjectStore {
         }
 
         do {
-            let historyClient = try historyRevisionClient()
             try await RevisionFileService().saveRevision(
-                using: historyClient,
+                using: client,
                 workingCopyPath: project.path,
                 relativePath: relativePath,
                 revision: revision,
@@ -189,8 +188,7 @@ extension ProjectStore {
         }
 
         do {
-            let historyClient = try historyRevisionClient()
-            let contents = try await historyClient.fileContents(
+            let contents = try await client.fileContents(
                 at: project.path,
                 relativePath: request.relativePath,
                 revision: request.revision,
@@ -225,12 +223,5 @@ extension ProjectStore {
     private func canApplyHistoryRevisionOperation(_ operation: HistoryRevisionOperation) -> Bool {
         selectedProjectID == operation.projectID
             && recoveryState.historyRevisionOperation?.id == operation.id
-    }
-
-    private func historyRevisionClient() throws -> any HistoryRevisionClient {
-        guard let historyClient = client as? any HistoryRevisionClient else {
-            throw RevisionFileError.historyClientUnavailable
-        }
-        return historyClient
     }
 }

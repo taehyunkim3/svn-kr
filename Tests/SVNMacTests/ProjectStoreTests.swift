@@ -3668,6 +3668,10 @@ private actor StubSVNClient: SVNClientServing {
         }
         return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
+    func updatePreviewIncomingCommits(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+        await delay(for: path)
+        return []
+    }
     func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
         revisionDiffRequests.append(RevisionDiffRequest(
             revision: revision,
@@ -3678,6 +3682,12 @@ private actor StubSVNClient: SVNClientServing {
         return "revision diff"
     }
     func lastRevisionDiffRequest() -> RevisionDiffRequest? { revisionDiffRequests.last }
+    func fileContents(at path: String, relativePath: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Data {
+        throw RevisionFileError.historyClientUnavailable
+    }
+    func export(at path: String, relativePath: String, revision: String, destinationPath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        throw RevisionFileError.historyClientUnavailable
+    }
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopyRevision {
         await delay(for: path)
         let revision = revisionsByPath[path] ?? "0"

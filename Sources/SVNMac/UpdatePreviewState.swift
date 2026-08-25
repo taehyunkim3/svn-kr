@@ -49,33 +49,3 @@ struct UpdatePreviewState {
         !commits.isEmpty || hasRemoteChanges || isWorkingCopyOutOfDate || errorMessage != nil
     }
 }
-
-protocol UpdatePreviewCommitServing: Sendable {
-    func updatePreviewIncomingCommits(
-        at path: String,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool
-    ) async throws -> [SVNLogEntry]
-}
-
-extension SVNClient: UpdatePreviewCommitServing {
-    func updatePreviewIncomingCommits(
-        at path: String,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool
-    ) async throws -> [SVNLogEntry] {
-        try await incomingCommits(
-            at: path,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
-        )
-    }
-}
-
-enum UpdatePreviewCommitLoadingError: LocalizedError {
-    case unsupportedClient
-
-    var errorDescription: String? {
-        "The configured SVN client cannot load incoming commits."
-    }
-}

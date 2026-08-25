@@ -1,30 +1,6 @@
 import Foundation
 import SVNCore
 
-protocol HistoryRevisionClient: Sendable {
-    func fileContents(
-        at path: String,
-        relativePath: String,
-        revision: String,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
-    ) async throws -> Data
-
-    func export(
-        at path: String,
-        relativePath: String,
-        revision: String,
-        destinationPath: String,
-        force: Bool,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
-    ) async throws -> String
-}
-
-extension SVNClient: HistoryRevisionClient {}
-
 enum RevisionFileError: LocalizedError {
     case historyClientUnavailable
     case missingWorkingFile
@@ -84,7 +60,7 @@ actor RevisionFileService {
     }
 
     func saveRevision(
-        using client: any HistoryRevisionClient,
+        using client: any SVNClientServing,
         workingCopyPath: String,
         relativePath: String,
         revision: String,
