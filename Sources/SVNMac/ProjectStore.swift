@@ -114,6 +114,7 @@ final class ProjectStore {
     var repositoryPathNormalizationIssue: RepositoryPathNormalizationIssue?
     var documentOpenRequest: DocumentOpenRequest?
     var activeConflictSession: ConflictResolutionSession?
+    var activeTreeConflictSession: TreeConflictSession?
     var resolvingConflictSessionID: ConflictResolutionSession.ID?
     var resolvingConflictProjectID: SVNProject.ID?
     var revertRequest: RevertRequest?
@@ -479,6 +480,7 @@ final class ProjectStore {
             || isShowingPathRecovery
             || isShowingRepositoryPathNormalization
             || activeConflictSession != nil
+            || activeTreeConflictSession != nil
             || deletionRequest != nil
             || revertRequest != nil
             || documentOpenRequest != nil
@@ -1325,6 +1327,7 @@ final class ProjectStore {
         selectedBrowserPath = nil
         documentOpenRequest = nil
         activeConflictSession = nil
+        activeTreeConflictSession = nil
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil

@@ -18,6 +18,10 @@ struct ConflictResolutionSession: Identifiable, Hashable {
     let mine: ConflictVersionBackup
     let server: ConflictVersionBackup
     let mineResolveSourceURL: URL?
+
+    /// 충돌 마커를 사람이 직접 편집할 수 없는 파일인지 여부입니다.
+    /// 계약 스텁: 실제 판별은 ConflictFileService 구현 작업에서 저장 프로퍼티로 대체합니다.
+    var isBinary: Bool { false }
 }
 
 enum ConflictFileError: Error {
