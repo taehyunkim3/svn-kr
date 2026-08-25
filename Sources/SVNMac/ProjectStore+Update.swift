@@ -4,6 +4,9 @@ import SVNCore
 extension ProjectStore {
     func update() async {
         guard let project = selectedProject else { return }
+        let commitRecovery = recoveryState.outOfDateCommitRecoveryRequest.flatMap {
+            $0.projectID == project.id ? $0 : nil
+        }
         let cleanupCandidatePaths = repositoryTemporaryFileCleanupCandidates.map(\.path)
         let preparesCleanup = cleansRepositoryTemporaryFilesAfterUpdate && !cleanupCandidatePaths.isEmpty
         let operationID = beginOperation(.update(project.id))
@@ -17,7 +20,6 @@ extension ProjectStore {
             ).trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return }
             notice = result
-            isShowingUpdatePreview = false
             cleansRepositoryTemporaryFilesAfterUpdate = false
             if preparesCleanup {
                 temporaryFileCleanupAssessments = TemporaryFilePolicy.validateRepositoryCleanupCandidates(
@@ -30,13 +32,67 @@ extension ProjectStore {
                 temporaryFileCleanupFailures = []
             }
             await refresh()
+            guard selectedProjectID == project.id else { return }
+            if let commitRecovery {
+                await retryCommitAfterUpdate(commitRecovery)
+                return
+            }
+            isShowingUpdatePreview = false
             if preparesCleanup, selectedProjectID == project.id {
                 await Task.yield()
                 isShowingTemporaryFileCleanup = true
             }
         } catch {
-            if selectedProjectID == project.id { handleRemoteError(error, project: project, action: .update) }
+            if selectedProjectID == project.id {
+                let action = commitRecovery.map {
+                    SVNAuthenticationAction.commit(message: $0.message)
+                } ?? .update
+                handleRemoteError(error, project: project, action: action)
+            }
         }
+    }
+
+    func prepareOutOfDateCommitRecovery(
+        project: SVNProject,
+        message: String,
+        paths: [String],
+        details: String
+    ) async {
+        recoveryState.outOfDateCommitRecoveryRequest = OutOfDateCommitRecoveryRequest(
+            projectID: project.id,
+            message: message,
+            paths: paths,
+            details: details
+        )
+        errorMessage = nil
+        await previewUpdate()
+    }
+
+    private func retryCommitAfterUpdate(_ recovery: OutOfDateCommitRecoveryRequest) async {
+        recoveryState.outOfDateCommitRecoveryRequest?.hasCompletedUpdate = true
+        let conflicts = statuses.lazy
+            .filter { $0.item == .conflicted || $0.propertyState == .conflicted }
+            .map(\.path)
+            .sorted()
+        if !conflicts.isEmpty {
+            recoveryState.outOfDateCommitRecoveryRequest?.conflictedPaths = conflicts
+            notice = AppLanguage.current.localized(
+                "ui.update.created.conflicts.commit.not.retried.7a4c2e19",
+                conflicts.joined(separator: ", ")
+            )
+            return
+        }
+
+        let retryPaths = Set(recovery.paths)
+        guard retryPaths.isSubset(of: selectableStatusPaths) else {
+            isShowingUpdatePreview = false
+            errorMessage = AppLanguage.current.localized(
+                "ui.saved.commit.selection.no.longer.available.6f81b3d4"
+            )
+            return
+        }
+        selectedPaths = retryPaths
+        _ = await commit(message: recovery.message)
     }
 
     func previewUpdate() async {
@@ -86,7 +142,9 @@ extension ProjectStore {
         guard selectedProjectID == project.id else { return }
         updateRemoteSummary(
             for: project.id,
-            needsUpdate: recoveryState.updatePreview.totalCommitCount > 0 || !remoteChanges.isEmpty
+            needsUpdate: recoveryState.outOfDateCommitRecoveryRequest != nil
+                || recoveryState.updatePreview.totalCommitCount > 0
+                || !remoteChanges.isEmpty
         )
         isShowingUpdatePreview = workingCopyCleanupRequest == nil && authenticationRequest == nil
     }

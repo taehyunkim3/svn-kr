@@ -12,10 +12,11 @@ struct UpdatePreviewView: View {
     var body: some View {
         @Bindable var store = store
         let preview = store.recoveryState.updatePreview
+        let commitRecovery = store.recoveryState.outOfDateCommitRecoveryRequest
         let hasRemoteUpdate = !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.localized("ui.update.preview.3e2a4411")).font(.title2.bold())
+                Text(sheetTitle(commitRecovery)).font(.title2.bold())
                 Spacer()
                 Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
@@ -23,6 +24,10 @@ struct UpdatePreviewView: View {
             Divider()
 
             List {
+                if let commitRecovery {
+                    commitRecoveryNotice(commitRecovery)
+                }
+
                 if preview.isTruncated {
                     Label(
                         appLanguage.localized(
@@ -76,7 +81,12 @@ struct UpdatePreviewView: View {
                     Text(appLanguage.localized("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e"))
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    if preview.canRunUpdate(
+                    if commitRecovery?.conflictedPaths.isEmpty == false {
+                        Button(appLanguage.localized("ui.go.resolve.update.conflicts.2d9e4b71")) {
+                            store.isShowingUpdatePreview = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else if preview.canRunUpdate(
                         hasRemoteChanges: hasRemoteUpdate,
                         isWorkingCopyOutOfDate: false
                     ) {
@@ -84,7 +94,9 @@ struct UpdatePreviewView: View {
                             Task { await store.update() }
                         } label: {
                             ActionProgressLabel(
-                                title: appLanguage.localized("ui.run.update.e17c8217"),
+                                title: commitRecovery == nil
+                                    ? appLanguage.localized("ui.run.update.e17c8217")
+                                    : appLanguage.localized("ui.update.and.retry.commit.4c6f1a82"),
                                 inProgressTitle: appLanguage.localized("ui.updating.4d2f9a11"),
                                 isInProgress: store.isUpdatingSelectedProject
                             )
@@ -98,6 +110,34 @@ struct UpdatePreviewView: View {
         }
         .appSheetFrame(minimumSize: AppLayout.updatePreviewSheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+
+    private func sheetTitle(_ recovery: OutOfDateCommitRecoveryRequest?) -> String {
+        guard recovery != nil else {
+            return appLanguage.localized("ui.update.preview.3e2a4411")
+        }
+        return appLanguage.localized("ui.commit.requires.update.before.retry.91b7e3c5")
+    }
+
+    private func commitRecoveryNotice(_ recovery: OutOfDateCommitRecoveryRequest) -> some View {
+        Label {
+            if recovery.conflictedPaths.isEmpty {
+                Text(appLanguage.localized(
+                    "ui.commit.input.saved.update.then.retry.5e2a8d90",
+                    recovery.paths.count
+                ))
+            } else {
+                Text(appLanguage.localized(
+                    "ui.update.conflicts.blocked.commit.retry.8b3d6f20",
+                    recovery.conflictedPaths.joined(separator: ", ")
+                ))
+            }
+        } icon: {
+            Image(systemName: recovery.conflictedPaths.isEmpty
+                ? "arrow.triangle.2.circlepath"
+                : "exclamationmark.triangle")
+        }
+        .foregroundStyle(recovery.conflictedPaths.isEmpty ? Color.secondary : Color.orange)
     }
 
     private func commitRow(_ entry: SVNLogEntry) -> some View {
@@ -174,6 +214,9 @@ struct UpdatePreviewView: View {
     }
 
     private var emptyStateTitle: String {
+        if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
+            return appLanguage.localized("ui.update.required.before.commit.retry.3f8c1d67")
+        }
         if store.isWorkingCopyOutOfDate == true {
             return appLanguage.localized("ui.update.required.f846039b")
         }
@@ -181,6 +224,9 @@ struct UpdatePreviewView: View {
     }
 
     private var emptyStateDescription: String {
+        if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
+            return appLanguage.localized("ui.review.update.then.retry.commit.6a1e9c43")
+        }
         if store.isWorkingCopyOutOfDate == true {
             return appLanguage.localized("ui.server.changes.inside.a.pending.deletion.may.not.475f8db6")
         }

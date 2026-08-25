@@ -628,3 +628,12 @@
 "ui.bulk.unlock.partial.failure.title.3be91d76" = "Some Locks Were Not Released";
 "ui.bulk.unlock.partial.failure.details.71a6c5e8" = "Released %1$@ of %2$@ locks. The locks below could not be released.\n\n%3$@";
 "ui.explicit.lock.completed.1c4f8e72" = "Locked %1$@ file(s).";
+"ui.update.created.conflicts.commit.not.retried.7a4c2e19" = "Update created conflicts, so the commit was not retried: %1$@";
+"ui.saved.commit.selection.no.longer.available.6f81b3d4" = "Some saved commit selections disappeared from the change list after Update. Review the changes, then commit again.";
+"ui.go.resolve.update.conflicts.2d9e4b71" = "Go to Conflict Resolution";
+"ui.update.and.retry.commit.4c6f1a82" = "Update and Retry Commit";
+"ui.commit.requires.update.before.retry.91b7e3c5" = "Update Required Before Commit";
+"ui.commit.input.saved.update.then.retry.5e2a8d90" = "The commit message and %1$@ selected item(s) are saved. If Update creates no conflicts, the app retries the same commit.";
+"ui.update.conflicts.blocked.commit.retry.8b3d6f20" = "Update created conflicts, so the commit was not retried. Resolve these paths first: %1$@";
+"ui.update.required.before.commit.retry.3f8c1d67" = "Update Before Retrying Commit";
+"ui.review.update.then.retry.commit.6a1e9c43" = "SVN requires a working-copy update. Confirm Update to retry the commit with the saved message and selection when no conflicts occur.";

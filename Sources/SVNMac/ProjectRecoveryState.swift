@@ -6,6 +6,7 @@ import Foundation
 struct ProjectRecoveryState {
     var propertyConflictSession: PropertyConflictSession?
     var updatePreview = UpdatePreviewState()
+    var outOfDateCommitRecoveryRequest: OutOfDateCommitRecoveryRequest?
     var repositoryURL: String?
     var repositoryRelocationRequest: RepositoryRelocationRequest?
     var repositoryRelocationFailureMessage: String?

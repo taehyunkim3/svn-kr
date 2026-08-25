@@ -46,6 +46,51 @@ import Testing
     #expect(incoming.map(\.message) == ["remote"])
 }
 
+@MainActor
+@Test func directoryPropertyCommitCanUpdateAndRetryWithoutLosingCommitInput() async throws {
+    let fixture = try MixedRevisionUpdateFixture()
+    defer { fixture.remove() }
+
+    try fixture.modify("a.txt", in: fixture.workingCopy, contents: "user\n")
+    try fixture.commit("a.txt", in: fixture.workingCopy, message: "partial")
+    _ = try await fixture.client.setProperty(
+        named: "svn:ignore",
+        value: Data("build\n".utf8),
+        at: fixture.workingCopy.path,
+        relativePath: "."
+    )
+
+    let project = SVNProject(name: "속성 커밋", path: fixture.workingCopy.path)
+    let store = ProjectStore(
+        client: fixture.client,
+        credentialStore: MixedRevisionCredentialStore(),
+        persistence: MixedRevisionProjectPersistence(projects: [project]),
+        updateBadgeRefreshInterval: nil
+    )
+    await store.refresh()
+    store.selectedPaths = ["."]
+
+    #expect(!(await store.commit(message: "무시 규칙 추가")))
+    let recovery = try #require(store.recoveryState.outOfDateCommitRecoveryRequest)
+    #expect(recovery.message == "무시 규칙 추가")
+    #expect(recovery.paths == ["."])
+    #expect(store.isShowingUpdatePreview)
+    #expect(store.errorMessage == nil)
+
+    await store.update()
+
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
+    #expect(store.lastCompletedCommitMessage == "무시 규칙 추가")
+    #expect(store.selectedPaths.isEmpty)
+    _ = try await fixture.client.update(at: fixture.otherWorkingCopy.path)
+    let property = try await fixture.client.propertyValue(
+        named: "svn:ignore",
+        at: fixture.otherWorkingCopy.path,
+        relativePath: "."
+    )
+    #expect(property == Data("build\n".utf8))
+}
+
 private final class MixedRevisionUpdateFixture: @unchecked Sendable {
     let root: URL
     let workingCopy: URL

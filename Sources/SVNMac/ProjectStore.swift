@@ -1176,6 +1176,10 @@ final class ProjectStore {
             workingCopyRevision = snapshot.revision
             pathCollisions = snapshot.collisions
             self.workingCopyRepositoryPath = workingCopyRepositoryPath
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == project.id {
+                selectedPaths.formUnion(recovery.paths)
+            }
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
             notice = AppLanguage.current.localized("ui.local.changes.refreshed.617acbc6", project.name)
@@ -1243,12 +1247,14 @@ final class ProjectStore {
             notice = result
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
             return true
         } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
             guard selectedProjectID == project.id else { return true }
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
             notice = localizedError(SVNError.commitSucceededWithValidationWarning(
                 output: "",
@@ -1257,10 +1263,17 @@ final class ProjectStore {
             return true
         } catch let error as SVNError {
             if selectedProjectID == project.id {
-                if case .workingCopyOutOfDate = error {
+                if case let .workingCopyOutOfDate(details) = error {
                     isWorkingCopyOutOfDate = true
+                    await prepareOutOfDateCommitRecovery(
+                        project: project,
+                        message: message,
+                        paths: paths,
+                        details: details
+                    )
+                } else {
+                    handleRemoteError(error, project: project, action: .commit(message: message))
                 }
-                handleRemoteError(error, project: project, action: .commit(message: message))
             }
             return false
         } catch {
@@ -1525,9 +1538,19 @@ final class ProjectStore {
         case .refreshHistory:
             await refreshRemoteHistory(for: request.projectID)
         case .update:
-            await update()
+            if recoveryState.outOfDateCommitRecoveryRequest?.projectID == request.projectID {
+                await previewUpdate()
+            } else {
+                await update()
+            }
         case let .commit(message):
-            _ = await commit(message: message)
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == request.projectID,
+               !recovery.hasCompletedUpdate {
+                await update()
+            } else {
+                _ = await commit(message: message)
+            }
         case .retryManually:
             break
         }
