@@ -1,4 +1,5 @@
 import Foundation
+import SVNCore
 
 extension ProjectStore {
     func update() async {
@@ -41,6 +42,33 @@ extension ProjectStore {
         guard let project = selectedProject else { return }
         let operationID = beginOperation(.previewUpdate(project.id))
         defer { endOperation(operationID) }
+        recoveryState.updatePreview.beginLoading()
+        remoteChanges = []
+        cleansRepositoryTemporaryFilesAfterUpdate = false
+        temporaryFileCleanupAssessments = []
+        selectedTemporaryFileCleanupPaths = []
+        temporaryFileCleanupFailures = []
+
+        do {
+            let commits: [SVNLogEntry]
+            if isDemoMode {
+                commits = logs
+            } else if let commitClient = client as? any UpdatePreviewCommitServing {
+                commits = try await commitClient.updatePreviewIncomingCommits(
+                    at: project.path,
+                    credentials: credentials(for: project),
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                )
+            } else {
+                throw UpdatePreviewCommitLoadingError.unsupportedClient
+            }
+            guard selectedProjectID == project.id else { return }
+            recoveryState.updatePreview.receive(commits)
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            recoveryState.updatePreview.recordFailure(localizedError(error))
+        }
+
         do {
             let changes = try await client.remoteChanges(
                 at: project.path,
@@ -49,16 +77,17 @@ extension ProjectStore {
             )
             guard selectedProjectID == project.id else { return }
             remoteChanges = changes
-            cleansRepositoryTemporaryFilesAfterUpdate = false
-            temporaryFileCleanupAssessments = []
-            selectedTemporaryFileCleanupPaths = []
-            temporaryFileCleanupFailures = []
-            updateRemoteSummary(for: project.id, needsUpdate: !changes.isEmpty)
-            isShowingUpdatePreview = true
         } catch {
             guard selectedProjectID == project.id else { return }
-            handleRemoteError(error, project: project, action: .update)
+            recoveryState.updatePreview.recordFailure(localizedError(error))
         }
+
+        guard selectedProjectID == project.id else { return }
+        updateRemoteSummary(
+            for: project.id,
+            needsUpdate: recoveryState.updatePreview.totalCommitCount > 0 || !remoteChanges.isEmpty
+        )
+        isShowingUpdatePreview = true
     }
 
     func confirmRepositoryTemporaryFileCleanup() async {
