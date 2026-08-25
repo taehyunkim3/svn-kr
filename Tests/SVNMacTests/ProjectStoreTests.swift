@@ -3534,3 +3534,164 @@ private final class StubProjectAccessManager: ProjectAccessManaging {
         endAccessing(projectID: entry.key)
     }
 }
+
+@MainActor
+@Test func realSVNLocalDeletionTreeConflictKeepsDeletionThroughStore() async throws {
+    let fixture = try RealSVNTreeConflictFixture()
+    defer { fixture.remove() }
+    let store = fixture.makeStore()
+
+    // 변경 사항 목록이 이 파일을 충돌로 표시해야 우클릭 메뉴에 충돌 해결이 나온다.
+    #expect(try await fixture.snapshotMarksVictimConflicted())
+
+    await store.prepareConflictResolution(for: fixture.victimPath)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeConflictSession == nil)
+    let session = try #require(store.activeTreeConflictSession)
+    #expect(session.details.type == "tree")
+    #expect(session.details.treeConflictReason == "delete")
+    #expect(session.details.treeConflictAction == "edit")
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(!FileManager.default.fileExists(atPath: fixture.victimURL.path))
+    #expect(try !fixture.hasConflictedVictim())
+}
+
+@MainActor
+@Test func realSVNLocalDeletionTreeConflictRestoresServerFileThroughStore() async throws {
+    let fixture = try RealSVNTreeConflictFixture()
+    defer { fixture.remove() }
+    let store = fixture.makeStore()
+
+    await store.prepareConflictResolution(for: fixture.victimPath)
+    #expect(store.activeTreeConflictSession != nil)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(try !fixture.hasConflictedVictim())
+    #expect(
+        try Data(contentsOf: fixture.victimURL) == Data("base\nserver edit\n".utf8)
+    )
+}
+
+/// 사용자가 실제로 겪은 상황을 그대로 만든다.
+/// 로컬에서 파일을 삭제한 뒤 서버가 그 파일을 수정한 리비전을 받으면
+/// `local delete, incoming edit` 트리 충돌이 남는다.
+private final class RealSVNTreeConflictFixture {
+    let root: URL
+    let workingCopy: URL
+    let victimPath = "tree.txt"
+    let project: SVNProject
+    private let client: SVNClient
+    private let svnPath: String
+
+    var victimURL: URL { workingCopy.appendingPathComponent(victimPath) }
+
+    init() throws {
+        let fileManager = FileManager.default
+        svnPath = try #require(Self.firstExecutable(at: [
+            "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
+        ]))
+        let svnadminPath = try #require(Self.firstExecutable(at: [
+            "/opt/homebrew/bin/svnadmin", "/usr/local/bin/svnadmin", "/usr/bin/svnadmin",
+        ]))
+        root = URL(fileURLWithPath: "/tmp", isDirectory: true)
+            .appendingPathComponent("svn-tree-conflict-store-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+
+        let repository = root.appendingPathComponent("repository", isDirectory: true)
+        let importDirectory = root.appendingPathComponent("import", isDirectory: true)
+        let publisher = root.appendingPathComponent("publisher", isDirectory: true)
+        workingCopy = root.appendingPathComponent("conflicted", isDirectory: true)
+        client = SVNClient(
+            executablePath: svnPath,
+            configDirectoryPath: root.appendingPathComponent("svn-config", isDirectory: true).path
+        )
+
+        try fileManager.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        try Data("base\n".utf8).write(to: importDirectory.appendingPathComponent(victimPath))
+        _ = try Self.run(svnadminPath, ["create", repository.path])
+        let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+        _ = try Self.run(svnPath, ["import", importDirectory.path, repositoryURL, "-m", "initial"])
+        _ = try Self.run(svnPath, ["checkout", repositoryURL, publisher.path])
+        _ = try Self.run(svnPath, ["checkout", repositoryURL, workingCopy.path])
+
+        try Data("base\nserver edit\n".utf8)
+            .write(to: publisher.appendingPathComponent(victimPath))
+        _ = try Self.run(svnPath, ["commit", publisher.path, "-m", "server edit"])
+
+        project = SVNProject(name: "트리 충돌", path: workingCopy.path)
+
+        _ = try Self.run(svnPath, ["delete", victimURL.path])
+        _ = try Self.run(svnPath, ["update", "--non-interactive", workingCopy.path])
+    }
+
+    @MainActor
+    func makeStore() -> ProjectStore {
+        ProjectStore(
+            client: client,
+            credentialStore: StubCredentialStore(),
+            persistence: MemoryProjectPersistence(projects: [project]),
+            projectAccessManager: StubProjectAccessManager(),
+            conflictFileService: ConflictFileService(
+                backupRootURL: root.appendingPathComponent("backups", isDirectory: true)
+            ),
+            workingCopyFileService: WorkingCopyFileService(),
+            workspaceOpener: StubWorkspaceOpener(),
+            projectPathChecker: StubProjectPathChecker(),
+            volumeNormalizationProbe: StubVolumeNormalizationProbe(),
+            settingsDefaults: UserDefaults(suiteName: "tree-conflict-store-\(UUID().uuidString)")!,
+            hideTemporaryFiles: true
+        )
+    }
+
+    @MainActor
+    func snapshotMarksVictimConflicted() async throws -> Bool {
+        let snapshot = try await client.workingCopySnapshot(at: workingCopy.path)
+        let identity = SVNPathIdentity(rawPath: victimPath)
+        return snapshot.statuses.contains { entry in
+            entry.item == .conflicted && SVNPathIdentity(rawPath: entry.path) == identity
+        }
+    }
+
+    func hasConflictedVictim() throws -> Bool {
+        let status = try Self.run(svnPath, ["status", "--xml", workingCopy.path])
+        return status.contains("tree-conflicted=\"true\"")
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    private static func firstExecutable(at paths: [String]) -> String? {
+        paths.first(where: FileManager.default.isExecutableFile(atPath:))
+    }
+
+    @discardableResult
+    private static func run(_ executablePath: String, _ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let output = String(decoding: data, as: UTF8.self)
+        guard process.terminationStatus == 0 else {
+            throw NSError(
+                domain: "RealSVNTreeConflictFixture",
+                code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: output]
+            )
+        }
+        return output
+    }
+}
