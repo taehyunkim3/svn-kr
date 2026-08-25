@@ -7,6 +7,7 @@ struct ConflictResolutionView: View {
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
     @State private var pendingChoice: SVNConflictChoice?
+    @State private var isWorkingFileExpanded = false
 
     var body: some View {
         @Bindable var store = store
@@ -79,25 +80,39 @@ struct ConflictResolutionView: View {
                 .disabled(store.isResolvingConflict)
             }
 
-            versionCard(
-                title: appLanguage.localized("ui.my.file.e70a2b5b"),
-                originalPath: session.details.path,
-                version: session.mine,
-                openTitle: appLanguage.localized("ui.open.my.file.537a87cb"),
-                useTitle: appLanguage.localized("ui.use.my.file.36631b8e"),
-                choice: .mineFull
-            )
+            HStack(alignment: .top, spacing: 14) {
+                versionCard(
+                    title: appLanguage.localized("ui.apply.server.version.61c5a01e"),
+                    originalPath: session.details.path,
+                    version: session.server,
+                    openTitle: appLanguage.localized("ui.open.server.file.252d515b"),
+                    useTitle: appLanguage.localized("ui.apply.server.version.61c5a01e"),
+                    warning: appLanguage.localized(
+                        "ui.replace.with.the.server.file.your.local.edits.le.f08dec1d"
+                    ),
+                    choice: .theirsFull
+                )
 
-            versionCard(
-                title: appLanguage.localized("ui.server.file.4c69a88d"),
-                originalPath: session.details.path,
-                version: session.server,
-                openTitle: appLanguage.localized("ui.open.server.file.252d515b"),
-                useTitle: appLanguage.localized("ui.use.server.file.30c6c26c"),
-                choice: .theirsFull
-            )
+                versionCard(
+                    title: appLanguage.localized("ui.overwrite.with.mine.8d42f39b"),
+                    originalPath: session.details.path,
+                    version: session.mine,
+                    openTitle: appLanguage.localized("ui.open.my.file.537a87cb"),
+                    useTitle: appLanguage.localized("ui.overwrite.with.mine.8d42f39b"),
+                    warning: appLanguage.localized(
+                        "ui.server.version.changes.will.be.discarded.4ab613d2"
+                    ),
+                    choice: .mineFull
+                )
+            }
 
-            workingFileCard(session)
+            if !session.isBinary {
+                DisclosureGroup(isExpanded: $isWorkingFileExpanded) {
+                    workingFileCard(session)
+                } label: {
+                    Text(appLanguage.localized("ui.confirm.manually.edited.content.97e30ac4"))
+                }
+            }
         }
     }
 
@@ -115,7 +130,7 @@ struct ConflictResolutionView: View {
                         pendingChoice = .working
                     } label: {
                         ActionProgressLabel(
-                            title: appLanguage.localized("ui.use.current.working.file.275f4c29"),
+                            title: appLanguage.localized("ui.confirm.manually.edited.content.97e30ac4"),
                             inProgressTitle: appLanguage.localized("ui.resolving.d5e0b71c"),
                             isInProgress: store.isResolvingConflict
                         )
@@ -134,6 +149,7 @@ struct ConflictResolutionView: View {
         version: ConflictVersionBackup,
         openTitle: String,
         useTitle: String,
+        warning: String,
         choice: SVNConflictChoice
     ) -> some View {
         GroupBox(title) {
@@ -148,6 +164,9 @@ struct ConflictResolutionView: View {
                     .foregroundStyle(.secondary)
                 Text(versionMetadata(for: version))
                     .foregroundStyle(.secondary)
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
                 HStack {
                     Button(openTitle) {
                         store.openConflictVersion(choice)
@@ -169,6 +188,7 @@ struct ConflictResolutionView: View {
             }
             .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var confirmationTitle: String {

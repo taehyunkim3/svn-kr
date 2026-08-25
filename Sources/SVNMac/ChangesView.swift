@@ -40,6 +40,10 @@ struct ChangesView: View {
             ConflictResolutionView()
                 .environment(store)
         }
+        .sheet(item: $store.activeTreeConflictSession) { _ in
+            TreeConflictResolutionView()
+                .environment(store)
+        }
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView()
                 .environment(store)
