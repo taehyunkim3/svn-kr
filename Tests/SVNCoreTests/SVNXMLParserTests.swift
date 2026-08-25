@@ -110,6 +110,21 @@ import Testing
     #expect(entries.map(\.isVersioned) == [true, true, false, false])
 }
 
+@Test func parsesWorkingCopyPropertyAndSwitchedMetadataFromVerboseStatus() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="12" props="none"/></entry>
+      <entry path="Documents"><wc-status props="modified" item="normal" revision="12"/></entry>
+      <entry path="Sources"><wc-status switched="true" item="normal" revision="12" props="none"/></entry>
+    </target></status>
+    """
+
+    let entries = try SVNXMLParser.workingCopyEntries(from: Data(xml.utf8))
+
+    #expect(entries.map(\.propertyState) == [.none, .modified, .none])
+    #expect(entries.map(\.isSwitched) == [false, false, true])
+}
+
 @Test func parsesSingleWorkingCopyRevision() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
