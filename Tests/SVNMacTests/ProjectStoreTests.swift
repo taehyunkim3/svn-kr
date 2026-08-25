@@ -1621,7 +1621,10 @@ import Testing
         updateBadgeRefreshInterval: .milliseconds(10)
     )
 
-    try? await Task.sleep(for: .milliseconds(100))
+    let deadline = ContinuousClock.now + .seconds(15)
+    while store.projectSummaries[project.id] == nil, ContinuousClock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(1))
+    }
 
     #expect(store.projectSummaries[project.id]?.needsUpdate == true)
 }
