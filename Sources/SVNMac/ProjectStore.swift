@@ -7,15 +7,26 @@ private final class UpdateBadgePoller: @unchecked Sendable {
     private let lock = NSLock()
     private var task: Task<Void, Never>?
 
-    func start(interval: Duration, operation: @escaping @Sendable () async -> Void) {
+    func start(
+        interval: Duration,
+        maximumInterval: Duration,
+        sleep: @escaping @Sendable (Duration) async throws -> Void,
+        operation: @escaping @Sendable () async -> Bool
+    ) {
         let task = Task {
+            let maximumInterval = max(interval, maximumInterval)
+            var nextInterval = interval
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: interval)
+                    try await sleep(nextInterval)
                 } catch {
                     return
                 }
-                await operation()
+                if await operation() {
+                    nextInterval = interval
+                } else {
+                    nextInterval = min(nextInterval * 2, maximumInterval)
+                }
             }
         }
         lock.lock()
@@ -115,6 +126,7 @@ struct SVNAuthenticationRequest: Identifiable, Equatable {
 @Observable
 final class ProjectStore {
     private static let defaultUpdateBadgeRefreshInterval = Duration.seconds(60)
+    private static let maximumUpdateBadgeRefreshInterval = Duration.seconds(15 * 60)
 
     // MARK: - 화면에 공개하는 상태
 
@@ -345,7 +357,6 @@ final class ProjectStore {
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
     private let updateBadgePoller = UpdateBadgePoller()
-    private let updateBadgeRefreshInterval: Duration?
     private var checkoutLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
@@ -573,10 +584,13 @@ final class ProjectStore {
         settingsDefaults: UserDefaults = .standard,
         hideTemporaryFiles: Bool = AppSettings.hideTemporaryFiles(),
         isDemoMode: Bool = false,
-        updateBadgeRefreshInterval: Duration? = ProjectStore.defaultUpdateBadgeRefreshInterval
+        updateBadgeRefreshInterval: Duration? = ProjectStore.defaultUpdateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: Duration = ProjectStore.maximumUpdateBadgeRefreshInterval,
+        updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
     ) {
         self.isDemoMode = isDemoMode
-        self.updateBadgeRefreshInterval = updateBadgeRefreshInterval
         self.hideTemporaryFiles = hideTemporaryFiles
         self.client = client
         self.credentialStore = credentialStore
@@ -595,8 +609,12 @@ final class ProjectStore {
         selectedProjectID = saved.first?.id
         for project in saved { probeFilenameNormalization(for: project) }
         if !isDemoMode, let updateBadgeRefreshInterval {
-            updateBadgePoller.start(interval: updateBadgeRefreshInterval) { [weak self] in
-                await self?.refreshUpdateBadges()
+            updateBadgePoller.start(
+                interval: updateBadgeRefreshInterval,
+                maximumInterval: updateBadgeMaximumRefreshInterval,
+                sleep: updateBadgeSleep
+            ) { [weak self] in
+                await self?.refreshUpdateBadges() ?? true
             }
         }
     }
@@ -867,22 +885,27 @@ final class ProjectStore {
     // MARK: - SVN 작업
 
     func refreshSelectedProject(manual: Bool) async {
-        guard !isDemoMode, let project = selectedProject else { return }
-        if manual {
-            automaticRefreshBlockedProjectID = nil
-            unavailableProjectID = nil
-        } else if !automaticRefreshCanRun(for: project) {
-            return
-        }
-        guard ensureWorkingCopyDirectoryExists(for: project) else { return }
+        guard !isDemoMode else { return }
+        let project = selectedProject
+        async let badgeRefresh = refreshUpdateBadges(excluding: project?.id)
 
-        let cycleID = UUID()
-        let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
-        async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
-        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
-        async let badgeRefresh: Void = refreshUpdateBadges(excluding: project.id)
-        _ = await (projectRefresh, browserRefresh, badgeRefresh)
-        finishRefreshCycle(cycleID)
+        if let project {
+            if manual {
+                automaticRefreshBlockedProjectID = nil
+                unavailableProjectID = nil
+            }
+            let canRefreshSelectedProject = manual || automaticRefreshCanRun(for: project)
+            if canRefreshSelectedProject, ensureWorkingCopyDirectoryExists(for: project) {
+                let cycleID = UUID()
+                let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
+                async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
+                async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
+                _ = await (projectRefresh, browserRefresh)
+                finishRefreshCycle(cycleID)
+            }
+        }
+
+        _ = await badgeRefresh
     }
 
     func refreshLocalWorkingCopy(errorPolicy: RefreshErrorPolicy = .standalone) async {
@@ -966,16 +989,21 @@ final class ProjectStore {
         beginRequest(.refresh)
     }
 
-    func refreshUpdateBadges(excluding excludedProjectID: SVNProject.ID? = nil) async {
-        let projects = projects.filter { $0.id != excludedProjectID }
-        for project in projects {
-            guard !Task.isCancelled else { return }
-            await refreshUpdateBadge(for: project)
+    @discardableResult
+    func refreshUpdateBadges(excluding excludedProjectID: SVNProject.ID? = nil) async -> Bool {
+        let projectsToRefresh = projects.filter { $0.id != excludedProjectID }
+        var allRefreshesSucceeded = true
+        for project in projectsToRefresh {
+            guard !Task.isCancelled else { return false }
+            if !(await refreshUpdateBadge(for: project)) {
+                allRefreshesSucceeded = false
+            }
         }
+        return allRefreshesSucceeded
     }
 
-    private func refreshUpdateBadge(for project: SVNProject) async {
-        guard projectPathChecker.directoryExists(at: project.path) else { return }
+    private func refreshUpdateBadge(for project: SVNProject) async -> Bool {
+        guard projectPathChecker.directoryExists(at: project.path) else { return true }
         let requestKind = ProjectRequestKind.updateBadge(project.id)
         let requestID = beginRequest(requestKind)
         defer { finishRequest(requestID, kind: requestKind) }
@@ -994,7 +1022,7 @@ final class ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
             )
             let (workingCopyRevision, latestLogs) = try await (revision, logs)
-            guard canApplyUpdateBadge(requestID, project: project) else { return }
+            guard canApplyUpdateBadge(requestID, project: project) else { return true }
             let needsUpdate = Self.remoteHistoryNeedsUpdate(
                 latestLogs,
                 comparedTo: workingCopyRevision
@@ -1003,8 +1031,9 @@ final class ProjectStore {
             if selectedProjectID == project.id {
                 isWorkingCopyOutOfDate = needsUpdate
             }
+            return true
         } catch {
-            return
+            return false
         }
     }
 
