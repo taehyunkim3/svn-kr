@@ -191,6 +191,7 @@ struct AddRepositoryView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var allowsUntrustedServerCertificate = false
+    @State private var isShowingRepositoryBrowser = false
     @State private var isConfirmingCheckoutCancellation = false
     private let onBrowseDemo: () -> Void
 
@@ -230,9 +231,16 @@ struct AddRepositoryView: View {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
                     Text(appLanguage.localized("ui.repository.url.a29f5816"))
-                    TextField("https://server/svn/project/trunk", text: $repositoryURL)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
+                    HStack {
+                        TextField("https://server/svn/project/trunk", text: $repositoryURL)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
+                        Button(appLanguage.localized("ui.browse.repository.6f2a9c41")) {
+                            store.recoveryState.repositoryBrowseSelectedURL = nil
+                            isShowingRepositoryBrowser = true
+                        }
+                        .disabled(store.isWorking)
+                    }
                 }
                 GridRow {
                     Text(appLanguage.localized("ui.local.folder.63f176e1"))
@@ -399,6 +407,26 @@ struct AddRepositoryView: View {
         .sheet(item: $store.canceledCheckoutRecoveryRequest) { request in
             CanceledCheckoutRecoveryView(request: request)
                 .environment(store)
+        }
+        .sheet(isPresented: $isShowingRepositoryBrowser) {
+            let settings = RepositoryBrowserConnectionSettings(
+                username: username,
+                password: password,
+                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
+            )
+            RepositoryBrowserView(
+                repositoryListing: store.client,
+                repositoryURL: repositoryURL,
+                credentials: settings.credentials,
+                allowUntrustedServerCertificate: settings.allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: settings.allowedServerCertificateFailures
+            )
+            .environment(store)
+        }
+        .onChange(of: store.recoveryState.repositoryBrowseSelectedURL) { _, selectedURL in
+            guard let selectedURL else { return }
+            repositoryURL = selectedURL
+            store.recoveryState.repositoryBrowseSelectedURL = nil
         }
     }
 

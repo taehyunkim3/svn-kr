@@ -168,7 +168,8 @@ extension ProjectStore {
                 _ = try await client.update(
                     at: project.path,
                     credentials: projectCredentials,
-                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 )
             }
             guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }

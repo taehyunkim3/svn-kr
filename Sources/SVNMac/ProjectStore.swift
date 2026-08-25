@@ -808,6 +808,9 @@ final class ProjectStore {
                 destinationPath: destinationPath,
                 credentials: checkoutCredentials,
                 allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowsUntrustedServerCertificate
+                    ? SVNProject.legacyAllowedServerCertificateFailures
+                    : [],
                 progress: { [weak self] output in
                     let accumulatedOutput = progressBuffer.append(output)
                     Task { @MainActor [weak self] in
@@ -1073,12 +1076,14 @@ final class ProjectStore {
                 limit: 50,
                 endingAtRevision: nil,
                 credentials: projectCredentials,
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             async let outOfDate = client.workingCopyIsOutOfDate(
                 at: project.path,
                 credentials: projectCredentials,
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             let (logs, isWorkingCopyOutOfDate) = try await (newLogs, outOfDate)
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
@@ -1147,7 +1152,8 @@ final class ProjectStore {
                 limit: 1,
                 endingAtRevision: nil,
                 credentials: projectCredentials,
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             let (workingCopyRevision, latestLogs) = try await (revision, logs)
             guard canApplyUpdateBadge(requestID, project: project) else { return true }
@@ -1254,7 +1260,8 @@ final class ProjectStore {
                 paths: paths,
                 message: message,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return true }
@@ -1323,6 +1330,12 @@ final class ProjectStore {
         let credentials = username.isEmpty
             ? nil
             : SVNCredentials(username: username, password: effectivePassword)
+        var allowedServerCertificateFailures = project.allowedServerCertificateFailures
+        if allowsUntrustedServerCertificate {
+            allowedServerCertificateFailures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+        } else {
+            allowedServerCertificateFailures.subtract(SVNProject.legacyAllowedServerCertificateFailures)
+        }
 
         let operationID = beginOperation(.verifyCredentials(projectID))
         defer { endOperation(operationID) }
@@ -1330,7 +1343,8 @@ final class ProjectStore {
             try await client.verifyCredentials(
                 at: project.path,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowsUntrustedServerCertificate
+                allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
             )
             return nil
         } catch {
@@ -1554,7 +1568,8 @@ final class ProjectStore {
                 limit: 50,
                 endingAtRevision: nil,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             logs = newLogs

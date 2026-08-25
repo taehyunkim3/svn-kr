@@ -591,6 +591,7 @@
 "ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4" = "Expired and not-yet-valid certificates require separate consent after SVN reports the specific failure.";
 "ui.browse.svn.repository.4a9d3c10" = "Browse SVN Repository";
 "ui.browse.repository.before.checkout.7c2e1b84" = "Check folders and files before choosing the repository path to check out.";
+"ui.browse.repository.6f2a9c41" = "Browse Repository";
 "ui.browse.5f8b6e21" = "Browse";
 "ui.revision.optional.63ad9f02" = "Revision (Optional)";
 "ui.parent.directory.1b7e4a93" = "Parent Directory";

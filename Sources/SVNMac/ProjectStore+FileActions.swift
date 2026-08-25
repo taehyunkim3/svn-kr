@@ -31,7 +31,8 @@ extension ProjectStore {
                 relativePath: relativePath,
                 limit: 100,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             fileHistory = history

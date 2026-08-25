@@ -3,6 +3,49 @@ import SVNCore
 import Testing
 @testable import SVNMac
 
+@Test func repositoryBrowserConnectionSettingsMatchAddRepositoryForm() {
+    let allowed = RepositoryBrowserConnectionSettings(
+        username: "  office.user  ",
+        password: "secret",
+        allowsUntrustedServerCertificate: true
+    )
+    let denied = RepositoryBrowserConnectionSettings(
+        username: "  ",
+        password: "ignored",
+        allowsUntrustedServerCertificate: false
+    )
+
+    #expect(allowed.credentials?.username == "office.user")
+    #expect(allowed.credentials?.password == "secret")
+    #expect(allowed.allowUntrustedServerCertificate)
+    #expect(allowed.allowedServerCertificateFailures == [
+        .unknownCertificateAuthority,
+        .commonNameMismatch,
+    ])
+    #expect(denied.credentials == nil)
+    #expect(!denied.allowUntrustedServerCertificate)
+    #expect(denied.allowedServerCertificateFailures.isEmpty)
+}
+
+@Test func addRepositoryViewWiresRepositoryBrowserEntryAndSelection() throws {
+    let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(
+        contentsOf: repositoryRoot.appendingPathComponent("Sources/SVNMac/RepositoryDialogs.swift"),
+        encoding: .utf8
+    )
+
+    #expect(source.contains("ui.browse.repository.6f2a9c41"))
+    #expect(AppLanguage.korean.localized("ui.browse.repository.6f2a9c41") == "저장소 둘러보기")
+    #expect(AppLanguage.english.localized("ui.browse.repository.6f2a9c41") == "Browse Repository")
+    #expect(source.contains(".sheet(isPresented: $isShowingRepositoryBrowser)"))
+    #expect(source.contains("RepositoryBrowserView(\n                repositoryListing: store.client"))
+    #expect(source.contains(".onChange(of: store.recoveryState.repositoryBrowseSelectedURL)"))
+    #expect(source.contains("repositoryURL = selectedURL"))
+}
+
 @MainActor
 @Test func repositoryBrowserEntersDirectoryAndReturnsToParent() async throws {
     let rootURL = "https://svn.example.com/office/trunk"
@@ -11,7 +54,7 @@ import Testing
         rootURL: [makeRepositoryEntry("reports", kind: .directory)],
         reportsURL: [makeRepositoryEntry("2026.xlsx", kind: .file)],
     ])
-    let state = RepositoryBrowserState(repositoryListing: listing, repositoryURL: rootURL)
+    let state = RepositoryBrowserState(repositoryEntries: listing.load, repositoryURL: rootURL)
 
     await state.browse()
     state.selectedEntryID = "reports"
@@ -34,7 +77,7 @@ import Testing
     let emptyURL = "https://svn.example.com/office/empty"
     let emptyListing = RepositoryListingRecorder(entriesByURL: [emptyURL: []])
     let emptyState = RepositoryBrowserState(
-        repositoryListing: emptyListing,
+        repositoryEntries: emptyListing.load,
         repositoryURL: emptyURL
     )
 
@@ -48,7 +91,7 @@ import Testing
         message: "svn: E170001: Authentication required"
     ))
     let authenticationState = RepositoryBrowserState(
-        repositoryListing: authenticationListing,
+        repositoryEntries: authenticationListing.load,
         repositoryURL: emptyURL
     )
     await authenticationState.browse()
@@ -59,7 +102,7 @@ import Testing
         message: "svn: E170013: Unable to connect\nsvn: E160013: path not found"
     ))
     let invalidPathState = RepositoryBrowserState(
-        repositoryListing: invalidPathListing,
+        repositoryEntries: invalidPathListing.load,
         repositoryURL: emptyURL
     )
     await invalidPathState.browse()
@@ -70,14 +113,14 @@ import Testing
         message: "svn: E170013: Unable to connect to a repository at URL"
     ))
     let connectionState = RepositoryBrowserState(
-        repositoryListing: connectionListing,
+        repositoryEntries: connectionListing.load,
         repositoryURL: emptyURL
     )
     await connectionState.browse()
     #expect(connectionState.failure?.kind == .connection)
 
     let malformedURLState = RepositoryBrowserState(
-        repositoryListing: emptyListing,
+        repositoryEntries: emptyListing.load,
         repositoryURL: "not a repository URL"
     )
     await malformedURLState.browse()
@@ -93,7 +136,7 @@ import Testing
         delay: .milliseconds(100)
     )
     let state = RepositoryBrowserState(
-        repositoryListing: listing,
+        repositoryEntries: listing.load,
         repositoryURL: repositoryURL
     )
 
@@ -111,7 +154,7 @@ import Testing
     let repositoryURL = "https://svn.example.com/office/trunk"
     let listing = RepositoryListingRecorder(entriesByURL: [repositoryURL: []])
     let state = RepositoryBrowserState(
-        repositoryListing: listing,
+        repositoryEntries: listing.load,
         repositoryURL: repositoryURL,
         revision: "1845",
         credentials: SVNCredentials(username: "kim.office", password: "password"),
@@ -135,7 +178,7 @@ import Testing
     let listing = RepositoryListingRecorder(entriesByURL: [
         rootURL: [makeRepositoryEntry("reports", kind: .directory)],
     ])
-    let state = RepositoryBrowserState(repositoryListing: listing, repositoryURL: rootURL)
+    let state = RepositoryBrowserState(repositoryEntries: listing.load, repositoryURL: rootURL)
     var recoveryState = ProjectRecoveryState()
 
     await state.browse()
@@ -146,21 +189,21 @@ import Testing
 }
 
 @MainActor
-@Test func demoRepositoryBrowserUsesOnlyInjectedListing() async {
+@Test func demoRepositoryBrowserUsesDemoClientWithoutLaunchingLiveSVN() async {
     let unreachableURL = "https://must-not-run-svn.invalid/repository"
-    let demoListing = RepositoryListingRecorder(entriesByURL: [unreachableURL: []])
+    let demoStore = ProjectStore.demo()
     let state = RepositoryBrowserState(
-        repositoryListing: demoListing,
+        repositoryListing: demoStore.client,
         repositoryURL: unreachableURL
     )
 
     await state.browse()
 
     #expect(state.phase == .loaded)
-    #expect(await demoListing.requestedURLs() == [unreachableURL])
+    #expect(state.currentURL == unreachableURL)
 }
 
-private actor RepositoryListingRecorder: SVNRepositoryListing {
+private actor RepositoryListingRecorder {
     struct Request: Sendable {
         let repositoryURL: String
         let revision: String?
@@ -183,6 +226,22 @@ private actor RepositoryListingRecorder: SVNRepositoryListing {
         self.entriesByURL = entriesByURL
         self.error = error
         self.delay = delay
+    }
+
+    nonisolated func load(
+        _ repositoryURL: String,
+        _ revision: String?,
+        _ credentials: SVNCredentials?,
+        _ allowUntrustedServerCertificate: Bool,
+        _ allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+    ) async throws -> [SVNRepositoryEntry] {
+        try await repositoryEntries(
+            at: repositoryURL,
+            revision: revision,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
     }
 
     func repositoryEntries(

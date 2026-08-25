@@ -222,10 +222,10 @@ private actor DemoSVNClient: SVNClientServing {
     private var repositoryURL = "https://demo.example.com/svn/office/trunk"
     private var needsLockPaths: Set<String> = []
 
-    func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
+    func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
     func cleanup(at _: String, credentials _: SVNCredentials?) async throws -> String { "Cleaned" }
-    func verifyCredentials(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws {}
+    func verifyCredentials(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws {}
     func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { currentStatuses }
     func workingCopyEntries(at _: String, credentials _: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
     func workingCopySnapshot(at _: String, credentials _: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
@@ -242,17 +242,18 @@ private actor DemoSVNClient: SVNClientServing {
     func recoveryPreview(at _: String, credentials _: SVNCredentials?) async throws -> SVNRecoveryPreview {
         SVNRecoveryPreview(mappings: [], ignoredAliasCount: 0, blockingPaths: [])
     }
-    func recoverWorkingCopy(from _: String, to destinationPath: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNRecoveryResult {
+    func recoverWorkingCopy(from _: String, to destinationPath: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> SVNRecoveryResult {
         SVNRecoveryResult(
             destinationPath: destinationPath,
             snapshot: try await workingCopySnapshot(at: destinationPath, credentials: nil),
             migratedPaths: []
         )
     }
-    func repositoryPathsNeedingNormalization(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] {
+    func repositoryPathsNeedingNormalization(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryPathNormalizationTarget] {
         repositoryPathNormalizationTargets
     }
-    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at _: String, message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNRepositoryPathNormalizationResult {
+    func repositoryEntries(at _: String, revision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry] { [] }
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at _: String, message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult {
         repositoryPathNormalizationTargets.removeAll { targets.contains($0) }
         return SVNRepositoryPathNormalizationResult(
             renamedTargets: targets,
@@ -268,15 +269,15 @@ private actor DemoSVNClient: SVNClientServing {
         scheduledDeletionPaths.formUnion(paths)
         return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
-    func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
-    func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNLockInfo? { nil }
-    func lock(at _: String, relativePath _: String, comment _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Locked" }
-    func unlock(at _: String, relativePath _: String, force _: Bool, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Unlocked" }
+    func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
+    func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> SVNLockInfo? { nil }
+    func lock(at _: String, relativePath _: String, comment _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Locked" }
+    func unlock(at _: String, relativePath _: String, force _: Bool, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Unlocked" }
     func conflictDetails(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> SVNConflictDetails? { nil }
     func resolveConflict(at _: String, relativePath _: String, choice _: SVNConflictChoice, credentials _: SVNCredentials?) async throws -> String { "Resolved" }
-    func log(at _: String, limit _: Int, endingAtRevision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
-    func updatePreviewIncomingCommits(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
-    func revisionDiff(at _: String, revision _: String, repositoryPath _: String, workingCopyRepositoryPath _: String?, pegRevision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { DemoData.diff }
+    func log(at _: String, limit _: Int, endingAtRevision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] { DemoData.logs }
+    func updatePreviewIncomingCommits(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] { DemoData.logs }
+    func revisionDiff(at _: String, revision _: String, repositoryPath _: String, workingCopyRepositoryPath _: String?, pegRevision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { DemoData.diff }
     func fileContents(at _: String, relativePath _: String, revision _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> Data {
         throw RevisionFileError.historyClientUnavailable
     }
@@ -313,14 +314,14 @@ private actor DemoSVNClient: SVNClientServing {
             ? [SVNProperty(name: "svn:needs-lock", value: Data("*".utf8))]
             : []
     }
-    func workingCopyIsOutOfDate(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> Bool { true }
-    func remoteChanges(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNStatusEntry] { DemoData.remoteChanges }
-    func update(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Updated to revision 1845" }
+    func workingCopyIsOutOfDate(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> Bool { true }
+    func remoteChanges(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNStatusEntry] { DemoData.remoteChanges }
+    func update(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Updated to revision 1845" }
     func scheduleRepositoryCleanupDeletion(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws {}
     func diff(at _: String, relativePath _: String?, credentials _: SVNCredentials?) async throws -> String { DemoData.diff }
     func revert(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Reverted" }
-    func fileLog(at _: String, relativePath _: String, limit _: Int, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }
-    func commit(at _: String, paths _: [String], message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Committed revision 1846" }
+    func fileLog(at _: String, relativePath _: String, limit _: Int, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] { DemoData.logs }
+    func commit(at _: String, paths _: [String], message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Committed revision 1846" }
 
     private var currentStatuses: [SVNStatusEntry] {
         DemoData.statuses.map { entry in

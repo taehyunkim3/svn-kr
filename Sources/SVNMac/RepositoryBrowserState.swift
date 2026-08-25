@@ -2,17 +2,34 @@ import Foundation
 import Observation
 import SVNCore
 
-protocol SVNRepositoryListing: Sendable {
-    func repositoryEntries(
-        at repositoryURL: String,
-        revision: String?,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
-    ) async throws -> [SVNRepositoryEntry]
-}
+typealias RepositoryEntriesLoading = @Sendable (
+    _ repositoryURL: String,
+    _ revision: String?,
+    _ credentials: SVNCredentials?,
+    _ allowUntrustedServerCertificate: Bool,
+    _ allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+) async throws -> [SVNRepositoryEntry]
 
-extension SVNClient: SVNRepositoryListing {}
+struct RepositoryBrowserConnectionSettings {
+    let credentials: SVNCredentials?
+    let allowUntrustedServerCertificate: Bool
+    let allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+
+    init(
+        username: String,
+        password: String,
+        allowsUntrustedServerCertificate: Bool
+    ) {
+        let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        credentials = username.isEmpty
+            ? nil
+            : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
+        allowUntrustedServerCertificate = allowsUntrustedServerCertificate
+        allowedServerCertificateFailures = allowsUntrustedServerCertificate
+            ? SVNProject.legacyAllowedServerCertificateFailures
+            : []
+    }
+}
 
 enum RepositoryBrowserPhase: Equatable {
     case idle
@@ -44,20 +61,46 @@ final class RepositoryBrowserState {
     private(set) var entries: [SVNRepositoryEntry] = []
     private(set) var phase = RepositoryBrowserPhase.idle
 
-    @ObservationIgnored private let repositoryListing: any SVNRepositoryListing
+    @ObservationIgnored private let loadRepositoryEntries: RepositoryEntriesLoading
     @ObservationIgnored private let credentials: SVNCredentials?
     @ObservationIgnored private let allowUntrustedServerCertificate: Bool
     @ObservationIgnored private let allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
 
-    init(
-        repositoryListing: any SVNRepositoryListing,
+    convenience init(
+        repositoryListing: any SVNClientServing,
         repositoryURL: String,
         revision: String? = nil,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) {
-        self.repositoryListing = repositoryListing
+        self.init(
+            repositoryEntries: { repositoryURL, revision, credentials, allowsUntrusted, failures in
+                try await repositoryListing.repositoryEntries(
+                    at: repositoryURL,
+                    revision: revision,
+                    credentials: credentials,
+                    allowUntrustedServerCertificate: allowsUntrusted,
+                    allowedServerCertificateFailures: failures
+                )
+            },
+            repositoryURL: repositoryURL,
+            revision: revision,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+    }
+
+    init(
+        repositoryEntries: @escaping RepositoryEntriesLoading,
+        repositoryURL: String,
+        revision: String? = nil,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) {
+        loadRepositoryEntries = repositoryEntries
         repositoryURLInput = repositoryURL
         revisionInput = revision ?? ""
         self.credentials = credentials
@@ -136,12 +179,12 @@ final class RepositoryBrowserState {
         selectedEntryID = nil
         do {
             let revision = revisionInput.trimmingCharacters(in: .whitespacesAndNewlines)
-            entries = try await repositoryListing.repositoryEntries(
-                at: currentURL,
-                revision: revision.isEmpty ? nil : revision,
-                credentials: credentials,
-                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-                allowedServerCertificateFailures: allowedServerCertificateFailures
+            entries = try await loadRepositoryEntries(
+                currentURL,
+                revision.isEmpty ? nil : revision,
+                credentials,
+                allowUntrustedServerCertificate,
+                allowedServerCertificateFailures
             ).sorted(by: Self.sortEntries)
             phase = .loaded
         } catch {

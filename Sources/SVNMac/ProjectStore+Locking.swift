@@ -68,6 +68,7 @@ extension ProjectStore {
             return
         }
         let allowsUntrustedCertificate = project.allowsUntrustedServerCertificate == true
+        let allowedServerCertificateFailures = allowedServerCertificateFailures(for: project)
         let client = client
         let result = await BulkUnlockExecutor.run(request.locks) { lock in
             _ = try await client.unlock(
@@ -75,7 +76,8 @@ extension ProjectStore {
                 relativePath: lock.path,
                 force: false,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowsUntrustedCertificate
+                allowUntrustedServerCertificate: allowsUntrustedCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
             )
         }
         endOperation(operationID)
@@ -106,7 +108,8 @@ extension ProjectStore {
                     workingCopyPath: project.path,
                     comment: comment,
                     credentials: credentials(for: project),
-                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 )
             } else if command.force {
                 throw ExplicitLockExecutionError.forceUnsupported
@@ -117,7 +120,8 @@ extension ProjectStore {
                         relativePath: path,
                         comment: comment,
                         credentials: credentials(for: project),
-                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                        allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                     )
                 }
             }
@@ -169,7 +173,8 @@ extension ProjectStore {
                 at: project.path,
                 relativePath: repositoryRelativePath,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             if let existingLock,
@@ -234,7 +239,8 @@ extension ProjectStore {
                 relativePath: request.repositoryRelativePath,
                 comment: comment,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.localized("ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd")
@@ -283,7 +289,8 @@ extension ProjectStore {
             let locks = try await client.repositoryLocks(
                 at: project.path,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard canApplyRequest(requestID, kind: .repositoryLocks, projectID: project.id) else { return }
             repositoryLocks = locks
@@ -304,7 +311,8 @@ extension ProjectStore {
                 relativePath: lock.path,
                 force: false,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             notice = AppLanguage.current.localized("ui.the.lock.was.released.3aee6b8e")
@@ -335,7 +343,8 @@ extension ProjectStore {
                 relativePath: request.lock.path,
                 force: true,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             forceUnlockRequest = nil
