@@ -12,7 +12,7 @@ enum AppSettings {
     static let hideTemporaryFilesKey = "hide-temporary-files"
     static let defaultHideTemporaryFiles = true
     static let fileBrowserViewModeKey = "file-browser-view-mode"
-    static let defaultFileBrowserViewMode = FileBrowserViewMode.tree.rawValue
+    static let defaultFileBrowserViewMode = FileBrowserViewMode.split.rawValue
     static let documentOpenLockPolicyKey = "document-open-lock-policy"
     static let defaultDocumentOpenLockPolicy = DocumentOpenLockPolicy.askEveryTime.rawValue
 
@@ -26,7 +26,7 @@ enum AppSettings {
     static func fileBrowserViewMode(in defaults: UserDefaults = .standard) -> FileBrowserViewMode {
         let identifier = defaults.string(forKey: fileBrowserViewModeKey)
             ?? defaultFileBrowserViewMode
-        return FileBrowserViewMode(rawValue: identifier) ?? .tree
+        return FileBrowserViewMode(rawValue: identifier) ?? .split
     }
 
     static func documentOpenLockPolicy(

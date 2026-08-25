@@ -2,20 +2,20 @@ import Foundation
 import Testing
 @testable import SVNMac
 
-@Test func fileBrowserViewModeDefaultsToTreeAndRestoresStoredSelection() {
+@Test func fileBrowserViewModeDefaultsToSplitAndRestoresStoredSelection() {
     let suiteName = "file-browser-view-mode-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
-    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.tree.rawValue)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.split.rawValue)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
 
-    defaults.set(FileBrowserViewMode.split.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
+    defaults.set(FileBrowserViewMode.tree.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
     let restoredDefaults = UserDefaults(suiteName: suiteName)!
-    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .split)
+    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .tree)
 
     defaults.set("unknown", forKey: AppSettings.fileBrowserViewModeKey)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
 }
 
 @Test func splitBrowserFolderRowsSupportDoubleClickAndChevronHitArea() throws {
