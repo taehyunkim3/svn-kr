@@ -42,6 +42,7 @@ struct CommitControlsView: View {
                 .disabled(
                     !store.canCommitSelectedPaths
                         || store.isSelectedProjectActionBlocked
+                        || store.recoveryState.commitSubmissionID != nil
                 )
                 .help(appLanguage.localized("ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8"))
             }
@@ -60,18 +61,19 @@ struct CommitControlsView: View {
         }
     }
 
-    private func submitCommit() {
-        let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !store.prepareCommitConfirmation(message: message) else { return }
-        Task { _ = await store.commitSelectedChanges(message: message) }
-    }
-
     private func submitCommitAfterEndingTextInput() {
+        guard let submissionID = store.recoveryState.beginCommitSubmission(
+            isActionBlocked: store.isSelectedProjectActionBlocked,
+            canCommit: store.canCommitSelectedPaths
+        ) else { return }
         isCommitMessageFocused = false
         Task { @MainActor in
+            defer { store.recoveryState.endCommitSubmission(submissionID) }
             // macOS TextField가 조합 중인 한글을 binding에 반영한 다음 메시지를 읽습니다.
             await Task.yield()
-            submitCommit()
+            let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !store.prepareCommitConfirmation(message: message) else { return }
+            _ = await store.commitSelectedChanges(message: message)
         }
     }
 }
