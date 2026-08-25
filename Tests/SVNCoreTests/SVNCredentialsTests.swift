@@ -534,6 +534,48 @@ private final class CheckoutOutputRecorder: @unchecked Sendable {
     #expect(revision == SVNWorkingCopyRevision(minimum: "37", maximum: "41"))
 }
 
+@Test func incomingCommitsStartsAfterMinimumWorkingCopyRevision() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-incoming-mixed-revision-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let intendedMessage = "혼합 리비전 커밋"
+    let mojibakeMessage = String(
+        data: Data(intendedMessage.decomposedStringWithCanonicalMapping.utf8),
+        encoding: .isoLatin1
+    )!
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="37"/></entry><entry path="file.txt"><wc-status item="normal" revision="41"/></entry></target></status>'
+        ;;
+      *"info --revision HEAD --show-item revision"*) printf '42\n' ;;
+      *"log --revision 38:HEAD --verbose --xml --with-all-revprops"*)
+        printf '%s' '<?xml version="1.0"?><log><logentry revision="42"><msg>\(mojibakeMessage)</msg></logentry></log>'
+        ;;
+      *)
+        printf 'unexpected arguments: %s\n' "$*" >&2
+        exit 1
+        ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let commits = try await client.incomingCommits(at: directory.path)
+
+    #expect(commits.map(\.revision) == ["42"])
+    #expect(commits[0].message == intendedMessage)
+    #expect(commits[0].originalMessage == mojibakeMessage)
+}
+
 @Test func readsWorkingCopyPathRelativeToRepositoryRoot() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-working-copy-repository-path-test-\(UUID().uuidString)", isDirectory: true)

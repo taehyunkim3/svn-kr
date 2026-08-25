@@ -1441,7 +1441,7 @@ public actor SVNClient {
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let baseRevision = try await workingCopyRevision(at: path, credentials: credentials)
-        guard let base = Int(baseRevision.maximum) else { throw SVNError.malformedResponse }
+        guard let base = Int(baseRevision.minimum) else { throw SVNError.malformedResponse }
         let headResult = try await checkedRun(
             ["info", "--revision", "HEAD", "--show-item", "revision"],
             at: path,
