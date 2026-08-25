@@ -1689,7 +1689,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
 
     #expect(result.contains("LANG=en_US.UTF-8"))
     #expect(result.contains("LC_ALL=en_US.UTF-8"))
-    #expect(result.contains("commit --message 한글 커밋 메시지 --targets"))
+    #expect(result.contains("commit --message 한글 커밋 메시지 --force-log --targets"))
     #expect(result.contains("target=한글.txt"))
 }
 
