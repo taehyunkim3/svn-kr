@@ -24,6 +24,7 @@ struct ProjectRecoveryState {
     var historyRevisionOperation: HistoryRevisionOperation?
     var repositoryBrowseSelectedURL: String?
     var commitSubmissionID: UUID?
+    var projectRegistrationSessionID: UUID?
 
     mutating func beginCommitSubmission(isActionBlocked: Bool, canCommit: Bool) -> UUID? {
         guard commitSubmissionID == nil, !isActionBlocked, canCommit else { return nil }

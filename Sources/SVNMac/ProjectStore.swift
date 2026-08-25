@@ -176,6 +176,7 @@ enum RefreshErrorPolicy {
 enum ProjectRequestKind: Hashable {
     case refresh
     case updateBadge(SVNProject.ID)
+    case updatePreview
     case diff
     case fileTree
     case repositoryLocks
@@ -589,6 +590,7 @@ final class ProjectStore {
     var isSelectedProjectActionBlocked: Bool {
         isRefreshingSelectedProject
             || isMutatingSelectedProject
+            || isPreviewingSelectedProjectUpdate
             || isScanningRepositoryPaths
     }
 
@@ -726,7 +728,7 @@ final class ProjectStore {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK else { return }
-        for url in panel.urls { addProject(url) }
+        Task { await registerProjects(panel.urls) }
     }
 
     /// 체크아웃을 취소 가능한 Task로 감싸 실행합니다.
@@ -898,26 +900,55 @@ final class ProjectStore {
     }
 
     func addProject(_ url: URL) {
-        let path = url.standardizedFileURL.path
-        guard !projects.contains(where: { $0.path == path }) else { return }
-        Task {
-            let operationID = beginOperation(.registerProject)
-            defer { endOperation(operationID) }
+        Task { await registerProjects([url]) }
+    }
+
+    func registerProjects(_ urls: [URL]) async {
+        let uniqueURLs = urls.reduce(into: [URL]()) { result, url in
+            let standardizedURL = url.standardizedFileURL
+            guard !result.contains(where: { $0.path == standardizedURL.path }) else { return }
+            result.append(standardizedURL)
+        }
+        guard !uniqueURLs.isEmpty else { return }
+        let sessionID = UUID()
+        let selectedProjectIDAtStart = selectedProjectID
+        recoveryState.projectRegistrationSessionID = sessionID
+        let operationID = beginOperation(.registerProject)
+        defer { endOperation(operationID) }
+
+        var registeredProjects: [SVNProject] = []
+        var lastFailureMessage: String?
+        for url in uniqueURLs {
+            let path = url.path
+            guard !projects.contains(where: { $0.path == path }) else { continue }
             let projectID = UUID()
             do {
                 let bookmarkData = try projectAccessManager.makeBookmark(for: url)
                 projectAccessManager.beginAccessing(url, for: projectID)
                 try await client.validateWorkingCopy(at: path, credentials: nil)
+                guard !projects.contains(where: { $0.path == path }) else {
+                    projectAccessManager.endAccessing(projectID: projectID)
+                    continue
+                }
                 let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
-                selectedProjectID = project.id
+                registeredProjects.append(project)
                 probeFilenameNormalization(for: project)
-                await refresh()
             } catch {
                 projectAccessManager.endAccessing(projectID: projectID)
-                errorMessage = localizedError(error)
+                lastFailureMessage = localizedError(error)
             }
         }
+
+        guard recoveryState.projectRegistrationSessionID == sessionID else { return }
+        recoveryState.projectRegistrationSessionID = nil
+        guard selectedProjectID == selectedProjectIDAtStart else { return }
+        if let project = registeredProjects.first {
+            selectedProjectID = project.id
+            await refresh()
+            guard selectedProjectID == project.id else { return }
+        }
+        if let lastFailureMessage { errorMessage = lastFailureMessage }
     }
 
     /// 이미 등록한 프로젝트의 로컬 폴더 위치를 바꿉니다.
@@ -1256,6 +1287,7 @@ final class ProjectStore {
             lastCompletedCommitMessage = message
             recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
+            guard selectedProjectID == project.id else { return true }
             notice = localizedError(SVNError.commitSucceededWithValidationWarning(
                 output: "",
                 details: details
@@ -1693,7 +1725,15 @@ final class ProjectStore {
         browserState = ProjectBrowserStore()
         historyState = ProjectHistoryStore()
         updateState = ProjectUpdateStore()
+        isShowingPathRecovery = false
+        pathRecoveryPreview = nil
+        pathRecoverySourceProjectID = nil
+        isShowingUpdatePreview = false
         isShowingTemporaryFileCleanup = false
+        isShowingFileHistory = false
+        isShowingLocks = false
+        isShowingIgnoreRules = false
+        isShowingCredentials = false
         requiresGlobalIgnoreImportConfirmation = false
         selectedBrowserPath = nil
         documentOpenRequest = nil

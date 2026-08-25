@@ -3,7 +3,8 @@ import SVNCore
 
 extension ProjectStore {
     func update() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              !activeOperations.contains(where: { $0.kind == .update(project.id) }) else { return }
         let commitRecovery = recoveryState.outOfDateCommitRecoveryRequest.flatMap {
             $0.projectID == project.id ? $0 : nil
         }
@@ -99,8 +100,12 @@ extension ProjectStore {
 
     func previewUpdate() async {
         guard let project = selectedProject else { return }
+        let requestID = beginRequest(.updatePreview)
         let operationID = beginOperation(.previewUpdate(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            finishRequest(requestID, kind: .updatePreview)
+            endOperation(operationID)
+        }
         recoveryState.updatePreview.beginLoading()
         remoteChanges = []
         cleansRepositoryTemporaryFilesAfterUpdate = false
@@ -120,10 +125,10 @@ extension ProjectStore {
                     allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 )
             }
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
             recoveryState.updatePreview.receive(commits)
         } catch {
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
             recordUpdatePreviewFailure(error, project: project)
         }
 
@@ -134,14 +139,14 @@ extension ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
             remoteChanges = changes
         } catch {
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
             recordUpdatePreviewFailure(error, project: project)
         }
 
-        guard selectedProjectID == project.id else { return }
+        guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
         updateRemoteSummary(
             for: project.id,
             needsUpdate: recoveryState.outOfDateCommitRecoveryRequest != nil
@@ -160,7 +165,10 @@ extension ProjectStore {
     }
 
     func confirmRepositoryTemporaryFileCleanup() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              !activeOperations.contains(where: {
+                  $0.kind == .cleanupTemporaryFiles(project.id)
+              }) else { return }
         let eligiblePaths = Set(temporaryFileCleanupAssessments.lazy.filter(\.isEligible).map(\.path))
         let requestedPaths = selectedTemporaryFileCleanupPaths.intersection(eligiblePaths).sorted()
         guard !requestedPaths.isEmpty else { return }

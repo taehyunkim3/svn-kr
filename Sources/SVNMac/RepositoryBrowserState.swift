@@ -65,6 +65,7 @@ final class RepositoryBrowserState {
     @ObservationIgnored private let credentials: SVNCredentials?
     @ObservationIgnored private let allowUntrustedServerCertificate: Bool
     @ObservationIgnored private let allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
 
     convenience init(
         repositoryListing: any SVNClientServing,
@@ -131,6 +132,43 @@ final class RepositoryBrowserState {
         return Self.appending(selectedEntry.name, to: currentURL)
     }
 
+    @discardableResult
+    func beginBrowse() -> Task<Void, Never> {
+        startLoading { state in await state.browse() }
+    }
+
+    @discardableResult
+    func beginRefresh() -> Task<Void, Never> {
+        startLoading { state in await state.refresh() }
+    }
+
+    @discardableResult
+    func beginEnterSelectedDirectory() -> Task<Void, Never> {
+        startLoading { state in await state.enterSelectedDirectory() }
+    }
+
+    @discardableResult
+    func beginNavigateUp() -> Task<Void, Never> {
+        startLoading { state in await state.navigateUp() }
+    }
+
+    func cancelLoading() {
+        loadTask?.cancel()
+        loadTask = nil
+    }
+
+    private func startLoading(
+        _ operation: @escaping @MainActor (RepositoryBrowserState) async -> Void
+    ) -> Task<Void, Never> {
+        loadTask?.cancel()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await operation(self)
+        }
+        loadTask = task
+        return task
+    }
+
     func browse() async {
         guard !isLoading else { return }
         guard let normalizedURL = Self.normalizedRepositoryURL(repositoryURLInput) else {
@@ -187,6 +225,8 @@ final class RepositoryBrowserState {
                 allowedServerCertificateFailures
             ).sorted(by: Self.sortEntries)
             phase = .loaded
+        } catch is CancellationError {
+            phase = .idle
         } catch {
             phase = .failed(Self.failure(for: error))
         }

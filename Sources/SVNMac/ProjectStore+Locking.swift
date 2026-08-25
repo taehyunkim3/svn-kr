@@ -3,6 +3,7 @@ import SVNCore
 
 struct DocumentOpenRequest: Identifiable, Equatable, Sendable {
     let id = UUID()
+    let projectID: SVNProject.ID
     let relativePath: String
     let repositoryRelativePath: String
     let existingLock: SVNLockInfo?
@@ -45,6 +46,7 @@ extension ProjectStore {
     func forceExplicitLock(_ request: ExplicitLockRequest) async {
         guard recoveryState.explicitLockRequest?.id == request.id,
               let project = selectedProject else { return }
+        recoveryState.explicitLockRequest = nil
         await executeExplicitLock(request.forceCommand, project: project)
     }
 
@@ -186,6 +188,7 @@ extension ProjectStore {
                 return
             }
             let request = DocumentOpenRequest(
+                projectID: project.id,
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
                 existingLock: existingLock
@@ -196,6 +199,7 @@ extension ProjectStore {
             if offerWorkingCopyCleanup(for: error, projectID: project.id) { return }
             notice = AppLanguage.current.localized("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
             let request = DocumentOpenRequest(
+                projectID: project.id,
                 relativePath: relativePath,
                 repositoryRelativePath: repositoryRelativePath,
                 existingLock: nil,
@@ -228,7 +232,7 @@ extension ProjectStore {
     }
 
     func lockAndOpen(_ request: DocumentOpenRequest) async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject, project.id == request.projectID else { return }
         documentOpenRequest = nil
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
@@ -265,7 +269,7 @@ extension ProjectStore {
                 in: settingsDefaults
             )
         }
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject, project.id == request.projectID else { return }
         openFile(request.relativePath, in: project)
         if let existingLock = request.existingLock {
             notice = AppLanguage.current.localized(
@@ -335,6 +339,7 @@ extension ProjectStore {
     func forceUnlock(_ request: ForceUnlockRequest) async {
         guard forceUnlockRequest?.id == request.id,
               let project = selectedProject else { return }
+        forceUnlockRequest = nil
         let operationID = beginOperation(.lock(project.id))
         defer { endOperation(operationID) }
         do {
