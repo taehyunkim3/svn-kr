@@ -400,7 +400,11 @@ private final class WorkingCopyEntriesDelegate: NSObject, XMLParserDelegate {
                 path: path,
                 status: attributeDict["item"] ?? "unknown",
                 revision: attributeDict["revision"],
-                treeConflicted: attributeDict["tree-conflicted"] == "true"
+                treeConflicted: attributeDict["tree-conflicted"] == "true",
+                propertyState: SVNPropertyState(
+                    rawValue: attributeDict["props"] ?? "none"
+                ) ?? .none,
+                isSwitched: attributeDict["switched"] == "true"
             ))
         }
     }

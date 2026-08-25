@@ -270,6 +270,8 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     public let revision: String?
     public let treeConflicted: Bool
     public let repositoryPath: String?
+    public let propertyState: SVNPropertyState
+    public let isSwitched: Bool
 
     public var id: String { path }
     public var repositoryRelativePath: String { repositoryPath ?? path }
@@ -285,13 +287,17 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
         status: String,
         revision: String? = nil,
         treeConflicted: Bool = false,
-        repositoryPath: String? = nil
+        repositoryPath: String? = nil,
+        propertyState: SVNPropertyState = .none,
+        isSwitched: Bool = false
     ) {
         self.path = path
         self.status = status
         self.revision = revision
         self.treeConflicted = treeConflicted
         self.repositoryPath = repositoryPath
+        self.propertyState = propertyState
+        self.isSwitched = isSwitched
     }
 }
 
