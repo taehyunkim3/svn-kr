@@ -72,6 +72,8 @@ extension ProjectStore {
                 bookmarkData: bookmarkData,
                 allowsUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true
             )
+            let recoveryIsStillCurrent = selectedProjectID == sourceID
+                && pathRecoverySourceProjectID == sourceID
             projects.append(recoveredProject)
 
             if let password = sourceCredentials?.password, !password.isEmpty {
@@ -79,8 +81,10 @@ extension ProjectStore {
                 try? credentialStore.setPassword(password, for: recoveredID)
             }
 
+            guard recoveryIsStillCurrent else { return true }
             selectedProjectID = recoveredID
             await refresh()
+            guard selectedProjectID == recoveredID else { return true }
             notice = AppLanguage.current.localized("ui.path.recovery.completed.the.original.working.fol.2fde9c42")
             return true
         } catch {

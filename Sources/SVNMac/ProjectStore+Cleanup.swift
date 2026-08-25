@@ -66,7 +66,8 @@ extension ProjectStore {
                 at: project.path,
                 credentials: credentials(for: project)
             ).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard projects.contains(where: { $0.id == project.id && $0.path == project.path }) else {
+            guard selectedProjectID == project.id,
+                  projects.contains(where: { $0.id == project.id && $0.path == project.path }) else {
                 return false
             }
             workingCopyCleanupRequest = nil
@@ -77,7 +78,8 @@ extension ProjectStore {
             )
             return true
         } catch {
-            guard projects.contains(where: { $0.id == project.id && $0.path == project.path }) else {
+            guard selectedProjectID == project.id,
+                  projects.contains(where: { $0.id == project.id && $0.path == project.path }) else {
                 return false
             }
             workingCopyCleanupRequest = nil

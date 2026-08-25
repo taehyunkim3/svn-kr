@@ -23,4 +23,5 @@ struct ProjectRecoveryState {
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
     var repositoryBrowseSelectedURL: String?
+    var projectRegistrationSessionID: UUID?
 }
