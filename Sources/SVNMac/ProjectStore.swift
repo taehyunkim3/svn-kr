@@ -1090,12 +1090,8 @@ final class ProjectStore {
             self.logs = logs
             self.hasMoreHistory = logs.count == 50
             if canApplyUpdateBadge(updateBadgeRequestID, project: project) {
-                let needsUpdate = isWorkingCopyOutOfDate || Self.remoteHistoryNeedsUpdate(
-                    logs,
-                    comparedTo: workingCopyRevision
-                )
-                self.isWorkingCopyOutOfDate = needsUpdate
-                updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
+                self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
+                updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
             }
             notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
         } catch {
@@ -1143,24 +1139,13 @@ final class ProjectStore {
 
         do {
             let projectCredentials = try credentials(for: project)
-            async let revision = client.workingCopyRevision(
+            let needsUpdate = try await client.workingCopyIsOutOfDate(
                 at: project.path,
-                credentials: projectCredentials
-            )
-            async let logs = client.log(
-                at: project.path,
-                limit: 1,
-                endingAtRevision: nil,
                 credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
-            let (workingCopyRevision, latestLogs) = try await (revision, logs)
             guard canApplyUpdateBadge(requestID, project: project) else { return true }
-            let needsUpdate = Self.remoteHistoryNeedsUpdate(
-                latestLogs,
-                comparedTo: workingCopyRevision
-            )
             updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
             if selectedProjectID == project.id {
                 isWorkingCopyOutOfDate = needsUpdate
@@ -1169,16 +1154,6 @@ final class ProjectStore {
         } catch {
             return false
         }
-    }
-
-    private static func remoteHistoryNeedsUpdate(
-        _ logs: [SVNLogEntry],
-        comparedTo workingCopyRevision: SVNWorkingCopyRevision?
-    ) -> Bool {
-        guard let localRevision = workingCopyRevision.flatMap({ Int($0.minimum) }) else {
-            return false
-        }
-        return logs.lazy.compactMap { Int($0.revision) }.contains { $0 > localRevision }
     }
 
     private func applyLocalWorkingCopyRefresh(
@@ -1201,6 +1176,10 @@ final class ProjectStore {
             workingCopyRevision = snapshot.revision
             pathCollisions = snapshot.collisions
             self.workingCopyRepositoryPath = workingCopyRepositoryPath
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == project.id {
+                selectedPaths.formUnion(recovery.paths)
+            }
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
             notice = AppLanguage.current.localized("ui.local.changes.refreshed.617acbc6", project.name)
@@ -1268,12 +1247,14 @@ final class ProjectStore {
             notice = result
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
             return true
         } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
             guard selectedProjectID == project.id else { return true }
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
             notice = localizedError(SVNError.commitSucceededWithValidationWarning(
                 output: "",
@@ -1282,10 +1263,17 @@ final class ProjectStore {
             return true
         } catch let error as SVNError {
             if selectedProjectID == project.id {
-                if case .workingCopyOutOfDate = error {
+                if case let .workingCopyOutOfDate(details) = error {
                     isWorkingCopyOutOfDate = true
+                    await prepareOutOfDateCommitRecovery(
+                        project: project,
+                        message: message,
+                        paths: paths,
+                        details: details
+                    )
+                } else {
+                    handleRemoteError(error, project: project, action: .commit(message: message))
                 }
-                handleRemoteError(error, project: project, action: .commit(message: message))
             }
             return false
         } catch {
@@ -1550,9 +1538,19 @@ final class ProjectStore {
         case .refreshHistory:
             await refreshRemoteHistory(for: request.projectID)
         case .update:
-            await update()
+            if recoveryState.outOfDateCommitRecoveryRequest?.projectID == request.projectID {
+                await previewUpdate()
+            } else {
+                await update()
+            }
         case let .commit(message):
-            _ = await commit(message: message)
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == request.projectID,
+               !recovery.hasCompletedUpdate {
+                await update()
+            } else {
+                _ = await commit(message: message)
+            }
         case .retryManually:
             break
         }

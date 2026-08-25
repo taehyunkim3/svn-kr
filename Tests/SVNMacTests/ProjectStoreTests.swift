@@ -1755,7 +1755,7 @@ import Testing
     let unselected = SVNProject(name: "비선택", path: "/tmp/badge-unselected")
     let client = StubSVNClient(
         revisionsByPath: [selected.path: "10", unselected.path: "20"],
-        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"]
+        outOfDateByPath: [selected.path: false, unselected.path: true]
     )
     let store = makeStore(projects: [selected, unselected], client: client)
 
@@ -1771,7 +1771,7 @@ import Testing
     let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 2)
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"]
+        outOfDateByPath: [project.path: true]
     )
     let store = makeStore(
         projects: [project],
@@ -1794,7 +1794,7 @@ import Testing
     let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 5)
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"],
+        outOfDateByPath: [project.path: true],
         updateBadgeFailuresRemaining: 3
     )
     let store = makeStore(
@@ -1825,7 +1825,7 @@ import Testing
     let unselected = SVNProject(name: "정상 프로젝트", path: "/tmp/badge-unselected-after-block")
     let client = StubSVNClient(
         revisionsByPath: [selected.path: "10", unselected.path: "20"],
-        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"],
+        outOfDateByPath: [selected.path: false, unselected.path: true],
         snapshotError: TestError.automaticRefreshFailed
     )
     let store = makeStore(
@@ -1865,12 +1865,12 @@ import Testing
 }
 
 @MainActor
-@Test func remoteHistoryDetectsUpdateWhenRemoteStatusMissesIt() async {
-    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-history-fallback")
+@Test func remoteStatusDeterminesUpdateBadge() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-remote-status")
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"],
-        outOfDateByPath: [project.path: false]
+        latestLogRevisionsByPath: [project.path: "9"],
+        outOfDateByPath: [project.path: true]
     )
     let store = makeStore(projects: [project], client: client)
 
@@ -2218,11 +2218,99 @@ import Testing
     #expect(store.isWorkingCopyOutOfDate == true)
     #expect(store.selectedPaths == ["generated"])
     #expect(store.lastCompletedCommitMessage == nil)
-    #expect(store.errorMessage?.contains("E155011") == true)
+    #expect(store.errorMessage == nil)
+    #expect(store.isShowingUpdatePreview)
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.message == "디렉터리 삭제")
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.paths == ["generated"])
     #expect(store.localizedError(
         SVNError.workingCopyOutOfDate(details: details),
         language: .english
     ).contains("Run Update") == true)
+}
+
+@MainActor
+@Test func updateConflictDoesNotRetryOutOfDateCommit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/out-of-date-update-conflict")
+    let details = "svn: E155011: Directory '.' is out of date"
+    let conflictSnapshot = SVNWorkingCopySnapshot(
+        statuses: [
+            SVNStatusEntry(
+                path: ".",
+                item: .conflicted,
+                revision: "2",
+                nodeKind: .directory,
+                propertyState: .conflicted
+            ),
+        ],
+        revision: SVNWorkingCopyRevision(minimum: "2", maximum: "2"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        postResolveSnapshotsByPath: [project.path: conflictSnapshot],
+        commitErrors: [.workingCopyOutOfDate(details: details)]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [
+        SVNStatusEntry(
+            path: ".",
+            item: .modified,
+            revision: "1",
+            nodeKind: .directory,
+            propertyState: .modified
+        ),
+    ]
+    store.selectedPaths = ["."]
+
+    #expect(!(await store.commit(message: "무시 규칙 추가")))
+    await store.update()
+
+    #expect(await client.commitRequestCount() == 1)
+    let recovery = try #require(store.recoveryState.outOfDateCommitRecoveryRequest)
+    #expect(recovery.message == "무시 규칙 추가")
+    #expect(recovery.paths == ["."])
+    #expect(recovery.conflictedPaths == ["."])
+    #expect(store.isShowingUpdatePreview)
+}
+
+@MainActor
+@Test func authenticationResumeContinuesUpdateBeforeRetryingCommit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/out-of-date-update-auth")
+    let modifiedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [
+            SVNStatusEntry(
+                path: ".",
+                item: .modified,
+                revision: "2",
+                nodeKind: .directory,
+                propertyState: .modified
+            ),
+        ],
+        revision: SVNWorkingCopyRevision(minimum: "2", maximum: "2"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        postResolveSnapshotsByPath: [project.path: modifiedSnapshot],
+        commitErrors: [.workingCopyOutOfDate(details: "svn: E155011: out of date")],
+        updateErrors: [.accessDenied]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = modifiedSnapshot.statuses
+    store.selectedPaths = ["."]
+
+    #expect(!(await store.commit(message: "무시 규칙 추가")))
+    await store.update()
+    let request = try #require(store.authenticationRequest)
+    #expect(request.action == .commit(message: "무시 규칙 추가"))
+
+    await store.retryKeychainAccess(for: request)
+
+    #expect(await client.updateRequestCount() == 2)
+    #expect(await client.commitRequestCount() == 2)
+    #expect(await client.lastCommitRequest()?.paths == ["."])
+    #expect(await client.lastCommitRequest()?.message == "무시 규칙 추가")
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
 }
 
 @MainActor
@@ -3381,6 +3469,7 @@ private actor StubSVNClient: SVNClientServing {
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
     let commitError: SVNError?
+    private var commitErrors: [SVNError]
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
     let repositoryPathNormalizationResultValue: SVNRepositoryPathNormalizationResult?
     let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
@@ -3411,6 +3500,7 @@ private actor StubSVNClient: SVNClientServing {
     private var repositoryPathNormalizationScanRequests = 0
     private var repositoryPathNormalizationRequests = 0
     private var updateRequests = 0
+    private var updateErrors: [KeychainStoreError]
     private var revertCredentialUsernames: [String?] = []
     private var updateCredentialUsernames: [String?] = []
     private var updateAllowedUntrustedCertificates: [Bool] = []
@@ -3457,6 +3547,8 @@ private actor StubSVNClient: SVNClientServing {
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
         ignoreRules: [SVNIgnoreRule] = [],
         commitError: SVNError? = nil,
+        commitErrors: [SVNError] = [],
+        updateErrors: [KeychainStoreError] = [],
         repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = [],
         repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
         repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
@@ -3496,6 +3588,8 @@ private actor StubSVNClient: SVNClientServing {
         self.resolveError = resolveError
         self.resolveGate = resolveGate
         self.commitError = commitError
+        self.commitErrors = commitErrors
+        self.updateErrors = updateErrors
         repositoryPathNormalizationTargetsValue = repositoryPathNormalizationTargets
         repositoryPathNormalizationResultValue = repositoryPathNormalizationResult
         self.repositoryPathNormalizationError = repositoryPathNormalizationError
@@ -3693,10 +3787,6 @@ private actor StubSVNClient: SVNClientServing {
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
         logRequests += 1
         await delay(for: path)
-        if updateBadgeFailuresRemaining > 0 {
-            updateBadgeFailuresRemaining -= 1
-            throw TestError.automaticRefreshFailed
-        }
         return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
     func updatePreviewIncomingCommits(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
@@ -3728,6 +3818,10 @@ private actor StubSVNClient: SVNClientServing {
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Bool {
         outOfDateRequests += 1
         await delay(for: path)
+        if updateBadgeFailuresRemaining > 0 {
+            updateBadgeFailuresRemaining -= 1
+            throw TestError.automaticRefreshFailed
+        }
         return outOfDateByPath[path] ?? false
     }
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNStatusEntry] {
@@ -3739,6 +3833,7 @@ private actor StubSVNClient: SVNClientServing {
         updateCredentialUsernames.append(credentials?.username)
         updateAllowedUntrustedCertificates.append(allowUntrustedServerCertificate)
         updateRequests += 1
+        if !updateErrors.isEmpty { throw updateErrors.removeFirst() }
         return "updated"
     }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
@@ -3777,10 +3872,12 @@ private actor StubSVNClient: SVNClientServing {
                 details: commitCompletedWarning.details
             )
         }
+        if !commitErrors.isEmpty { throw commitErrors.removeFirst() }
         if let commitError { throw commitError }
         return "committed"
     }
     func lastCommitRequest() -> CommitRequest? { commitRequests.last }
+    func commitRequestCount() -> Int { commitRequests.count }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {

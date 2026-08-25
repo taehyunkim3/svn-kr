@@ -3061,6 +3061,23 @@
         }
       }
     },
+    "ui.commit.deletion.restore.partial.5a8c2f64": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ file(s) were restored, but %2$@ failed.\n\n%3$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@개를 복원했고 %2$@개는 실패했습니다.\n\n%3$@"
+          }
+        }
+      }
+    },
     "ui.commit.history.07e0f8de": {
       "extractionState": "manual",
       "localizations": {
@@ -3095,6 +3112,23 @@
         }
       }
     },
+    "ui.commit.input.saved.update.then.retry.5e2a8d90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit message and %1$@ selected item(s) are saved. If Update creates no conflicts, the app retries the same commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 메시지와 선택 항목 %1$@개를 보관했습니다. 업데이트에서 충돌이 없으면 같은 내용으로 커밋을 다시 실행합니다."
+          }
+        }
+      }
+    },
     "ui.commit.message.c5139167": {
       "extractionState": "manual",
       "localizations": {
@@ -3125,6 +3159,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "커밋 기록을 찾을 수 없습니다"
+          }
+        }
+      }
+    },
+    "ui.commit.requires.update.before.retry.91b7e3c5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Required Before Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 전 업데이트 필요"
           }
         }
       }
@@ -3244,6 +3295,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 로컬 작업 폴더에서 사용할 SVN 계정과 Keychain 비밀번호를 설정합니다."
+          }
+        }
+      }
+    },
+    "ui.confirm.commit.7c2e5a90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인"
           }
         }
       }
@@ -4706,6 +4774,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "전역 규칙은 작업 복사본 아래의 여러 디렉터리에 영향을 줄 수 있습니다. 선택한 범위를 확인한 경우에만 적용하세요."
+          }
+        }
+      }
+    },
+    "ui.go.resolve.update.conflicts.2d9e4b71": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to Conflict Resolution"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 해결로 이동"
           }
         }
       }
@@ -6461,6 +6546,23 @@
         }
       }
     },
+    "ui.no.server.deletions.remaining.3e7b9a12": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No files will be deleted"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제될 파일이 없습니다"
+          }
+        }
+      }
+    },
     "ui.no.svn.ignore.rules.are.configured.71e0180f": {
       "extractionState": "manual",
       "localizations": {
@@ -7855,6 +7957,91 @@
         }
       }
     },
+    "ui.restore.selected.files.action.7b3e1d95": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore from Server"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 파일로 복원"
+          }
+        }
+      }
+    },
+    "ui.restore.selected.files.confirmation.6d81b3e4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore the selected files from the server?"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 파일을 서버 파일로 복원할까요?"
+          }
+        }
+      }
+    },
+    "ui.restore.selected.files.count.2c9f4a70": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore %1$@ selected deletion file(s) from the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 삭제 파일 %1$@개를 서버 파일로 복원합니다."
+          }
+        }
+      }
+    },
+    "ui.restore.selected.server.files.4f2a7c91": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Selected Files from Server…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 파일 서버 파일로 복원…"
+          }
+        }
+      }
+    },
+    "ui.restore.target.not.deleted.1d6a4b82": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file is no longer marked as deleted."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "더 이상 삭제 상태가 아닙니다."
+          }
+        }
+      }
+    },
     "ui.restore.working.file.confirmation.0ab7e3c9": {
       "extractionState": "manual",
       "localizations": {
@@ -7936,6 +8123,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ 파일을 r%2$@로 되돌렸습니다. 현재 로컬 수정 상태입니다. 서버에 반영하려면 커밋하세요."
+          }
+        }
+      }
+    },
+    "ui.restored.selected.server.files.2e4c7a91": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restored %1$@ selected deletion file(s) from the server."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 삭제 파일 %1$@개를 서버 파일로 복원했습니다."
           }
         }
       }
@@ -8076,6 +8280,23 @@
         }
       }
     },
+    "ui.review.commit.8b36485e": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 확인"
+          }
+        }
+      }
+    },
     "ui.review.force.lock.6c91f2da": {
       "extractionState": "manual",
       "localizations": {
@@ -8106,6 +8327,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "이전 내용 확인"
+          }
+        }
+      }
+    },
+    "ui.review.update.then.retry.commit.6a1e9c43": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN requires a working-copy update. Confirm Update to retry the commit with the saved message and selection when no conflicts occur."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN이 작업 복사본 업데이트를 요구했습니다. 업데이트를 확인하면 충돌이 없을 때 저장한 메시지와 선택 목록으로 커밋을 다시 실행합니다."
           }
         }
       }
@@ -8416,6 +8654,23 @@
         }
       }
     },
+    "ui.saved.commit.selection.no.longer.available.6f81b3d4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some saved commit selections disappeared from the change list after Update. Review the changes, then commit again."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 후 저장한 커밋 선택 항목이 변경 목록에서 사라졌습니다. 변경 상태를 확인한 뒤 다시 커밋하세요."
+          }
+        }
+      }
+    },
     "ui.saved.historical.revision.76ec18b4": {
       "extractionState": "manual",
       "localizations": {
@@ -8718,6 +8973,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "서버 커밋"
+          }
+        }
+      }
+    },
+    "ui.server.deletion.count.793b7522": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ item(s) will be deleted from the server"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 삭제될 항목 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.server.deletion.warning.81e94f35": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some files will be deleted. Review the list below and confirm that they should be deleted."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제하는 파일이 있습니다. 정말 삭제하는게 맞는지 아래 목록에서 확인해주세요."
           }
         }
       }
@@ -10150,6 +10439,57 @@
         }
       }
     },
+    "ui.update.and.retry.commit.4c6f1a82": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update and Retry Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 후 커밋 재시도"
+          }
+        }
+      }
+    },
+    "ui.update.conflicts.blocked.commit.retry.8b3d6f20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update created conflicts, so the commit was not retried. Resolve these paths first: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 중 충돌이 발생해 커밋을 다시 실행하지 않았습니다. 다음 경로의 충돌을 먼저 해결하세요: %1$@"
+          }
+        }
+      }
+    },
+    "ui.update.created.conflicts.commit.not.retried.7a4c2e19": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update created conflicts, so the commit was not retried: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 중 충돌이 발생해 커밋을 다시 실행하지 않았습니다: %1$@"
+          }
+        }
+      }
+    },
     "ui.update.preview.3e2a4411": {
       "extractionState": "manual",
       "localizations": {
@@ -10180,6 +10520,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 있음"
+          }
+        }
+      }
+    },
+    "ui.update.required.before.commit.retry.3f8c1d67": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Before Retrying Commit"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 후 커밋 가능"
           }
         }
       }
@@ -10741,210 +11098,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "두 서버 커밋 사이의 내 로컬 갱신 기준입니다."
-          }
-        }
-      }
-    },
-    "ui.review.commit.8b36485e": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review Commit"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "커밋 확인"
-          }
-        }
-      }
-    },
-    "ui.server.deletion.count.793b7522": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ item(s) will be deleted from the server"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버에서 삭제될 항목 %1$@개"
-          }
-        }
-      }
-    },
-    "ui.server.deletion.warning.81e94f35": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Some files will be deleted. Review the list below and confirm that they should be deleted."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "삭제하는 파일이 있습니다. 정말 삭제하는게 맞는지 아래 목록에서 확인해주세요."
-          }
-        }
-      }
-    },
-    "ui.restore.selected.server.files.4f2a7c91": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore Selected Files from Server…"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택 파일 서버 파일로 복원…"
-          }
-        }
-      }
-    },
-    "ui.restore.selected.files.confirmation.6d81b3e4": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore the selected files from the server?"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택한 파일을 서버 파일로 복원할까요?"
-          }
-        }
-      }
-    },
-    "ui.restore.selected.files.count.2c9f4a70": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore %1$@ selected deletion file(s) from the server."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택한 삭제 파일 %1$@개를 서버 파일로 복원합니다."
-          }
-        }
-      }
-    },
-    "ui.restore.selected.files.action.7b3e1d95": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore from Server"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버 파일로 복원"
-          }
-        }
-      }
-    },
-    "ui.commit.deletion.restore.partial.5a8c2f64": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ file(s) were restored, but %2$@ failed.\n\n%3$@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@개를 복원했고 %2$@개는 실패했습니다.\n\n%3$@"
-          }
-        }
-      }
-    },
-    "ui.restore.target.not.deleted.1d6a4b82": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This file is no longer marked as deleted."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "더 이상 삭제 상태가 아닙니다."
-          }
-        }
-      }
-    },
-    "ui.restored.selected.server.files.2e4c7a91": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restored %1$@ selected deletion file(s) from the server."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택한 삭제 파일 %1$@개를 서버 파일로 복원했습니다."
-          }
-        }
-      }
-    },
-    "ui.no.server.deletions.remaining.3e7b9a12": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No files will be deleted"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "삭제될 파일이 없습니다"
-          }
-        }
-      }
-    },
-    "ui.confirm.commit.7c2e5a90": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Confirm"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "확인"
           }
         }
       }

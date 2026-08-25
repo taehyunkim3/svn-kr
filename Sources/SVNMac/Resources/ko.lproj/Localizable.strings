@@ -640,3 +640,12 @@
 "ui.restored.selected.server.files.2e4c7a91" = "선택한 삭제 파일 %1$@개를 서버 파일로 복원했습니다.";
 "ui.no.server.deletions.remaining.3e7b9a12" = "삭제될 파일이 없습니다";
 "ui.confirm.commit.7c2e5a90" = "확인";
+"ui.update.created.conflicts.commit.not.retried.7a4c2e19" = "업데이트 중 충돌이 발생해 커밋을 다시 실행하지 않았습니다: %1$@";
+"ui.saved.commit.selection.no.longer.available.6f81b3d4" = "업데이트 후 저장한 커밋 선택 항목이 변경 목록에서 사라졌습니다. 변경 상태를 확인한 뒤 다시 커밋하세요.";
+"ui.go.resolve.update.conflicts.2d9e4b71" = "충돌 해결로 이동";
+"ui.update.and.retry.commit.4c6f1a82" = "업데이트 후 커밋 재시도";
+"ui.commit.requires.update.before.retry.91b7e3c5" = "커밋 전 업데이트 필요";
+"ui.commit.input.saved.update.then.retry.5e2a8d90" = "커밋 메시지와 선택 항목 %1$@개를 보관했습니다. 업데이트에서 충돌이 없으면 같은 내용으로 커밋을 다시 실행합니다.";
+"ui.update.conflicts.blocked.commit.retry.8b3d6f20" = "업데이트 중 충돌이 발생해 커밋을 다시 실행하지 않았습니다. 다음 경로의 충돌을 먼저 해결하세요: %1$@";
+"ui.update.required.before.commit.retry.3f8c1d67" = "업데이트 후 커밋 가능";
+"ui.review.update.then.retry.commit.6a1e9c43" = "SVN이 작업 복사본 업데이트를 요구했습니다. 업데이트를 확인하면 충돌이 없을 때 저장한 메시지와 선택 목록으로 커밋을 다시 실행합니다.";

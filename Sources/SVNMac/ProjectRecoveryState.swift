@@ -10,6 +10,7 @@ struct ProjectRecoveryState {
     var commitDeletionRestoreFailureMessage: String?
     var propertyConflictSession: PropertyConflictSession?
     var updatePreview = UpdatePreviewState()
+    var outOfDateCommitRecoveryRequest: OutOfDateCommitRecoveryRequest?
     var repositoryURL: String?
     var repositoryRelocationRequest: RepositoryRelocationRequest?
     var repositoryRelocationFailureMessage: String?

@@ -1514,7 +1514,49 @@ public actor SVNClient {
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             allowedServerCertificateFailures: allowedServerCertificateFailures
         )
-        return try SVNXMLParser.logs(from: Data(result.output.utf8))
+        let logs = try SVNXMLParser.logs(from: Data(result.output.utf8))
+        guard logs.contains(where: { !$0.changedPaths.isEmpty }) else { return logs }
+        let workingCopyRepositoryPath = try await workingCopyRepositoryPath(
+            at: path,
+            credentials: credentials
+        )
+        let remoteChanges = try await remoteChanges(
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        guard !remoteChanges.isEmpty else { return [] }
+        let remotePaths = remoteChanges.map(\.path)
+        return logs.filter { entry in
+            entry.changedPaths.contains { changedPath in
+                guard let relativePath = projectRelativePath(
+                    changedPath.path,
+                    workingCopyRepositoryPath: workingCopyRepositoryPath
+                ) else { return false }
+                return remotePaths.contains { Self.pathsOverlap(relativePath, $0) }
+            }
+        }
+    }
+
+    private func projectRelativePath(
+        _ repositoryPath: String,
+        workingCopyRepositoryPath: String
+    ) -> String? {
+        let repositoryComponents = pathComponents(repositoryPath)
+        let rootPath = workingCopyRepositoryPath.removingPercentEncoding
+            ?? workingCopyRepositoryPath
+        let rootComponents = pathComponents(rootPath)
+        guard repositoryComponents.starts(with: rootComponents) else { return nil }
+        let relativeComponents = repositoryComponents.dropFirst(rootComponents.count)
+        return relativeComponents.isEmpty ? "." : relativeComponents.joined(separator: "/")
+    }
+
+    private static func pathsOverlap(_ first: String, _ second: String) -> Bool {
+        if first == "." || second == "." { return true }
+        return first == second
+            || first.hasPrefix(second + "/")
+            || second.hasPrefix(first + "/")
     }
 
     public func workingCopyIsOutOfDate(
