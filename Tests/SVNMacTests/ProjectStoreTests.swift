@@ -1593,6 +1593,161 @@ import Testing
 }
 
 @MainActor
+@Test func updateBadgeRefreshIncludesUnselectedProjects() async {
+    let selected = SVNProject(name: "선택", path: "/tmp/badge-selected")
+    let unselected = SVNProject(name: "비선택", path: "/tmp/badge-unselected")
+    let client = StubSVNClient(
+        revisionsByPath: [selected.path: "10", unselected.path: "20"],
+        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"]
+    )
+    let store = makeStore(projects: [selected, unselected], client: client)
+
+    await store.refreshUpdateBadges()
+
+    #expect(store.projectSummaries[selected.id]?.needsUpdate == false)
+    #expect(store.projectSummaries[unselected.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func updateBadgesRefreshOnConfiguredInterval() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-interval")
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        latestLogRevisionsByPath: [project.path: "11"]
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        updateBadgeRefreshInterval: .milliseconds(10)
+    )
+
+    let deadline = ContinuousClock.now + .seconds(15)
+    while store.projectSummaries[project.id] == nil, ContinuousClock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func updateBadgePollingBacksOffAndResetsAfterSuccess() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-backoff")
+    let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 5)
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        latestLogRevisionsByPath: [project.path: "11"],
+        updateBadgeFailuresRemaining: 3
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        updateBadgeRefreshInterval: .milliseconds(10),
+        updateBadgeMaximumRefreshInterval: .milliseconds(40),
+        updateBadgeSleep: { duration in
+            try await sleeper.sleep(for: duration)
+        }
+    )
+
+    let deadline = ContinuousClock.now + .seconds(15)
+    while await sleeper.recordedDurations().count < 5, ContinuousClock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+
+    #expect(await sleeper.recordedDurations() == [
+        .milliseconds(10),
+        .milliseconds(20),
+        .milliseconds(40),
+        .milliseconds(40),
+        .milliseconds(10),
+    ])
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func blockedSelectedProjectDoesNotBlockOtherUpdateBadges() async {
+    let selected = SVNProject(name: "차단 프로젝트", path: "/tmp/badge-blocked-selected")
+    let unselected = SVNProject(name: "정상 프로젝트", path: "/tmp/badge-unselected-after-block")
+    let client = StubSVNClient(
+        revisionsByPath: [selected.path: "10", unselected.path: "20"],
+        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"],
+        snapshotError: TestError.automaticRefreshFailed
+    )
+    let store = makeStore(
+        projects: [selected, unselected],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshSelectedProject(manual: false)
+    store.updateRemoteSummary(for: unselected.id, needsUpdate: false)
+
+    await store.refreshSelectedProject(manual: false)
+
+    #expect(store.projectSummaries[unselected.id]?.needsUpdate == true)
+    #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
+@Test func refreshKeepsKnownUpdateBadgeWhileRequestIsRunning() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-flicker")
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        delaysByPath: [project.path: .milliseconds(100)],
+        outOfDateByPath: [project.path: true]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.isWorkingCopyOutOfDate = true
+    store.updateRemoteSummary(for: project.id, needsUpdate: true)
+
+    let refresh = Task { await store.refresh() }
+    try? await Task.sleep(for: .milliseconds(20))
+
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+
+    await refresh.value
+}
+
+@MainActor
+@Test func remoteHistoryDetectsUpdateWhenRemoteStatusMissesIt() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-history-fallback")
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        latestLogRevisionsByPath: [project.path: "11"],
+        outOfDateByPath: [project.path: false]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.refresh()
+
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func lateUpdateBadgeResponseDoesNotOverwriteNewProjectState() async {
+    let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow-badge")
+    let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast-badge")
+    let client = StubSVNClient(
+        revisionsByPath: [first.path: "10", second.path: "20"],
+        latestLogRevisionsByPath: [first.path: "11", second.path: "20"],
+        delaysByPath: [first.path: .milliseconds(100)],
+        outOfDateByPath: [first.path: true, second.path: false]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let staleRefresh = Task { await store.refresh() }
+    try? await Task.sleep(for: .milliseconds(20))
+    store.selectedProjectID = second.id
+    await store.refresh()
+    await staleRefresh.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.isWorkingCopyOutOfDate == false)
+    #expect(store.projectSummaries[second.id]?.needsUpdate == false)
+}
+
+@MainActor
 @Test func refreshPublishesPathCollisionAndDropsUnsafeSelection() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/unicode-collision")
     let collision = SVNPathCollision(
@@ -2746,7 +2901,12 @@ private func makeStore(
     projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
     volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe(),
     settingsDefaults: UserDefaults = UserDefaults(suiteName: "project-store-settings-\(UUID().uuidString)")!,
-    hideTemporaryFiles: Bool = true
+    hideTemporaryFiles: Bool = true,
+    updateBadgeRefreshInterval: Duration? = nil,
+    updateBadgeMaximumRefreshInterval: Duration = .seconds(15 * 60),
+    updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+        try await Task.sleep(for: duration)
+    }
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -2759,7 +2919,10 @@ private func makeStore(
         projectPathChecker: projectPathChecker,
         volumeNormalizationProbe: volumeNormalizationProbe,
         settingsDefaults: settingsDefaults,
-        hideTemporaryFiles: hideTemporaryFiles
+        hideTemporaryFiles: hideTemporaryFiles,
+        updateBadgeRefreshInterval: updateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: updateBadgeMaximumRefreshInterval,
+        updateBadgeSleep: updateBadgeSleep
     )
 }
 
@@ -2839,6 +3002,26 @@ private actor AsyncTestGate {
         let pending = waiters
         waiters.removeAll()
         pending.forEach { $0.resume() }
+    }
+}
+
+private actor RecordingUpdateBadgeSleeper {
+    private let stopsAfter: Int
+    private var durations: [Duration] = []
+
+    init(stopsAfter: Int) {
+        self.stopsAfter = stopsAfter
+    }
+
+    func sleep(for duration: Duration) async throws {
+        durations.append(duration)
+        if durations.count == stopsAfter {
+            throw CancellationError()
+        }
+    }
+
+    func recordedDurations() -> [Duration] {
+        durations
     }
 }
 
@@ -2976,7 +3159,10 @@ private struct CommitRequest: Equatable, Sendable {
 private actor StubSVNClient: SVNClientServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
+    let latestLogRevisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
+    let outOfDateByPath: [String: Bool]
+    private var updateBadgeFailuresRemaining: Int
     let remoteChangesByPath: [String: [SVNStatusEntry]]
     let fileLogsByPath: [String: [SVNLogEntry]]
     let checkoutResult: String
@@ -3044,7 +3230,10 @@ private actor StubSVNClient: SVNClientServing {
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
         revisionsByPath: [String: String] = [:],
+        latestLogRevisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
+        outOfDateByPath: [String: Bool] = [:],
+        updateBadgeFailuresRemaining: Int = 0,
         remoteChangesByPath: [String: [SVNStatusEntry]] = [:],
         fileLogsByPath: [String: [SVNLogEntry]] = [:],
         checkoutResult: String = "checked out",
@@ -3083,7 +3272,10 @@ private actor StubSVNClient: SVNClientServing {
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
+        self.latestLogRevisionsByPath = latestLogRevisionsByPath
         self.delaysByPath = delaysByPath
+        self.outOfDateByPath = outOfDateByPath
+        self.updateBadgeFailuresRemaining = updateBadgeFailuresRemaining
         self.remoteChangesByPath = remoteChangesByPath
         self.fileLogsByPath = fileLogsByPath
         self.checkoutResult = checkoutResult
@@ -3281,7 +3473,11 @@ private actor StubSVNClient: SVNClientServing {
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         logRequests += 1
         await delay(for: path)
-        return [makeLog(revision: revisionsByPath[path] ?? "0")]
+        if updateBadgeFailuresRemaining > 0 {
+            updateBadgeFailuresRemaining -= 1
+            throw TestError.automaticRefreshFailed
+        }
+        return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
     func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
         revisionDiffRequests.append(RevisionDiffRequest(
@@ -3302,7 +3498,7 @@ private actor StubSVNClient: SVNClientServing {
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool {
         outOfDateRequests += 1
         await delay(for: path)
-        return false
+        return outOfDateByPath[path] ?? false
     }
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] {
         await delay(for: path)
@@ -3647,7 +3843,8 @@ private final class RealSVNTreeConflictFixture {
             projectPathChecker: StubProjectPathChecker(),
             volumeNormalizationProbe: StubVolumeNormalizationProbe(),
             settingsDefaults: UserDefaults(suiteName: "tree-conflict-store-\(UUID().uuidString)")!,
-            hideTemporaryFiles: true
+            hideTemporaryFiles: true,
+            updateBadgeRefreshInterval: nil
         )
     }
 

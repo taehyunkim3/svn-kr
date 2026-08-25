@@ -3,6 +3,45 @@ import Foundation
 import Observation
 import SVNCore
 
+private final class UpdateBadgePoller: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: Task<Void, Never>?
+
+    func start(
+        interval: Duration,
+        maximumInterval: Duration,
+        sleep: @escaping @Sendable (Duration) async throws -> Void,
+        operation: @escaping @Sendable () async -> Bool
+    ) {
+        let task = Task {
+            let maximumInterval = max(interval, maximumInterval)
+            var nextInterval = interval
+            while !Task.isCancelled {
+                do {
+                    try await sleep(nextInterval)
+                } catch {
+                    return
+                }
+                if await operation() {
+                    nextInterval = interval
+                } else {
+                    nextInterval = min(nextInterval * 2, maximumInterval)
+                }
+            }
+        }
+        lock.lock()
+        self.task = task
+        lock.unlock()
+    }
+
+    deinit {
+        lock.lock()
+        let task = task
+        lock.unlock()
+        task?.cancel()
+    }
+}
+
 struct SVNProject: Codable, Identifiable, Hashable {
     /// 비밀번호를 제외한 프로젝트 메타데이터만 UserDefaults에 직렬화합니다.
     /// bookmarkData는 App Sandbox에서 재실행 후 폴더 접근 권한을 복원하는 값입니다.
@@ -70,6 +109,7 @@ enum RefreshErrorPolicy {
 
 enum ProjectRequestKind: Hashable {
     case refresh
+    case updateBadge(SVNProject.ID)
     case diff
     case fileTree
     case repositoryLocks
@@ -85,6 +125,9 @@ struct SVNAuthenticationRequest: Identifiable, Equatable {
 @MainActor
 @Observable
 final class ProjectStore {
+    private static let defaultUpdateBadgeRefreshInterval = Duration.seconds(60)
+    private static let maximumUpdateBadgeRefreshInterval = Duration.seconds(15 * 60)
+
     // MARK: - 화면에 공개하는 상태
 
     private var changesState = ProjectChangesStore()
@@ -313,6 +356,7 @@ final class ProjectStore {
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
+    private let updateBadgePoller = UpdateBadgePoller()
     private var checkoutLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
@@ -539,7 +583,12 @@ final class ProjectStore {
         volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
         settingsDefaults: UserDefaults = .standard,
         hideTemporaryFiles: Bool = AppSettings.hideTemporaryFiles(),
-        isDemoMode: Bool = false
+        isDemoMode: Bool = false,
+        updateBadgeRefreshInterval: Duration? = ProjectStore.defaultUpdateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: Duration = ProjectStore.maximumUpdateBadgeRefreshInterval,
+        updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
     ) {
         self.isDemoMode = isDemoMode
         self.hideTemporaryFiles = hideTemporaryFiles
@@ -559,6 +608,15 @@ final class ProjectStore {
         projects = saved
         selectedProjectID = saved.first?.id
         for project in saved { probeFilenameNormalization(for: project) }
+        if !isDemoMode, let updateBadgeRefreshInterval {
+            updateBadgePoller.start(
+                interval: updateBadgeRefreshInterval,
+                maximumInterval: updateBadgeMaximumRefreshInterval,
+                sleep: updateBadgeSleep
+            ) { [weak self] in
+                await self?.refreshUpdateBadges() ?? true
+            }
+        }
     }
 
     // MARK: - 프로젝트 등록과 삭제
@@ -827,21 +885,27 @@ final class ProjectStore {
     // MARK: - SVN 작업
 
     func refreshSelectedProject(manual: Bool) async {
-        guard !isDemoMode, let project = selectedProject else { return }
-        if manual {
-            automaticRefreshBlockedProjectID = nil
-            unavailableProjectID = nil
-        } else if !automaticRefreshCanRun(for: project) {
-            return
-        }
-        guard ensureWorkingCopyDirectoryExists(for: project) else { return }
+        guard !isDemoMode else { return }
+        let project = selectedProject
+        async let badgeRefresh = refreshUpdateBadges(excluding: project?.id)
 
-        let cycleID = UUID()
-        let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
-        async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
-        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
-        _ = await (projectRefresh, browserRefresh)
-        finishRefreshCycle(cycleID)
+        if let project {
+            if manual {
+                automaticRefreshBlockedProjectID = nil
+                unavailableProjectID = nil
+            }
+            let canRefreshSelectedProject = manual || automaticRefreshCanRun(for: project)
+            if canRefreshSelectedProject, ensureWorkingCopyDirectoryExists(for: project) {
+                let cycleID = UUID()
+                let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
+                async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
+                async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
+                _ = await (projectRefresh, browserRefresh)
+                finishRefreshCycle(cycleID)
+            }
+        }
+
+        _ = await badgeRefresh
     }
 
     func refreshLocalWorkingCopy(errorPolicy: RefreshErrorPolicy = .standalone) async {
@@ -861,8 +925,12 @@ final class ProjectStore {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = prepareRefreshRequest()
+        let updateBadgeRequestID = beginRequest(.updateBadge(project.id))
         let operationID = beginOperation(.refresh(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            finishRequest(updateBadgeRequestID, kind: .updateBadge(project.id))
+            endOperation(operationID)
+        }
 
         guard await applyLocalWorkingCopyRefresh(
             for: project,
@@ -888,8 +956,14 @@ final class ProjectStore {
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.logs = logs
             self.hasMoreHistory = logs.count == 50
-            self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
-            updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
+            if canApplyUpdateBadge(updateBadgeRequestID, project: project) {
+                let needsUpdate = isWorkingCopyOutOfDate || Self.remoteHistoryNeedsUpdate(
+                    logs,
+                    comparedTo: workingCopyRevision
+                )
+                self.isWorkingCopyOutOfDate = needsUpdate
+                updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
+            }
             notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -905,7 +979,6 @@ final class ProjectStore {
 
     private func prepareRefreshRequest() -> UUID {
         let requestID = registerRefreshRequest()
-        isWorkingCopyOutOfDate = nil
         isShowingPathRecovery = false
         pathRecoveryPreview = nil
         pathRecoverySourceProjectID = nil
@@ -914,6 +987,64 @@ final class ProjectStore {
 
     private func registerRefreshRequest() -> UUID {
         beginRequest(.refresh)
+    }
+
+    @discardableResult
+    func refreshUpdateBadges(excluding excludedProjectID: SVNProject.ID? = nil) async -> Bool {
+        let projectsToRefresh = projects.filter { $0.id != excludedProjectID }
+        var allRefreshesSucceeded = true
+        for project in projectsToRefresh {
+            guard !Task.isCancelled else { return false }
+            if !(await refreshUpdateBadge(for: project)) {
+                allRefreshesSucceeded = false
+            }
+        }
+        return allRefreshesSucceeded
+    }
+
+    private func refreshUpdateBadge(for project: SVNProject) async -> Bool {
+        guard projectPathChecker.directoryExists(at: project.path) else { return true }
+        let requestKind = ProjectRequestKind.updateBadge(project.id)
+        let requestID = beginRequest(requestKind)
+        defer { finishRequest(requestID, kind: requestKind) }
+
+        do {
+            let projectCredentials = try credentials(for: project)
+            async let revision = client.workingCopyRevision(
+                at: project.path,
+                credentials: projectCredentials
+            )
+            async let logs = client.log(
+                at: project.path,
+                limit: 1,
+                endingAtRevision: nil,
+                credentials: projectCredentials,
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+            )
+            let (workingCopyRevision, latestLogs) = try await (revision, logs)
+            guard canApplyUpdateBadge(requestID, project: project) else { return true }
+            let needsUpdate = Self.remoteHistoryNeedsUpdate(
+                latestLogs,
+                comparedTo: workingCopyRevision
+            )
+            updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
+            if selectedProjectID == project.id {
+                isWorkingCopyOutOfDate = needsUpdate
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func remoteHistoryNeedsUpdate(
+        _ logs: [SVNLogEntry],
+        comparedTo workingCopyRevision: SVNWorkingCopyRevision?
+    ) -> Bool {
+        guard let localRevision = workingCopyRevision.flatMap({ Int($0.minimum) }) else {
+            return false
+        }
+        return logs.lazy.compactMap { Int($0.revision) }.contains { $0 > localRevision }
     }
 
     private func applyLocalWorkingCopyRefresh(
@@ -1380,6 +1511,11 @@ final class ProjectStore {
     /// 비동기 결과를 화면 상태에 반영합니다.
     private func canApplyRefresh(_ requestID: UUID, projectID: SVNProject.ID) -> Bool {
         canApplyRequest(requestID, kind: .refresh, projectID: projectID)
+    }
+
+    private func canApplyUpdateBadge(_ requestID: UUID, project: SVNProject) -> Bool {
+        latestRequestIDs[.updateBadge(project.id)] == requestID
+            && projects.contains { $0.id == project.id && $0.path == project.path }
     }
 
     @discardableResult
