@@ -43,6 +43,11 @@ extension ProjectStore {
         }
     }
 
+    /// 계약 스텁: 트리 충돌 해결 구현 작업에서 실제 동작으로 대체합니다.
+    /// keepWorkingState는 `svn resolve --accept working`,
+    /// restoreServerVersion은 `svn revert` 후 `svn update`에 해당합니다.
+    func resolveActiveTreeConflict(using _: TreeConflictResolutionChoice) async {}
+
     func openConflictVersion(_ choice: SVNConflictChoice) {
         guard !isResolvingConflict, let session = activeConflictSession else { return }
         let url: URL
