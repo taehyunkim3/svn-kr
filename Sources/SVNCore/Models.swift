@@ -14,6 +14,8 @@ public enum SVNStatusKind: Hashable, Sendable {
     case ignored
     case conflicted
     case replaced
+    case obstructed
+    case incomplete
     case unknown(String)
 
     public init(rawValue: String) {
@@ -26,6 +28,8 @@ public enum SVNStatusKind: Hashable, Sendable {
         case "ignored": self = .ignored
         case "conflicted": self = .conflicted
         case "replaced": self = .replaced
+        case "obstructed": self = .obstructed
+        case "incomplete": self = .incomplete
         default: self = .unknown(rawValue)
         }
     }
@@ -41,9 +45,17 @@ public enum SVNStatusKind: Hashable, Sendable {
         case .ignored: "ignored"
         case .conflicted: "conflicted"
         case .replaced: "replaced"
+        case .obstructed: "obstructed"
+        case .incomplete: "incomplete"
         case let .unknown(value): value
         }
     }
+}
+
+public enum SVNPropertyState: String, Hashable, Sendable {
+    case none
+    case modified
+    case conflicted
 }
 
 public enum SVNIgnorePropertyKind: String, Codable, Hashable, Sendable {
@@ -110,6 +122,9 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
     public let serverFile: String?
     public let previousRevision: String?
     public let serverRevision: String?
+    public let treeConflictAction: String?
+    public let treeConflictReason: String?
+    public let treeConflictKind: String?
 
     public var id: String { path }
 
@@ -121,7 +136,10 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         myFile: String? = nil,
         serverFile: String? = nil,
         previousRevision: String? = nil,
-        serverRevision: String? = nil
+        serverRevision: String? = nil,
+        treeConflictAction: String? = nil,
+        treeConflictReason: String? = nil,
+        treeConflictKind: String? = nil
     ) {
         self.path = path
         self.type = type
@@ -131,6 +149,9 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         self.serverFile = serverFile
         self.previousRevision = previousRevision
         self.serverRevision = serverRevision
+        self.treeConflictAction = treeConflictAction
+        self.treeConflictReason = treeConflictReason
+        self.treeConflictKind = treeConflictKind
     }
 }
 
@@ -190,6 +211,8 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     public let item: SVNStatusKind
     public let revision: String?
     public let nodeKind: SVNNodeKind?
+    public let propertyState: SVNPropertyState
+    public let isSwitched: Bool
 
     public var id: String { path }
 
@@ -197,12 +220,16 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
         path: String,
         item: SVNStatusKind,
         revision: String? = nil,
-        nodeKind: SVNNodeKind? = nil
+        nodeKind: SVNNodeKind? = nil,
+        propertyState: SVNPropertyState = .none,
+        isSwitched: Bool = false
     ) {
         self.path = path
         self.item = item
         self.revision = revision
         self.nodeKind = nodeKind
+        self.propertyState = propertyState
+        self.isSwitched = isSwitched
     }
 }
 
@@ -216,7 +243,10 @@ public extension SVNStatusEntry {
     }
 
     var isSelectableForCommit: Bool {
-        item != .missing && item != .ignored && item != .conflicted
+        item != .missing
+            && item != .ignored
+            && item != .conflicted
+            && propertyState != .conflicted
     }
 }
 
@@ -241,6 +271,8 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     public let revision: String?
     public let treeConflicted: Bool
     public let repositoryPath: String?
+    public let propertyState: SVNPropertyState
+    public let isSwitched: Bool
 
     public var id: String { path }
     public var repositoryRelativePath: String { repositoryPath ?? path }
@@ -256,13 +288,17 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
         status: String,
         revision: String? = nil,
         treeConflicted: Bool = false,
-        repositoryPath: String? = nil
+        repositoryPath: String? = nil,
+        propertyState: SVNPropertyState = .none,
+        isSwitched: Bool = false
     ) {
         self.path = path
         self.status = status
         self.revision = revision
         self.treeConflicted = treeConflicted
         self.repositoryPath = repositoryPath
+        self.propertyState = propertyState
+        self.isSwitched = isSwitched
     }
 }
 

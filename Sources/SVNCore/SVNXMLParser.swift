@@ -2,6 +2,12 @@ import Foundation
 
 public enum SVNXMLParser {
     static func repositoryListEntries(from data: Data) throws -> [SVNRepositoryListEntry] {
+        try repositoryEntries(from: data).map {
+            SVNRepositoryListEntry(path: $0.name, isDirectory: $0.kind == .directory)
+        }
+    }
+
+    public static func repositoryEntries(from data: Data) throws -> [SVNRepositoryEntry] {
         let delegate = RepositoryListDelegate()
         let parser = XMLParser(data: data)
         parser.delegate = delegate
@@ -9,8 +15,8 @@ public enum SVNXMLParser {
         return delegate.entries
     }
 
-    /// 로컬 작업 복사본의 변경 항목만 읽습니다. 정상 항목과 external은 UI에
-    /// 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
+    /// 로컬 작업 복사본의 변경 항목만 읽습니다. 변경 없는 정상 항목과 external은
+    /// UI에 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
     public static func statuses(from data: Data) throws -> [SVNStatusEntry] {
         let delegate = StatusDelegate()
         let parser = XMLParser(data: data)
@@ -99,6 +105,14 @@ public enum SVNXMLParser {
         return delegate.rules
     }
 
+    static func properties(from data: Data) throws -> [SVNProperty] {
+        let delegate = PropertyListDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { throw SVNError.malformedResponse }
+        return delegate.properties
+    }
+
     public static func repositoryLocks(fromStatus data: Data) throws -> [SVNLockInfo] {
         let delegate = StatusLocksDelegate()
         let parser = XMLParser(data: data)
@@ -124,11 +138,69 @@ public enum SVNXMLParser {
     }
 }
 
-private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
-    var entries: [SVNRepositoryListEntry] = []
-    private var isDirectory = false
-    private var name: String?
+private final class PropertyListDelegate: NSObject, XMLParserDelegate {
+    var properties: [SVNProperty] = []
+    private var propertyName: String?
+    private var propertyEncoding: String?
     private var text = ""
+
+    func parser(
+        _ parser: XMLParser,
+        didStartElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
+    ) {
+        guard elementName == "property" else { return }
+        propertyName = attributeDict["name"]
+        propertyEncoding = attributeDict["encoding"]
+        text = ""
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        guard propertyName != nil else { return }
+        text += string
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didEndElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?
+    ) {
+        guard elementName == "property", let propertyName else { return }
+        let value: Data?
+        if propertyEncoding == "base64" {
+            value = Data(base64Encoded: text, options: .ignoreUnknownCharacters)
+        } else {
+            value = Data(text.utf8)
+        }
+        if let value {
+            properties.append(SVNProperty(name: propertyName, value: value))
+        } else {
+            parser.abortParsing()
+        }
+        self.propertyName = nil
+        propertyEncoding = nil
+        text = ""
+    }
+}
+
+private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
+    var entries: [SVNRepositoryEntry] = []
+    private var kind: SVNRepositoryEntryKind?
+    private var name: String?
+    private var size: Int64?
+    private var lastChangedRevision: String?
+    private var lastChangedAuthor: String?
+    private var lastChangedDate: Date?
+    private var text = ""
+    private let fractionalDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private let dateFormatter = ISO8601DateFormatter()
 
     func parser(
         _ parser: XMLParser,
@@ -139,8 +211,18 @@ private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
     ) {
         text = ""
         if elementName == "entry" {
-            isDirectory = attributeDict["kind"] == "dir"
+            kind = switch attributeDict["kind"] {
+            case "file": .file
+            case "dir": .directory
+            default: nil
+            }
             name = nil
+            size = nil
+            lastChangedRevision = nil
+            lastChangedAuthor = nil
+            lastChangedDate = nil
+        } else if elementName == "commit" {
+            lastChangedRevision = attributeDict["revision"]
         }
     }
 
@@ -154,11 +236,36 @@ private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
         namespaceURI: String?,
         qualifiedName qName: String?
     ) {
-        if elementName == "name" {
+        switch elementName {
+        case "name":
             name = text
-        } else if elementName == "entry", let name {
-            entries.append(SVNRepositoryListEntry(path: name, isDirectory: isDirectory))
+        case "size":
+            guard let parsedSize = Int64(text) else {
+                parser.abortParsing()
+                return
+            }
+            size = parsedSize
+        case "author":
+            lastChangedAuthor = text
+        case "date":
+            lastChangedDate = fractionalDateFormatter.date(from: text)
+                ?? dateFormatter.date(from: text)
+        case "entry":
+            guard let name, let kind, let lastChangedRevision else {
+                parser.abortParsing()
+                return
+            }
+            entries.append(SVNRepositoryEntry(
+                name: name,
+                kind: kind,
+                size: size,
+                lastChangedRevision: lastChangedRevision,
+                lastChangedAuthor: lastChangedAuthor,
+                lastChangedDate: lastChangedDate
+            ))
             self.name = nil
+        default:
+            break
         }
         text = ""
     }
@@ -174,18 +281,31 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
     private var serverFile: String?
     private var previousRevision: String?
     private var serverRevision: String?
+    private var treeConflictAction: String?
+    private var treeConflictReason: String?
+    private var treeConflictKind: String?
     private var inConflict = false
-    private var conflictElementName = ""
+    private var conflictRootElementName = ""
     private var text = ""
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
         if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
         if elementName == "conflict" || elementName == "tree-conflict" {
-            inConflict = true
-            conflictElementName = elementName
-            type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
-            operation = attributeDict["operation"] ?? "unknown"
+            if !inConflict {
+                inConflict = true
+                conflictRootElementName = elementName
+                type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
+                operation = attributeDict["operation"] ?? "unknown"
+            } else if elementName == "tree-conflict" {
+                type = "tree"
+                operation = attributeDict["operation"] ?? operation
+            }
+            if elementName == "tree-conflict" {
+                treeConflictAction = attributeDict["action"]
+                treeConflictReason = attributeDict["reason"]
+                treeConflictKind = attributeDict["kind"]
+            }
         } else if elementName == "version", inConflict {
             if attributeDict["side"] == "source-left" { previousRevision = attributeDict["revision"] }
             if attributeDict["side"] == "source-right" { serverRevision = attributeDict["revision"] }
@@ -200,7 +320,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
         case "prev-base-file": previousBaseFile = text
         case "prev-wc-file": myFile = text
         case "cur-base-file": serverFile = text
-        case conflictElementName:
+        case conflictRootElementName:
             details = SVNConflictDetails(
                 path: entryPath,
                 type: type,
@@ -209,10 +329,13 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
                 myFile: myFile,
                 serverFile: serverFile,
                 previousRevision: previousRevision,
-                serverRevision: serverRevision
+                serverRevision: serverRevision,
+                treeConflictAction: type == "tree" ? treeConflictAction : nil,
+                treeConflictReason: type == "tree" ? treeConflictReason : nil,
+                treeConflictKind: type == "tree" ? treeConflictKind : nil
             )
             inConflict = false
-            conflictElementName = ""
+            conflictRootElementName = ""
         default: break
         }
         text = ""
@@ -355,13 +478,19 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
             path = attributeDict["path"]
         } else if elementName == "wc-status", let path {
             let rawItem = attributeDict["item"] ?? "unknown"
-            if rawItem != "normal" && rawItem != "external" {
-                entries.append(SVNStatusEntry(
-                    path: path,
-                    item: SVNStatusKind(rawValue: rawItem),
-                    revision: attributeDict["revision"]
-                ))
-            }
+            let propertyState = SVNPropertyState(
+                rawValue: attributeDict["props"] ?? "none"
+            ) ?? .none
+            let isSwitched = attributeDict["switched"] == "true"
+            guard rawItem != "external" else { return }
+            guard rawItem != "normal" || propertyState != .none || isSwitched else { return }
+            entries.append(SVNStatusEntry(
+                path: path,
+                item: SVNStatusKind(rawValue: rawItem),
+                revision: attributeDict["revision"],
+                propertyState: propertyState,
+                isSwitched: isSwitched
+            ))
         }
     }
 }
@@ -378,7 +507,11 @@ private final class WorkingCopyEntriesDelegate: NSObject, XMLParserDelegate {
                 path: path,
                 status: attributeDict["item"] ?? "unknown",
                 revision: attributeDict["revision"],
-                treeConflicted: attributeDict["tree-conflicted"] == "true"
+                treeConflicted: attributeDict["tree-conflicted"] == "true",
+                propertyState: SVNPropertyState(
+                    rawValue: attributeDict["props"] ?? "none"
+                ) ?? .none,
+                isSwitched: attributeDict["switched"] == "true"
             ))
         }
     }

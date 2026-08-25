@@ -15,6 +15,99 @@ import Testing
     #expect(entries.map(\.item) == [.modified, .unversioned])
 }
 
+@Test func parsesModifiedPropertyStatusOnNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="1" props="modified"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.item.rawValue == "normal")
+    #expect(entry.propertyState == .modified)
+    #expect(entry.isSelectableForCommit)
+}
+
+@Test func parsesConflictedPropertyStatusOnNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status props="conflicted" item="normal" revision="2"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.propertyState == .conflicted)
+    #expect(!entry.isSelectableForCommit)
+}
+
+@Test func discardsNormalItemWithoutPropertyChanges() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="2" props="none"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="2" props="normal"/></entry>
+    </target></status>
+    """
+
+    #expect(try SVNXMLParser.statuses(from: Data(xml.utf8)).isEmpty)
+}
+
+@Test func preservesSwitchedNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="Sources"><wc-status item="normal" revision="2" props="none" switched="true"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="2" props="none"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.path == "Sources")
+    #expect(entry.item.rawValue == "normal")
+    #expect(entry.isSwitched)
+    #expect(entry.isSelectableForCommit)
+}
+
+@Test func parsesIncompleteStatusAsKnownCase() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="partial"><wc-status item="incomplete" revision="2" props="none"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.item == .incomplete)
+    #expect(entry.item.rawValue == "incomplete")
+    if case .unknown = entry.item {
+        Issue.record("incomplete must not use the unknown fallback")
+    }
+}
+
+@Test func parsesObstructedStatusAsKnownCaseWithoutChangingUnknownFallback() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="blocked"><wc-status item="obstructed" revision="3" props="none"/></entry>
+      <entry path="future"><wc-status item="future-status" revision="3" props="none"/></entry>
+    </target></status>
+    """
+
+    let entries = try SVNXMLParser.statuses(from: Data(xml.utf8))
+
+    #expect(entries.map(\.item) == [.obstructed, .unknown("future-status")])
+    #expect(entries.map(\.item.rawValue) == ["obstructed", "future-status"])
+    if case .unknown = entries[0].item {
+        Issue.record("obstructed must not use the unknown fallback")
+    }
+}
+
+@Test func knownStatusCasesRoundTripRawValues() {
+    let values = ["obstructed", "incomplete"]
+
+    #expect(values.map(SVNStatusKind.init(rawValue:)).map(\.rawValue) == values)
+}
+
 @Test func parsesWorkingCopyEntriesAndOnlyRepositoryBackedEntriesAreVersioned() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
@@ -27,6 +120,21 @@ import Testing
     let entries = try SVNXMLParser.workingCopyEntries(from: Data(xml.utf8))
     #expect(entries.map(\.path) == ["Documents", "Documents/plan.pptx", "new.txt", "draft.txt"])
     #expect(entries.map(\.isVersioned) == [true, true, false, false])
+}
+
+@Test func parsesWorkingCopyPropertyAndSwitchedMetadataFromVerboseStatus() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="12" props="none"/></entry>
+      <entry path="Documents"><wc-status props="modified" item="normal" revision="12"/></entry>
+      <entry path="Sources"><wc-status switched="true" item="normal" revision="12" props="none"/></entry>
+    </target></status>
+    """
+
+    let entries = try SVNXMLParser.workingCopyEntries(from: Data(xml.utf8))
+
+    #expect(entries.map(\.propertyState) == [.none, .modified, .none])
+    #expect(entries.map(\.isSwitched) == [false, false, true])
 }
 
 @Test func parsesSingleWorkingCopyRevision() throws {
@@ -208,6 +316,51 @@ import Testing
     #expect(details?.operation == "update")
     #expect(details?.previousRevision == "2")
     #expect(details?.serverRevision == "3")
+    #expect(details?.treeConflictAction == "delete")
+    #expect(details?.treeConflictReason == "edit")
+    #expect(details?.treeConflictKind == "file")
+}
+
+@Test func parsesTreeConflictMetadataFromNestedConflictShape() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="dir" path="tree" revision="4">
+      <conflict operation="switch" type="tree">
+        <tree-conflict kind="dir" reason="missing" victim="tree" action="replace">
+          <version kind="dir" revision="3" side="source-left"/>
+          <version kind="dir" revision="4" side="source-right"/>
+        </tree-conflict>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+
+    #expect(details?.path == "tree")
+    #expect(details?.type == "tree")
+    #expect(details?.operation == "switch")
+    #expect(details?.previousRevision == "3")
+    #expect(details?.serverRevision == "4")
+    #expect(details?.treeConflictAction == "replace")
+    #expect(details?.treeConflictReason == "missing")
+    #expect(details?.treeConflictKind == "dir")
+}
+
+@Test func leavesTreeConflictMetadataNilForContentConflict() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="file" path="sample.txt" revision="3">
+      <conflict operation="update" type="text">
+        <version kind="file" revision="2" side="source-left"/>
+        <version kind="file" revision="3" side="source-right"/>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+
+    #expect(details?.type == "text")
+    #expect(details?.treeConflictAction == nil)
+    #expect(details?.treeConflictReason == nil)
+    #expect(details?.treeConflictKind == nil)
 }
 
 @Test func detectsActualRemoteWorkingCopyChanges() throws {

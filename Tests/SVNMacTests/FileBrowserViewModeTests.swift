@@ -2,20 +2,42 @@ import Foundation
 import Testing
 @testable import SVNMac
 
-@Test func fileBrowserViewModeDefaultsToTreeAndRestoresStoredSelection() {
+@Test func fileBrowserViewModeDefaultsToSplitAndRestoresStoredSelection() {
     let suiteName = "file-browser-view-mode-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
-    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.tree.rawValue)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.split.rawValue)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
 
-    defaults.set(FileBrowserViewMode.split.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
+    defaults.set(FileBrowserViewMode.tree.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
     let restoredDefaults = UserDefaults(suiteName: suiteName)!
-    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .split)
+    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .tree)
 
     defaults.set("unknown", forKey: AppSettings.fileBrowserViewModeKey)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
+}
+
+@Test func splitBrowserFolderRowsSupportDoubleClickAndChevronHitArea() throws {
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.width >= 20)
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.height >= 20)
+
+    let source = try source(at: "Sources/SVNMac/WorkingCopySplitBrowserView.swift")
+    let folderRowStart = try #require(source.range(of: "private func folderRow"))
+    let nextFunctionStart = try #require(
+        source.range(of: "private func fileNameCell", range: folderRowStart.upperBound..<source.endIndex)
+    )
+    let folderRow = source[folderRowStart.lowerBound..<nextFunctionStart.lowerBound]
+    let chevronBranchEnd = try #require(folderRow.range(of: "} else {"))
+    let chevronBranch = folderRow[..<chevronBranchEnd.lowerBound]
+    let hitFrame = try #require(chevronBranch.range(of: ".frame("))
+    let contentShape = try #require(chevronBranch.range(of: ".contentShape(Rectangle())"))
+
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.width"))
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.height"))
+    #expect(hitFrame.lowerBound < contentShape.lowerBound)
+    #expect(folderRow.contains("TapGesture(count: 2)"))
+    #expect(folderRow.contains("browserState.enterDirectory(row.relativePath)"))
 }
 
 @Test func filesTabSwitchesBetweenPersistentTreeAndSplitBrowsers() throws {
@@ -55,18 +77,18 @@ import Testing
 }
 
 @Test func sharedFileBrowserColumnKeysAreLocalizedInKoreanAndEnglish() throws {
-    let expectedValues: [(key: String, korean: String, english: String)] = [
-        ("ui.file.browser.name.column.0d7638cb", "이름", "Name"),
-        ("ui.file.browser.modified.column.84d3d7f2", "수정일", "Date Modified"),
-        ("ui.file.browser.size.column.a6810d75", "크기", "Size"),
-        ("ui.file.browser.kind.column.b51d25fc", "종류", "Kind"),
+    let expectedValues: [(key: LocalizationKey, korean: String, english: String)] = [
+        (.ui.file.browserNameColumn, "이름", "Name"),
+        (.ui.file.browserModifiedColumn, "수정일", "Date Modified"),
+        (.ui.file.browserSizeColumn, "크기", "Size"),
+        (.ui.file.browserKindColumn, "종류", "Kind"),
     ]
     let koreanStrings = try source(at: "Sources/SVNMac/Resources/ko.lproj/Localizable.strings")
     let englishStrings = try source(at: "Sources/SVNMac/Resources/en.lproj/Localizable.strings")
 
     for entry in expectedValues {
-        #expect(koreanStrings.contains("\"\(entry.key)\" ="))
-        #expect(englishStrings.contains("\"\(entry.key)\" ="))
+        #expect(koreanStrings.contains("\"\(entry.key.rawValue)\" ="))
+        #expect(englishStrings.contains("\"\(entry.key.rawValue)\" ="))
         #expect(AppLanguage.korean.localized(entry.key) == entry.korean)
         #expect(AppLanguage.english.localized(entry.key) == entry.english)
     }

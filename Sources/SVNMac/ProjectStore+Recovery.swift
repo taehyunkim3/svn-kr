@@ -44,7 +44,7 @@ extension ProjectStore {
               let sourceProject = projects.first(where: { $0.id == sourceID }) else { return false }
         let destination = destinationURL.standardizedFileURL
         guard !projects.contains(where: { $0.path == destination.path }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -60,7 +60,8 @@ extension ProjectStore {
                 from: sourceProject.path,
                 to: destination.path,
                 credentials: sourceCredentials,
-                allowUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: sourceProject)
             )
             let recoveredURL = URL(fileURLWithPath: result.destinationPath, isDirectory: true).standardizedFileURL
             let recoveredProject = SVNProject(
@@ -71,6 +72,8 @@ extension ProjectStore {
                 bookmarkData: bookmarkData,
                 allowsUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true
             )
+            let recoveryIsStillCurrent = selectedProjectID == sourceID
+                && pathRecoverySourceProjectID == sourceID
             projects.append(recoveredProject)
 
             if let password = sourceCredentials?.password, !password.isEmpty {
@@ -78,9 +81,11 @@ extension ProjectStore {
                 try? credentialStore.setPassword(password, for: recoveredID)
             }
 
+            guard recoveryIsStillCurrent else { return true }
             selectedProjectID = recoveredID
             await refresh()
-            notice = AppLanguage.current.localized("ui.path.recovery.completed.the.original.working.fol.2fde9c42")
+            guard selectedProjectID == recoveredID else { return true }
+            notice = AppLanguage.current.localized(.ui.path.recoveryCompletedTheOriginalWorkingFol)
             return true
         } catch {
             projectAccessManager.endAccessing(projectID: recoveredID)

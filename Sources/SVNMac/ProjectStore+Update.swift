@@ -1,8 +1,13 @@
 import Foundation
+import SVNCore
 
 extension ProjectStore {
     func update() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              !activeOperations.contains(where: { $0.kind == .update(project.id) }) else { return }
+        let commitRecovery = recoveryState.outOfDateCommitRecoveryRequest.flatMap {
+            $0.projectID == project.id ? $0 : nil
+        }
         let cleanupCandidatePaths = repositoryTemporaryFileCleanupCandidates.map(\.path)
         let preparesCleanup = cleansRepositoryTemporaryFilesAfterUpdate && !cleanupCandidatePaths.isEmpty
         let operationID = beginOperation(.update(project.id))
@@ -11,11 +16,11 @@ extension ProjectStore {
             let result = try await client.update(
                 at: project.path,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             ).trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return }
             notice = result
-            isShowingUpdatePreview = false
             cleansRepositoryTemporaryFilesAfterUpdate = false
             if preparesCleanup {
                 temporaryFileCleanupAssessments = TemporaryFilePolicy.validateRepositoryCleanupCandidates(
@@ -28,41 +33,142 @@ extension ProjectStore {
                 temporaryFileCleanupFailures = []
             }
             await refresh()
+            guard selectedProjectID == project.id else { return }
+            if let commitRecovery {
+                await retryCommitAfterUpdate(commitRecovery)
+                return
+            }
+            isShowingUpdatePreview = false
             if preparesCleanup, selectedProjectID == project.id {
                 await Task.yield()
                 isShowingTemporaryFileCleanup = true
             }
         } catch {
-            if selectedProjectID == project.id { handleRemoteError(error, project: project, action: .update) }
+            if selectedProjectID == project.id {
+                let action = commitRecovery.map {
+                    SVNAuthenticationAction.commit(message: $0.message)
+                } ?? .update
+                handleRemoteError(error, project: project, action: action)
+            }
         }
+    }
+
+    func prepareOutOfDateCommitRecovery(
+        project: SVNProject,
+        message: String,
+        paths: [String],
+        details: String
+    ) async {
+        recoveryState.outOfDateCommitRecoveryRequest = OutOfDateCommitRecoveryRequest(
+            projectID: project.id,
+            message: message,
+            paths: paths,
+            details: details
+        )
+        errorMessage = nil
+        await previewUpdate()
+    }
+
+    private func retryCommitAfterUpdate(_ recovery: OutOfDateCommitRecoveryRequest) async {
+        recoveryState.outOfDateCommitRecoveryRequest?.hasCompletedUpdate = true
+        let conflicts = statuses.lazy
+            .filter { $0.item == .conflicted || $0.propertyState == .conflicted }
+            .map(\.path)
+            .sorted()
+        if !conflicts.isEmpty {
+            recoveryState.outOfDateCommitRecoveryRequest?.conflictedPaths = conflicts
+            notice = AppLanguage.current.localized(
+                .ui.update.createdConflictsCommitNotRetried,
+                conflicts.joined(separator: ", ")
+            )
+            return
+        }
+
+        let retryPaths = Set(recovery.paths)
+        guard retryPaths.isSubset(of: selectableStatusPaths) else {
+            isShowingUpdatePreview = false
+            errorMessage = AppLanguage.current.localized(
+                .ui.saved.commitSelectionNoLongerAvailable
+            )
+            return
+        }
+        selectedPaths = retryPaths
+        // 삭제(missing) 항목은 커밋 전에 저장소 삭제 예약이 필요합니다.
+        // commit(message:)는 그 항목을 거부하므로 예약을 포함한 경로로 재시도합니다.
+        _ = await commitSelectedChanges(message: recovery.message)
     }
 
     func previewUpdate() async {
         guard let project = selectedProject else { return }
+        let requestID = beginRequest(.updatePreview)
         let operationID = beginOperation(.previewUpdate(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            finishRequest(requestID, kind: .updatePreview)
+            endOperation(operationID)
+        }
+        recoveryState.updatePreview.beginLoading()
+        remoteChanges = []
+        cleansRepositoryTemporaryFilesAfterUpdate = false
+        temporaryFileCleanupAssessments = []
+        selectedTemporaryFileCleanupPaths = []
+        temporaryFileCleanupFailures = []
+
+        do {
+            let commits: [SVNLogEntry]
+            if isDemoMode {
+                commits = logs
+            } else {
+                commits = try await client.updatePreviewIncomingCommits(
+                    at: project.path,
+                    credentials: credentials(for: project),
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
+                )
+            }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
+            recoveryState.updatePreview.receive(commits)
+        } catch {
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
+            recordUpdatePreviewFailure(error, project: project)
+        }
+
         do {
             let changes = try await client.remoteChanges(
                 at: project.path,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
             remoteChanges = changes
-            cleansRepositoryTemporaryFilesAfterUpdate = false
-            temporaryFileCleanupAssessments = []
-            selectedTemporaryFileCleanupPaths = []
-            temporaryFileCleanupFailures = []
-            updateRemoteSummary(for: project.id, needsUpdate: !changes.isEmpty)
-            isShowingUpdatePreview = true
         } catch {
-            guard selectedProjectID == project.id else { return }
-            handleRemoteError(error, project: project, action: .update)
+            guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
+            recordUpdatePreviewFailure(error, project: project)
+        }
+
+        guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
+        updateRemoteSummary(
+            for: project.id,
+            needsUpdate: recoveryState.outOfDateCommitRecoveryRequest != nil
+                || recoveryState.updatePreview.totalCommitCount > 0
+                || !remoteChanges.isEmpty
+        )
+        isShowingUpdatePreview = workingCopyCleanupRequest == nil && authenticationRequest == nil
+    }
+
+    private func recordUpdatePreviewFailure(_ error: Error, project: SVNProject) {
+        recoveryState.updatePreview.recordFailure(localizedError(error))
+        handleRemoteError(error, project: project, action: .update)
+        if workingCopyCleanupRequest == nil, authenticationRequest == nil {
+            errorMessage = nil
         }
     }
 
     func confirmRepositoryTemporaryFileCleanup() async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject,
+              !activeOperations.contains(where: {
+                  $0.kind == .cleanupTemporaryFiles(project.id)
+              }) else { return }
         let eligiblePaths = Set(temporaryFileCleanupAssessments.lazy.filter(\.isEligible).map(\.path))
         let requestedPaths = selectedTemporaryFileCleanupPaths.intersection(eligiblePaths).sorted()
         guard !requestedPaths.isEmpty else { return }
@@ -80,12 +186,13 @@ extension ProjectStore {
                         at: project.path,
                         relativePath: path,
                         credentials: projectCredentials,
-                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                        allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                     ), lock.owner != project.username {
                         failures.append(TemporaryFileCleanupFailure(
                             path: path,
                             reason: AppLanguage.current.localized(
-                                "ui.cleanup.reason.locked.by.5ee975b0",
+                                .ui.cleanup.reasonLockedBy,
                                 lock.owner
                             )
                         ))
@@ -119,12 +226,13 @@ extension ProjectStore {
                     paths: scheduledPaths,
                     message: repositoryTemporaryFileCleanupCommitMessage(paths: scheduledPaths),
                     credentials: projectCredentials,
-                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 ).trimmingCharacters(in: .whitespacesAndNewlines)
                 guard selectedProjectID == project.id else { return }
                 isShowingTemporaryFileCleanup = false
                 notice = AppLanguage.current.localized(
-                    "ui.cleaned.repository.temporary.files.75d9479a",
+                    .ui.cleaned.repositoryTemporaryFiles,
                     scheduledPaths.count,
                     result
                 )
@@ -147,14 +255,14 @@ extension ProjectStore {
                 }
                 temporaryFileCleanupFailures = failures
                 errorMessage = AppLanguage.current.localized(
-                    "ui.cleanup.commit.failed.update.succeeded.f59c27fb",
+                    .ui.cleanup.commitFailedUpdateSucceeded,
                     reason
                 )
             }
         } catch {
             guard selectedProjectID == project.id else { return }
             errorMessage = AppLanguage.current.localized(
-                "ui.cleanup.could.not.start.update.succeeded.bfae6b76",
+                .ui.cleanup.couldNotStartUpdateSucceeded,
                 localizedError(error)
             )
         }
@@ -167,6 +275,6 @@ extension ProjectStore {
     private func cleanupFailureMessage(_ failures: [TemporaryFileCleanupFailure]) -> String? {
         guard !failures.isEmpty else { return nil }
         let details = failures.map { "\($0.path): \($0.reason)" }.joined(separator: "\n")
-        return AppLanguage.current.localized("ui.cleanup.some.items.failed.2bdf30af", details)
+        return AppLanguage.current.localized(.ui.cleanup.someItemsFailed, details)
     }
 }

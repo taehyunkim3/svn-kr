@@ -9,9 +9,176 @@ import Testing
 
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .korean) == "현재 작업 파일을 찾을 수 없습니다.")
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .english) == "The current working file could not be found.")
-    #expect(store.localizedError(ConflictFileError.unsupportedType("tree"), language: .english) == "Unsupported conflict type: tree")
+    #expect(
+        store.localizedError(ConflictFileError.unsupportedType("property"), language: .english)
+            == "Unsupported conflict type: property\nRevert Local Changes… → Run Update"
+    )
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .korean) == "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다.")
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .english) == "The selected folder is not an SVN local working folder.")
+}
+
+@MainActor
+@Test func svnFailureCodesUseActionableGuidanceAndKeepOriginalDetails() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+    let cleanup = store.localizedError(SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E155037: Previous operation has not finished"
+    ), language: .korean)
+    let conflict = store.localizedError(SVNError.commandFailed(
+        command: "svn commit",
+        message: "svn: E155015: Aborting commit: '/tmp/project/Docs/report.txt' remains in conflict"
+    ), language: .english)
+    let unlock = store.localizedError(SVNError.commandFailed(
+        command: "svn unlock",
+        message: "svn: E195013: 'Docs/report.txt' is not locked in this working copy"
+    ), language: .korean)
+
+    #expect(cleanup.contains("정리"))
+    #expect(cleanup.contains("E155037"))
+    #expect(conflict.contains("/tmp/project/Docs/report.txt"))
+    #expect(conflict.contains("Resolve Conflicts"))
+    #expect(conflict.contains("E155015"))
+    #expect(unlock.contains("강제 해제"))
+    #expect(unlock.contains("E195013"))
+}
+
+@MainActor
+@Test func cleanupFailureOffersCleanupAndOpensProjectSettings() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-proposal")
+    let store = makeStore(projects: [project])
+    let error = SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E155004: Working copy locked"
+    )
+
+    store.publishRefreshError(error, projectID: project.id, policy: .standalone)
+
+    #expect(store.workingCopyCleanupRequest?.projectID == project.id)
+    #expect(store.workingCopyCleanupRequest?.originalMessage.contains("E155004") == true)
+    #expect(store.isShowingCredentials)
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func workingCopyCleanupTracksProgressAndRejectsDuplicateRuns() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-progress")
+    let cleanupGate = AsyncTestGate()
+    let client = StubSVNClient(cleanupGate: cleanupGate)
+    let store = makeStore(projects: [project], client: client)
+    store.requestSelectedWorkingCopyCleanup()
+
+    let firstCleanup = Task { await store.cleanupSelectedWorkingCopy() }
+    await cleanupGate.waitUntilEntered()
+    let duplicateResult = await store.cleanupSelectedWorkingCopy()
+
+    #expect(store.isCleaningSelectedWorkingCopy)
+    #expect(!duplicateResult)
+    #expect(await client.cleanupRequestCount() == 1)
+
+    await cleanupGate.release()
+    #expect(await firstCleanup.value)
+    #expect(!store.isCleaningSelectedWorkingCopy)
+    #expect(store.workingCopyCleanupRequest == nil)
+}
+
+@MainActor
+@Test func cleanupCommandFailureDoesNotOfferAnotherCleanupRetry() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-failure")
+    let client = StubSVNClient(cleanupError: SVNError.commandFailed(
+        command: "svn cleanup",
+        message: "svn: E155009: Failed to run the WC DB work queue"
+    ))
+    let store = makeStore(projects: [project], client: client)
+    store.requestSelectedWorkingCopyCleanup()
+
+    let didCleanup = await store.cleanupSelectedWorkingCopy()
+    #expect(!didCleanup)
+    #expect(store.workingCopyCleanupRequest == nil)
+    #expect(store.errorMessage?.contains("E155009") == true)
+    #expect(store.errorMessage?.contains("관리자") == true)
+}
+
+@MainActor
+@Test func failedRegularUnlockOffersForceAndForceCallIsExplicit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/force-unlock", username: nil)
+    let lock = SVNLockInfo(
+        path: "Docs/report.txt",
+        owner: "former.employee",
+        comment: "월말 보고서",
+        created: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    let client = StubSVNClient(
+        unlockErrorWhenNotForced: SVNError.commandFailed(
+            command: "svn unlock",
+            message: "svn: E195013: 'Docs/report.txt' is not locked in this working copy"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.unlock(lock)
+    let request = try #require(store.forceUnlockRequest)
+    #expect(request.lock == lock)
+    #expect(await client.requestedUnlockForces() == [false])
+
+    await store.forceUnlock(request)
+    #expect(await client.requestedUnlockForces() == [false, true])
+    #expect(store.forceUnlockRequest == nil)
+}
+
+@MainActor
+@Test func forceUnlockRequestIsConsumedBeforeAwait() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/force-unlock-duplicate")
+    let lock = SVNLockInfo(path: "보고서.hwp", owner: "former.employee")
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(
+        unlockErrorWhenNotForced: SVNError.commandFailed(
+            command: "svn unlock",
+            message: "svn: E195013: not locked in this working copy"
+        ),
+        forcedUnlockGate: gate
+    )
+    let store = makeStore(projects: [project], client: client)
+    await store.unlock(lock)
+    let request = try #require(store.forceUnlockRequest)
+
+    let first = Task { await store.forceUnlock(request) }
+    await gate.waitUntilEntered()
+    let second = Task { await store.forceUnlock(request) }
+    for _ in 0..<100 {
+        if await client.requestedUnlockForces().count == 3 { break }
+        await Task.yield()
+    }
+    await gate.release()
+    await first.value
+    await second.value
+
+    #expect(await client.requestedUnlockForces() == [false, true])
+}
+
+@MainActor
+@Test func forceLockRequestIsConsumedBeforeAwait() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/force-lock-duplicate")
+    let request = ExplicitLockRequest(
+        paths: ["보고서.hwp"],
+        conflictingLocks: [SVNLockInfo(path: "보고서.hwp", owner: "other-user")]
+    )
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(multiplePathLockGate: gate)
+    let store = makeStore(projects: [project], client: client)
+    store.recoveryState.explicitLockRequest = request
+
+    let first = Task { await store.forceExplicitLock(request) }
+    await gate.waitUntilEntered()
+    let second = Task { await store.forceExplicitLock(request) }
+    for _ in 0..<100 {
+        if await client.multiplePathLockRequestCount() == 2 { break }
+        await Task.yield()
+    }
+    await gate.release()
+    await first.value
+    await second.value
+
+    #expect(await client.multiplePathLockRequestCount() == 1)
 }
 
 @MainActor
@@ -347,6 +514,41 @@ import Testing
 }
 
 @MainActor
+@Test func updateExecutorRejectsDuplicateOperationForSameProject() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/update-duplicate")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+    let existingOperation = store.beginOperation(.update(project.id))
+
+    await store.update()
+
+    store.endOperation(existingOperation)
+    #expect(await client.updateRequestCount() == 0)
+}
+
+@MainActor
+@Test func olderUpdatePreviewCannotOverwriteNewerPreviewForSameProject() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/update-preview-order")
+    let firstGate = AsyncTestGate()
+    let client = StubSVNClient(
+        updatePreviewCommitsByRequest: [
+            [makeLog(revision: "1")],
+            [makeLog(revision: "2")],
+        ],
+        updatePreviewGatesByRequest: [firstGate]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    let first = Task { await store.previewUpdate() }
+    await firstGate.waitUntilEntered()
+    await store.previewUpdate()
+    await firstGate.release()
+    await first.value
+
+    #expect(store.recoveryState.updatePreview.commits.map(\.revision) == ["2"])
+}
+
+@MainActor
 @Test func staleFileHistoryDoesNotOpenOnNewProject() async {
     let first = SVNProject(name: "첫 프로젝트", path: "/tmp/history-first")
     let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/history-second")
@@ -365,6 +567,229 @@ import Testing
     #expect(store.fileHistory.isEmpty)
     #expect(store.fileHistoryPath == nil)
     #expect(!store.isShowingFileHistory)
+}
+
+@MainActor
+@Test func projectSwitchClearsProjectOwnedPresentationState() {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/reset-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/reset-second")
+    let store = makeStore(projects: [first, second])
+    store.isShowingPathRecovery = true
+    store.pathRecoveryPreview = SVNRecoveryPreview(mappings: [], ignoredAliasCount: 1, blockingPaths: [])
+    store.pathRecoverySourceProjectID = first.id
+    store.isShowingUpdatePreview = true
+    store.isShowingFileHistory = true
+    store.isShowingLocks = true
+    store.isShowingIgnoreRules = true
+    store.isShowingCredentials = true
+
+    store.selectedProjectID = second.id
+
+    #expect(!store.isShowingPathRecovery)
+    #expect(store.pathRecoveryPreview == nil)
+    #expect(store.pathRecoverySourceProjectID == nil)
+    #expect(!store.isShowingUpdatePreview)
+    #expect(!store.isShowingFileHistory)
+    #expect(!store.isShowingLocks)
+    #expect(!store.isShowingIgnoreRules)
+    #expect(!store.isShowingCredentials)
+}
+
+@MainActor
+@Test func staleDocumentOpenRequestCannotOpenPathInNewProject() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/open-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/open-second")
+    let opener = StubWorkspaceOpener()
+    let store = makeStore(
+        projects: [first, second],
+        workspaceOpener: opener,
+        settingsDefaults: makeDocumentOpenPolicyDefaults(.askEveryTime)
+    )
+    await store.prepareToOpen(path: "보고서.hwp")
+    let request = try #require(store.documentOpenRequest)
+
+    store.selectedProjectID = second.id
+    store.openWithoutLock(request)
+
+    #expect(opener.openedURLs.isEmpty)
+}
+
+@MainActor
+@Test func cleanupCompletionAfterProjectSwitchDoesNotOverwriteNewProjectState() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/cleanup-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/cleanup-second")
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(cleanupGate: gate)
+    let store = makeStore(projects: [first, second], client: client)
+    store.requestSelectedWorkingCopyCleanup()
+
+    let cleanup = Task { await store.cleanupSelectedWorkingCopy() }
+    await gate.waitUntilEntered()
+    store.selectedProjectID = second.id
+    store.notice = "둘째 프로젝트 알림"
+    store.errorMessage = "둘째 프로젝트 오류"
+    await gate.release()
+    _ = await cleanup.value
+
+    #expect(store.notice == "둘째 프로젝트 알림")
+    #expect(store.errorMessage == "둘째 프로젝트 오류")
+}
+
+@MainActor
+@Test func projectRegistrationDoesNotStealNewerUserSelection() async {
+    let first = SVNProject(name: "기존 프로젝트", path: "/tmp/register-existing-first")
+    let second = SVNProject(name: "사용자 선택", path: "/tmp/register-existing-second")
+    let registrationURL = URL(fileURLWithPath: "/tmp/register-new", isDirectory: true)
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(validateWorkingCopyGatesByPath: [registrationURL.path: gate])
+    let store = makeStore(projects: [first, second], client: client)
+
+    let registration = Task { await store.registerProjects([registrationURL]) }
+    await gate.waitUntilEntered()
+    store.selectedProjectID = second.id
+    store.errorMessage = "둘째 프로젝트 오류"
+    await gate.release()
+    await registration.value
+
+    #expect(store.projects.contains(where: { $0.path == registrationURL.path }))
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.errorMessage == "둘째 프로젝트 오류")
+}
+
+@MainActor
+@Test func multipleProjectRegistrationSelectsFirstInputDeterministically() async {
+    let existing = SVNProject(name: "기존 프로젝트", path: "/tmp/register-existing")
+    let firstURL = URL(fileURLWithPath: "/tmp/register-batch-first", isDirectory: true)
+    let secondURL = URL(fileURLWithPath: "/tmp/register-batch-second", isDirectory: true)
+    let store = makeStore(projects: [existing])
+
+    await store.registerProjects([firstURL, secondURL])
+
+    #expect(store.projects.map(\.path).suffix(2) == [firstURL.path, secondURL.path])
+    #expect(store.selectedProject?.path == firstURL.path)
+}
+
+@MainActor
+@Test func staleProjectRegistrationFailureDoesNotOverwriteNewProjectError() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/register-failure-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/register-failure-second")
+    let registrationURL = URL(fileURLWithPath: "/tmp/register-failure-new", isDirectory: true)
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(
+        validateWorkingCopyGatesByPath: [registrationURL.path: gate],
+        validateWorkingCopyErrorsByPath: [registrationURL.path: TestError.automaticRefreshFailed]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let registration = Task { await store.registerProjects([registrationURL]) }
+    await gate.waitUntilEntered()
+    store.selectedProjectID = second.id
+    store.errorMessage = "둘째 프로젝트 오류"
+    await gate.release()
+    await registration.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.errorMessage == "둘째 프로젝트 오류")
+}
+
+@MainActor
+@Test func commitWarningRefreshCannotOverwriteNewProjectNotice() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/commit-warning-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/commit-warning-second")
+    let entry = SVNStatusEntry(path: "보고서.hwp", item: .modified)
+    let client = StubSVNClient(
+        delaysByPath: [first.path: .milliseconds(100)],
+        commitCompletedWarning: (output: "Committed revision 8.", details: "검증 경고")
+    )
+    let store = makeStore(projects: [first, second], client: client)
+    store.statuses = [entry]
+    store.selectedPaths = [entry.path]
+
+    let commit = Task { await store.commit(message: "보고서 수정") }
+    for _ in 0..<100 {
+        if await client.snapshotRequestCount() > 0 { break }
+        await Task.yield()
+    }
+    store.selectedProjectID = second.id
+    store.notice = "둘째 프로젝트 알림"
+    _ = await commit.value
+
+    #expect(store.notice == "둘째 프로젝트 알림")
+}
+
+@MainActor
+@Test func pathRecoveryRefreshCannotOverwriteLaterProjectNotice() async {
+    let source = SVNProject(name: "복구 원본", path: "/tmp/recovery-source")
+    let other = SVNProject(name: "다른 프로젝트", path: "/tmp/recovery-other")
+    let recoveredPath = "/tmp/recovered-concurrency"
+    let client = StubSVNClient(
+        delaysByPath: [recoveredPath: .milliseconds(100)],
+        recoveryResult: SVNRecoveryResult(
+            destinationPath: recoveredPath,
+            snapshot: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "1", maximum: "1"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+            migratedPaths: []
+        )
+    )
+    let store = makeStore(projects: [source, other], client: client)
+    store.pathRecoverySourceProjectID = source.id
+
+    let recovery = Task {
+        await store.recoverWorkingCopy(
+            to: URL(fileURLWithPath: "/tmp/recovery-destination", isDirectory: true)
+        )
+    }
+    for _ in 0..<100 {
+        if await client.snapshotRequestCount() > 0 { break }
+        await Task.yield()
+    }
+    store.selectedProjectID = other.id
+    store.notice = "다른 프로젝트 알림"
+    _ = await recovery.value
+
+    #expect(store.notice == "다른 프로젝트 알림")
+}
+
+@MainActor
+@Test func pathRecoveryCompletionDoesNotStealLaterProjectSelection() async {
+    let source = SVNProject(name: "복구 원본", path: "/tmp/recovery-steal-source")
+    let other = SVNProject(name: "다른 프로젝트", path: "/tmp/recovery-steal-other")
+    let recoveredPath = "/tmp/recovered-without-selection-steal"
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(
+        recoveryResult: SVNRecoveryResult(
+            destinationPath: recoveredPath,
+            snapshot: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "1", maximum: "1"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+            migratedPaths: []
+        ),
+        recoveryGate: gate
+    )
+    let store = makeStore(projects: [source, other], client: client)
+    store.pathRecoverySourceProjectID = source.id
+
+    let recovery = Task {
+        await store.recoverWorkingCopy(
+            to: URL(fileURLWithPath: "/tmp/recovery-steal-destination", isDirectory: true)
+        )
+    }
+    await gate.waitUntilEntered()
+    store.selectedProjectID = other.id
+    store.notice = "다른 프로젝트 알림"
+    await gate.release()
+    _ = await recovery.value
+
+    #expect(store.projects.contains(where: { $0.path == recoveredPath }))
+    #expect(store.selectedProjectID == other.id)
+    #expect(store.notice == "다른 프로젝트 알림")
 }
 
 @MainActor
@@ -521,7 +946,7 @@ import Testing
     #expect(
         store.notice
             == AppLanguage.current.localized(
-                "ui.the.conflict.was.resolved.review.the.file.before.7821924b"
+                .ui.the.conflictWasResolvedReviewTheFileBefore
             )
     )
 }
@@ -585,7 +1010,7 @@ import Testing
 }
 
 @MainActor
-@Test func unsupportedConflictDoesNotCreateResolutionSession() async throws {
+@Test func treeConflictCreatesTreeSessionWithoutContentSession() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
     let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
@@ -598,6 +1023,207 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession?.details.type == "tree")
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func propertyConflictCreatesPropertySessionWithoutOtherSessions() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "property"))
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(store.recoveryState.propertyConflictSession?.details.type == "property")
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func unknownConflictTypeRemainsUnsupported() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "future-type"))
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(store.recoveryState.propertyConflictSession == nil)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func treeKeepWorkingStateResolvesWithWorkingChoice() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(await client.lastConflictChoice() == .working)
+    #expect(await client.conflictOperationNames() == ["resolve"])
+    #expect(store.activeTreeConflictSession == nil)
+}
+
+@MainActor
+@Test func treeRestoreServerVersionRevertsBeforeUpdating() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(await client.conflictOperationNames() == ["revert", "update"])
+    #expect(await client.requestedReverts().map(\.relativePath) == [fixture.details.path])
+    #expect(store.activeTreeConflictSession == nil)
+}
+
+@MainActor
+@Test func treeResolveKeepsSessionWhenConflictRemains() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let treeDetails = fixture.details(replacingTypeWith: "tree")
+    let conflictedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: treeDetails.path, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [treeDetails.path: [treeDetails.path]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        postResolveSnapshotsByPath: [fixture.project.path: conflictedSnapshot],
+        conflictDetailsValue: treeDetails
+    )
+    let store = makeStore(projects: [fixture.project], client: client)
+    await store.prepareConflictResolution(for: treeDetails.path)
+    let session = try #require(store.activeTreeConflictSession)
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(store.activeTreeConflictSession == session)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
+@Test func canonicalAliasTreeConflictUsesExactVersionedPath() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let versionedPath = "문서/주간보고서.hwp"
+    let selectedPath = versionedPath.decomposedStringWithCanonicalMapping
+    let details = SVNConflictDetails(path: versionedPath, type: "tree", operation: "update")
+    let snapshot = SVNWorkingCopySnapshot(
+        statuses: [SVNStatusEntry(path: versionedPath, item: .conflicted, revision: "42")],
+        revision: SVNWorkingCopyRevision(minimum: "42", maximum: "42"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [versionedPath: [versionedPath]]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [fixture.project.path: snapshot],
+        conflictDetailsByRelativePath: [versionedPath: details]
+    )
+    let store = makeStore(projects: [fixture.project], client: client)
+
+    await store.prepareConflictResolution(for: selectedPath)
+    let session = try #require(store.activeTreeConflictSession)
+
+    #expect(Data(session.requestedPath.utf8) == Data(selectedPath.utf8))
+    #expect(Data(session.versionedPath.utf8) == Data(versionedPath.utf8))
+    #expect(session.wasCanonicallyResolved)
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+    #expect(await client.lastResolvedPath().map { Data($0.utf8) } == Data(versionedPath.utf8))
+}
+
+@MainActor
+@Test func treeResolveCompletionAfterProjectSwitchDoesNotMutateNewProject() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let otherProject = SVNProject(name: "다른 프로젝트", path: fixture.root.appendingPathComponent("other").path)
+    let resolveGate = AsyncTestGate()
+    let client = StubSVNClient(
+        conflictDetailsValue: fixture.details(replacingTypeWith: "tree"),
+        resolveGate: resolveGate
+    )
+    let store = makeStore(projects: [fixture.project, otherProject], client: client)
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    let resolution = Task { await store.resolveActiveTreeConflict(using: .keepWorkingState) }
+    await resolveGate.waitUntilEntered()
+    store.selectedProjectID = otherProject.id
+    store.errorMessage = "new-project-error"
+    store.notice = "new-project-notice"
+    let snapshotRequestsBeforeCompletion = await client.snapshotRequestCount()
+    await resolveGate.release()
+    await resolution.value
+
+    #expect(store.selectedProjectID == otherProject.id)
+    #expect(store.errorMessage == "new-project-error")
+    #expect(store.notice == "new-project-notice")
+    #expect(await client.snapshotRequestCount() == snapshotRequestsBeforeCompletion)
+}
+
+@MainActor
+@Test func treeRestoreUsesSavedCredentialsAndCertificateSetting() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    var project = fixture.project
+    project.username = "tester"
+    project.allowsUntrustedServerCertificate = true
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "tree"))
+    let store = makeStore(projects: [project], client: client)
+    store.sessionPasswords[project.id] = "secret"
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(await client.lastRevertCredentialUsername() == "tester")
+    #expect(await client.lastUpdateCredentialUsername() == "tester")
+    #expect(await client.lastUpdateAllowedUntrustedCertificate() == true)
+}
+
+@MainActor
+@Test func updateForwardsOnlySelectedProjectsAllowedCertificateFailures() async {
+    let allowedProject = SVNProject(
+        name: "허용 프로젝트",
+        path: "/tmp/allowed-certificate-project",
+        allowsUntrustedServerCertificate: true,
+        allowedServerCertificateFailures: [.expired]
+    )
+    let deniedProject = SVNProject(
+        name: "미허용 프로젝트",
+        path: "/tmp/denied-certificate-project"
+    )
+    let client = StubSVNClient()
+    let store = makeStore(projects: [allowedProject, deniedProject], client: client)
+
+    await store.update()
+    store.selectedProjectID = deniedProject.id
+    await store.update()
+
+    #expect(await client.updateAllowedCertificateFailures() == [
+        [
+            .expired,
+            .unknownCertificateAuthority,
+            .commonNameMismatch,
+        ],
+        [],
+    ])
 }
 
 @MainActor
@@ -729,7 +1355,7 @@ import Testing
     )
 
     let olderPreparation = Task { await store.prepareConflictResolution(for: olderDetails.path) }
-    await waitForConflictDetailsRequest(client, path: olderDetails.path)
+    await olderGate.waitUntilEntered()
     await store.prepareConflictResolution(for: newerDetails.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     #expect(store.activeConflictSession?.details.path == newerDetails.path)
@@ -755,7 +1381,7 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     let resolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     store.selectedProjectID = otherProject.id
     store.errorMessage = "new-project-error"
     store.notice = "new-project-notice"
@@ -784,7 +1410,7 @@ import Testing
     let firstSessionID = try #require(store.activeConflictSession?.id)
 
     let oldResolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     await store.prepareConflictResolution(for: fixture.details.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     #expect(newerSessionID != firstSessionID)
@@ -813,7 +1439,7 @@ import Testing
     await store.prepareConflictResolution(for: fixture.details.path)
 
     let first = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     let duplicate = Task { await store.resolveActiveConflict(using: .theirsFull) }
     for _ in 0..<100 { await Task.yield() }
     store.openConflictVersion(.mineFull)
@@ -845,7 +1471,7 @@ import Testing
     )
     await store.prepareConflictResolution(for: fixture.details.path)
     let oldResolution = Task { await store.resolveActiveConflict(using: .mineFull) }
-    await waitForResolveRequest(client)
+    await resolveGate.waitUntilEntered()
     await store.prepareConflictResolution(for: fixture.details.path)
     let newerSessionID = try #require(store.activeConflictSession?.id)
     store.errorMessage = "newer-error"
@@ -1051,7 +1677,7 @@ import Testing
     store.selectedBrowserPath = "Folder/original.txt"
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "Folder")
+    await folderGate.waitUntilEntered()
 
     #expect(store.workingCopyBrowserTreeState == originalState)
     #expect(store.workingCopyBrowserTreeState.visibleRows().map(\.relativePath) == [
@@ -1129,7 +1755,7 @@ import Testing
     store.workingCopyBrowserTreeState = state
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "First")
+    await folderGate.waitUntilEntered()
     _ = store.setWorkingCopyDirectory("First", expanded: false)
     _ = store.setWorkingCopyDirectory("Second", expanded: true)
     store.selectedBrowserPath = "Second/kept.txt"
@@ -1173,12 +1799,12 @@ import Testing
     store.workingCopyBrowserTreeState = state
 
     let refresh = Task { await store.loadWorkingCopyFiles() }
-    await waitForDirectoryRequest(fileService, path: "First")
+    await refreshGate.waitUntilEntered()
     _ = store.setWorkingCopyDirectory("First", expanded: false)
     let directoryToLoad = store.setWorkingCopyDirectory("Second", expanded: true)
     #expect(directoryToLoad == "Second")
     let userLoad = Task { await store.loadWorkingCopyDirectory("Second") }
-    await waitForDirectoryRequest(fileService, path: "Second")
+    await userLoadGate.waitUntilEntered()
 
     await refreshGate.release()
     await refresh.value
@@ -1327,6 +1953,7 @@ import Testing
     let defaults = makeDocumentOpenPolicyDefaults(.askEveryTime)
     let store = makeStore(projects: [project], settingsDefaults: defaults)
     let request = DocumentOpenRequest(
+        projectID: project.id,
         relativePath: "remember.docx",
         repositoryRelativePath: "remember.docx",
         existingLock: nil
@@ -1435,6 +2062,160 @@ import Testing
     #expect(store.statuses.map(\.path) == ["fast.txt"])
     #expect(store.workingCopyRevision == SVNWorkingCopyRevision(minimum: "2", maximum: "2"))
     #expect(!store.isWorking)
+}
+
+@MainActor
+@Test func updateBadgeRefreshIncludesUnselectedProjects() async {
+    let selected = SVNProject(name: "선택", path: "/tmp/badge-selected")
+    let unselected = SVNProject(name: "비선택", path: "/tmp/badge-unselected")
+    let client = StubSVNClient(
+        revisionsByPath: [selected.path: "10", unselected.path: "20"],
+        outOfDateByPath: [selected.path: false, unselected.path: true]
+    )
+    let store = makeStore(projects: [selected, unselected], client: client)
+
+    await store.refreshUpdateBadges()
+
+    #expect(store.projectSummaries[selected.id]?.needsUpdate == false)
+    #expect(store.projectSummaries[unselected.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func updateBadgesRefreshOnConfiguredInterval() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-interval")
+    let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 2)
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        outOfDateByPath: [project.path: true]
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        updateBadgeRefreshInterval: .milliseconds(10),
+        updateBadgeSleep: { duration in
+            try await sleeper.sleep(for: duration)
+        }
+    )
+
+    await sleeper.waitUntilRecorded(2)
+
+    #expect(await sleeper.recordedDurations() == [.milliseconds(10), .milliseconds(10)])
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func updateBadgePollingBacksOffAndResetsAfterSuccess() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-backoff")
+    let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 5)
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        outOfDateByPath: [project.path: true],
+        updateBadgeFailuresRemaining: 3
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        updateBadgeRefreshInterval: .milliseconds(10),
+        updateBadgeMaximumRefreshInterval: .milliseconds(40),
+        updateBadgeSleep: { duration in
+            try await sleeper.sleep(for: duration)
+        }
+    )
+
+    await sleeper.waitUntilRecorded(5)
+
+    #expect(await sleeper.recordedDurations() == [
+        .milliseconds(10),
+        .milliseconds(20),
+        .milliseconds(40),
+        .milliseconds(40),
+        .milliseconds(10),
+    ])
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func blockedSelectedProjectDoesNotBlockOtherUpdateBadges() async {
+    let selected = SVNProject(name: "차단 프로젝트", path: "/tmp/badge-blocked-selected")
+    let unselected = SVNProject(name: "정상 프로젝트", path: "/tmp/badge-unselected-after-block")
+    let client = StubSVNClient(
+        revisionsByPath: [selected.path: "10", unselected.path: "20"],
+        outOfDateByPath: [selected.path: false, unselected.path: true],
+        snapshotError: TestError.automaticRefreshFailed
+    )
+    let store = makeStore(
+        projects: [selected, unselected],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshSelectedProject(manual: false)
+    store.updateRemoteSummary(for: unselected.id, needsUpdate: false)
+
+    await store.refreshSelectedProject(manual: false)
+
+    #expect(store.projectSummaries[unselected.id]?.needsUpdate == true)
+    #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
+@Test func refreshKeepsKnownUpdateBadgeWhileRequestIsRunning() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-flicker")
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        delaysByPath: [project.path: .milliseconds(100)],
+        outOfDateByPath: [project.path: true]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.isWorkingCopyOutOfDate = true
+    store.updateRemoteSummary(for: project.id, needsUpdate: true)
+
+    let refresh = Task { await store.refresh() }
+    try? await Task.sleep(for: .milliseconds(20))
+
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+
+    await refresh.value
+}
+
+@MainActor
+@Test func remoteStatusDeterminesUpdateBadge() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-remote-status")
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        latestLogRevisionsByPath: [project.path: "9"],
+        outOfDateByPath: [project.path: true]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.refresh()
+
+    #expect(store.isWorkingCopyOutOfDate == true)
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func lateUpdateBadgeResponseDoesNotOverwriteNewProjectState() async {
+    let first = SVNProject(name: "느린 프로젝트", path: "/tmp/slow-badge")
+    let second = SVNProject(name: "빠른 프로젝트", path: "/tmp/fast-badge")
+    let client = StubSVNClient(
+        revisionsByPath: [first.path: "10", second.path: "20"],
+        latestLogRevisionsByPath: [first.path: "11", second.path: "20"],
+        delaysByPath: [first.path: .milliseconds(100)],
+        outOfDateByPath: [first.path: true, second.path: false]
+    )
+    let store = makeStore(projects: [first, second], client: client)
+
+    let staleRefresh = Task { await store.refresh() }
+    try? await Task.sleep(for: .milliseconds(20))
+    store.selectedProjectID = second.id
+    await store.refresh()
+    await staleRefresh.value
+
+    #expect(store.selectedProjectID == second.id)
+    #expect(store.isWorkingCopyOutOfDate == false)
+    #expect(store.projectSummaries[second.id]?.needsUpdate == false)
 }
 
 @MainActor
@@ -1752,11 +2533,99 @@ import Testing
     #expect(store.isWorkingCopyOutOfDate == true)
     #expect(store.selectedPaths == ["generated"])
     #expect(store.lastCompletedCommitMessage == nil)
-    #expect(store.errorMessage?.contains("E155011") == true)
+    #expect(store.errorMessage == nil)
+    #expect(store.isShowingUpdatePreview)
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.message == "디렉터리 삭제")
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.paths == ["generated"])
     #expect(store.localizedError(
         SVNError.workingCopyOutOfDate(details: details),
         language: .english
     ).contains("Run Update") == true)
+}
+
+@MainActor
+@Test func updateConflictDoesNotRetryOutOfDateCommit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/out-of-date-update-conflict")
+    let details = "svn: E155011: Directory '.' is out of date"
+    let conflictSnapshot = SVNWorkingCopySnapshot(
+        statuses: [
+            SVNStatusEntry(
+                path: ".",
+                item: .conflicted,
+                revision: "2",
+                nodeKind: .directory,
+                propertyState: .conflicted
+            ),
+        ],
+        revision: SVNWorkingCopyRevision(minimum: "2", maximum: "2"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        postResolveSnapshotsByPath: [project.path: conflictSnapshot],
+        commitErrors: [.workingCopyOutOfDate(details: details)]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [
+        SVNStatusEntry(
+            path: ".",
+            item: .modified,
+            revision: "1",
+            nodeKind: .directory,
+            propertyState: .modified
+        ),
+    ]
+    store.selectedPaths = ["."]
+
+    #expect(!(await store.commit(message: "무시 규칙 추가")))
+    await store.update()
+
+    #expect(await client.commitRequestCount() == 1)
+    let recovery = try #require(store.recoveryState.outOfDateCommitRecoveryRequest)
+    #expect(recovery.message == "무시 규칙 추가")
+    #expect(recovery.paths == ["."])
+    #expect(recovery.conflictedPaths == ["."])
+    #expect(store.isShowingUpdatePreview)
+}
+
+@MainActor
+@Test func authenticationResumeContinuesUpdateBeforeRetryingCommit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/out-of-date-update-auth")
+    let modifiedSnapshot = SVNWorkingCopySnapshot(
+        statuses: [
+            SVNStatusEntry(
+                path: ".",
+                item: .modified,
+                revision: "2",
+                nodeKind: .directory,
+                propertyState: .modified
+            ),
+        ],
+        revision: SVNWorkingCopyRevision(minimum: "2", maximum: "2"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        postResolveSnapshotsByPath: [project.path: modifiedSnapshot],
+        commitErrors: [.workingCopyOutOfDate(details: "svn: E155011: out of date")],
+        updateErrors: [.accessDenied]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = modifiedSnapshot.statuses
+    store.selectedPaths = ["."]
+
+    #expect(!(await store.commit(message: "무시 규칙 추가")))
+    await store.update()
+    let request = try #require(store.authenticationRequest)
+    #expect(request.action == .commit(message: "무시 규칙 추가"))
+
+    await store.retryKeychainAccess(for: request)
+
+    #expect(await client.updateRequestCount() == 2)
+    #expect(await client.commitRequestCount() == 2)
+    #expect(await client.lastCommitRequest()?.paths == ["."])
+    #expect(await client.lastCommitRequest()?.message == "무시 규칙 추가")
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
 }
 
 @MainActor
@@ -1883,6 +2752,10 @@ import Testing
     let otherCommitID = store.beginOperation(.commit(other.id))
     #expect(!store.isSelectedProjectActionBlocked)
 
+    let previewID = store.beginOperation(.previewUpdate(selected.id))
+    #expect(store.isSelectedProjectActionBlocked)
+    store.endOperation(previewID)
+
     let refreshID = store.beginOperation(.refresh(selected.id))
     #expect(store.isRefreshingSelectedProject)
     #expect(store.isSelectedProjectActionBlocked)
@@ -1998,17 +2871,50 @@ import Testing
             allowsUntrustedServerCertificate: false
         )
     }
-    await waitUntilCheckoutStarts(client)
+    await client.waitUntilCheckoutStarts()
     store.cancelCheckout()
     let succeeded = await checkout.value
 
     #expect(!succeeded)
     #expect(store.projects.isEmpty)
     #expect(!store.isCheckingOut)
-    // 사용자가 직접 멈춘 작업이므로 오류가 아니라 남은 파일 위치 안내만 남깁니다.
     #expect(store.errorMessage == nil)
-    #expect(store.notice?.contains(destination.path) == true)
-    #expect(accessManager.releasedURLs.contains(destination))
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == destination.path)
+    #expect(!accessManager.releasedURLs.contains(destination))
+}
+
+@MainActor
+@Test func canceledCheckoutCanRegisterCleanupAndContinueUpdating() async throws {
+    let client = StubSVNClient(checkoutRunsUntilCancelled: true)
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker(),
+        updateBadgeRefreshInterval: nil
+    )
+    let destination = URL(fileURLWithPath: "/tmp/canceled-checkout-resume", isDirectory: true)
+    let checkout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationURL: destination,
+            username: "tester",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await client.waitUntilCheckoutStarts()
+    store.cancelCheckout()
+    _ = await checkout.value
+    let request = try #require(store.canceledCheckoutRecoveryRequest)
+
+    #expect(await store.resumeCanceledCheckout(request))
+    #expect(store.projects.map(\.path) == [destination.path])
+    #expect(store.selectedProject?.path == destination.path)
+    #expect(await client.cleanupRequestCount() == 1)
+    #expect(await client.updateRequestCount() == 1)
+    #expect(store.canceledCheckoutRecoveryRequest == nil)
 }
 
 @MainActor
@@ -2377,6 +3283,39 @@ import Testing
 }
 
 @MainActor
+@Test func repositoryTemporaryFileCleanupRejectsDuplicateExecution() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("repository-cleanup-duplicate-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31])
+        .write(to: root.appendingPathComponent(".DS_Store"))
+    let project = SVNProject(name: "프로젝트", path: root.path)
+    let gate = AsyncTestGate()
+    let client = StubSVNClient(commitGate: gate)
+    let store = makeStore(projects: [project], client: client)
+    store.temporaryFileCleanupAssessments = TemporaryFilePolicy.validateRepositoryCleanupCandidates(
+        paths: [".DS_Store"],
+        in: root
+    )
+    store.selectedTemporaryFileCleanupPaths = [".DS_Store"]
+
+    let first = Task { await store.confirmRepositoryTemporaryFileCleanup() }
+    await gate.waitUntilEntered()
+    let second = Task { await store.confirmRepositoryTemporaryFileCleanup() }
+    for _ in 0..<100 {
+        if await client.commitRequestCount() == 2 { break }
+        await Task.yield()
+    }
+    await gate.release()
+    await first.value
+    await second.value
+
+    #expect(await client.commitRequestCount() == 1)
+    #expect(await client.requestedRepositoryCleanupDeletionPaths() == [".DS_Store"])
+}
+
+@MainActor
 @Test func updatePreviewDoesNotOfferCleanupWithoutStrongCandidates() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/no-cleanup-candidates")
     let client = StubSVNClient(remoteChangesByPath: [project.path: [
@@ -2591,7 +3530,12 @@ private func makeStore(
     projectPathChecker: any ProjectPathChecking = StubProjectPathChecker(),
     volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe(),
     settingsDefaults: UserDefaults = UserDefaults(suiteName: "project-store-settings-\(UUID().uuidString)")!,
-    hideTemporaryFiles: Bool = true
+    hideTemporaryFiles: Bool = true,
+    updateBadgeRefreshInterval: Duration? = nil,
+    updateBadgeMaximumRefreshInterval: Duration = .seconds(15 * 60),
+    updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+        try await Task.sleep(for: duration)
+    }
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -2604,7 +3548,10 @@ private func makeStore(
         projectPathChecker: projectPathChecker,
         volumeNormalizationProbe: volumeNormalizationProbe,
         settingsDefaults: settingsDefaults,
-        hideTemporaryFiles: hideTemporaryFiles
+        hideTemporaryFiles: hideTemporaryFiles,
+        updateBadgeRefreshInterval: updateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: updateBadgeMaximumRefreshInterval,
+        updateBadgeSleep: updateBadgeSleep
     )
 }
 
@@ -2669,49 +3616,66 @@ private actor StubVolumeNormalizationProbe: VolumeNormalizationProbing {
 
 private actor AsyncTestGate {
     private var isReleased = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var didEnter = false
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+    private var entryWaiters: [CheckedContinuation<Void, Never>] = []
 
     func wait() async {
         guard !isReleased else { return }
+        didEnter = true
+        let pendingEntryWaiters = entryWaiters
+        entryWaiters.removeAll()
+        pendingEntryWaiters.forEach { $0.resume() }
         await withCheckedContinuation { continuation in
-            waiters.append(continuation)
+            releaseWaiters.append(continuation)
+        }
+    }
+
+    func waitUntilEntered() async {
+        guard !didEnter else { return }
+        await withCheckedContinuation { continuation in
+            entryWaiters.append(continuation)
         }
     }
 
     func release() {
         guard !isReleased else { return }
         isReleased = true
-        let pending = waiters
-        waiters.removeAll()
+        let pending = releaseWaiters
+        releaseWaiters.removeAll()
         pending.forEach { $0.resume() }
     }
 }
 
-private func waitForConflictDetailsRequest(_ client: StubSVNClient, path: String) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.conflictDetailsRequestCount(for: path) > 0 { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("충돌 상세 요청이 시작되지 않았습니다: \(path)")
-}
+private actor RecordingUpdateBadgeSleeper {
+    private let stopsAfter: Int
+    private var durations: [Duration] = []
+    private var waiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
 
-private func waitUntilCheckoutStarts(_ client: StubSVNClient) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.hasStartedCheckout() { return }
-        try? await Task.sleep(for: .milliseconds(1))
+    init(stopsAfter: Int) {
+        self.stopsAfter = stopsAfter
     }
-    Issue.record("체크아웃이 시작되지 않았습니다.")
-}
 
-private func waitForResolveRequest(_ client: StubSVNClient) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await client.conflictChoiceCount() > 0 { return }
-        try? await Task.sleep(for: .milliseconds(1))
+    func sleep(for duration: Duration) async throws {
+        durations.append(duration)
+        let pending = waiters.filter { $0.count <= durations.count }
+        waiters.removeAll { $0.count <= durations.count }
+        pending.forEach { $0.continuation.resume() }
+        if durations.count == stopsAfter {
+            throw CancellationError()
+        }
     }
-    Issue.record("충돌 해결 요청이 시작되지 않았습니다.")
+
+    func waitUntilRecorded(_ count: Int) async {
+        guard durations.count < count else { return }
+        await withCheckedContinuation { continuation in
+            waiters.append((count, continuation))
+        }
+    }
+
+    func recordedDurations() -> [Duration] {
+        durations
+    }
 }
 
 private func workingRecoveryURLs(in directory: URL) throws -> [URL] {
@@ -2818,18 +3782,24 @@ private struct CommitRequest: Equatable, Sendable {
     let message: String
 }
 
-private actor StubSVNClient: SVNClientServing {
+private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let statusesByPath: [String: [SVNStatusEntry]]
     let revisionsByPath: [String: String]
+    let latestLogRevisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
+    let outOfDateByPath: [String: Bool]
+    private var updateBadgeFailuresRemaining: Int
     let remoteChangesByPath: [String: [SVNStatusEntry]]
     let fileLogsByPath: [String: [SVNLogEntry]]
     let checkoutResult: String
     let checkoutProgress: [String]
     let checkoutRunsUntilCancelled: Bool
     let validateWorkingCopyError: Error?
+    let validateWorkingCopyGatesByPath: [String: AsyncTestGate]
+    let validateWorkingCopyErrorsByPath: [String: Error]
     let verifyCredentialsError: Error?
     private var checkoutStarted = false
+    private var checkoutStartWaiters: [CheckedContinuation<Void, Never>] = []
     private var validatedPaths: [String] = []
     private var verifiedCredentials: [SVNCredentials?] = []
     let lockInfoByPath: [String: SVNLockInfo]
@@ -2853,11 +3823,22 @@ private actor StubSVNClient: SVNClientServing {
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
     let commitError: SVNError?
+    private var commitErrors: [SVNError]
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
     let repositoryPathNormalizationResultValue: SVNRepositoryPathNormalizationResult?
     let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
     let repositoryPathNormalizationScanError: Error?
     let repositoryPathNormalizationScanGate: AsyncTestGate?
+    let cleanupError: Error?
+    let cleanupGate: AsyncTestGate?
+    let unlockErrorWhenNotForced: Error?
+    let forcedUnlockGate: AsyncTestGate?
+    let commitGate: AsyncTestGate?
+    let recoveryGate: AsyncTestGate?
+    let multiplePathLockGate: AsyncTestGate?
+    private var updatePreviewCommitsByRequest: [[SVNLogEntry]]
+    private var updatePreviewGatesByRequest: [AsyncTestGate]
+    private var updatePreviewRequests = 0
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var lockInfoPaths: [String] = []
@@ -2870,6 +3851,7 @@ private actor StubSVNClient: SVNClientServing {
     private var logRequests = 0
     private var outOfDateRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
+    private var conflictOperations: [String] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
     private var revertCalls: [RevertCall] = []
     private var conflictDetailsRequestRawPaths: [Data] = []
@@ -2879,19 +3861,32 @@ private actor StubSVNClient: SVNClientServing {
     private var repositoryPathNormalizationScanRequests = 0
     private var repositoryPathNormalizationRequests = 0
     private var updateRequests = 0
+    private var updateErrors: [KeychainStoreError]
+    private var revertCredentialUsernames: [String?] = []
+    private var updateCredentialUsernames: [String?] = []
+    private var updateAllowedUntrustedCertificates: [Bool] = []
+    private var recordedUpdateAllowedCertificateFailures: [Set<SVNServerCertificateFailure>] = []
     private var repositoryCleanupDeletionPaths: [String] = []
     private var commitRequests: [CommitRequest] = []
+    private var cleanupRequests = 0
+    private var unlockForces: [Bool] = []
+    private var multiplePathLockRequests = 0
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
         revisionsByPath: [String: String] = [:],
+        latestLogRevisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
+        outOfDateByPath: [String: Bool] = [:],
+        updateBadgeFailuresRemaining: Int = 0,
         remoteChangesByPath: [String: [SVNStatusEntry]] = [:],
         fileLogsByPath: [String: [SVNLogEntry]] = [:],
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
         checkoutRunsUntilCancelled: Bool = false,
         validateWorkingCopyError: Error? = nil,
+        validateWorkingCopyGatesByPath: [String: AsyncTestGate] = [:],
+        validateWorkingCopyErrorsByPath: [String: Error] = [:],
         verifyCredentialsError: Error? = nil,
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
@@ -2916,21 +3911,37 @@ private actor StubSVNClient: SVNClientServing {
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
         ignoreRules: [SVNIgnoreRule] = [],
         commitError: SVNError? = nil,
+        commitErrors: [SVNError] = [],
+        updateErrors: [KeychainStoreError] = [],
         repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = [],
         repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
         repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
         repositoryPathNormalizationScanError: Error? = nil,
-        repositoryPathNormalizationScanGate: AsyncTestGate? = nil
+        repositoryPathNormalizationScanGate: AsyncTestGate? = nil,
+        cleanupError: Error? = nil,
+        cleanupGate: AsyncTestGate? = nil,
+        unlockErrorWhenNotForced: Error? = nil,
+        forcedUnlockGate: AsyncTestGate? = nil,
+        commitGate: AsyncTestGate? = nil,
+        recoveryGate: AsyncTestGate? = nil,
+        multiplePathLockGate: AsyncTestGate? = nil,
+        updatePreviewCommitsByRequest: [[SVNLogEntry]] = [],
+        updatePreviewGatesByRequest: [AsyncTestGate] = []
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
+        self.latestLogRevisionsByPath = latestLogRevisionsByPath
         self.delaysByPath = delaysByPath
+        self.outOfDateByPath = outOfDateByPath
+        self.updateBadgeFailuresRemaining = updateBadgeFailuresRemaining
         self.remoteChangesByPath = remoteChangesByPath
         self.fileLogsByPath = fileLogsByPath
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
         self.checkoutRunsUntilCancelled = checkoutRunsUntilCancelled
         self.validateWorkingCopyError = validateWorkingCopyError
+        self.validateWorkingCopyGatesByPath = validateWorkingCopyGatesByPath
+        self.validateWorkingCopyErrorsByPath = validateWorkingCopyErrorsByPath
         self.verifyCredentialsError = verifyCredentialsError
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
@@ -2949,11 +3960,22 @@ private actor StubSVNClient: SVNClientServing {
         self.resolveError = resolveError
         self.resolveGate = resolveGate
         self.commitError = commitError
+        self.commitErrors = commitErrors
+        self.updateErrors = updateErrors
         repositoryPathNormalizationTargetsValue = repositoryPathNormalizationTargets
         repositoryPathNormalizationResultValue = repositoryPathNormalizationResult
         self.repositoryPathNormalizationError = repositoryPathNormalizationError
         self.repositoryPathNormalizationScanError = repositoryPathNormalizationScanError
         self.repositoryPathNormalizationScanGate = repositoryPathNormalizationScanGate
+        self.cleanupError = cleanupError
+        self.cleanupGate = cleanupGate
+        self.unlockErrorWhenNotForced = unlockErrorWhenNotForced
+        self.forcedUnlockGate = forcedUnlockGate
+        self.commitGate = commitGate
+        self.recoveryGate = recoveryGate
+        self.multiplePathLockGate = multiplePathLockGate
+        self.updatePreviewCommitsByRequest = updatePreviewCommitsByRequest
+        self.updatePreviewGatesByRequest = updatePreviewGatesByRequest
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
         recoveryPreviewValue = recoveryPreview
@@ -2973,11 +3995,14 @@ private actor StubSVNClient: SVNClientServing {
         if let duration = delaysByPath[path] { try? await Task.sleep(for: duration) }
     }
 
-    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { checkoutResult }
-    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String {
+    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String { checkoutResult }
+    func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
         for output in checkoutProgress { progress?(output) }
         if checkoutRunsUntilCancelled {
             checkoutStarted = true
+            let pending = checkoutStartWaiters
+            checkoutStartWaiters.removeAll()
+            pending.forEach { $0.resume() }
             // 실제 SVNClient는 취소 시 svn 프로세스를 종료하고 CancellationError를
             // 던집니다. sleep도 같은 오류를 던지므로 취소 경로를 그대로 재현합니다.
             try await Task.sleep(for: .seconds(60))
@@ -2986,17 +4011,31 @@ private actor StubSVNClient: SVNClientServing {
     }
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws {
         validatedPaths.append(path)
+        await validateWorkingCopyGatesByPath[path]?.wait()
+        if let error = validateWorkingCopyErrorsByPath[path] { throw error }
         if let validateWorkingCopyError { throw validateWorkingCopyError }
     }
+    func cleanup(at path: String, credentials: SVNCredentials?) async throws -> String {
+        cleanupRequests += 1
+        await cleanupGate?.wait()
+        if let cleanupError { throw cleanupError }
+        return "cleaned"
+    }
+    func cleanupRequestCount() -> Int { cleanupRequests }
 
-    func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws {
+    func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws {
         verifiedCredentials.append(credentials)
         if let verifyCredentialsError { throw verifyCredentialsError }
     }
 
     func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
     func recordedValidatedPaths() -> [String] { validatedPaths }
-    func hasStartedCheckout() -> Bool { checkoutStarted }
+    func waitUntilCheckoutStarts() async {
+        guard !checkoutStarted else { return }
+        await withCheckedContinuation { continuation in
+            checkoutStartWaiters.append(continuation)
+        }
+    }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {
         await delay(for: path)
         return statusesByPath[path] ?? []
@@ -3011,7 +4050,7 @@ private actor StubSVNClient: SVNClientServing {
         snapshotRequests += 1
         await delay(for: path)
         if let snapshotError { throw snapshotError }
-        if !conflictChoices.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
+        if !conflictOperations.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
         if scheduleDeletionRequests > 0, let snapshot = postDeletionSnapshotsByPath[path] { return snapshot }
         if canonicalAliasRepairRequests > 0, let snapshot = repairedSnapshotsByPath[path] { return snapshot }
         if let snapshot = snapshotsByPath[path] { return snapshot }
@@ -3038,17 +4077,19 @@ private actor StubSVNClient: SVNClientServing {
     func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview {
         recoveryPreviewValue
     }
-    func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRecoveryResult {
+    func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRecoveryResult {
         recoveryPaths = [sourcePath, destinationPath]
+        await recoveryGate?.wait()
         return recoveryResultValue
     }
-    func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNRepositoryPathNormalizationTarget] {
+    func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryPathNormalizationTarget] {
         repositoryPathNormalizationScanRequests += 1
         await repositoryPathNormalizationScanGate?.wait()
         if let repositoryPathNormalizationScanError { throw repositoryPathNormalizationScanError }
         return repositoryPathNormalizationTargetsValue
     }
-    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNRepositoryPathNormalizationResult {
+    func repositoryEntries(at repositoryURL: String, revision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry] { [] }
+    func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult {
         repositoryPathNormalizationRequests += 1
         if let repositoryPathNormalizationError { throw repositoryPathNormalizationError }
         return repositoryPathNormalizationResultValue ?? SVNRepositoryPathNormalizationResult(
@@ -3076,13 +4117,13 @@ private actor StubSVNClient: SVNClientServing {
         repositoryCleanupDeletionPaths.append(relativePath)
     }
     func requestedRepositoryCleanupDeletionPaths() -> [String] { repositoryCleanupDeletionPaths }
-    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo] {
+    func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLockInfo] {
         repositoryLocksRequests += 1
         await delay(for: path)
         if let error = repositoryLocksErrorsByPath[path] { throw error }
         return repositoryLocksByPath[path] ?? []
     }
-    func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo? {
+    func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNLockInfo? {
         lockInfoRequests += 1
         lockInfoPaths.append(relativePath)
         if let lockInfoError { throw lockInfoError }
@@ -3090,12 +4131,24 @@ private actor StubSVNClient: SVNClientServing {
     }
     func lockInfoRequestCount() -> Int { lockInfoRequests }
     func requestedLockInfoPaths() -> [String] { lockInfoPaths }
-    func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+    func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
         lockPaths.append(relativePath)
         return "locked"
     }
+    func lock(at path: String, relativePaths: [String], comment: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        multiplePathLockRequests += 1
+        await multiplePathLockGate?.wait()
+        return "locked"
+    }
+    func multiplePathLockRequestCount() -> Int { multiplePathLockRequests }
     func requestedLockPaths() -> [String] { lockPaths }
-    func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
+    func unlock(at path: String, relativePath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        unlockForces.append(force)
+        if !force, let unlockErrorWhenNotForced { throw unlockErrorWhenNotForced }
+        if force { await forcedUnlockGate?.wait() }
+        return "unlocked"
+    }
+    func requestedUnlockForces() -> [Bool] { unlockForces }
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? {
         conflictDetailsRequestCounts[relativePath, default: 0] += 1
         conflictDetailsRequestRawPaths.append(Data(relativePath.utf8))
@@ -3104,6 +4157,7 @@ private actor StubSVNClient: SVNClientServing {
         return conflictDetailsByRelativePath[relativePath] ?? conflictDetailsValue
     }
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String {
+        conflictOperations.append("resolve")
         conflictChoices.append(choice)
         resolvedPaths.append(relativePath)
         if let resolveGate { await resolveGate.wait() }
@@ -3113,16 +4167,30 @@ private actor StubSVNClient: SVNClientServing {
     func lastConflictChoice() -> SVNConflictChoice? { conflictChoices.last }
     func lastResolvedPath() -> String? { resolvedPaths.last }
     func conflictChoiceCount() -> Int { conflictChoices.count }
+    func conflictOperationNames() -> [String] { conflictOperations }
     func conflictDetailsRequestCount(for path: String) -> Int { conflictDetailsRequestCounts[path, default: 0] }
     func exactConflictDetailsRequestCount(for path: String) -> Int {
         conflictDetailsRequestRawPaths.filter { $0 == Data(path.utf8) }.count
     }
-    func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+    func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
         logRequests += 1
         await delay(for: path)
-        return [makeLog(revision: revisionsByPath[path] ?? "0")]
+        return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
-    func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+    func updatePreviewIncomingCommits(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
+        let requestIndex = updatePreviewRequests
+        updatePreviewRequests += 1
+        let commits = updatePreviewCommitsByRequest.indices.contains(requestIndex)
+            ? updatePreviewCommitsByRequest[requestIndex]
+            : []
+        let gate = updatePreviewGatesByRequest.indices.contains(requestIndex)
+            ? updatePreviewGatesByRequest[requestIndex]
+            : nil
+        await gate?.wait()
+        await delay(for: path)
+        return commits
+    }
+    func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
         revisionDiffRequests.append(RevisionDiffRequest(
             revision: revision,
             repositoryPath: repositoryPath,
@@ -3132,49 +4200,82 @@ private actor StubSVNClient: SVNClientServing {
         return "revision diff"
     }
     func lastRevisionDiffRequest() -> RevisionDiffRequest? { revisionDiffRequests.last }
+    func fileContents(at path: String, relativePath: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Data {
+        throw RevisionFileError.historyClientUnavailable
+    }
+    func export(at path: String, relativePath: String, revision: String, destinationPath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        throw RevisionFileError.historyClientUnavailable
+    }
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopyRevision {
         await delay(for: path)
         let revision = revisionsByPath[path] ?? "0"
         return SVNWorkingCopyRevision(minimum: revision, maximum: revision)
     }
     func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String { "/trunk" }
-    func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool {
+    func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Bool {
         outOfDateRequests += 1
         await delay(for: path)
-        return false
+        if updateBadgeFailuresRemaining > 0 {
+            updateBadgeFailuresRemaining -= 1
+            throw TestError.automaticRefreshFailed
+        }
+        return outOfDateByPath[path] ?? false
     }
-    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry] {
+    func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNStatusEntry] {
         await delay(for: path)
         return remoteChangesByPath[path] ?? []
     }
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        conflictOperations.append("update")
+        updateCredentialUsernames.append(credentials?.username)
+        updateAllowedUntrustedCertificates.append(allowUntrustedServerCertificate)
         updateRequests += 1
+        if !updateErrors.isEmpty { throw updateErrors.removeFirst() }
         return "updated"
     }
+    func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        recordedUpdateAllowedCertificateFailures.append(allowedServerCertificateFailures)
+        return try await update(
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
     func updateRequestCount() -> Int { updateRequests }
+    func lastUpdateCredentialUsername() -> String? { updateCredentialUsernames.last ?? nil }
+    func lastUpdateAllowedUntrustedCertificate() -> Bool? { updateAllowedUntrustedCertificates.last }
+    func updateAllowedCertificateFailures() -> [Set<SVNServerCertificateFailure>] {
+        recordedUpdateAllowedCertificateFailures
+    }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
+        conflictOperations.append("revert")
+        revertCredentialUsernames.append(credentials?.username)
         await delay(for: path)
         revertCalls.append(RevertCall(workingCopyPath: path, relativePath: relativePath))
         return "reverted"
     }
     func requestedReverts() -> [RevertCall] { revertCalls }
-    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
+    func lastRevertCredentialUsername() -> String? { revertCredentialUsernames.last ?? nil }
+    func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
         await delay(for: path)
         return fileLogsByPath[path] ?? []
     }
-    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
         commitRequests.append(CommitRequest(paths: paths, message: message))
+        await commitGate?.wait()
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(
                 output: commitCompletedWarning.output,
                 details: commitCompletedWarning.details
             )
         }
+        if !commitErrors.isEmpty { throw commitErrors.removeFirst() }
         if let commitError { throw commitError }
         return "committed"
     }
     func lastCommitRequest() -> CommitRequest? { commitRequests.last }
+    func commitRequestCount() -> Int { commitRequests.count }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {
@@ -3272,18 +4373,6 @@ private actor ControlledWorkingCopyFileService: WorkingCopyFileListing {
     }
 }
 
-private func waitForDirectoryRequest(
-    _ service: ControlledWorkingCopyFileService,
-    path: String
-) async {
-    let deadline = ContinuousClock.now + .seconds(10)
-    while ContinuousClock.now < deadline {
-        if await service.requestedDirectories().contains(path) { return }
-        try? await Task.sleep(for: .milliseconds(1))
-    }
-    Issue.record("파일 브라우저 디렉터리 요청이 시작되지 않았습니다: \(path)")
-}
-
 private func makeBrowserRefreshNode(
     _ path: String,
     directory: Bool = false,
@@ -3363,5 +4452,167 @@ private final class StubProjectAccessManager: ProjectAccessManaging {
     func endAccessing(url: URL) {
         guard let entry = accessedURLs.first(where: { $0.value == url }) else { return }
         endAccessing(projectID: entry.key)
+    }
+}
+
+@MainActor
+@Test func realSVNLocalDeletionTreeConflictKeepsDeletionThroughStore() async throws {
+    let fixture = try RealSVNTreeConflictFixture()
+    defer { fixture.remove() }
+    let store = fixture.makeStore()
+
+    // 변경 사항 목록이 이 파일을 충돌로 표시해야 우클릭 메뉴에 충돌 해결이 나온다.
+    #expect(try await fixture.snapshotMarksVictimConflicted())
+
+    await store.prepareConflictResolution(for: fixture.victimPath)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeConflictSession == nil)
+    let session = try #require(store.activeTreeConflictSession)
+    #expect(session.details.type == "tree")
+    #expect(session.details.treeConflictReason == "delete")
+    #expect(session.details.treeConflictAction == "edit")
+
+    await store.resolveActiveTreeConflict(using: .keepWorkingState)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(!FileManager.default.fileExists(atPath: fixture.victimURL.path))
+    #expect(try !fixture.hasConflictedVictim())
+}
+
+@MainActor
+@Test func realSVNLocalDeletionTreeConflictRestoresServerFileThroughStore() async throws {
+    let fixture = try RealSVNTreeConflictFixture()
+    defer { fixture.remove() }
+    let store = fixture.makeStore()
+
+    await store.prepareConflictResolution(for: fixture.victimPath)
+    #expect(store.activeTreeConflictSession != nil)
+
+    await store.resolveActiveTreeConflict(using: .restoreServerVersion)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(try !fixture.hasConflictedVictim())
+    #expect(
+        try Data(contentsOf: fixture.victimURL) == Data("base\nserver edit\n".utf8)
+    )
+}
+
+/// 사용자가 실제로 겪은 상황을 그대로 만든다.
+/// 로컬에서 파일을 삭제한 뒤 서버가 그 파일을 수정한 리비전을 받으면
+/// `local delete, incoming edit` 트리 충돌이 남는다.
+private final class RealSVNTreeConflictFixture {
+    let root: URL
+    let workingCopy: URL
+    let victimPath = "tree.txt"
+    let project: SVNProject
+    private let client: SVNClient
+    private let svnPath: String
+
+    var victimURL: URL { workingCopy.appendingPathComponent(victimPath) }
+
+    init() throws {
+        let fileManager = FileManager.default
+        svnPath = try #require(Self.firstExecutable(at: [
+            "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
+        ]))
+        let svnadminPath = try #require(Self.firstExecutable(at: [
+            "/opt/homebrew/bin/svnadmin", "/usr/local/bin/svnadmin", "/usr/bin/svnadmin",
+        ]))
+        root = URL(fileURLWithPath: "/tmp", isDirectory: true)
+            .appendingPathComponent("svn-tree-conflict-store-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+
+        let repository = root.appendingPathComponent("repository", isDirectory: true)
+        let importDirectory = root.appendingPathComponent("import", isDirectory: true)
+        let publisher = root.appendingPathComponent("publisher", isDirectory: true)
+        workingCopy = root.appendingPathComponent("conflicted", isDirectory: true)
+        client = SVNClient(
+            executablePath: svnPath,
+            configDirectoryPath: root.appendingPathComponent("svn-config", isDirectory: true).path
+        )
+
+        try fileManager.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        try Data("base\n".utf8).write(to: importDirectory.appendingPathComponent(victimPath))
+        _ = try Self.run(svnadminPath, ["create", repository.path])
+        let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+        _ = try Self.run(svnPath, ["import", importDirectory.path, repositoryURL, "-m", "initial"])
+        _ = try Self.run(svnPath, ["checkout", repositoryURL, publisher.path])
+        _ = try Self.run(svnPath, ["checkout", repositoryURL, workingCopy.path])
+
+        try Data("base\nserver edit\n".utf8)
+            .write(to: publisher.appendingPathComponent(victimPath))
+        _ = try Self.run(svnPath, ["commit", publisher.path, "-m", "server edit"])
+
+        project = SVNProject(name: "트리 충돌", path: workingCopy.path)
+
+        _ = try Self.run(svnPath, ["delete", victimURL.path])
+        _ = try Self.run(svnPath, ["update", "--non-interactive", workingCopy.path])
+    }
+
+    @MainActor
+    func makeStore() -> ProjectStore {
+        ProjectStore(
+            client: client,
+            credentialStore: StubCredentialStore(),
+            persistence: MemoryProjectPersistence(projects: [project]),
+            projectAccessManager: StubProjectAccessManager(),
+            conflictFileService: ConflictFileService(
+                backupRootURL: root.appendingPathComponent("backups", isDirectory: true)
+            ),
+            workingCopyFileService: WorkingCopyFileService(),
+            workspaceOpener: StubWorkspaceOpener(),
+            projectPathChecker: StubProjectPathChecker(),
+            volumeNormalizationProbe: StubVolumeNormalizationProbe(),
+            settingsDefaults: UserDefaults(suiteName: "tree-conflict-store-\(UUID().uuidString)")!,
+            hideTemporaryFiles: true,
+            updateBadgeRefreshInterval: nil
+        )
+    }
+
+    @MainActor
+    func snapshotMarksVictimConflicted() async throws -> Bool {
+        let snapshot = try await client.workingCopySnapshot(at: workingCopy.path)
+        let identity = SVNPathIdentity(rawPath: victimPath)
+        return snapshot.statuses.contains { entry in
+            entry.item == .conflicted && SVNPathIdentity(rawPath: entry.path) == identity
+        }
+    }
+
+    func hasConflictedVictim() throws -> Bool {
+        let status = try Self.run(svnPath, ["status", "--xml", workingCopy.path])
+        return status.contains("tree-conflicted=\"true\"")
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    private static func firstExecutable(at paths: [String]) -> String? {
+        paths.first(where: FileManager.default.isExecutableFile(atPath:))
+    }
+
+    @discardableResult
+    private static func run(_ executablePath: String, _ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let output = String(decoding: data, as: UTF8.self)
+        guard process.terminationStatus == 0 else {
+            throw NSError(
+                domain: "RealSVNTreeConflictFixture",
+                code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: output]
+            )
+        }
+        return output
     }
 }

@@ -3,7 +3,61 @@ import Foundation
 import Observation
 import SVNCore
 
+private final class UpdateBadgePoller: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: Task<Void, Never>?
+
+    func start(
+        interval: Duration,
+        maximumInterval: Duration,
+        sleep: @escaping @Sendable (Duration) async throws -> Void,
+        operation: @escaping @Sendable () async -> Bool
+    ) {
+        let task = Task {
+            let maximumInterval = max(interval, maximumInterval)
+            var nextInterval = interval
+            while !Task.isCancelled {
+                do {
+                    try await sleep(nextInterval)
+                } catch {
+                    return
+                }
+                if await operation() {
+                    nextInterval = interval
+                } else {
+                    nextInterval = min(nextInterval * 2, maximumInterval)
+                }
+            }
+        }
+        lock.lock()
+        self.task = task
+        lock.unlock()
+    }
+
+    deinit {
+        lock.lock()
+        let task = task
+        lock.unlock()
+        task?.cancel()
+    }
+}
+
 struct SVNProject: Codable, Identifiable, Hashable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case path
+        case username
+        case bookmarkData
+        case allowsUntrustedServerCertificate
+        case allowedServerCertificateFailures
+    }
+
+    static let legacyAllowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [
+        .unknownCertificateAuthority,
+        .commonNameMismatch,
+    ]
+
     /// 비밀번호를 제외한 프로젝트 메타데이터만 UserDefaults에 직렬화합니다.
     /// bookmarkData는 App Sandbox에서 재실행 후 폴더 접근 권한을 복원하는 값입니다.
     let id: UUID
@@ -12,6 +66,7 @@ struct SVNProject: Codable, Identifiable, Hashable {
     var username: String?
     var bookmarkData: Data?
     var allowsUntrustedServerCertificate: Bool?
+    var allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
 
     init(
         id: UUID = UUID(),
@@ -19,7 +74,8 @@ struct SVNProject: Codable, Identifiable, Hashable {
         path: String,
         username: String? = nil,
         bookmarkData: Data? = nil,
-        allowsUntrustedServerCertificate: Bool = false
+        allowsUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) {
         self.id = id
         self.name = name
@@ -27,6 +83,54 @@ struct SVNProject: Codable, Identifiable, Hashable {
         self.username = username
         self.bookmarkData = bookmarkData
         self.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+        self.allowedServerCertificateFailures = allowedServerCertificateFailures
+        if allowsUntrustedServerCertificate {
+            self.allowedServerCertificateFailures.formUnion(
+                Self.legacyAllowedServerCertificateFailures
+            )
+        }
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        username = try container.decodeIfPresent(String.self, forKey: .username)
+        bookmarkData = try container.decodeIfPresent(Data.self, forKey: .bookmarkData)
+        allowsUntrustedServerCertificate = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .allowsUntrustedServerCertificate
+        )
+        if let rawFailures = try container.decodeIfPresent(
+            [String].self,
+            forKey: .allowedServerCertificateFailures
+        ) {
+            allowedServerCertificateFailures = Set(
+                rawFailures.compactMap(SVNServerCertificateFailure.init(rawValue:))
+            )
+        } else if allowsUntrustedServerCertificate == true {
+            allowedServerCertificateFailures = Self.legacyAllowedServerCertificateFailures
+        } else {
+            allowedServerCertificateFailures = []
+        }
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(username, forKey: .username)
+        try container.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
+        try container.encodeIfPresent(
+            allowsUntrustedServerCertificate,
+            forKey: .allowsUntrustedServerCertificate
+        )
+        let rawFailures = SVNServerCertificateFailure.allCases
+            .filter(allowedServerCertificateFailures.contains)
+            .map(\.rawValue)
+        try container.encode(rawFailures, forKey: .allowedServerCertificateFailures)
     }
 }
 
@@ -44,11 +148,11 @@ enum DiffContent: Equatable {
     func localizedText(_ language: AppLanguage) -> String {
         switch self {
         case .placeholder:
-            language.localized("ui.select.a.changed.file.to.view.its.diff.409b3672")
+            language.localized(.ui.select.aChangedFileToViewItsDiff)
         case .unavailableForUnversioned:
-            language.localized("ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5")
+            language.localized(.ui.diff.isUnavailableUntilThisFileIsAddedTo)
         case .noTextDiff:
-            language.localized("ui.no.text.diff.is.available.this.may.be.a.new.or.b.e90ec831")
+            language.localized(.ui.no.textDiffIsAvailableThisMayBeANewOrB)
         case let .text(value):
             value
         case let .failure(message):
@@ -61,6 +165,7 @@ enum SVNAuthenticationAction: Equatable {
     case refreshHistory
     case update
     case commit(message: String)
+    case retryManually
 }
 
 enum RefreshErrorPolicy {
@@ -70,6 +175,8 @@ enum RefreshErrorPolicy {
 
 enum ProjectRequestKind: Hashable {
     case refresh
+    case updateBadge(SVNProject.ID)
+    case updatePreview
     case diff
     case fileTree
     case repositoryLocks
@@ -77,14 +184,30 @@ enum ProjectRequestKind: Hashable {
 }
 
 struct SVNAuthenticationRequest: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let projectID: SVNProject.ID
     let action: SVNAuthenticationAction
+    let serverCertificateTrust: ServerCertificateTrust?
+
+    init(
+        id: UUID = UUID(),
+        projectID: SVNProject.ID,
+        action: SVNAuthenticationAction,
+        serverCertificateTrust: ServerCertificateTrust? = nil
+    ) {
+        self.id = id
+        self.projectID = projectID
+        self.action = action
+        self.serverCertificateTrust = serverCertificateTrust
+    }
 }
 
 @MainActor
 @Observable
 final class ProjectStore {
+    private static let defaultUpdateBadgeRefreshInterval = Duration.seconds(60)
+    private static let maximumUpdateBadgeRefreshInterval = Duration.seconds(15 * 60)
+
     // MARK: - 화면에 공개하는 상태
 
     private var changesState = ProjectChangesStore()
@@ -114,6 +237,11 @@ final class ProjectStore {
     var repositoryPathNormalizationIssue: RepositoryPathNormalizationIssue?
     var documentOpenRequest: DocumentOpenRequest?
     var activeConflictSession: ConflictResolutionSession?
+    var activeTreeConflictSession: TreeConflictSession?
+    var recoveryState = ProjectRecoveryState()
+    var workingCopyCleanupRequest: WorkingCopyCleanupRequest?
+    var canceledCheckoutRecoveryRequest: CanceledCheckoutRecoveryRequest?
+    var forceUnlockRequest: ForceUnlockRequest?
     var resolvingConflictSessionID: ConflictResolutionSession.ID?
     var resolvingConflictProjectID: SVNProject.ID?
     var revertRequest: RevertRequest?
@@ -299,6 +427,7 @@ final class ProjectStore {
     let projectAccessManager: any ProjectAccessManaging
     let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
+    let workingCopyRecoveryFileManager: any WorkingCopyRecoveryFileManaging
     private let workspaceOpener: any WorkspaceOpening
     private let projectPathChecker: any ProjectPathChecking
     private let volumeNormalizationProbe: any VolumeNormalizationProbing
@@ -312,6 +441,7 @@ final class ProjectStore {
     private var failedRefreshCycleIDs: Set<UUID> = []
     private var automaticRefreshBlockedProjectID: SVNProject.ID?
     private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
+    private let updateBadgePoller = UpdateBadgePoller()
     private var checkoutLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
@@ -345,6 +475,18 @@ final class ProjectStore {
 
     var isCheckingOut: Bool {
         activeOperations.contains { $0.kind == .checkout }
+    }
+
+    var isCleaningSelectedWorkingCopy: Bool {
+        guard let path = selectedProject?.path else { return false }
+        return activeOperations.contains { $0.kind == .cleanupWorkingCopy(path) }
+    }
+
+    var isRecoveringCanceledCheckout: Bool {
+        guard let path = canceledCheckoutRecoveryRequest?.destinationPath else { return false }
+        return activeOperations.contains {
+            $0.kind == .recoverCanceledCheckout(path) || $0.kind == .cleanupWorkingCopy(path)
+        }
     }
 
     var isLoadingMoreHistory: Bool {
@@ -448,6 +590,7 @@ final class ProjectStore {
     var isSelectedProjectActionBlocked: Bool {
         isRefreshingSelectedProject
             || isMutatingSelectedProject
+            || isPreviewingSelectedProjectUpdate
             || isScanningRepositoryPaths
     }
 
@@ -479,6 +622,7 @@ final class ProjectStore {
             || isShowingPathRecovery
             || isShowingRepositoryPathNormalization
             || activeConflictSession != nil
+            || activeTreeConflictSession != nil
             || deletionRequest != nil
             || revertRequest != nil
             || documentOpenRequest != nil
@@ -532,12 +676,18 @@ final class ProjectStore {
         projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
         conflictFileService: ConflictFileService = ConflictFileService(),
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
+        workingCopyRecoveryFileManager: any WorkingCopyRecoveryFileManaging = FileManagerWorkingCopyRecoveryFileManager(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
         volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
         settingsDefaults: UserDefaults = .standard,
         hideTemporaryFiles: Bool = AppSettings.hideTemporaryFiles(),
-        isDemoMode: Bool = false
+        isDemoMode: Bool = false,
+        updateBadgeRefreshInterval: Duration? = ProjectStore.defaultUpdateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: Duration = ProjectStore.maximumUpdateBadgeRefreshInterval,
+        updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
     ) {
         self.isDemoMode = isDemoMode
         self.hideTemporaryFiles = hideTemporaryFiles
@@ -547,6 +697,7 @@ final class ProjectStore {
         self.projectAccessManager = projectAccessManager
         self.conflictFileService = conflictFileService
         self.workingCopyFileService = workingCopyFileService
+        self.workingCopyRecoveryFileManager = workingCopyRecoveryFileManager
         self.workspaceOpener = workspaceOpener
         self.projectPathChecker = projectPathChecker
         self.volumeNormalizationProbe = volumeNormalizationProbe
@@ -557,18 +708,27 @@ final class ProjectStore {
         projects = saved
         selectedProjectID = saved.first?.id
         for project in saved { probeFilenameNormalization(for: project) }
+        if !isDemoMode, let updateBadgeRefreshInterval {
+            updateBadgePoller.start(
+                interval: updateBadgeRefreshInterval,
+                maximumInterval: updateBadgeMaximumRefreshInterval,
+                sleep: updateBadgeSleep
+            ) { [weak self] in
+                await self?.refreshUpdateBadges() ?? true
+            }
+        }
     }
 
     // MARK: - 프로젝트 등록과 삭제
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = AppLanguage.current.localized("ui.choose.svn.local.working.folders.6d104bc9")
+        panel.title = AppLanguage.current.localized(.ui.choose.svnLocalWorkingFolders)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
         guard panel.runModal() == .OK else { return }
-        for url in panel.urls { addProject(url) }
+        Task { await registerProjects(panel.urls) }
     }
 
     /// 체크아웃을 취소 가능한 Task로 감싸 실행합니다.
@@ -617,13 +777,14 @@ final class ProjectStore {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
-            errorMessage = AppLanguage.current.localized("ui.choose.a.local.folder.for.the.checkout.de1fb4ce")
+            errorMessage = AppLanguage.current.localized(.ui.choose.aLocalFolderForTheCheckout)
             return false
         }
         let destination = destinationURL.standardizedFileURL
         let destinationPath = destination.path
+        let destinationWasEmpty = workingCopyRecoveryFileManager.isEmptyDirectory(at: destinationPath)
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -635,18 +796,23 @@ final class ProjectStore {
         // Keychain 저장 실패까지 전체 실패로 취급하면, 화면에는 실패라고 나오지만
         // 디스크에는 파일이 남는 모호한 상태가 됩니다. 그래서 경계를 둘로 나눕니다.
         let id = UUID()
-        let bookmarkData: Data
+        var bookmarkData: Data?
         let checkoutNotice: String
         let progressBuffer = CheckoutProgressBuffer()
+        let checkoutCredentials = username.isEmpty
+            ? nil
+            : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
         do {
             bookmarkData = try projectAccessManager.makeBookmark(for: destination)
             projectAccessManager.beginAccessing(destination, for: id)
-            let credentials = username.isEmpty ? nil : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
             checkoutNotice = try await client.checkout(
                 repositoryURL: repositoryURL,
                 destinationPath: destinationPath,
-                credentials: credentials,
+                credentials: checkoutCredentials,
                 allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowsUntrustedServerCertificate
+                    ? SVNProject.legacyAllowedServerCertificateFailures
+                    : [],
                 progress: { [weak self] output in
                     let accumulatedOutput = progressBuffer.append(output)
                     Task { @MainActor [weak self] in
@@ -660,17 +826,44 @@ final class ProjectStore {
             checkoutLog = progressBuffer.output
         } catch {
             checkoutLog = progressBuffer.output
-            projectAccessManager.endAccessing(url: destinationURL.standardizedFileURL)
             // 사용자가 직접 멈춘 작업은 실패가 아니므로 오류 대화상자를 띄우지 않습니다.
-            // 다만 이미 내려받은 파일은 디스크에 남으므로 대상 폴더를 함께 알립니다.
-            if error is CancellationError || Task.isCancelled {
+            if (error is CancellationError || Task.isCancelled), let bookmarkData {
                 errorMessage = nil
-                notice = AppLanguage.current.localized(
-                    "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58",
-                    destinationPath
-                )
+                if await prepareCanceledCheckoutRecovery(
+                    id: id,
+                    destination: destination,
+                    username: username,
+                    password: password,
+                    bookmarkData: bookmarkData,
+                    canEmptySafely: destinationWasEmpty,
+                    allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    credentials: checkoutCredentials
+                ) {
+                    notice = nil
+                } else {
+                    projectAccessManager.endAccessing(url: destination)
+                    notice = AppLanguage.current.localized(
+                        .ui.the.checkoutWasCanceledPartiallyDownloadedF,
+                        destinationPath
+                    )
+                }
                 return false
             }
+            if SVNClient.needsCleanup(error), let bookmarkData,
+               await prepareCanceledCheckoutRecovery(
+                   id: id,
+                   destination: destination,
+                   username: username,
+                   password: password,
+                   bookmarkData: bookmarkData,
+                   canEmptySafely: destinationWasEmpty,
+                   allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                   credentials: checkoutCredentials
+               ) {
+                errorMessage = nil
+                return false
+            }
+            projectAccessManager.endAccessing(url: destination)
             errorMessage = localizedError(error)
             return false
         }
@@ -695,7 +888,7 @@ final class ProjectStore {
             do {
                 try credentialStore.setPassword(password, for: id)
             } catch {
-                keychainWarning = AppLanguage.current.localized("ui.checkout.completed.but.the.password.could.not.be.ed5274e5", localizedError(error))
+                keychainWarning = AppLanguage.current.localized(.ui.checkout.completedButThePasswordCouldNotBe, localizedError(error))
             }
         }
 
@@ -707,26 +900,55 @@ final class ProjectStore {
     }
 
     func addProject(_ url: URL) {
-        let path = url.standardizedFileURL.path
-        guard !projects.contains(where: { $0.path == path }) else { return }
-        Task {
-            let operationID = beginOperation(.registerProject)
-            defer { endOperation(operationID) }
+        Task { await registerProjects([url]) }
+    }
+
+    func registerProjects(_ urls: [URL]) async {
+        let uniqueURLs = urls.reduce(into: [URL]()) { result, url in
+            let standardizedURL = url.standardizedFileURL
+            guard !result.contains(where: { $0.path == standardizedURL.path }) else { return }
+            result.append(standardizedURL)
+        }
+        guard !uniqueURLs.isEmpty else { return }
+        let sessionID = UUID()
+        let selectedProjectIDAtStart = selectedProjectID
+        recoveryState.projectRegistrationSessionID = sessionID
+        let operationID = beginOperation(.registerProject)
+        defer { endOperation(operationID) }
+
+        var registeredProjects: [SVNProject] = []
+        var lastFailureMessage: String?
+        for url in uniqueURLs {
+            let path = url.path
+            guard !projects.contains(where: { $0.path == path }) else { continue }
             let projectID = UUID()
             do {
                 let bookmarkData = try projectAccessManager.makeBookmark(for: url)
                 projectAccessManager.beginAccessing(url, for: projectID)
                 try await client.validateWorkingCopy(at: path, credentials: nil)
+                guard !projects.contains(where: { $0.path == path }) else {
+                    projectAccessManager.endAccessing(projectID: projectID)
+                    continue
+                }
                 let project = SVNProject(id: projectID, name: url.lastPathComponent, path: path, bookmarkData: bookmarkData)
                 projects.append(project)
-                selectedProjectID = project.id
+                registeredProjects.append(project)
                 probeFilenameNormalization(for: project)
-                await refresh()
             } catch {
                 projectAccessManager.endAccessing(projectID: projectID)
-                errorMessage = localizedError(error)
+                lastFailureMessage = localizedError(error)
             }
         }
+
+        guard recoveryState.projectRegistrationSessionID == sessionID else { return }
+        recoveryState.projectRegistrationSessionID = nil
+        guard selectedProjectID == selectedProjectIDAtStart else { return }
+        if let project = registeredProjects.first {
+            selectedProjectID = project.id
+            await refresh()
+            guard selectedProjectID == project.id else { return }
+        }
+        if let lastFailureMessage { errorMessage = lastFailureMessage }
     }
 
     /// 이미 등록한 프로젝트의 로컬 폴더 위치를 바꿉니다.
@@ -741,7 +963,7 @@ final class ProjectStore {
         let previousPath = projects[currentIndex].path
         guard destinationPath != previousPath else { return true }
         guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -763,7 +985,7 @@ final class ProjectStore {
             projects[index].bookmarkData = bookmarkData
             probeFilenameNormalization(for: projects[index])
             notice = AppLanguage.current.localized(
-                "ui.the.working.folder.was.changed.to.9c6f01b2",
+                .ui.the.workingFolderWasChangedTo,
                 destinationPath
             )
             if selectedProjectID == projectID { await refresh() }
@@ -825,21 +1047,27 @@ final class ProjectStore {
     // MARK: - SVN 작업
 
     func refreshSelectedProject(manual: Bool) async {
-        guard !isDemoMode, let project = selectedProject else { return }
-        if manual {
-            automaticRefreshBlockedProjectID = nil
-            unavailableProjectID = nil
-        } else if !automaticRefreshCanRun(for: project) {
-            return
-        }
-        guard ensureWorkingCopyDirectoryExists(for: project) else { return }
+        guard !isDemoMode else { return }
+        let project = selectedProject
+        async let badgeRefresh = refreshUpdateBadges(excluding: project?.id)
 
-        let cycleID = UUID()
-        let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
-        async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
-        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
-        _ = await (projectRefresh, browserRefresh)
-        finishRefreshCycle(cycleID)
+        if let project {
+            if manual {
+                automaticRefreshBlockedProjectID = nil
+                unavailableProjectID = nil
+            }
+            let canRefreshSelectedProject = manual || automaticRefreshCanRun(for: project)
+            if canRefreshSelectedProject, ensureWorkingCopyDirectoryExists(for: project) {
+                let cycleID = UUID()
+                let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
+                async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
+                async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
+                _ = await (projectRefresh, browserRefresh)
+                finishRefreshCycle(cycleID)
+            }
+        }
+
+        _ = await badgeRefresh
     }
 
     func refreshLocalWorkingCopy(errorPolicy: RefreshErrorPolicy = .standalone) async {
@@ -859,8 +1087,12 @@ final class ProjectStore {
         guard let project = selectedProject,
               ensureWorkingCopyDirectoryExists(for: project) else { return }
         let requestID = prepareRefreshRequest()
+        let updateBadgeRequestID = beginRequest(.updateBadge(project.id))
         let operationID = beginOperation(.refresh(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            finishRequest(updateBadgeRequestID, kind: .updateBadge(project.id))
+            endOperation(operationID)
+        }
 
         guard await applyLocalWorkingCopyRefresh(
             for: project,
@@ -875,20 +1107,24 @@ final class ProjectStore {
                 limit: 50,
                 endingAtRevision: nil,
                 credentials: projectCredentials,
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             async let outOfDate = client.workingCopyIsOutOfDate(
                 at: project.path,
                 credentials: projectCredentials,
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             let (logs, isWorkingCopyOutOfDate) = try await (newLogs, outOfDate)
             guard canApplyRefresh(requestID, projectID: project.id) else { return }
             self.logs = logs
             self.hasMoreHistory = logs.count == 50
-            self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
-            updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
-            notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
+            if canApplyUpdateBadge(updateBadgeRequestID, project: project) {
+                self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
+                updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
+            }
+            notice = AppLanguage.current.localized(.ui.refreshed.label, project.name)
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
                 handleRemoteError(
@@ -903,7 +1139,6 @@ final class ProjectStore {
 
     private func prepareRefreshRequest() -> UUID {
         let requestID = registerRefreshRequest()
-        isWorkingCopyOutOfDate = nil
         isShowingPathRecovery = false
         pathRecoveryPreview = nil
         pathRecoverySourceProjectID = nil
@@ -912,6 +1147,44 @@ final class ProjectStore {
 
     private func registerRefreshRequest() -> UUID {
         beginRequest(.refresh)
+    }
+
+    @discardableResult
+    func refreshUpdateBadges(excluding excludedProjectID: SVNProject.ID? = nil) async -> Bool {
+        let projectsToRefresh = projects.filter { $0.id != excludedProjectID }
+        var allRefreshesSucceeded = true
+        for project in projectsToRefresh {
+            guard !Task.isCancelled else { return false }
+            if !(await refreshUpdateBadge(for: project)) {
+                allRefreshesSucceeded = false
+            }
+        }
+        return allRefreshesSucceeded
+    }
+
+    private func refreshUpdateBadge(for project: SVNProject) async -> Bool {
+        guard projectPathChecker.directoryExists(at: project.path) else { return true }
+        let requestKind = ProjectRequestKind.updateBadge(project.id)
+        let requestID = beginRequest(requestKind)
+        defer { finishRequest(requestID, kind: requestKind) }
+
+        do {
+            let projectCredentials = try credentials(for: project)
+            let needsUpdate = try await client.workingCopyIsOutOfDate(
+                at: project.path,
+                credentials: projectCredentials,
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
+            )
+            guard canApplyUpdateBadge(requestID, project: project) else { return true }
+            updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
+            if selectedProjectID == project.id {
+                isWorkingCopyOutOfDate = needsUpdate
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func applyLocalWorkingCopyRefresh(
@@ -934,9 +1207,13 @@ final class ProjectStore {
             workingCopyRevision = snapshot.revision
             pathCollisions = snapshot.collisions
             self.workingCopyRepositoryPath = workingCopyRepositoryPath
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == project.id {
+                selectedPaths.formUnion(recovery.paths)
+            }
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
-            notice = AppLanguage.current.localized("ui.local.changes.refreshed.617acbc6", project.name)
+            notice = AppLanguage.current.localized(.ui.local.changesRefreshed, project.name)
             return true
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -961,7 +1238,9 @@ final class ProjectStore {
             diffContent = value.isEmpty ? .noTextDiff : .text(value)
         } catch {
             if canApplyRequest(requestID, kind: .diff, projectID: project.id) {
-                errorMessage = localizedError(error)
+                if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                    errorMessage = localizedError(error)
+                }
             }
         }
     }
@@ -974,13 +1253,13 @@ final class ProjectStore {
             .map(\.path)
         guard missingPaths.isEmpty else {
             errorMessage = AppLanguage.current.localized(
-                "error.choose.missing.items",
+                .error.chooseMissingItems,
                 missingPaths.joined(separator: ", ")
             )
             return false
         }
         guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
-            errorMessage = AppLanguage.current.localized("ui.resolve.conflicted.files.before.committing.e5cfd21c")
+            errorMessage = AppLanguage.current.localized(.ui.resolve.conflictedFilesBeforeCommitting)
             return false
         }
         let operationID = beginOperation(.commit(project.id))
@@ -991,20 +1270,24 @@ final class ProjectStore {
                 paths: paths,
                 message: message,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return true }
             notice = result
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
             return true
         } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
             guard selectedProjectID == project.id else { return true }
             selectedPaths.subtract(paths)
             lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
+            guard selectedProjectID == project.id else { return true }
             notice = localizedError(SVNError.commitSucceededWithValidationWarning(
                 output: "",
                 details: details
@@ -1012,10 +1295,17 @@ final class ProjectStore {
             return true
         } catch let error as SVNError {
             if selectedProjectID == project.id {
-                if case .workingCopyOutOfDate = error {
+                if case let .workingCopyOutOfDate(details) = error {
                     isWorkingCopyOutOfDate = true
+                    await prepareOutOfDateCommitRecovery(
+                        project: project,
+                        message: message,
+                        paths: paths,
+                        details: details
+                    )
+                } else {
+                    handleRemoteError(error, project: project, action: .commit(message: message))
                 }
-                handleRemoteError(error, project: project, action: .commit(message: message))
             }
             return false
         } catch {
@@ -1060,6 +1350,12 @@ final class ProjectStore {
         let credentials = username.isEmpty
             ? nil
             : SVNCredentials(username: username, password: effectivePassword)
+        var allowedServerCertificateFailures = project.allowedServerCertificateFailures
+        if allowsUntrustedServerCertificate {
+            allowedServerCertificateFailures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+        } else {
+            allowedServerCertificateFailures.subtract(SVNProject.legacyAllowedServerCertificateFailures)
+        }
 
         let operationID = beginOperation(.verifyCredentials(projectID))
         defer { endOperation(operationID) }
@@ -1067,7 +1363,8 @@ final class ProjectStore {
             try await client.verifyCredentials(
                 at: project.path,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowsUntrustedServerCertificate
+                allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
             )
             return nil
         } catch {
@@ -1086,11 +1383,20 @@ final class ProjectStore {
             let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
             projects[index].username = username.isEmpty ? nil : username
             projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            if allowsUntrustedServerCertificate {
+                projects[index].allowedServerCertificateFailures.formUnion(
+                    SVNProject.legacyAllowedServerCertificateFailures
+                )
+            } else {
+                projects[index].allowedServerCertificateFailures.subtract(
+                    SVNProject.legacyAllowedServerCertificateFailures
+                )
+            }
             if !newPassword.isEmpty {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.localized("ui.credentials.saved.for.409bff39", projects[index].name)
+            notice = AppLanguage.current.localized(.ui.credentials.savedFor, projects[index].name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1102,7 +1408,7 @@ final class ProjectStore {
         do {
             try credentialStore.deletePassword(for: projectID)
             sessionPasswords[projectID] = nil
-            notice = AppLanguage.current.localized("ui.the.saved.password.was.deleted.a729310e")
+            notice = AppLanguage.current.localized(.ui.the.savedPasswordWasDeleted)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1150,7 +1456,11 @@ final class ProjectStore {
     func cancelAuthentication(for request: SVNAuthenticationRequest) {
         guard authenticationRequest?.id == request.id else { return }
         authenticationRequest = nil
-        notice = AppLanguage.current.localized("ui.authentication.was.canceled.local.changes.remain.c4984bab")
+        if request.serverCertificateTrust == nil {
+            notice = AppLanguage.current.localized(.ui.authentication.wasCanceledLocalChangesRemain)
+        } else {
+            notice = AppLanguage.current.localized(.ui.certificate.exceptionNotAllowed)
+        }
     }
 
     // MARK: - 인증 조회와 실패 후 작업 재개
@@ -1167,12 +1477,43 @@ final class ProjectStore {
         return SVNCredentials(username: username, password: password)
     }
 
+    func allowedServerCertificateFailures(
+        for project: SVNProject
+    ) -> Set<SVNServerCertificateFailure> {
+        var failures = project.allowedServerCertificateFailures
+        if project.allowsUntrustedServerCertificate == true {
+            failures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+        }
+        return failures
+    }
+
+    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) {
+        guard authenticationRequest?.id == request.id,
+              let trust = request.serverCertificateTrust,
+              trust.canAllow,
+              let index = projects.firstIndex(where: { $0.id == request.projectID }) else { return }
+        projects[index].allowedServerCertificateFailures.formUnion(trust.failures)
+        authenticationRequest = nil
+        automaticRefreshBlockedProjectID = nil
+        notice = AppLanguage.current.localized(
+            .ui.certificate.exceptionSavedForProject,
+            projects[index].name
+        )
+    }
+
     func handleRemoteError(
         _ error: Error,
         project: SVNProject,
         action: SVNAuthenticationAction,
         refreshErrorPolicy: RefreshErrorPolicy = .standalone
     ) {
+        if presentServerCertificateTrustRequest(
+            for: error,
+            project: project,
+            action: action
+        ) {
+            return
+        }
         if isKeychainAccessDenied(error) {
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
@@ -1190,11 +1531,15 @@ final class ProjectStore {
         switch policy {
         case .standalone:
             automaticRefreshBlockedProjectID = projectID
-            errorMessage = localizedError(error)
+            if !offerWorkingCopyCleanup(for: error, projectID: projectID) {
+                errorMessage = localizedError(error)
+            }
         case let .coordinated(cycleID):
             guard failedRefreshCycleIDs.insert(cycleID).inserted else { return }
             automaticRefreshBlockedProjectID = projectID
-            errorMessage = localizedError(error)
+            if !offerWorkingCopyCleanup(for: error, projectID: projectID) {
+                errorMessage = localizedError(error)
+            }
         }
     }
 
@@ -1216,7 +1561,7 @@ final class ProjectStore {
     }
 
     private var authenticationNotice: String {
-        AppLanguage.current.localized("ui.keychain.access.was.denied.choose.how.to.authent.0d8d881a")
+        AppLanguage.current.localized(.ui.keychain.accessWasDeniedChooseHowToAuthent)
     }
 
     private func resume(_ request: SVNAuthenticationRequest) async {
@@ -1225,9 +1570,22 @@ final class ProjectStore {
         case .refreshHistory:
             await refreshRemoteHistory(for: request.projectID)
         case .update:
-            await update()
+            if recoveryState.outOfDateCommitRecoveryRequest?.projectID == request.projectID {
+                await previewUpdate()
+            } else {
+                await update()
+            }
         case let .commit(message):
-            _ = await commit(message: message)
+            if let recovery = recoveryState.outOfDateCommitRecoveryRequest,
+               recovery.projectID == request.projectID,
+               !recovery.hasCompletedUpdate {
+                await update()
+            } else {
+                // 삭제(missing) 항목을 포함한 선택도 재시도할 수 있어야 합니다.
+                _ = await commitSelectedChanges(message: message)
+            }
+        case .retryManually:
+            break
         }
     }
 
@@ -1241,12 +1599,13 @@ final class ProjectStore {
                 limit: 50,
                 endingAtRevision: nil,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             logs = newLogs
             hasMoreHistory = newLogs.count == 50
-            notice = AppLanguage.current.localized("ui.history.refreshed.5c159ee8", project.name)
+            notice = AppLanguage.current.localized(.ui.history.refreshed, project.name)
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .refreshHistory)
@@ -1255,6 +1614,17 @@ final class ProjectStore {
     }
 
     func localizedError(_ error: Error, language: AppLanguage = .current) -> String {
+        if let project = selectedProject,
+           presentServerCertificateTrustRequest(
+               for: error,
+               project: project,
+               action: .retryManually
+           ),
+           let trust = authenticationRequest?.serverCertificateTrust {
+            return trust.failures
+                .map { SVNErrorLocalization.serverCertificateGuidance(for: $0, language: language) }
+                .joined(separator: "\n\n")
+        }
         if let conflictError = error as? ConflictFileError {
             return SVNErrorLocalization.message(for: conflictError, language: language)
         }
@@ -1264,17 +1634,40 @@ final class ProjectStore {
         return error.localizedDescription
     }
 
+    private func presentServerCertificateTrustRequest(
+        for error: Error,
+        project: SVNProject,
+        action: SVNAuthenticationAction
+    ) -> Bool {
+        guard let detectedFailures = SVNErrorLocalization.serverCertificateFailures(for: error)
+        else { return false }
+        let failuresNeedingConsent = detectedFailures.subtracting(
+            allowedServerCertificateFailures(for: project)
+        )
+        guard !failuresNeedingConsent.isEmpty else { return false }
+        authenticationRequest = SVNAuthenticationRequest(
+            projectID: project.id,
+            action: action,
+            serverCertificateTrust: ServerCertificateTrust(
+                failures: failuresNeedingConsent,
+                diagnosticDetails: SVNErrorLocalization.diagnosticDetails(for: error)
+            )
+        )
+        errorMessage = nil
+        return true
+    }
+
     func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized("ui.unable.to.open.file.ae08bd77", relativePath)
+            errorMessage = AppLanguage.current.localized(.ui.unable.toOpenFile, relativePath)
             return
         }
     }
 
     func openWorkspaceURL(_ url: URL) {
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized("ui.could.not.open.the.file.263874fa")
+            errorMessage = AppLanguage.current.localized(.ui.could.notOpenTheFile)
             return
         }
     }
@@ -1283,6 +1676,18 @@ final class ProjectStore {
         // 프로젝트 목록 변경마다 즉시 저장해 앱이 비정상 종료되어도 최근 등록 및
         // 삭제 상태를 최대한 보존합니다. 인코딩 실패 시 기존 저장값은 유지합니다.
         persistence.saveProjects(projects)
+    }
+
+    func registerRecoveredCheckout(_ project: SVNProject) {
+        projects.append(project)
+        selectedProjectID = project.id
+        probeFilenameNormalization(for: project)
+    }
+
+    func clearAutomaticRefreshBlock(for projectID: SVNProject.ID) {
+        if automaticRefreshBlockedProjectID == projectID {
+            automaticRefreshBlockedProjectID = nil
+        }
     }
 
     func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
@@ -1320,11 +1725,23 @@ final class ProjectStore {
         browserState = ProjectBrowserStore()
         historyState = ProjectHistoryStore()
         updateState = ProjectUpdateStore()
+        isShowingPathRecovery = false
+        pathRecoveryPreview = nil
+        pathRecoverySourceProjectID = nil
+        isShowingUpdatePreview = false
         isShowingTemporaryFileCleanup = false
+        isShowingFileHistory = false
+        isShowingLocks = false
+        isShowingIgnoreRules = false
+        isShowingCredentials = false
         requiresGlobalIgnoreImportConfirmation = false
         selectedBrowserPath = nil
         documentOpenRequest = nil
         activeConflictSession = nil
+        activeTreeConflictSession = nil
+        recoveryState = ProjectRecoveryState()
+        workingCopyCleanupRequest = nil
+        forceUnlockRequest = nil
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil
@@ -1352,7 +1769,7 @@ final class ProjectStore {
             guard unavailableProjectID != project.id else { return false }
             unavailableProjectID = project.id
             automaticRefreshBlockedProjectID = project.id
-            errorMessage = AppLanguage.current.localized("ui.the.working.folder.no.longer.exists.restore.the..4946d37c", project.name, project.path)
+            errorMessage = AppLanguage.current.localized(.ui.the.workingFolderNoLongerExistsRestoreThe, project.name, project.path)
             return false
         }
         if unavailableProjectID == project.id {
@@ -1377,6 +1794,11 @@ final class ProjectStore {
     /// 비동기 결과를 화면 상태에 반영합니다.
     private func canApplyRefresh(_ requestID: UUID, projectID: SVNProject.ID) -> Bool {
         canApplyRequest(requestID, kind: .refresh, projectID: projectID)
+    }
+
+    private func canApplyUpdateBadge(_ requestID: UUID, project: SVNProject) -> Bool {
+        latestRequestIDs[.updateBadge(project.id)] == requestID
+            && projects.contains { $0.id == project.id && $0.path == project.path }
     }
 
     @discardableResult

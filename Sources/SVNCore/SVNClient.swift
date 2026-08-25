@@ -40,13 +40,15 @@ public actor SVNClient {
         repositoryURL: String,
         destinationPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkout(
             repositoryURL: repositoryURL,
             destinationPath: destinationPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
             progress: nil
         )
     }
@@ -56,17 +58,56 @@ public actor SVNClient {
         destinationPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
         progress: SVNOutputHandler?
     ) async throws -> String {
-        let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
-        let repositoryURL = URL(string: normalizedRepositoryURL)?.absoluteString ?? normalizedRepositoryURL
+        let repositoryURL = URL(string: repositoryURL)?.absoluteString ?? repositoryURL
         let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        return try await checkedRun(
-            ["checkout", "--", repositoryURL, "."],
+        return try await checkedRunWithSVNPathArguments(
+            ["checkout"],
+            svnPathArguments: [repositoryURL, "."],
+            escapePegSyntax: [true, false],
             at: destination.path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: progress
+        ).output
+    }
+
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        credentials: SVNCredentials? = nil,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+    ) async throws -> String {
+        try await checkout(
+            repositoryURL: repositoryURL,
+            destinationPath: destinationPath,
+            credentials: credentials,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: nil
+        )
+    }
+
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        credentials: SVNCredentials? = nil,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>,
+        progress: SVNOutputHandler?
+    ) async throws -> String {
+        let repositoryURL = URL(string: repositoryURL)?.absoluteString ?? repositoryURL
+        let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        return try await checkedRunWithSVNPathArguments(
+            ["checkout"],
+            svnPathArguments: [repositoryURL, "."],
+            escapePegSyntax: [true, false],
+            at: destination.path,
+            credentials: credentials,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
             progress: progress
         ).output
     }
@@ -81,20 +122,312 @@ public actor SVNClient {
             .output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    public func fileContents(
+        at path: String,
+        relativePath: String,
+        revision: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> Data {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-cat-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+        let outputURL = temporaryDirectory.appendingPathComponent("contents", isDirectory: false)
+        _ = try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["cat", "--revision", revision],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            outputDestinationURL: outputURL
+        )
+        return try Data(contentsOf: outputURL)
+    }
+
+    public func export(
+        at path: String,
+        relativePath: String,
+        revision: String,
+        destinationPath: String,
+        force: Bool = false,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        let commandPath = try await resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: relativePath,
+            credentials: credentials
+        )
+        var arguments = ["export", "--revision", revision]
+        if force { arguments.append("--force") }
+        return try await checkedRunWithTwoSVNPathArguments(
+            arguments,
+            firstSVNPathArgument: commandPath.svnPathRelativeToWorkingCopyRoot,
+            secondSVNPathArgument: URL(fileURLWithPath: destinationPath).standardizedFileURL.path,
+            at: commandPath.workingCopyRootPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        ).output
+    }
+
+    public func move(
+        at path: String,
+        sourceRelativePath: String,
+        destinationRelativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try await runWorkingCopyCopyOrMove(
+            "move",
+            at: path,
+            sourceRelativePath: sourceRelativePath,
+            destinationRelativePath: destinationRelativePath,
+            credentials: credentials
+        )
+    }
+
+    public func copy(
+        at path: String,
+        sourceRelativePath: String,
+        destinationRelativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try await runWorkingCopyCopyOrMove(
+            "copy",
+            at: path,
+            sourceRelativePath: sourceRelativePath,
+            destinationRelativePath: destinationRelativePath,
+            credentials: credentials
+        )
+    }
+
+    public func copy(
+        repositoryURL: String,
+        revision: String? = nil,
+        to destinationRelativePath: String,
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        let destination = try await resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: destinationRelativePath,
+            credentials: credentials
+        )
+        var arguments = ["copy"]
+        if let revision, !revision.isEmpty { arguments += ["--revision", revision] }
+        let sourceURL: String
+        let escapeSourcePegSyntax: Bool
+        if let revision, !revision.isEmpty {
+            sourceURL = repositoryURL + "@" + revision
+            escapeSourcePegSyntax = false
+        } else {
+            sourceURL = repositoryURL
+            escapeSourcePegSyntax = true
+        }
+        return try await checkedRunWithTwoSVNPathArguments(
+            arguments,
+            firstSVNPathArgument: sourceURL,
+            secondSVNPathArgument: Self.normalizedNewDestinationPath(
+                destination.svnPathRelativeToWorkingCopyRoot
+            ),
+            escapeFirstPegSyntax: escapeSourcePegSyntax,
+            at: destination.workingCopyRootPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        ).output
+    }
+
+    public func relocate(
+        at path: String,
+        fromRepositoryURL: String,
+        toRepositoryURL: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        let projectCommandPath = try await resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: ".",
+            credentials: credentials
+        )
+        let workingCopyRootURL = try await workingCopyRepositoryURL(
+            at: projectCommandPath.workingCopyRootPath,
+            credentials: nil
+        )
+        let currentProjectURL = try await workingCopyRepositoryURL(at: path, credentials: nil)
+        let projectURLSuffix = currentProjectURL.hasPrefix(workingCopyRootURL)
+            ? String(currentProjectURL.dropFirst(workingCopyRootURL.count))
+            : ""
+        let oldURL = fromRepositoryURL == currentProjectURL
+            ? workingCopyRootURL
+            : fromRepositoryURL
+        let newURL = !projectURLSuffix.isEmpty && toRepositoryURL.hasSuffix(projectURLSuffix)
+            ? String(toRepositoryURL.dropLast(projectURLSuffix.count))
+            : toRepositoryURL
+        return try await checkedRunWithSVNPathArguments(
+            ["relocate"],
+            svnPathArguments: [oldURL, newURL, "."],
+            escapePegSyntax: [false, false, false],
+            at: projectCommandPath.workingCopyRootPath,
+            credentials: credentials
+        ).output
+    }
+
+    public func setProperty(
+        named name: String,
+        value: Data,
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try Self.validatePropertyName(name)
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-property-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+        let valueURL = temporaryDirectory.appendingPathComponent("value", isDirectory: false)
+        try value.write(to: valueURL, options: .atomic)
+        return try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["propset", name, "--file", valueURL.path],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials
+        ).output
+    }
+
+    public func propertyValue(
+        named name: String,
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> Data {
+        try Self.validatePropertyName(name)
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-propget-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+        let outputURL = temporaryDirectory.appendingPathComponent("value", isDirectory: false)
+        _ = try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["propget", name, "--no-newline"],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials,
+            outputDestinationURL: outputURL
+        )
+        return try Data(contentsOf: outputURL)
+    }
+
+    public func deleteProperty(
+        named name: String,
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try Self.validatePropertyName(name)
+        return try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["propdel", name],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials
+        ).output
+    }
+
+    public func properties(
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> [SVNProperty] {
+        let result = try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["proplist", "--xml", "--verbose"],
+            projectRelativePath: relativePath,
+            at: path,
+            credentials: credentials
+        )
+        return try SVNXMLParser.properties(from: Data(result.output.utf8))
+    }
+
+    private func runWorkingCopyCopyOrMove(
+        _ command: String,
+        at path: String,
+        sourceRelativePath: String,
+        destinationRelativePath: String,
+        credentials: SVNCredentials?
+    ) async throws -> String {
+        let source = try await resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: sourceRelativePath,
+            credentials: credentials
+        )
+        let destination = try await resolveWorkingCopyCommandPath(
+            localProjectPath: path,
+            projectRelativePath: destinationRelativePath,
+            credentials: credentials
+        )
+        return try await checkedRunWithTwoSVNPathArguments(
+            [command],
+            firstSVNPathArgument: source.svnPathRelativeToWorkingCopyRoot,
+            secondSVNPathArgument: Self.normalizedNewDestinationPath(
+                destination.svnPathRelativeToWorkingCopyRoot
+            ),
+            escapeSecondPegSyntax: command != "move",
+            at: source.workingCopyRootPath,
+            credentials: credentials
+        ).output
+    }
+
     public func repositoryPathsNeedingNormalization(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNRepositoryPathNormalizationTarget] {
         let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: credentials)
         let result = try await checkedRun(
             ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let entries = try SVNXMLParser.repositoryListEntries(from: Data(result.output.utf8))
         return SVNRepositoryPathNormalization.targets(from: entries)
+    }
+
+    public func repositoryEntries(
+        at repositoryURL: String,
+        revision: String? = nil,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> [SVNRepositoryEntry] {
+        var arguments = ["list", "--xml"]
+        if let revision, !revision.isEmpty {
+            arguments += ["--revision", revision]
+        }
+        let repositoryURLArgument: String
+        let escapePegSyntax: Bool
+        if let revision, !revision.isEmpty {
+            repositoryURLArgument = repositoryURL + "@" + revision
+            escapePegSyntax = false
+        } else {
+            repositoryURLArgument = repositoryURL
+            escapePegSyntax = true
+        }
+        let result = try await checkedRunWithSingleSVNPathArgument(
+            arguments,
+            svnPathArgument: repositoryURLArgument,
+            escapePegSyntax: escapePegSyntax,
+            at: FileManager.default.temporaryDirectory.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        return try SVNXMLParser.repositoryEntries(from: Data(result.output.utf8))
     }
 
     public func normalizeRepositoryPaths(
@@ -102,7 +435,8 @@ public actor SVNClient {
         at path: String,
         message: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNRepositoryPathNormalizationResult {
         let targets = SVNRepositoryPathNormalization.minimalTargets(targets)
         guard !targets.isEmpty else {
@@ -112,6 +446,15 @@ public actor SVNClient {
                 committedRevisions: []
             )
         }
+        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
+            throw SVNClientArgumentError.unsupportedLogMessage
+        }
+        let messageDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: messageDirectory) }
+        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
+        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
 
         let invalidTargets = targets.filter { target in
             !SVNRepositoryPathNormalization.isValidTarget(target)
@@ -125,7 +468,9 @@ public actor SVNClient {
         let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
         let blockingLocalPaths = snapshot.statuses.compactMap { entry -> String? in
             switch entry.item {
-            case .modified, .added, .deleted, .missing, .conflicted, .replaced:
+            case .modified, .added, .deleted, .missing, .conflicted, .replaced,
+                 .obstructed, .incomplete:
+                // obstructed와 incomplete는 정리되지 않은 상태이므로 보수적으로 차단 대상에 둡니다.
                 break
             case .unversioned, .ignored, .unknown:
                 return nil
@@ -146,7 +491,8 @@ public actor SVNClient {
         let locks = try await repositoryLocks(
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let blockingLockPaths = locks.compactMap { lock in
             targets.contains(where: {
@@ -165,7 +511,8 @@ public actor SVNClient {
             ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let repositoryEntries = try SVNXMLParser.repositoryListEntries(
             from: Data(listResult.output.utf8)
@@ -205,14 +552,15 @@ public actor SVNClient {
             let result: SVNCommandResult
             do {
                 result = try await run(
-                    [
-                        "move", "--message", message, "--",
+                    ["move", "--file", messageFileURL.path, "--force-log"],
+                    svnPathArguments: [
                         Self.svnPathEscapingPegSyntax(sourceURL),
-                        Self.svnPathEscapingPegSyntax(destinationURL),
+                        destinationURL,
                     ],
                     at: path,
                     credentials: credentials,
-                    allowUntrustedServerCertificate: allowUntrustedServerCertificate
+                    allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures
                 )
             } catch {
                 throw SVNRepositoryPathNormalizationError.failed(
@@ -272,14 +620,17 @@ public actor SVNClient {
     public func verifyCredentials(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws {
         let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: nil)
-        _ = try await checkedRun(
-            ["info", "--show-item", "revision", "--", repositoryURL],
+        _ = try await checkedRunWithSingleSVNPathArgument(
+            ["info", "--show-item", "revision"],
+            svnPathArgument: repositoryURL,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
     }
 
@@ -295,7 +646,8 @@ public actor SVNClient {
         from sourcePath: String,
         to destinationPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNRecoveryResult {
         let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
@@ -310,7 +662,8 @@ public actor SVNClient {
             repositoryURL: repositoryURL,
             destinationPath: destination.path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
 
@@ -328,6 +681,13 @@ public actor SVNClient {
     public func status(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
         let result = try await checkedRun(["status", "--xml"], at: path, credentials: credentials)
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
+    }
+
+    public func cleanup(
+        at path: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try await checkedRun(["cleanup"], at: path, credentials: credentials).output
     }
 
     public func workingCopyEntries(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNWorkingCopyEntry] {
@@ -759,13 +1119,15 @@ public actor SVNClient {
     public func repositoryLocks(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLockInfo] {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.repositoryLocks(fromStatus: Data(result.output.utf8))
     }
@@ -774,14 +1136,16 @@ public actor SVNClient {
         at path: String,
         relativePath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNLockInfo? {
         let result = try await checkedRunWithSingleWorkingCopyPathArgument(
             ["info", "--xml", "--revision", "HEAD"],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.repositoryLock(fromInfo: Data(result.output.utf8))
     }
@@ -791,15 +1155,42 @@ public actor SVNClient {
         relativePath: String,
         comment: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
-        return try await checkedRunWithSingleWorkingCopyPathArgument(
-            ["lock", "--message", comment],
-            projectRelativePath: relativePath,
-            at: path,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
-        ).output
+        try await withSVNLogMessageFile(comment) { messageFilePath in
+            try await checkedRunWithSingleWorkingCopyPathArgument(
+                ["lock", "--file", messageFilePath, "--force-log"],
+                projectRelativePath: relativePath,
+                at: path,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            ).output
+        }
+    }
+
+    public func lock(
+        at path: String,
+        relativePaths: [String],
+        comment: String,
+        force: Bool = false,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        try await withSVNLogMessageFile(comment) { messageFilePath in
+            var arguments = ["lock", "--file", messageFilePath, "--force-log"]
+            if force { arguments.append("--force") }
+            return try await checkedRunWithMultipleWorkingCopyPathArguments(
+                arguments,
+                projectRelativePaths: relativePaths,
+                at: path,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            ).output
+        }
     }
 
     public func unlock(
@@ -808,12 +1199,52 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
+        try await unlock(
+            at: path,
+            relativePath: relativePath,
+            force: false,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+
+    public func unlock(
+        at path: String,
+        relativePath: String,
+        force: Bool = false,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        var arguments = ["unlock"]
+        if force { arguments.append("--force") }
         return try await checkedRunWithSingleWorkingCopyPathArgument(
-            ["unlock"],
+            arguments,
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        ).output
+    }
+
+    public func unlock(
+        at path: String,
+        relativePaths: [String],
+        force: Bool = false,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        var arguments = ["unlock"]
+        if force { arguments.append("--force") }
+        return try await checkedRunWithMultipleWorkingCopyPathArguments(
+            arguments,
+            projectRelativePaths: relativePaths,
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1027,14 +1458,16 @@ public actor SVNClient {
         limit: Int = 50,
         endingAtRevision: String? = nil,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let revisionRange = "\(endingAtRevision ?? "HEAD"):1"
         let result = try await checkedRun(
             ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", revisionRange, "--limit", String(limit)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
@@ -1046,7 +1479,8 @@ public actor SVNClient {
         workingCopyRepositoryPath: String?,
         pegRevision: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         let repositoryRevisionPath = revisionTargetPath(
             repositoryPath: repositoryPath,
@@ -1059,7 +1493,8 @@ public actor SVNClient {
             escapePegSyntax: false,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1069,7 +1504,7 @@ public actor SVNClient {
     private func revisionTargetPath(repositoryPath: String, workingCopyRepositoryPath: String?) -> String {
         let repositoryPath = repositoryPath.hasPrefix("/") ? repositoryPath : "/\(repositoryPath)"
         guard let workingCopyRepositoryPath, !workingCopyRepositoryPath.isEmpty else {
-            return repositoryPath
+            return Self.repositoryPathEscapingLiteralPercents(repositoryPath)
         }
 
         let rootPath = workingCopyRepositoryPath.hasPrefix("/")
@@ -1078,9 +1513,13 @@ public actor SVNClient {
         let decodedRootPath = rootPath.removingPercentEncoding ?? rootPath
         let repositoryComponents = pathComponents(repositoryPath)
         let rootComponents = pathComponents(decodedRootPath)
-        guard repositoryComponents.starts(with: rootComponents) else { return repositoryPath }
+        guard repositoryComponents.starts(with: rootComponents) else {
+            return Self.repositoryPathEscapingLiteralPercents(repositoryPath)
+        }
 
-        let suffix = repositoryComponents.dropFirst(rootComponents.count).joined(separator: "/")
+        let suffix = repositoryComponents.dropFirst(rootComponents.count)
+            .map { $0.replacingOccurrences(of: "%", with: "%25") }
+            .joined(separator: "/")
         let encodedRoot = rootPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let components = [encodedRoot, suffix].filter { !$0.isEmpty }
         return "/" + components.joined(separator: "/")
@@ -1110,16 +1549,92 @@ public actor SVNClient {
         return "/" + relativeURL.dropFirst(2)
     }
 
+    public func incomingCommits(
+        at path: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> [SVNLogEntry] {
+        let baseRevision = try await workingCopyRevision(at: path, credentials: credentials)
+        guard let base = Int(baseRevision.minimum) else { throw SVNError.malformedResponse }
+        let headResult = try await checkedRun(
+            ["info", "--revision", "HEAD", "--show-item", "revision"],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        guard let head = Int(headResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            throw SVNError.malformedResponse
+        }
+        guard head > base else { return [] }
+        let result = try await checkedRun(
+            [
+                "log", "--revision", "\(base + 1):HEAD", "--verbose", "--xml",
+                "--with-all-revprops",
+            ],
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        let logs = try SVNXMLParser.logs(from: Data(result.output.utf8))
+        guard logs.contains(where: { !$0.changedPaths.isEmpty }) else { return logs }
+        let workingCopyRepositoryPath = try await workingCopyRepositoryPath(
+            at: path,
+            credentials: credentials
+        )
+        let remoteChanges = try await remoteChanges(
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        guard !remoteChanges.isEmpty else { return [] }
+        let remotePaths = remoteChanges.map(\.path)
+        return logs.filter { entry in
+            entry.changedPaths.contains { changedPath in
+                guard let relativePath = projectRelativePath(
+                    changedPath.path,
+                    workingCopyRepositoryPath: workingCopyRepositoryPath
+                ) else { return false }
+                return remotePaths.contains { Self.pathsOverlap(relativePath, $0) }
+            }
+        }
+    }
+
+    private func projectRelativePath(
+        _ repositoryPath: String,
+        workingCopyRepositoryPath: String
+    ) -> String? {
+        let repositoryComponents = pathComponents(repositoryPath)
+        let rootPath = workingCopyRepositoryPath.removingPercentEncoding
+            ?? workingCopyRepositoryPath
+        let rootComponents = pathComponents(rootPath)
+        guard repositoryComponents.starts(with: rootComponents) else { return nil }
+        let relativeComponents = repositoryComponents.dropFirst(rootComponents.count)
+        return relativeComponents.isEmpty ? "." : relativeComponents.joined(separator: "/")
+    }
+
+    private static func pathsOverlap(_ first: String, _ second: String) -> Bool {
+        if first == "." || second == "." { return true }
+        return first == second
+            || first.hasPrefix(second + "/")
+            || second.hasPrefix(first + "/")
+    }
+
     public func workingCopyIsOutOfDate(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> Bool {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.workingCopyIsOutOfDate(from: Data(result.output.utf8))
     }
@@ -1127,13 +1642,15 @@ public actor SVNClient {
     public func remoteChanges(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNStatusEntry] {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.remoteChanges(from: Data(result.output.utf8))
     }
@@ -1141,13 +1658,15 @@ public actor SVNClient {
     public func update(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkedRun(
             ["update"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1177,14 +1696,16 @@ public actor SVNClient {
         relativePath: String,
         limit: Int = 100,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let result = try await checkedRunWithSingleWorkingCopyPathArgument(
             ["log", "--xml", "--verbose", "--with-all-revprops", "--limit", String(limit)],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
@@ -1194,8 +1715,22 @@ public actor SVNClient {
         paths: [String],
         message: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
+        guard !paths.isEmpty else {
+            throw SVNClientArgumentError.emptyTargets(command: "commit")
+        }
+        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
+            throw SVNClientArgumentError.unsupportedLogMessage
+        }
+        let messageDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: messageDirectory) }
+        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
+        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
+
         // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
         // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
         // 별도 추가 트리로 예약되는 일을 막습니다.
@@ -1323,11 +1858,12 @@ public actor SVNClient {
                 )
             }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--message", message],
+                ["commit", "--file", messageFileURL.path, "--force-log"],
                 projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowUntrustedServerCertificate
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
             ).output
         } catch {
             let rollbackTargets = Self.normalizedCommitPaths(scheduledByThisCommit)
@@ -1533,6 +2069,52 @@ public actor SVNClient {
         .sorted()
     }
 
+    private static func normalizedNewDestinationPath(_ path: String) -> String {
+        guard let separator = path.lastIndex(of: "/") else {
+            return path.precomposedStringWithCanonicalMapping
+        }
+        let componentStart = path.index(after: separator)
+        let prefix = path[...separator]
+        let component = path[componentStart...].precomposedStringWithCanonicalMapping
+        return String(prefix) + component
+    }
+
+    private static func repositoryPathEscapingLiteralPercents(_ path: String) -> String {
+        let hasLeadingSlash = path.hasPrefix("/")
+        let escaped = pathComponents(path)
+            .map { $0.replacingOccurrences(of: "%", with: "%25") }
+            .joined(separator: "/")
+        return hasLeadingSlash ? "/" + escaped : escaped
+    }
+
+    private static func pathComponents(_ path: String) -> [String] {
+        path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+    }
+
+    private static func validatePropertyName(_ name: String) throws {
+        guard !name.isEmpty,
+              !name.hasPrefix("-"),
+              !name.unicodeScalars.contains(where: { $0.value == 0 }) else {
+            throw SVNClientArgumentError.unsupportedPropertyName(name)
+        }
+    }
+
+    private func withSVNLogMessageFile<Result>(
+        _ message: String,
+        operation: (String) async throws -> Result
+    ) async throws -> Result {
+        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
+            throw SVNClientArgumentError.unsupportedLogMessage
+        }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("message", isDirectory: false)
+        try Data(message.utf8).write(to: fileURL, options: .atomic)
+        return try await operation(fileURL.path)
+    }
+
     // MARK: - 공통 명령 실행
 
     /// 단일 파일/폴더를 받는 SVN 명령의 공통 진입점입니다. 로컬 프로젝트
@@ -1544,6 +2126,7 @@ public actor SVNClient {
         at localProjectPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
         outputDestinationURL: URL? = nil
     ) async throws -> SVNCommandResult {
         let commandPath = try await resolveWorkingCopyCommandPath(
@@ -1557,8 +2140,68 @@ public actor SVNClient {
             outputDestinationURL: outputDestinationURL,
             at: commandPath.workingCopyRootPath,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
+    }
+
+    private func checkedRunWithTwoSVNPathArguments(
+        _ arguments: [String],
+        firstSVNPathArgument: String,
+        secondSVNPathArgument: String,
+        escapeFirstPegSyntax: Bool = true,
+        escapeSecondPegSyntax: Bool = true,
+        at workingDirectoryPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> SVNCommandResult {
+        try await checkedRunWithSVNPathArguments(
+            arguments,
+            svnPathArguments: [firstSVNPathArgument, secondSVNPathArgument],
+            escapePegSyntax: [escapeFirstPegSyntax, escapeSecondPegSyntax],
+            at: workingDirectoryPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+    }
+
+    private func checkedRunWithSVNPathArguments(
+        _ arguments: [String],
+        svnPathArguments: [String],
+        escapePegSyntax: [Bool],
+        at workingDirectoryPath: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
+        progress: SVNOutputHandler? = nil
+    ) async throws -> SVNCommandResult {
+        precondition(svnPathArguments.count == escapePegSyntax.count)
+        let unsupportedSVNPaths = Self.svnPathsUnsafeForLineDelimitedTransport(svnPathArguments)
+        guard unsupportedSVNPaths.isEmpty else {
+            throw SVNError.unsupportedTargetPath(paths: unsupportedSVNPaths)
+        }
+        let escapedArguments = zip(svnPathArguments, escapePegSyntax).map { path, shouldEscape in
+            shouldEscape ? Self.svnPathEscapingPegSyntax(path) : path
+        }
+        let result = try await run(
+            arguments,
+            svnPathArguments: escapedArguments,
+            at: workingDirectoryPath,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: progress
+        )
+        guard result.exitCode == 0 else {
+            let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw SVNError.commandFailed(
+                command: "svn \(arguments.first ?? "")",
+                message: detail.isEmpty ? result.output : detail
+            )
+        }
+        return result
     }
 
     /// 여러 작업 복사본 경로는 `--targets` 파일에 원문 UTF-8로 기록합니다.
@@ -1569,8 +2212,12 @@ public actor SVNClient {
         projectRelativePaths: [String],
         at localProjectPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNCommandResult {
+        guard !projectRelativePaths.isEmpty else {
+            throw SVNClientArgumentError.emptyTargets(command: arguments.first ?? "")
+        }
         var workingCopyCommandPaths: [SVNWorkingCopyCommandPath] = []
         workingCopyCommandPaths.reserveCapacity(projectRelativePaths.count)
         for projectRelativePath in projectRelativePaths {
@@ -1598,7 +2245,8 @@ public actor SVNClient {
             arguments + ["--targets", svnTargetsFileURL.path],
             at: workingCopyRootPath,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
     }
 
@@ -1611,7 +2259,8 @@ public actor SVNClient {
         outputDestinationURL: URL? = nil,
         at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNCommandResult {
         let unsupportedSVNPaths = Self.svnPathsUnsafeForLineDelimitedTransport([svnPathArgument])
         guard unsupportedSVNPaths.isEmpty else {
@@ -1625,7 +2274,8 @@ public actor SVNClient {
             outputDestinationURL: outputDestinationURL,
             at: workingDirectoryPath,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         guard result.exitCode == 0 else {
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1638,10 +2288,18 @@ public actor SVNClient {
     }
 
     static func svnPathEscapingPegSyntax(_ path: String) -> String {
-        path.contains("@") ? path + "@" : path
+        let finalComponent = path.split(separator: "/", omittingEmptySubsequences: false).last ?? ""
+        let containsEncodedAtSign = finalComponent.range(
+            of: "%40",
+            options: .caseInsensitive
+        ) != nil
+        return finalComponent.contains("@") || containsEncodedAtSign ? path + "@" : path
     }
 
     static func svnTargetsFileContents(_ svnPaths: [String]) throws -> Data {
+        guard !svnPaths.isEmpty else {
+            throw SVNClientArgumentError.emptyTargets(command: "targets")
+        }
         let unsupportedSVNPaths = svnPathsUnsafeForLineDelimitedTransport(svnPaths)
         guard unsupportedSVNPaths.isEmpty else {
             throw SVNError.unsupportedTargetPath(paths: unsupportedSVNPaths)
@@ -1651,7 +2309,9 @@ public actor SVNClient {
 
     private static func svnPathsUnsafeForLineDelimitedTransport(_ svnPaths: [String]) -> [String] {
         svnPaths.filter { path in
-            path.unicodeScalars.contains { $0.value == 0 || $0.value == 10 || $0.value == 13 }
+            path.isEmpty || path.unicodeScalars.contains {
+                $0.value == 0 || $0.value == 10 || $0.value == 13
+            }
         }
     }
 
@@ -1712,6 +2372,7 @@ public actor SVNClient {
         at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
         progress: SVNOutputHandler? = nil
     ) async throws -> SVNCommandResult {
         let result = try await run(
@@ -1719,6 +2380,7 @@ public actor SVNClient {
             at: workingDirectoryPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
             progress: progress
         )
         guard result.exitCode == 0 else {
@@ -1740,13 +2402,69 @@ public actor SVNClient {
         return hasOutOfDateCode && message.localizedCaseInsensitiveContains("out of date")
     }
 
+    public static func needsCleanup(_ message: String) -> Bool {
+        message.contains("E155004") || message.contains("E155037")
+    }
+
+    public static func needsCleanup(_ error: Error) -> Bool {
+        guard case let SVNError.commandFailed(_, message) = error else { return false }
+        return needsCleanup(message)
+    }
+
+    public static func isAuthenticationError(_ message: String) -> Bool {
+        message.contains("E170001") || message.contains("E215004")
+    }
+
+    public static func isAuthenticationError(_ error: Error) -> Bool {
+        commandFailureMessage(from: error).map(isAuthenticationError) ?? false
+    }
+
+    public static func isLockConflictError(_ message: String) -> Bool {
+        message.contains("E195022") || message.contains("E160037")
+    }
+
+    public static func isLockConflictError(_ error: Error) -> Bool {
+        commandFailureMessage(from: error).map(isLockConflictError) ?? false
+    }
+
+    public static func isServerCertificateValidationError(_ message: String) -> Bool {
+        message.contains("E175002") || message.contains("E230001")
+    }
+
+    public static func isServerCertificateValidationError(_ error: Error) -> Bool {
+        commandFailureMessage(from: error).map(isServerCertificateValidationError) ?? false
+    }
+
+    public static func isRepositoryConnectionError(_ message: String) -> Bool {
+        message.contains("E170013") || message.contains("E180001")
+    }
+
+    public static func isRepositoryConnectionError(_ error: Error) -> Bool {
+        commandFailureMessage(from: error).map(isRepositoryConnectionError) ?? false
+    }
+
+    public static func isWorkingCopyFormatTooOldError(_ message: String) -> Bool {
+        message.contains("E155036")
+    }
+
+    public static func isWorkingCopyFormatTooOldError(_ error: Error) -> Bool {
+        commandFailureMessage(from: error).map(isWorkingCopyFormatTooOldError) ?? false
+    }
+
+    private static func commandFailureMessage(from error: Error) -> String? {
+        guard case let SVNError.commandFailed(_, message) = error else { return nil }
+        return message
+    }
+
     private func run(
         _ arguments: [String],
         svnPathArgument: String? = nil,
+        svnPathArguments: [String]? = nil,
         outputDestinationURL: URL? = nil,
         at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
         progress: SVNOutputHandler? = nil
     ) async throws -> SVNCommandResult {
         let process = Process()
@@ -1760,8 +2478,16 @@ public actor SVNClient {
         process.environment = environment
         let configDirectory = try svnConfigDirectory()
         var globalArguments = ["--non-interactive", "--config-dir", configDirectory.path]
+        var certificateFailures = allowedServerCertificateFailures
         if allowUntrustedServerCertificate {
-            globalArguments.append("--trust-server-cert-failures=unknown-ca,cn-mismatch")
+            certificateFailures.formUnion([.unknownCertificateAuthority, .commonNameMismatch])
+        }
+        if !certificateFailures.isEmpty {
+            let values = SVNServerCertificateFailure.allCases
+                .filter(certificateFailures.contains)
+                .map(\.rawValue)
+                .joined(separator: ",")
+            globalArguments.append("--trust-server-cert-failures=\(values)")
         }
         var password: String?
         if let credentials, !credentials.username.isEmpty {
@@ -1772,7 +2498,41 @@ public actor SVNClient {
             }
         }
         var svnPathArgumentDirectory: URL?
-        if let svnPathArgument {
+        if let svnPathArguments {
+            precondition(!svnPathArguments.isEmpty)
+            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("svn-mac-raw-arguments-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
+            svnPathArgumentDirectory = svnPathTransportDirectory
+            let argumentURLs = try svnPathArguments.enumerated().map { index, argument in
+                let argumentURL = svnPathTransportDirectory
+                    .appendingPathComponent("argument-\(index + 1)")
+                try (Data(argument.utf8) + Data([0x0A])).write(to: argumentURL)
+                return argumentURL
+            }
+            let fileAssignments = argumentURLs.indices.map {
+                "argument_file_\($0 + 1)=$\($0 + 1)"
+            }
+            let svnExecutableIndex = argumentURLs.count + 1
+            let valueReads = argumentURLs.indices.map {
+                "IFS= read -r argument_\($0 + 1) < \"$argument_file_\($0 + 1)\""
+            }
+            let argumentReferences = argumentURLs.indices.map { "\"$argument_\($0 + 1)\"" }
+                .joined(separator: " ")
+            let shellCommand = (
+                fileAssignments
+                + ["svn_executable=$\(svnExecutableIndex)", "shift \(svnExecutableIndex)"]
+                + valueReads
+                + ["exec \"$svn_executable\" \"$@\" -- \(argumentReferences)"]
+            ).joined(separator: "; ")
+
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = [
+                "-c",
+                shellCommand,
+                "svn-mac-raw-arguments",
+            ] + argumentURLs.map(\.path) + [svnExecutable.path] + globalArguments + arguments
+        } else if let svnPathArgument {
             // `Process.arguments`에 SVN 경로를 직접 넣으면 Foundation이 한글을
             // NFD로 바꿀 수 있습니다. 원문 UTF-8을 파일에 쓰고 POSIX shell이
             // 읽어 argv로 넘기면 Swift 문자열의 자동 파일 경로 변환을 피할 수 있습니다.

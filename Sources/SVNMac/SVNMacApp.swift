@@ -50,22 +50,22 @@ struct SVNMacApp: App {
                     demoStore.hideTemporaryFiles = value
                 }
                 .alert(
-                    appLanguage.localized("ui.an.update.is.available.f3c3a4e9"),
+                    appLanguage.localized(.ui.an.updateIsAvailable),
                     isPresented: Binding(
                         get: { updateChecker.automaticUpdate != nil },
                         set: { if !$0 { updateChecker.dismissAutomaticUpdate() } }
                     ),
                     presenting: updateChecker.automaticUpdate
                 ) { release in
-                    Button(appLanguage.localized("ui.view.in.app.store.7c79e972")) {
+                    Button(appLanguage.localized(.ui.view.inAppStore)) {
                         updateChecker.openStore(for: release)
                         updateChecker.dismissAutomaticUpdate()
                     }
-                    Button(appLanguage.localized("ui.later.7dd25de4"), role: .cancel) {
+                    Button(appLanguage.localized(.ui.later.label), role: .cancel) {
                         updateChecker.dismissAutomaticUpdate()
                     }
                 } message: { release in
-                    Text(appLanguage.localized("ui.version.is.available.7e5cfb4e", release.version))
+                    Text(appLanguage.localized(.ui.version.isAvailable, release.version))
                 }
                 .alert(
                     AppContactSupport.alertTitle(for: appLanguage),
@@ -88,7 +88,7 @@ struct SVNMacApp: App {
         .commands {
             SVNMacCommands(updateChecker: updateChecker, appLanguage: appLanguage)
             CommandGroup(after: .newItem) {
-                Button(appLanguage.localized("ui.check.out.repository.url.6cbf366d")) {
+                Button(appLanguage.localized(.ui.check.outRepositoryUrl)) {
                     (isDemoMode ? demoStore : liveStore).isShowingAddRepository = true
                 }
                     .keyboardShortcut("o", modifiers: [.command])
@@ -105,7 +105,7 @@ struct SVNMacApp: App {
                 .buttonStyle(.bordered)
         }
 
-        Window(appLanguage.localized("ui.about.svn.kr.ddc63e52"), id: "app-about") {
+        Window(appLanguage.localized(.ui.about.svnKr), id: "app-about") {
             AppAboutView(updateChecker: updateChecker)
                 .environment(\.appLanguage, appLanguage)
                 .buttonStyle(.bordered)

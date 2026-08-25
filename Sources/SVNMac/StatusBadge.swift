@@ -1,6 +1,52 @@
 import SwiftUI
 import SVNCore
 
+enum WorkingCopyStatusTone: Equatable {
+    case blue
+    case gray
+    case orange
+    case purple
+    case red
+
+    var color: Color {
+        switch self {
+        case .blue: .blue
+        case .gray: .gray
+        case .orange: .orange
+        case .purple: .purple
+        case .red: .red
+        }
+    }
+}
+
+enum WorkingCopyStatusPolicy {
+    static func allowsRevert(_ entry: SVNStatusEntry) -> Bool {
+        entry.item != .incomplete
+    }
+
+    static func showsIncompleteRecovery(_ entry: SVNStatusEntry) -> Bool {
+        entry.item == .incomplete
+    }
+
+    static func showsObstructionGuidance(_ entry: SVNStatusEntry) -> Bool {
+        entry.item == .obstructed
+    }
+
+    static func showsSwitchedWarning(_ entry: SVNStatusEntry) -> Bool {
+        entry.isSwitched
+    }
+
+    static func tone(for item: SVNStatusKind) -> WorkingCopyStatusTone {
+        switch item {
+        case .modified, .obstructed: .orange
+        case .added, .unversioned: .blue
+        case .deleted, .missing, .conflicted, .incomplete: .red
+        case .replaced: .purple
+        case .ignored, .unknown: .gray
+        }
+    }
+}
+
 struct StatusBadge: View {
     enum Style {
         case filled

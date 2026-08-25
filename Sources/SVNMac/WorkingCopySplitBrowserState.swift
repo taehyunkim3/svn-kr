@@ -147,6 +147,7 @@ struct WorkingCopySplitBrowserState: Equatable {
 
     mutating func enterDirectory(_ relativePath: String) {
         selectFolder(relativePath)
+        expandedDirectoryPaths.insert(relativePath)
     }
 
     mutating func moveToParentDirectory() {

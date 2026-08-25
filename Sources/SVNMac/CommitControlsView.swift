@@ -5,27 +5,27 @@ struct CommitControlsView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @State private var commitMessage = ""
-    @State private var isConfirmingEmptyMessageCommit = false
     @FocusState private var isCommitMessageFocused: Bool
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 8) {
-            TextField(appLanguage.localized("ui.commit.message.c5139167"), text: $commitMessage)
+            TextField(appLanguage.localized(.ui.commit.message), text: $commitMessage)
                 .textFieldStyle(.roundedBorder)
                 .focused($isCommitMessageFocused)
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
-                Button(appLanguage.localized("ui.select.all.ef1f5eca")) {
+                Button(appLanguage.localized(.ui.select.allSelectAll2)) {
                     store.selectedPaths = store.selectAllStatusPaths
                 }
-                .help(appLanguage.localized("ui.select.all.currently.changed.files.for.commit.ccad7410"))
-                Button(appLanguage.localized("ui.clear.selection.6520660b")) { store.selectedPaths.removeAll() }
-                    .help(appLanguage.localized("ui.clear.all.selected.commit.targets.605665f6"))
+                .help(appLanguage.localized(.ui.select.allCurrentlyChangedFilesForCommit))
+                Button(appLanguage.localized(.ui.clear.selection)) { store.selectedPaths.removeAll() }
+                    .help(appLanguage.localized(.ui.clear.allSelectedCommitTargets))
                 Spacer()
-                Text(appLanguage.localized("ui.selected.685ae833", store.selectedPaths.count))
+                Text(appLanguage.localized(.ui.selected.label, store.selectedPaths.count))
                     .foregroundStyle(.secondary)
                 if store.scheduledDeletionCount > 0 {
-                    Text(appLanguage.localized("ui.pending.deletion.4b08f65b", store.scheduledDeletionCount))
+                    Text(appLanguage.localized(.ui.pending.deletionFormatted, store.scheduledDeletionCount))
                     .foregroundStyle(.red)
                 }
                 Button(action: submitCommitAfterEndingTextInput) {
@@ -34,16 +34,17 @@ struct CommitControlsView: View {
                             ProgressView().controlSize(.small)
                         }
                         Text(store.isCommittingSelectedProject
-                            ? appLanguage.localized("ui.committing.0e8ec0f4")
-                            : appLanguage.localized("ui.commit.selected.29bc2086"))
+                            ? appLanguage.localized(.ui.committing.label)
+                            : appLanguage.localized(.ui.commit.selected))
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
                     !store.canCommitSelectedPaths
                         || store.isSelectedProjectActionBlocked
+                        || store.recoveryState.commitSubmissionID != nil
                 )
-                .help(appLanguage.localized("ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8"))
+                .help(appLanguage.localized(.ui.commit.theSelectedFilesToTheSvnServerWith))
             }
         }
         .padding()
@@ -54,34 +55,25 @@ struct CommitControlsView: View {
             isCommitMessageFocused = false
             store.lastCompletedCommitMessage = nil
         }
-        .alert(
-            appLanguage.localized("ui.commit.without.a.message.6f0f2d41"),
-            isPresented: $isConfirmingEmptyMessageCommit
-        ) {
-            Button(appLanguage.localized("ui.yes.93cba074")) {
-                Task { _ = await store.commit(message: "") }
-            }
-            Button(appLanguage.localized("ui.no.bafd7322"), role: .cancel) {}
-        } message: {
-            Text(appLanguage.localized("ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05"))
+        .sheet(item: $store.commitConfirmationRequest) { request in
+            CommitConfirmationView(request: request)
+                .environment(store)
         }
-    }
-
-    private func submitCommit() {
-        let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else {
-            isConfirmingEmptyMessageCommit = true
-            return
-        }
-        Task { _ = await store.commit(message: message) }
     }
 
     private func submitCommitAfterEndingTextInput() {
+        guard let submissionID = store.recoveryState.beginCommitSubmission(
+            isActionBlocked: store.isSelectedProjectActionBlocked,
+            canCommit: store.canCommitSelectedPaths
+        ) else { return }
         isCommitMessageFocused = false
         Task { @MainActor in
+            defer { store.recoveryState.endCommitSubmission(submissionID) }
             // macOS TextField가 조합 중인 한글을 binding에 반영한 다음 메시지를 읽습니다.
             await Task.yield()
-            submitCommit()
+            let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !store.prepareCommitConfirmation(message: message) else { return }
+            _ = await store.commitSelectedChanges(message: message)
         }
     }
 }

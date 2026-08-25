@@ -104,7 +104,9 @@ public struct SVNWorkingCopySnapshot: Sendable {
                 path: entry.path,
                 item: entry.item,
                 revision: entry.revision,
-                nodeKind: mappedKind ?? entry.nodeKind
+                nodeKind: mappedKind ?? entry.nodeKind,
+                propertyState: entry.propertyState,
+                isSwitched: entry.isSwitched
             )
         }
         return SVNWorkingCopySnapshot(
@@ -209,7 +211,13 @@ public struct SVNWorkingCopySnapshot: Sendable {
         let resolvedStatuses = statuses.compactMap { entry -> SVNStatusEntry? in
             if unchangedPaths.contains(entry.path) { return nil }
             if modifiedPaths.contains(entry.path) {
-                return SVNStatusEntry(path: entry.path, item: .modified, revision: entry.revision)
+                return SVNStatusEntry(
+                    path: entry.path,
+                    item: .modified,
+                    revision: entry.revision,
+                    propertyState: entry.propertyState,
+                    isSwitched: entry.isSwitched
+                )
             }
             return entry
         }
@@ -265,7 +273,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
         versionedPathsByCanonicalKey: [String: [String]]
     ) -> [SVNStatusEntry] {
         let changed = entries.filter { entry in
-            entry.status != "normal" && entry.status != "external" && entry.status != "ignored"
+            guard entry.status != "external" && entry.status != "ignored" else { return false }
+            return entry.status != "normal" || entry.propertyState != .none || entry.isSwitched
         }
         let filtered = changed.filter { entry in
             let key = canonicalKey(entry.path)
@@ -301,12 +310,22 @@ public struct SVNWorkingCopySnapshot: Sendable {
                     versionedPathsByCanonicalKey: versionedPathsByCanonicalKey
                 ) ?? key
             }
+            let propertyState: SVNPropertyState
+            if group.contains(where: { $0.propertyState == .conflicted }) {
+                propertyState = .conflicted
+            } else if group.contains(where: { $0.propertyState == .modified }) {
+                propertyState = .modified
+            } else {
+                propertyState = .none
+            }
             return SVNStatusEntry(
                 path: resolved,
                 item: preferred.treeConflicted
                     ? .conflicted
                     : SVNStatusKind(rawValue: preferred.status),
-                revision: preferred.revision
+                revision: preferred.revision,
+                propertyState: propertyState,
+                isSwitched: group.contains(where: \.isSwitched)
             )
         }
     }

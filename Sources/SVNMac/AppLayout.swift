@@ -28,6 +28,7 @@ enum AppLayout {
     /// 분할 보기의 폴더 트리는 이름만 보여주므로 좁게 시작하고, 내용 표가 넓게 열립니다.
     static let fileBrowserFolderPaneMinimumWidth: CGFloat = 180
     static let fileBrowserContentsPaneMinimumWidth: CGFloat = 520
+    static let fileBrowserFolderDisclosureHitTargetSize = CGSize(width: 20, height: 20)
     /// 좌측 대 우측을 1:3으로 시작합니다. 창 크기가 달라도 같은 비율을 유지하려면
     /// 고정 너비가 아니라 사용 가능한 너비에서 계산해야 합니다.
     static let fileBrowserFolderPaneWidthFraction: CGFloat = 0.25
@@ -63,6 +64,11 @@ enum AppLayout {
     static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
     static let ignoreRulesSheetMinimumSize = CGSize(width: 760, height: 620)
     static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
+    static let commitConfirmationSheetMinimumSize = CGSize(width: 840, height: 620)
+    /// 업데이트 미리보기의 커밋 펼침 아이콘입니다. 리비전 숫자와 세로 중앙을 맞추고
+    /// 아이콘 글리프보다 넓은 탭 영역을 확보하기 위해 명시적인 크기를 사용합니다.
+    static let updatePreviewCommitDisclosureSize = CGSize(width: 20, height: 20)
+    static let updatePreviewCommitDisclosureSpacing: CGFloat = 8
     static let documentOpenConfirmationSheetMinimumSize = CGSize(width: 620, height: 320)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)
@@ -80,6 +86,9 @@ enum AppLayout {
     static let logMessagePopoverIdealWidth: CGFloat = 520
     static let logMessagePopoverMaximumWidth: CGFloat = 640
     static let inlineErrorMaximumHeight: CGFloat = 160
+    /// 트리 충돌 되돌리기 확인창이 한 번에 나열하는 경로 개수입니다.
+    /// 나머지는 "외 N개"로 접어 대화상자가 화면 밖으로 넘치지 않게 합니다.
+    static let treeConflictRestoreListedPathLimit = 12
 }
 
 extension View {
