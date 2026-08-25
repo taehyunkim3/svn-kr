@@ -219,6 +219,8 @@ private struct DemoWorkingCopyFileService: WorkingCopyFileListing {
 private actor DemoSVNClient: SVNClientServing {
     private var scheduledDeletionPaths: Set<String> = []
     private var repositoryPathNormalizationTargets = DemoData.repositoryPathNormalizationTargets
+    private var repositoryURL = "https://demo.example.com/svn/office/trunk"
+    private var needsLockPaths: Set<String> = []
 
     func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
@@ -278,6 +280,32 @@ private actor DemoSVNClient: SVNClientServing {
         SVNWorkingCopyRevision(minimum: "1842", maximum: "1842")
     }
     func workingCopyRepositoryPath(at _: String, credentials _: SVNCredentials?) async throws -> String { "/products/atlas-mobile/trunk" }
+    func workingCopyRepositoryURL(at _: String, credentials _: SVNCredentials?) async throws -> String { repositoryURL }
+    func move(at _: String, sourceRelativePath _: String, destinationRelativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Moved" }
+    func copy(at _: String, sourceRelativePath _: String, destinationRelativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Copied" }
+    func relocate(at _: String, fromRepositoryURL _: String, toRepositoryURL: String, credentials _: SVNCredentials?) async throws -> String {
+        repositoryURL = toRepositoryURL
+        return "Relocated"
+    }
+    func setProperty(named name: String, value _: Data, at _: String, relativePath: String, credentials _: SVNCredentials?) async throws -> String {
+        if name == "svn:needs-lock" { needsLockPaths.insert(relativePath) }
+        return "Property set"
+    }
+    func propertyValue(named name: String, at _: String, relativePath: String, credentials _: SVNCredentials?) async throws -> Data {
+        guard name == "svn:needs-lock", needsLockPaths.contains(relativePath) else {
+            throw SVNError.invalidWorkingCopy
+        }
+        return Data("*".utf8)
+    }
+    func deleteProperty(named name: String, at _: String, relativePath: String, credentials _: SVNCredentials?) async throws -> String {
+        if name == "svn:needs-lock" { needsLockPaths.remove(relativePath) }
+        return "Property deleted"
+    }
+    func properties(at _: String, relativePath: String, credentials _: SVNCredentials?) async throws -> [SVNProperty] {
+        needsLockPaths.contains(relativePath)
+            ? [SVNProperty(name: "svn:needs-lock", value: Data("*".utf8))]
+            : []
+    }
     func workingCopyIsOutOfDate(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> Bool { true }
     func remoteChanges(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNStatusEntry] { DemoData.remoteChanges }
     func update(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Updated to revision 1845" }

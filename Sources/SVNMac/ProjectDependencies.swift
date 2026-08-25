@@ -36,6 +36,14 @@ protocol SVNClientServing: Sendable {
     func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopyRevision
     func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String
+    func workingCopyRepositoryURL(at path: String, credentials: SVNCredentials?) async throws -> String
+    func move(at path: String, sourceRelativePath: String, destinationRelativePath: String, credentials: SVNCredentials?) async throws -> String
+    func copy(at path: String, sourceRelativePath: String, destinationRelativePath: String, credentials: SVNCredentials?) async throws -> String
+    func relocate(at path: String, fromRepositoryURL: String, toRepositoryURL: String, credentials: SVNCredentials?) async throws -> String
+    func setProperty(named name: String, value: Data, at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String
+    func propertyValue(named name: String, at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> Data
+    func deleteProperty(named name: String, at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String
+    func properties(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> [SVNProperty]
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> Bool
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNStatusEntry]
     func update(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
@@ -61,6 +69,38 @@ extension SVNClientServing {
         )
         progress?(output)
         return output
+    }
+
+    func workingCopyRepositoryURL(at _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func move(at _: String, sourceRelativePath _: String, destinationRelativePath _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func copy(at _: String, sourceRelativePath _: String, destinationRelativePath _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func relocate(at _: String, fromRepositoryURL _: String, toRepositoryURL _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func setProperty(named _: String, value _: Data, at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func propertyValue(named _: String, at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> Data {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func deleteProperty(named _: String, at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String {
+        throw SVNError.invalidWorkingCopy
+    }
+
+    func properties(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> [SVNProperty] {
+        throw SVNError.invalidWorkingCopy
     }
 }
 
@@ -278,6 +318,9 @@ struct ProjectOperation: Identifiable, Equatable {
         case recover(SVNProject.ID)
         case scanRepositoryPaths(SVNProject.ID)
         case normalizeRepositoryPaths(SVNProject.ID)
+        case relocateRepository(SVNProject.ID)
+        case versionedFileAction(SVNProject.ID)
+        case needsLockProperty(SVNProject.ID)
     }
 
     let id: UUID

@@ -60,6 +60,20 @@ struct ChangesView: View {
             DeletionConfirmationView(request: request)
                 .environment(store)
         }
+        .sheet(item: $store.recoveryState.versionedFileActionRequest) { request in
+            VersionedFileActionView(request: request)
+                .environment(store)
+        }
+        .task(id: versionedFilePaths) {
+            await store.loadNeedsLockState(for: versionedFilePaths)
+        }
+        .task(id: store.selectedProjectID) {
+            await store.loadSelectedRepositoryURL()
+        }
+        .onChange(of: store.errorMessage) { _, message in
+            guard let message, SVNClient.isRepositoryConnectionError(message) else { return }
+            Task { await store.captureRepositoryConnectionError(message) }
+        }
         .revertConfirmation()
         .documentOpenConfirmation()
     }
@@ -125,6 +139,11 @@ struct ChangesView: View {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
             statusBadge(entry)
+            if store.recoveryState.needsLockPaths.contains(entry.path) {
+                Image(systemName: "lock.square")
+                    .foregroundStyle(.secondary)
+                    .help(appLanguage.localized("ui.needs.lock.enabled.9a1f5c37"))
+            }
             Button {
                 Task { await store.loadDiff(for: entry.path) }
             } label: {
@@ -173,6 +192,24 @@ struct ChangesView: View {
             if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
                 Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
                     Task { await store.loadFileHistory(for: entry.path) }
+                }
+            }
+            if isVersionedFile(entry) {
+                Divider()
+                Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
+                    store.requestVersionedFileAction(.move, path: entry.path)
+                }
+                Button(appLanguage.localized("ui.copy.with.history.5f0d3b82")) {
+                    store.requestVersionedFileAction(.copy, path: entry.path)
+                }
+                if store.recoveryState.needsLockPaths.contains(entry.path) {
+                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                        Task { _ = await store.setNeedsLock(false, paths: [entry.path]) }
+                    }
+                } else {
+                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                        Task { _ = await store.setNeedsLock(true, paths: [entry.path]) }
+                    }
                 }
             }
             Divider()
@@ -273,7 +310,36 @@ struct ChangesView: View {
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
             }
+            let selectedVersionedFiles = store.visibleStatuses
+                .filter { store.selectedPaths.contains($0.path) && isVersionedFile($0) }
+                .map(\.path)
+            if !selectedVersionedFiles.isEmpty {
+                Menu {
+                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                        Task { _ = await store.setNeedsLock(true, paths: selectedVersionedFiles) }
+                    }
+                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                        Task { _ = await store.setNeedsLock(false, paths: selectedVersionedFiles) }
+                    }
+                } label: {
+                    Label(appLanguage.localized("ui.needs.lock.enable.0b7e4c91"), systemImage: "lock.square")
+                }
+                .disabled(store.isWorking)
+            }
             Spacer()
+            if let repositoryURL = store.recoveryState.repositoryURL {
+                Text(repositoryURL)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .help(repositoryURL)
+                Button(appLanguage.localized("ui.change.repository.location.8b21c7e4")) {
+                    Task { await store.requestRepositoryRelocation() }
+                }
+                .disabled(store.isWorking)
+            }
             Button(appLanguage.localized("ui.manage.ignore.rules.7eac76b1"), systemImage: "eye.slash") {
                 Task {
                     await store.loadIgnoreRules()
@@ -341,5 +407,18 @@ struct ChangesView: View {
         case .deleted, .missing, .conflicted: .red
         default: .gray
         }
+    }
+
+    private var versionedFilePaths: [String] {
+        store.visibleStatuses.filter(isVersionedFile).map(\.path)
+    }
+
+    private func isVersionedFile(_ entry: SVNStatusEntry) -> Bool {
+        entry.nodeKind == .file
+            && entry.item != .unversioned
+            && entry.item != .ignored
+            && entry.item != .missing
+            && entry.item != .deleted
+            && entry.item != .obstructed
     }
 }

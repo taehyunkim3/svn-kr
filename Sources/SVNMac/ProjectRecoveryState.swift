@@ -6,4 +6,10 @@ import Foundation
 struct ProjectRecoveryState {
     var propertyConflictSession: PropertyConflictSession?
     var updatePreview = UpdatePreviewState()
+    var repositoryURL: String?
+    var repositoryRelocationRequest: RepositoryRelocationRequest?
+    var repositoryRelocationFailureMessage: String?
+    var versionedFileActionRequest: VersionedFileActionRequest?
+    var versionedFileActionFailureMessage: String?
+    var needsLockPaths: Set<String> = []
 }
