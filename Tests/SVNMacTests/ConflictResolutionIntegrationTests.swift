@@ -32,6 +32,7 @@ import Testing
             versionedPath: versionedPath
         )
         #expect(session.wasCanonicallyResolved == (conflict.choice == .working))
+        #expect(session.isBinary == conflict.serverBytes.prefix(8_000).contains(0))
         #expect(try Data(contentsOf: session.mine.url) == conflict.mineBytes)
         #expect(try Data(contentsOf: session.server.url) == conflict.serverBytes)
 
