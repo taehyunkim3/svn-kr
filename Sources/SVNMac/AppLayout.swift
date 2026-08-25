@@ -64,6 +64,7 @@ enum AppLayout {
     static let repositoryLocksSheetMinimumSize = CGSize(width: 680, height: 440)
     static let ignoreRulesSheetMinimumSize = CGSize(width: 760, height: 620)
     static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
+    static let commitConfirmationSheetMinimumSize = CGSize(width: 840, height: 620)
     static let documentOpenConfirmationSheetMinimumSize = CGSize(width: 620, height: 320)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)

@@ -628,3 +628,15 @@
 "ui.bulk.unlock.partial.failure.title.3be91d76" = "일부 잠금 해제 실패";
 "ui.bulk.unlock.partial.failure.details.71a6c5e8" = "%2$@개 중 %1$@개를 해제했습니다. 아래 잠금은 해제하지 못했습니다.\n\n%3$@";
 "ui.explicit.lock.completed.1c4f8e72" = "%1$@개 파일을 잠갔습니다.";
+"ui.review.commit.8b36485e" = "커밋 확인";
+"ui.server.deletion.count.793b7522" = "서버에서 삭제될 항목 %1$@개";
+"ui.server.deletion.warning.81e94f35" = "삭제하는 파일이 있습니다. 정말 삭제하는게 맞는지 아래 목록에서 확인해주세요.";
+"ui.restore.selected.server.files.4f2a7c91" = "선택 파일 서버 파일로 복원…";
+"ui.restore.selected.files.confirmation.6d81b3e4" = "선택한 파일을 서버 파일로 복원할까요?";
+"ui.restore.selected.files.count.2c9f4a70" = "선택한 삭제 파일 %1$@개를 서버 파일로 복원합니다.";
+"ui.restore.selected.files.action.7b3e1d95" = "서버 파일로 복원";
+"ui.commit.deletion.restore.partial.5a8c2f64" = "%1$@개를 복원했고 %2$@개는 실패했습니다.\n\n%3$@";
+"ui.restore.target.not.deleted.1d6a4b82" = "더 이상 삭제 상태가 아닙니다.";
+"ui.restored.selected.server.files.2e4c7a91" = "선택한 삭제 파일 %1$@개를 서버 파일로 복원했습니다.";
+"ui.no.server.deletions.remaining.3e7b9a12" = "삭제될 파일이 없습니다";
+"ui.confirm.commit.7c2e5a90" = "확인";

@@ -628,3 +628,15 @@
 "ui.bulk.unlock.partial.failure.title.3be91d76" = "Some Locks Were Not Released";
 "ui.bulk.unlock.partial.failure.details.71a6c5e8" = "Released %1$@ of %2$@ locks. The locks below could not be released.\n\n%3$@";
 "ui.explicit.lock.completed.1c4f8e72" = "Locked %1$@ file(s).";
+"ui.review.commit.8b36485e" = "Review Commit";
+"ui.server.deletion.count.793b7522" = "%1$@ item(s) will be deleted from the server";
+"ui.server.deletion.warning.81e94f35" = "Some files will be deleted. Review the list below and confirm that they should be deleted.";
+"ui.restore.selected.server.files.4f2a7c91" = "Restore Selected Files from Server…";
+"ui.restore.selected.files.confirmation.6d81b3e4" = "Restore the selected files from the server?";
+"ui.restore.selected.files.count.2c9f4a70" = "Restore %1$@ selected deletion file(s) from the server.";
+"ui.restore.selected.files.action.7b3e1d95" = "Restore from Server";
+"ui.commit.deletion.restore.partial.5a8c2f64" = "%1$@ file(s) were restored, but %2$@ failed.\n\n%3$@";
+"ui.restore.target.not.deleted.1d6a4b82" = "This file is no longer marked as deleted.";
+"ui.restored.selected.server.files.2e4c7a91" = "Restored %1$@ selected deletion file(s) from the server.";
+"ui.no.server.deletions.remaining.3e7b9a12" = "No files will be deleted";
+"ui.confirm.commit.7c2e5a90" = "Confirm";

@@ -73,11 +73,14 @@ enum TemporaryFilePolicy {
         hideTemporaryFiles: Bool
     ) -> [SVNStatusEntry] {
         visibleEntries(entries, hideTemporaryFiles: hideTemporaryFiles)
-            .filter(\.isSelectableForCommit)
+            .filter { $0.isSelectableForCommit || $0.canScheduleRepositoryDeletion }
     }
 
     static func automaticallySelectedEntries(_ entries: [SVNStatusEntry]) -> [SVNStatusEntry] {
-        entries.filter { $0.isSelectableForCommit && !isHideableTemporaryFile($0) }
+        entries.filter {
+            ($0.isSelectableForCommit || $0.canScheduleRepositoryDeletion)
+                && !isHideableTemporaryFile($0)
+        }
     }
 
     /// 저장소에서 자동 정리를 제안할 만큼 오탐 가능성이 낮은 이름만 허용합니다.
