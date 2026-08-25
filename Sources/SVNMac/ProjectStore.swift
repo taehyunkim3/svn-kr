@@ -43,6 +43,21 @@ private final class UpdateBadgePoller: @unchecked Sendable {
 }
 
 struct SVNProject: Codable, Identifiable, Hashable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case path
+        case username
+        case bookmarkData
+        case allowsUntrustedServerCertificate
+        case allowedServerCertificateFailures
+    }
+
+    static let legacyAllowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [
+        .unknownCertificateAuthority,
+        .commonNameMismatch,
+    ]
+
     /// 비밀번호를 제외한 프로젝트 메타데이터만 UserDefaults에 직렬화합니다.
     /// bookmarkData는 App Sandbox에서 재실행 후 폴더 접근 권한을 복원하는 값입니다.
     let id: UUID
@@ -51,6 +66,7 @@ struct SVNProject: Codable, Identifiable, Hashable {
     var username: String?
     var bookmarkData: Data?
     var allowsUntrustedServerCertificate: Bool?
+    var allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
 
     init(
         id: UUID = UUID(),
@@ -58,7 +74,8 @@ struct SVNProject: Codable, Identifiable, Hashable {
         path: String,
         username: String? = nil,
         bookmarkData: Data? = nil,
-        allowsUntrustedServerCertificate: Bool = false
+        allowsUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) {
         self.id = id
         self.name = name
@@ -66,6 +83,54 @@ struct SVNProject: Codable, Identifiable, Hashable {
         self.username = username
         self.bookmarkData = bookmarkData
         self.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+        self.allowedServerCertificateFailures = allowedServerCertificateFailures
+        if allowsUntrustedServerCertificate {
+            self.allowedServerCertificateFailures.formUnion(
+                Self.legacyAllowedServerCertificateFailures
+            )
+        }
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        username = try container.decodeIfPresent(String.self, forKey: .username)
+        bookmarkData = try container.decodeIfPresent(Data.self, forKey: .bookmarkData)
+        allowsUntrustedServerCertificate = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .allowsUntrustedServerCertificate
+        )
+        if let rawFailures = try container.decodeIfPresent(
+            [String].self,
+            forKey: .allowedServerCertificateFailures
+        ) {
+            allowedServerCertificateFailures = Set(
+                rawFailures.compactMap(SVNServerCertificateFailure.init(rawValue:))
+            )
+        } else if allowsUntrustedServerCertificate == true {
+            allowedServerCertificateFailures = Self.legacyAllowedServerCertificateFailures
+        } else {
+            allowedServerCertificateFailures = []
+        }
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(username, forKey: .username)
+        try container.encodeIfPresent(bookmarkData, forKey: .bookmarkData)
+        try container.encodeIfPresent(
+            allowsUntrustedServerCertificate,
+            forKey: .allowsUntrustedServerCertificate
+        )
+        let rawFailures = SVNServerCertificateFailure.allCases
+            .filter(allowedServerCertificateFailures.contains)
+            .map(\.rawValue)
+        try container.encode(rawFailures, forKey: .allowedServerCertificateFailures)
     }
 }
 
@@ -100,6 +165,7 @@ enum SVNAuthenticationAction: Equatable {
     case refreshHistory
     case update
     case commit(message: String)
+    case retryManually
 }
 
 enum RefreshErrorPolicy {
@@ -117,9 +183,22 @@ enum ProjectRequestKind: Hashable {
 }
 
 struct SVNAuthenticationRequest: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let projectID: SVNProject.ID
     let action: SVNAuthenticationAction
+    let serverCertificateTrust: ServerCertificateTrust?
+
+    init(
+        id: UUID = UUID(),
+        projectID: SVNProject.ID,
+        action: SVNAuthenticationAction,
+        serverCertificateTrust: ServerCertificateTrust? = nil
+    ) {
+        self.id = id
+        self.projectID = projectID
+        self.action = action
+        self.serverCertificateTrust = serverCertificateTrust
+    }
 }
 
 @MainActor
@@ -1270,6 +1349,15 @@ final class ProjectStore {
             let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
             projects[index].username = username.isEmpty ? nil : username
             projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            if allowsUntrustedServerCertificate {
+                projects[index].allowedServerCertificateFailures.formUnion(
+                    SVNProject.legacyAllowedServerCertificateFailures
+                )
+            } else {
+                projects[index].allowedServerCertificateFailures.subtract(
+                    SVNProject.legacyAllowedServerCertificateFailures
+                )
+            }
             if !newPassword.isEmpty {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
@@ -1334,7 +1422,11 @@ final class ProjectStore {
     func cancelAuthentication(for request: SVNAuthenticationRequest) {
         guard authenticationRequest?.id == request.id else { return }
         authenticationRequest = nil
-        notice = AppLanguage.current.localized("ui.authentication.was.canceled.local.changes.remain.c4984bab")
+        if request.serverCertificateTrust == nil {
+            notice = AppLanguage.current.localized("ui.authentication.was.canceled.local.changes.remain.c4984bab")
+        } else {
+            notice = AppLanguage.current.localized("ui.certificate.exception.not.allowed.d47c92a1")
+        }
     }
 
     // MARK: - 인증 조회와 실패 후 작업 재개
@@ -1351,12 +1443,43 @@ final class ProjectStore {
         return SVNCredentials(username: username, password: password)
     }
 
+    func allowedServerCertificateFailures(
+        for project: SVNProject
+    ) -> Set<SVNServerCertificateFailure> {
+        var failures = project.allowedServerCertificateFailures
+        if project.allowsUntrustedServerCertificate == true {
+            failures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+        }
+        return failures
+    }
+
+    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) {
+        guard authenticationRequest?.id == request.id,
+              let trust = request.serverCertificateTrust,
+              trust.canAllow,
+              let index = projects.firstIndex(where: { $0.id == request.projectID }) else { return }
+        projects[index].allowedServerCertificateFailures.formUnion(trust.failures)
+        authenticationRequest = nil
+        automaticRefreshBlockedProjectID = nil
+        notice = AppLanguage.current.localized(
+            "ui.certificate.exception.saved.for.project.16e0ad73",
+            projects[index].name
+        )
+    }
+
     func handleRemoteError(
         _ error: Error,
         project: SVNProject,
         action: SVNAuthenticationAction,
         refreshErrorPolicy: RefreshErrorPolicy = .standalone
     ) {
+        if presentServerCertificateTrustRequest(
+            for: error,
+            project: project,
+            action: action
+        ) {
+            return
+        }
         if isKeychainAccessDenied(error) {
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
@@ -1416,6 +1539,8 @@ final class ProjectStore {
             await update()
         case let .commit(message):
             _ = await commit(message: message)
+        case .retryManually:
+            break
         }
     }
 
@@ -1443,6 +1568,17 @@ final class ProjectStore {
     }
 
     func localizedError(_ error: Error, language: AppLanguage = .current) -> String {
+        if let project = selectedProject,
+           presentServerCertificateTrustRequest(
+               for: error,
+               project: project,
+               action: .retryManually
+           ),
+           let trust = authenticationRequest?.serverCertificateTrust {
+            return trust.failures
+                .map { SVNErrorLocalization.serverCertificateGuidance(for: $0, language: language) }
+                .joined(separator: "\n\n")
+        }
         if let conflictError = error as? ConflictFileError {
             return SVNErrorLocalization.message(for: conflictError, language: language)
         }
@@ -1450,6 +1586,29 @@ final class ProjectStore {
             return SVNErrorLocalization.message(for: svnError, language: language)
         }
         return error.localizedDescription
+    }
+
+    private func presentServerCertificateTrustRequest(
+        for error: Error,
+        project: SVNProject,
+        action: SVNAuthenticationAction
+    ) -> Bool {
+        guard let detectedFailures = SVNErrorLocalization.serverCertificateFailures(for: error)
+        else { return false }
+        let failuresNeedingConsent = detectedFailures.subtracting(
+            allowedServerCertificateFailures(for: project)
+        )
+        guard !failuresNeedingConsent.isEmpty else { return false }
+        authenticationRequest = SVNAuthenticationRequest(
+            projectID: project.id,
+            action: action,
+            serverCertificateTrust: ServerCertificateTrust(
+                failures: failuresNeedingConsent,
+                diagnosticDetails: SVNErrorLocalization.diagnosticDetails(for: error)
+            )
+        )
+        errorMessage = nil
+        return true
     }
 
     func openFile(_ relativePath: String, in project: SVNProject) {

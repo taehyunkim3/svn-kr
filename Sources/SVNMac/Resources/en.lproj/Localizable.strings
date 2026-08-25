@@ -576,3 +576,16 @@
 "ui.revision.restore.replacement.verification.failed.b8714e35" = "The restored file did not match the selected revision byte for byte. The recovery copy was preserved.";
 "ui.revision.save.invalid.destination.5f4d2c81" = "The selected save location is not a safe regular-file destination.";
 "ui.revision.history.client.unavailable.5d7a91c2" = "This project's SVN client does not support reading historical file revisions.";
+"ui.certificate.unknown.ca.guidance.39a72e10" = "The certificate issuer is not trusted. Confirm the issuer with your server administrator. Allowing it bypasses authority verification for this project.";
+"ui.certificate.name.mismatch.guidance.74c11a2b" = "The certificate was issued for a different hostname. Check the repository URL and certificate hostname before allowing this mismatch.";
+"ui.certificate.expired.guidance.a83d5e91" = "The server certificate has expired. Renewing it is safest. Allowing it lets this project connect without rejecting that expiration.";
+"ui.certificate.not.yet.valid.guidance.5fb1c4d8" = "The certificate is not yet valid. Check the server and Mac clocks and the certificate start date before allowing it; correcting the clocks is safer than trusting the certificate.";
+"ui.certificate.unclassified.guidance.c1974a30" = "SVN reported a certificate problem but did not identify a supported reason. The app cannot safely create a specific exception. Contact the server administrator and replace or repair the certificate.";
+"ui.certificate.exception.not.allowed.d47c92a1" = "The certificate exception was not allowed. No project setting changed.";
+"ui.certificate.exception.saved.for.project.16e0ad73" = "Saved the certificate exception for %@. Retry the SVN operation.";
+"ui.server.certificate.problem.6c18f2a9" = "Server Certificate Problem";
+"ui.server.certificate.problem.detected.281e7d4c" = "SVN rejected the server certificate. Review the detected problem before deciding.";
+"ui.certificate.exception.security.warning.b82d4a16" = "Allowing this exception weakens server identity verification for this project. A malicious server could impersonate your SVN server.";
+"ui.do.not.allow.certificate.exception.f4c01a6e" = "Do Not Allow";
+"ui.allow.certificate.failure.for.project.0d91bc52" = "Allow for This Project";
+"ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4" = "Expired and not-yet-valid certificates require separate consent after SVN reports the specific failure.";

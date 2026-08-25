@@ -2,6 +2,15 @@ import Foundation
 import SVNCore
 
 enum SVNErrorLocalization {
+    private static let serverCertificateFailureReasons: [
+        (String, SVNServerCertificateFailure)
+    ] = [
+        ("certificate is not yet valid", .notYetValid),
+        ("certificate has expired", .expired),
+        ("certificate issued for a different hostname", .commonNameMismatch),
+        ("issuer is not trusted", .unknownCertificateAuthority),
+    ]
+
     private enum FailureCode: Equatable {
         case needsCleanup
         case remainsInConflict(path: String)
@@ -11,6 +20,13 @@ enum SVNErrorLocalization {
     static func message(for error: SVNError, language: AppLanguage) -> String {
         switch error {
         case let .commandFailed(command, message):
+            if let failures = serverCertificateFailures(for: error) {
+                let guidance = SVNServerCertificateFailure.allCases
+                    .filter(failures.contains)
+                    .map { serverCertificateGuidance(for: $0, language: language) }
+                    .joined(separator: "\n\n")
+                return "\(guidance)\n\n\(message)"
+            }
             switch failureCode(in: message) {
             case .needsCleanup:
                 return language.localized(
@@ -72,6 +88,43 @@ enum SVNErrorLocalization {
             return "\(command)\n\(message)"
         }
         return String(describing: svnError)
+    }
+
+    static func serverCertificateFailures(
+        for error: Error
+    ) -> Set<SVNServerCertificateFailure>? {
+        guard SVNClient.isServerCertificateValidationError(error) else { return nil }
+        let message = diagnosticDetails(for: error).lowercased()
+        let failures = Set(serverCertificateFailureReasons.compactMap { reason, failure in
+            message.contains(reason) ? failure : nil
+        })
+        return failures.isEmpty ? [.other] : failures
+    }
+
+    static func serverCertificateFailure(
+        for error: Error
+    ) -> SVNServerCertificateFailure? {
+        guard let failures = serverCertificateFailures(for: error) else { return nil }
+        guard failures.count == 1 else { return .other }
+        return failures.first
+    }
+
+    static func serverCertificateGuidance(
+        for failure: SVNServerCertificateFailure,
+        language: AppLanguage
+    ) -> String {
+        switch failure {
+        case .unknownCertificateAuthority:
+            language.localized("ui.certificate.unknown.ca.guidance.39a72e10")
+        case .commonNameMismatch:
+            language.localized("ui.certificate.name.mismatch.guidance.74c11a2b")
+        case .expired:
+            language.localized("ui.certificate.expired.guidance.a83d5e91")
+        case .notYetValid:
+            language.localized("ui.certificate.not.yet.valid.guidance.5fb1c4d8")
+        case .other:
+            language.localized("ui.certificate.unclassified.guidance.c1974a30")
+        }
     }
 
     static func suggestsForceUnlock(_ error: Error) -> Bool {
