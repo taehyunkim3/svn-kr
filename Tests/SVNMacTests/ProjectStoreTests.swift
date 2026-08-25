@@ -1755,7 +1755,7 @@ import Testing
     let unselected = SVNProject(name: "비선택", path: "/tmp/badge-unselected")
     let client = StubSVNClient(
         revisionsByPath: [selected.path: "10", unselected.path: "20"],
-        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"]
+        outOfDateByPath: [selected.path: false, unselected.path: true]
     )
     let store = makeStore(projects: [selected, unselected], client: client)
 
@@ -1771,7 +1771,7 @@ import Testing
     let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 2)
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"]
+        outOfDateByPath: [project.path: true]
     )
     let store = makeStore(
         projects: [project],
@@ -1794,7 +1794,7 @@ import Testing
     let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 5)
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"],
+        outOfDateByPath: [project.path: true],
         updateBadgeFailuresRemaining: 3
     )
     let store = makeStore(
@@ -1825,7 +1825,7 @@ import Testing
     let unselected = SVNProject(name: "정상 프로젝트", path: "/tmp/badge-unselected-after-block")
     let client = StubSVNClient(
         revisionsByPath: [selected.path: "10", unselected.path: "20"],
-        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"],
+        outOfDateByPath: [selected.path: false, unselected.path: true],
         snapshotError: TestError.automaticRefreshFailed
     )
     let store = makeStore(
@@ -1865,12 +1865,12 @@ import Testing
 }
 
 @MainActor
-@Test func remoteHistoryDetectsUpdateWhenRemoteStatusMissesIt() async {
-    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-history-fallback")
+@Test func remoteStatusDeterminesUpdateBadge() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-remote-status")
     let client = StubSVNClient(
         revisionsByPath: [project.path: "10"],
-        latestLogRevisionsByPath: [project.path: "11"],
-        outOfDateByPath: [project.path: false]
+        latestLogRevisionsByPath: [project.path: "9"],
+        outOfDateByPath: [project.path: true]
     )
     let store = makeStore(projects: [project], client: client)
 
@@ -3693,10 +3693,6 @@ private actor StubSVNClient: SVNClientServing {
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
         logRequests += 1
         await delay(for: path)
-        if updateBadgeFailuresRemaining > 0 {
-            updateBadgeFailuresRemaining -= 1
-            throw TestError.automaticRefreshFailed
-        }
         return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
     func updatePreviewIncomingCommits(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
@@ -3728,6 +3724,10 @@ private actor StubSVNClient: SVNClientServing {
     func workingCopyIsOutOfDate(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Bool {
         outOfDateRequests += 1
         await delay(for: path)
+        if updateBadgeFailuresRemaining > 0 {
+            updateBadgeFailuresRemaining -= 1
+            throw TestError.automaticRefreshFailed
+        }
         return outOfDateByPath[path] ?? false
     }
     func remoteChanges(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNStatusEntry] {

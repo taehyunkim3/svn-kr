@@ -1090,12 +1090,8 @@ final class ProjectStore {
             self.logs = logs
             self.hasMoreHistory = logs.count == 50
             if canApplyUpdateBadge(updateBadgeRequestID, project: project) {
-                let needsUpdate = isWorkingCopyOutOfDate || Self.remoteHistoryNeedsUpdate(
-                    logs,
-                    comparedTo: workingCopyRevision
-                )
-                self.isWorkingCopyOutOfDate = needsUpdate
-                updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
+                self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
+                updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
             }
             notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
         } catch {
@@ -1143,24 +1139,13 @@ final class ProjectStore {
 
         do {
             let projectCredentials = try credentials(for: project)
-            async let revision = client.workingCopyRevision(
+            let needsUpdate = try await client.workingCopyIsOutOfDate(
                 at: project.path,
-                credentials: projectCredentials
-            )
-            async let logs = client.log(
-                at: project.path,
-                limit: 1,
-                endingAtRevision: nil,
                 credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
-            let (workingCopyRevision, latestLogs) = try await (revision, logs)
             guard canApplyUpdateBadge(requestID, project: project) else { return true }
-            let needsUpdate = Self.remoteHistoryNeedsUpdate(
-                latestLogs,
-                comparedTo: workingCopyRevision
-            )
             updateRemoteSummary(for: project.id, needsUpdate: needsUpdate)
             if selectedProjectID == project.id {
                 isWorkingCopyOutOfDate = needsUpdate
@@ -1169,16 +1154,6 @@ final class ProjectStore {
         } catch {
             return false
         }
-    }
-
-    private static func remoteHistoryNeedsUpdate(
-        _ logs: [SVNLogEntry],
-        comparedTo workingCopyRevision: SVNWorkingCopyRevision?
-    ) -> Bool {
-        guard let localRevision = workingCopyRevision.flatMap({ Int($0.minimum) }) else {
-            return false
-        }
-        return logs.lazy.compactMap { Int($0.revision) }.contains { $0 > localRevision }
     }
 
     private func applyLocalWorkingCopyRefresh(
