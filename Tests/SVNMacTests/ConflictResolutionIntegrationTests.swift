@@ -67,7 +67,7 @@ import Testing
     }
 }
 
-@Test func realSVNPropertyAndTreeConflictsRemainUnsupportedAndUnresolved() async throws {
+@Test func realSVNContentSessionRejectsConflictDetailsWithoutVersionBackups() async throws {
     let fixture = try RealSVNConflictFixture()
     defer { fixture.remove() }
 
@@ -91,7 +91,7 @@ import Testing
             )
         }
         guard case let .unsupportedType(type) = error else {
-            Issue.record("속성/트리 충돌은 지원하지 않는 유형으로 남아야 합니다.")
+            Issue.record("내용 백업이 없는 충돌은 파일 비교 세션에서 거부해야 합니다.")
             continue
         }
         #expect(type == details.type)
@@ -108,6 +108,26 @@ import Testing
         at: fixture.conflictedWorkingCopy.path,
         relativePath: fixture.treeConflictPath
     )?.type == "tree")
+}
+
+@Test func realSVNTreeConflictRestoresServerDeletionAfterRevertAndUpdate() async throws {
+    let fixture = try RealSVNConflictFixture()
+    defer { fixture.remove() }
+    let workingFile = fixture.conflictedWorkingCopy.appendingPathComponent(fixture.treeConflictPath)
+    #expect(FileManager.default.fileExists(atPath: workingFile.path))
+
+    _ = try await fixture.client.revert(
+        at: fixture.conflictedWorkingCopy.path,
+        relativePath: fixture.treeConflictPath
+    )
+    _ = try await fixture.client.update(at: fixture.conflictedWorkingCopy.path)
+
+    let snapshot = try await fixture.client.workingCopySnapshot(at: fixture.conflictedWorkingCopy.path)
+    let treePathIdentity = SVNPathIdentity(rawPath: fixture.treeConflictPath)
+    #expect(!snapshot.statuses.contains { entry in
+        entry.item == .conflicted && SVNPathIdentity(rawPath: entry.path) == treePathIdentity
+    })
+    #expect(!FileManager.default.fileExists(atPath: workingFile.path))
 }
 
 private struct RealContentConflict {
