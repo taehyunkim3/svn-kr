@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import SVNCore
 import Testing
@@ -249,9 +250,10 @@ private func revisionRestoreStore(
 private final class DelayedSVNExecutableFixture: @unchecked Sendable {
     let root: URL
     let client: SVNClient
-    private let startedURL: URL
     private let releaseURL: URL
     private let invocationURL: URL
+    private let startedEvent: AsyncTestEvent
+    private let startedSource: DispatchSourceFileSystemObject
 
     init(contents: Data) throws {
         root = FileManager.default.temporaryDirectory
@@ -259,11 +261,27 @@ private final class DelayedSVNExecutableFixture: @unchecked Sendable {
         let executableURL = root.appendingPathComponent("svn-fixture")
         let contentsURL = root.appendingPathComponent("contents")
         let configURL = root.appendingPathComponent("config", isDirectory: true)
-        startedURL = root.appendingPathComponent("started")
+        let startedURL = root.appendingPathComponent("started")
         releaseURL = root.appendingPathComponent("release")
         invocationURL = root.appendingPathComponent("invocations")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try contents.write(to: contentsURL)
+        try Data().write(to: startedURL)
+        let startedDescriptor = open(startedURL.path, O_EVTONLY)
+        guard startedDescriptor >= 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        let startedEvent = AsyncTestEvent()
+        let startedSource = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: startedDescriptor,
+            eventMask: .write,
+            queue: .global()
+        )
+        self.startedEvent = startedEvent
+        self.startedSource = startedSource
+        startedSource.setEventHandler { startedEvent.signal() }
+        startedSource.setCancelHandler { close(startedDescriptor) }
+        startedSource.resume()
         let script = """
         #!/bin/sh
         command_name=""
@@ -275,7 +293,7 @@ private final class DelayedSVNExecutableFixture: @unchecked Sendable {
           destination="$argument"
         done
         printf x >> \(Self.shellQuote(invocationURL.path))
-        touch \(Self.shellQuote(startedURL.path))
+        printf x >> \(Self.shellQuote(startedURL.path))
         while [ ! -e \(Self.shellQuote(releaseURL.path)) ]; do sleep 0.01; done
         if [ "$command_name" = "cat" ]; then
           /bin/cat \(Self.shellQuote(contentsURL.path))
@@ -299,12 +317,7 @@ private final class DelayedSVNExecutableFixture: @unchecked Sendable {
     }
 
     func waitUntilStarted() async {
-        let deadline = ContinuousClock.now + .seconds(10)
-        while ContinuousClock.now < deadline {
-            if FileManager.default.fileExists(atPath: startedURL.path) { return }
-            try? await Task.sleep(for: .milliseconds(1))
-        }
-        Issue.record("주입된 SVN 클라이언트 명령이 시작되지 않았습니다.")
+        await startedEvent.wait()
     }
 
     func release() throws {
@@ -317,11 +330,44 @@ private final class DelayedSVNExecutableFixture: @unchecked Sendable {
     }
 
     func remove() {
+        startedSource.cancel()
         try? FileManager.default.removeItem(at: root)
     }
 
     private static func shellQuote(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+}
+
+private final class AsyncTestEvent: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isSignaled = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func signal() {
+        lock.lock()
+        guard !isSignaled else {
+            lock.unlock()
+            return
+        }
+        isSignaled = true
+        let pending = waiters
+        waiters.removeAll()
+        lock.unlock()
+        pending.forEach { $0.resume() }
+    }
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if isSignaled {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                waiters.append(continuation)
+                lock.unlock()
+            }
+        }
     }
 }
 

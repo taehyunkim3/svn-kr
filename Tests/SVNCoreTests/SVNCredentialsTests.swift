@@ -125,56 +125,90 @@ import Testing
     #expect(result.contains("checkout -- https://example.test/svn/project ."))
 }
 
-@Test func streamsCheckoutOutputBeforeCommandCompletes() async throws {
-    let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("svn-checkout-progress-test-\(UUID().uuidString)", isDirectory: true)
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: directory) }
+@Suite(.serialized)
+struct ExternalProcessMarkerTests {
+    @Test func streamsCheckoutOutputBeforeCommandCompletes() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-checkout-progress-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
 
-    let executable = directory.appendingPathComponent("fake-svn")
-    let script = """
-    #!/bin/sh
-    : > checkout-started
-    printf 'A    Sources/App.swift\n'
-    while [ ! -f continue-checkout ]; do
-      sleep 0.02
-    done
-    printf 'Checked out revision 42.\n'
-    """
-    try Data(script.utf8).write(to: executable)
-    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let executable = directory.appendingPathComponent("fake-svn")
+        let script = """
+        #!/bin/sh
+        : > checkout-started
+        printf 'A    Sources/App.swift\n'
+        while [ ! -f continue-checkout ]; do
+          sleep 0.02
+        done
+        printf 'Checked out revision 42.\n'
+        """
+        try Data(script.utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
 
-    let recorder = CheckoutOutputRecorder()
-    let client = SVNClient(
-        executablePath: executable.path,
-        configDirectoryPath: directory.appendingPathComponent("svn-config").path
-    )
-    let destination = directory.appendingPathComponent("checkout", isDirectory: true)
-    let checkout = Task {
-        try await client.checkout(
-            repositoryURL: "https://example.test/svn/project",
-            destinationPath: destination.path,
-            progress: { output in
-                recorder.append(output)
-            }
+        let recorder = CheckoutOutputRecorder()
+        let client = SVNClient(
+            executablePath: executable.path,
+            configDirectoryPath: directory.appendingPathComponent("svn-config").path
         )
+        let destination = directory.appendingPathComponent("checkout", isDirectory: true)
+        let checkout = Task {
+            try await client.checkout(
+                repositoryURL: "https://example.test/svn/project",
+                destinationPath: destination.path,
+                progress: { output in
+                    recorder.append(output)
+                }
+            )
+        }
+
+        let processStarted = await waitUntil(timeout: .seconds(30)) {
+            FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
+        }
+        #expect(processStarted)
+        let receivedFirstPath = if processStarted {
+            await waitUntil { recorder.output.contains("A    Sources/App.swift") }
+        } else {
+            false
+        }
+        #expect(receivedFirstPath)
+        try Data().write(to: destination.appendingPathComponent("continue-checkout"))
+
+        let result = try await checkout.value
+        #expect(result.contains("Checked out revision 42."))
+        #expect(recorder.output.contains("Checked out revision 42."))
     }
 
-    let processStarted = await waitUntil(timeout: .seconds(30)) {
-        FileManager.default.fileExists(atPath: destination.appendingPathComponent("checkout-started").path)
-    }
-    #expect(processStarted)
-    let receivedFirstPath = if processStarted {
-        await waitUntil { recorder.output.contains("A    Sources/App.swift") }
-    } else {
-        false
-    }
-    #expect(receivedFirstPath)
-    try Data().write(to: destination.appendingPathComponent("continue-checkout"))
+    @Test func cancellingCommandTerminatesProcess() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-cancellation-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
 
-    let result = try await checkout.value
-    #expect(result.contains("Checked out revision 42."))
-    #expect(recorder.output.contains("Checked out revision 42."))
+        let executable = directory.appendingPathComponent("fake-svn")
+        let script = """
+        #!/bin/sh
+        : > command-started
+        while :; do sleep 0.05; done
+        """
+        try Data(script.utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let client = SVNClient(
+            executablePath: executable.path,
+            configDirectoryPath: directory.appendingPathComponent("svn-config").path
+        )
+        let task = Task {
+            try await client.validateWorkingCopy(at: directory.path)
+        }
+        #expect(await waitUntil(timeout: .seconds(15)) {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent("command-started").path)
+        })
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
 }
 
 @Test func actorCanServeAnotherCommandWhileCheckoutIsRunning() async throws {
@@ -231,37 +265,6 @@ import Testing
     try Data().write(to: destination.appendingPathComponent("continue-checkout"))
     _ = try await checkout.value
     try await validation.value
-}
-
-@Test func cancellingCommandTerminatesProcess() async throws {
-    let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("svn-cancellation-test-\(UUID().uuidString)", isDirectory: true)
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: directory) }
-
-    let executable = directory.appendingPathComponent("fake-svn")
-    let script = """
-    #!/bin/sh
-    : > command-started
-    while :; do sleep 0.05; done
-    """
-    try Data(script.utf8).write(to: executable)
-    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
-    let client = SVNClient(
-        executablePath: executable.path,
-        configDirectoryPath: directory.appendingPathComponent("svn-config").path
-    )
-    let task = Task {
-        try await client.validateWorkingCopy(at: directory.path)
-    }
-    #expect(await waitUntil(timeout: .seconds(15)) {
-        FileManager.default.fileExists(atPath: directory.appendingPathComponent("command-started").path)
-    })
-    task.cancel()
-
-    await #expect(throws: CancellationError.self) {
-        try await task.value
-    }
 }
 
 @Test func passwordPipeClosureReturnsCommandFailureInsteadOfCrashing() async throws {
@@ -337,6 +340,7 @@ import Testing
     #expect(value == "--dangerous\n")
 }
 
+// 자식 프로세스는 인프로세스 신호를 보낼 수 없어 직렬 suite에서 마커와 출력을 폴링합니다.
 private func waitUntil(
     timeout: Duration = .seconds(5),
     condition: () -> Bool
