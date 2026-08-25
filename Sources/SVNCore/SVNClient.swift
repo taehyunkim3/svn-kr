@@ -1439,14 +1439,8 @@ public actor SVNClient {
         allowUntrustedServerCertificate: Bool = false,
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
-        let baseResult = try await checkedRun(
-            ["info", "--show-item", "revision"],
-            at: path,
-            credentials: credentials
-        )
-        guard let base = Int(baseResult.output.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-            throw SVNError.malformedResponse
-        }
+        let baseRevision = try await workingCopyRevision(at: path, credentials: credentials)
+        guard let base = Int(baseRevision.maximum) else { throw SVNError.malformedResponse }
         let headResult = try await checkedRun(
             ["info", "--revision", "HEAD", "--show-item", "revision"],
             at: path,
