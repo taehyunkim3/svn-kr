@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct FileHistoryView: View {
@@ -27,7 +28,38 @@ struct FileHistoryView: View {
                         Spacer()
                         if let date = entry.date { Text(date.formatted(date: .numeric, time: .standard)).font(.caption).foregroundStyle(.secondary) }
                     }
-                        SVNLogMessageView(entry: entry)
+                    SVNLogMessageView(entry: entry)
+                    HStack {
+                        Button {
+                            saveRevision(entry.revision)
+                        } label: {
+                            ActionProgressLabel(
+                                title: appLanguage.localized("ui.save.this.revision.as.3e8d79a1"),
+                                inProgressTitle: appLanguage.localized("ui.saving.revision.4fb2c8d0"),
+                                isInProgress: store.isSavingHistoryRevision(entry.revision)
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button(role: .destructive) {
+                            guard let path = store.fileHistoryPath else { return }
+                            store.requestHistoryRevisionRestore(
+                                revision: entry.revision,
+                                relativePath: path
+                            )
+                        } label: {
+                            ActionProgressLabel(
+                                title: appLanguage.localized("ui.restore.working.file.to.revision.79c4a2e6"),
+                                inProgressTitle: appLanguage.localized("ui.restoring.revision.c840d51f"),
+                                isInProgress: store.isRestoringHistoryRevision(entry.revision)
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .disabled(
+                        store.isSelectedProjectActionBlocked
+                            || store.isHistoryRevisionOperationRunning
+                    )
                 }
                 .padding(.vertical, 4)
             }
@@ -40,6 +72,62 @@ struct FileHistoryView: View {
             }
         }
         .appSheetFrame(minimumSize: AppLayout.fileHistorySheetMinimumSize)
+        .confirmationDialog(
+            appLanguage.localized("ui.restore.working.file.confirmation.0ab7e3c9"),
+            isPresented: restoreConfirmationBinding,
+            titleVisibility: .visible,
+            presenting: store.recoveryState.historyRevisionRestoreRequest
+        ) { request in
+            Button(
+                appLanguage.localized("ui.restore.working.file.to.revision.79c4a2e6"),
+                role: .destructive
+            ) {
+                Task { await store.confirmHistoryRevisionRestore(request) }
+            }
+            Button(appLanguage.localized("ui.cancel.89b99401"), role: .cancel) {}
+        } message: { request in
+            Text(
+                appLanguage.localized(
+                    "ui.restore.working.file.warning.62d159af",
+                    request.relativePath,
+                    request.revision
+                )
+            )
+        }
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+
+    private var restoreConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { store.recoveryState.historyRevisionRestoreRequest != nil },
+            set: { isPresented in
+                if !isPresented {
+                    store.recoveryState.historyRevisionRestoreRequest = nil
+                }
+            }
+        )
+    }
+
+    private func saveRevision(_ revision: String) {
+        guard let relativePath = store.fileHistoryPath else { return }
+        let panel = NSSavePanel()
+        panel.title = appLanguage.localized("ui.save.this.revision.as.3e8d79a1")
+        panel.prompt = appLanguage.localized("ui.save.this.revision.as.3e8d79a1")
+        panel.nameFieldStringValue = defaultSaveName(for: relativePath, revision: revision)
+        guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
+        Task {
+            await store.saveHistoryRevision(
+                revision: revision,
+                relativePath: relativePath,
+                to: destinationURL
+            )
+        }
+    }
+
+    private func defaultSaveName(for relativePath: String, revision: String) -> String {
+        let original = URL(fileURLWithPath: relativePath)
+        let stem = original.deletingPathExtension().lastPathComponent
+        guard !original.pathExtension.isEmpty else { return "\(stem)_r\(revision)" }
+        return "\(stem)_r\(revision).\(original.pathExtension)"
     }
 }

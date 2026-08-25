@@ -9078,6 +9078,111 @@
           }
         }
       }
+    },
+    "ui.save.this.revision.as.3e8d79a1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save This Revision As…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 버전 다른 이름으로 저장…" } }
+      }
+    },
+    "ui.saving.revision.4fb2c8d0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saving Revision…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "리비전 저장 중…" } }
+      }
+    },
+    "ui.restore.working.file.to.revision.79c4a2e6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restore Working File to This Revision…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일을 이 버전으로 되돌리기…" } }
+      }
+    },
+    "ui.restoring.revision.c840d51f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restoring Revision…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "리비전으로 되돌리는 중…" } }
+      }
+    },
+    "ui.restore.working.file.confirmation.0ab7e3c9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restore the Working File?" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일을 되돌릴까요?" } }
+      }
+    },
+    "ui.restore.working.file.warning.62d159af": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The current contents of %1$@ will be discarded and replaced with r%2$@. A recovery copy is saved first. The result is a local change and must be committed to update the server." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%1$@의 현재 내용이 사라지고 r%2$@ 내용으로 바뀝니다. 먼저 복구본을 보관합니다. 결과는 로컬 수정이며 서버에 반영하려면 커밋해야 합니다." } }
+      }
+    },
+    "ui.restored.revision.commit.required.f9346b20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restored %1$@ to r%2$@. This is now a local change. Commit it to update the server." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%1$@ 파일을 r%2$@로 되돌렸습니다. 현재 로컬 수정 상태입니다. 서버에 반영하려면 커밋하세요." } }
+      }
+    },
+    "ui.saved.historical.revision.76ec18b4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saved r%1$@ to %2$@." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "r%1$@ 버전을 %2$@에 저장했습니다." } }
+      }
+    },
+    "ui.revision.restore.missing.working.file.346db8a7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The current working file could not be found, so a recovery copy could not be created." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "현재 작업 파일을 찾지 못해 복구본을 만들 수 없습니다." } }
+      }
+    },
+    "ui.revision.restore.unsafe.working.file.4a960fb3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The working file must be a regular file, not a symbolic link." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "작업 파일은 일반 파일이어야 하며 심볼릭 링크일 수 없습니다." } }
+      }
+    },
+    "ui.revision.restore.path.outside.working.copy.87d5e210": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The file path points outside the local working folder." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "파일 경로가 로컬 작업 폴더 밖을 가리킵니다." } }
+      }
+    },
+    "ui.revision.restore.backup.inside.working.copy.107e9c6a": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Revision recovery copies must be stored outside the local working folder." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "리비전 복구본은 로컬 작업 폴더 밖에 보관해야 합니다." } }
+      }
+    },
+    "ui.revision.restore.backup.verification.failed.d9152a6c": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The current working file could not be verified in the recovery copy, so it was not replaced." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "현재 작업 파일과 복구본이 일치하지 않아 파일을 교체하지 않았습니다." } }
+      }
+    },
+    "ui.revision.restore.replacement.verification.failed.b8714e35": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The restored file did not match the selected revision byte for byte. The recovery copy was preserved." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "복원한 파일이 선택한 리비전과 바이트 단위로 일치하지 않습니다. 복구본은 보존했습니다." } }
+      }
+    },
+    "ui.revision.save.invalid.destination.5f4d2c81": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The selected save location is not a safe regular-file destination." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "선택한 위치는 일반 파일을 안전하게 저장할 수 있는 경로가 아닙니다." } }
+      }
     }
   },
   "version": "1.0"
