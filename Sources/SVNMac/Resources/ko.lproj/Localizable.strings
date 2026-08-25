@@ -653,3 +653,8 @@
 "ui.review.update.then.retry.commit.6a1e9c43" = "SVN이 작업 복사본 업데이트를 요구했습니다. 업데이트를 확인하면 충돌이 없을 때 저장한 메시지와 선택 목록으로 커밋을 다시 실행합니다.";
 "ui.filename.warning.52af346c" = "파일명 경고";
 "ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66" = "이 폴더가 있는 디스크는 한글 파일 이름을 자모 분리 형태로만 저장합니다. 윈도우에서 파일 이름이 깨져 보일 수 있습니다. APFS로 포맷된 디스크에서 작업하는 것을 권장합니다.";
+"ui.restore.server.version.removes.these.items.9d41c60b" = "되돌리면 아래 항목이 작업 폴더에서 사라집니다. 실행 전에 복구본 폴더로 복사합니다.";
+"ui.files.not.in.repository.count.2b7fa508" = "저장소에 없는 파일 %1$@개";
+"ui.uncommitted.changes.count.7e3c19d4" = "커밋하지 않은 변경 %1$@개";
+"ui.and.more.items.count.a5d20f16" = "외 %1$@개";
+"ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3" = "충돌을 해결했습니다. 사라진 항목 %1$@개의 복구본을 다음 폴더에 만들었습니다: %2$@";

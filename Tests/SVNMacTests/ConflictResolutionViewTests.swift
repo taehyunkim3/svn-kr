@@ -98,6 +98,19 @@ import Testing
     #expect(storeConflicts.contains("resolvedPath.precomposedStringWithCanonicalMapping"))
 }
 
+@Test func treeConflictConfirmationListsDisappearingPathsNotOnlyCounts() throws {
+    let view = try source(named: "TreeConflictResolutionView.swift", in: try svnMacSources())
+
+    #expect(view.contains("restoreWarningMessage(store.activeTreeConflictSession?.restoreImpact)"))
+    #expect(view.contains("impact.unversionedPaths"))
+    #expect(view.contains("impact.uncommittedPaths"))
+    #expect(view.contains("AppLayout.treeConflictRestoreListedPathLimit"))
+    #expect(view.contains("ui.restore.server.version.removes.these.items.9d41c60b"))
+    #expect(view.contains("ui.files.not.in.repository.count.2b7fa508"))
+    #expect(view.contains("ui.uncommitted.changes.count.7e3c19d4"))
+    #expect(view.contains("ui.and.more.items.count.a5d20f16"))
+}
+
 @Test func propertyConflictStringsExistInEveryLocalizationResource() throws {
     let keys = [
         "ui.apply.server.properties.51ad840e",

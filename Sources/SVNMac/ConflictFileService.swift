@@ -21,6 +21,13 @@ struct ConflictResolutionSession: Identifiable, Hashable {
     let isBinary: Bool
 }
 
+/// 하위 트리를 통째로 되돌리기 전에 만들어 두는 복구본입니다.
+struct ConflictSubtreeBackup: Hashable {
+    let directoryURL: URL
+    let fileCount: Int
+    let byteCount: Int64
+}
+
 enum ConflictFileError: Error {
     case unsupportedType(String)
     case missingMine
@@ -230,6 +237,117 @@ struct ConflictFileService {
             verificationError: .workingRestoreVerificationFailed
         )
         return recoveryURL
+    }
+
+/// 하위 트리를 통째로 되돌리기 전에 그 아래 모든 정규 파일을 복구본으로 복사합니다.
+    /// `svn revert --depth infinity`는 버전관리되지 않은 파일까지 지우므로,
+    /// SVN 상태로 걸러내지 않고 `.svn`을 뺀 전부를 바이트 검증과 함께 보존합니다.
+    /// 대상이 파일 하나이면 그 파일만 보존합니다. 보존할 파일이 없으면 nil을 반환합니다.
+    func preserveSubtree(
+        relativePath: String,
+        projectID: UUID,
+        workingCopyPath: String
+    ) throws -> ConflictSubtreeBackup? {
+        let workingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
+        let supportRoot = try backupRootURL
+            ?? SVNApplicationSupport.rootDirectory(fileManager: fileManager)
+                .appendingPathComponent("Conflict Backups", isDirectory: true)
+        let standardizedBackupRoot = resolvedURL(supportRoot)
+        guard !SVNFileSystem.isAtOrBelow(standardizedBackupRoot, root: workingCopy) else {
+            throw ConflictFileError.backupRootInsideWorkingCopy
+        }
+        let files = subtreeRegularFiles(relativePath: relativePath, workingCopy: workingCopy)
+        guard !files.isEmpty else { return nil }
+
+        let destination = standardizedBackupRoot
+            .appendingPathComponent(projectID.uuidString, isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let stagingDirectory = standardizedBackupRoot
+            .appendingPathComponent(".staging", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
+
+        do {
+            var byteCount: Int64 = 0
+            for file in files {
+                let stagedURL = stagingDirectory.appendingPathComponent(file.relativePath)
+                try fileManager.createDirectory(
+                    at: stagedURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try copyItem(file.url, stagedURL)
+                guard try SVNFileSystem.filesHaveEqualContents(file.url, stagedURL) else {
+                    throw ConflictFileError.workingRecoveryVerificationFailed
+                }
+                byteCount += Int64(
+                    (try? stagedURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                )
+            }
+            try fileManager.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try fileManager.moveItem(at: stagingDirectory, to: destination)
+            return ConflictSubtreeBackup(
+                directoryURL: destination,
+                fileCount: files.count,
+                byteCount: byteCount
+            )
+        } catch {
+            try? fileManager.removeItem(at: stagingDirectory)
+            throw error
+        }
+    }
+
+    /// 되돌리기 확인창이 "무엇이 사라지는지"를 경로로 보여줄 수 있도록,
+    /// 버전관리되지 않은 디렉터리 안의 파일 경로를 펼쳐 줍니다.
+    /// `svn status`는 미버전 디렉터리를 항목 하나로만 보고합니다.
+    func containedFilePaths(relativePath: String, workingCopyPath: String) -> [String] {
+        let workingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
+        var isDirectory: ObjCBool = false
+        let target = workingCopy.appendingPathComponent(relativePath)
+        guard fileManager.fileExists(atPath: target.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return [] }
+        return subtreeRegularFiles(relativePath: relativePath, workingCopy: workingCopy)
+            .map(\.relativePath)
+    }
+
+    /// 작업 복사본 루트 기준 상대 경로로 하위의 정규 파일을 모읍니다.
+    /// `.svn` 메타데이터와 심볼릭 링크는 제외합니다.
+    private func subtreeRegularFiles(
+        relativePath: String,
+        workingCopy: URL
+    ) -> [(url: URL, relativePath: String)] {
+        let target = workingCopy.appendingPathComponent(relativePath).standardizedFileURL
+        guard SVNFileSystem.isAtOrBelow(resolvedURL(target), root: workingCopy) else { return [] }
+        guard let attributes = try? fileManager.attributesOfItem(atPath: target.path),
+              let type = attributes[.type] as? FileAttributeType else { return [] }
+        if type == .typeRegular {
+            return [(target, relativePath)]
+        }
+        guard type == .typeDirectory else { return [] }
+        guard let enumerator = fileManager.enumerator(
+            at: target,
+            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+            options: []
+        ) else { return [] }
+
+        let basePath = target.path
+        var results: [(url: URL, relativePath: String)] = []
+        for case let url as URL in enumerator {
+            if url.lastPathComponent == ".svn" {
+                enumerator.skipDescendants()
+                continue
+            }
+            guard let values = try? url.resourceValues(
+                forKeys: [.isRegularFileKey, .isSymbolicLinkKey]
+            ), values.isSymbolicLink != true, values.isRegularFile == true else { continue }
+            let path = url.standardizedFileURL.path
+            guard path.hasPrefix(basePath + "/") else { continue }
+            let suffix = String(path.dropFirst(basePath.count + 1))
+            results.append((url, relativePath + "/" + suffix))
+        }
+        return results.sorted { $0.relativePath < $1.relativePath }
     }
 
     private func sourceURL(

@@ -86,6 +86,9 @@ enum AppLayout {
     static let logMessagePopoverIdealWidth: CGFloat = 520
     static let logMessagePopoverMaximumWidth: CGFloat = 640
     static let inlineErrorMaximumHeight: CGFloat = 160
+    /// 트리 충돌 되돌리기 확인창이 한 번에 나열하는 경로 개수입니다.
+    /// 나머지는 "외 N개"로 접어 대화상자가 화면 밖으로 넘치지 않게 합니다.
+    static let treeConflictRestoreListedPathLimit = 12
 }
 
 extension View {

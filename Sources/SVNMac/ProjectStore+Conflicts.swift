@@ -42,11 +42,22 @@ extension ProjectStore {
                 recoveryState.propertyConflictSession = nil
                 activeConflictSession = session
             case "tree":
+                let impact = TreeConflictRestoreScan.impact(
+                    target: versionedPath,
+                    statuses: snapshot.statuses,
+                    containedFilePaths: { path in
+                        conflictFileService.containedFilePaths(
+                            relativePath: path,
+                            workingCopyPath: project.path
+                        )
+                    }
+                )
                 let session = TreeConflictSession(
                     details: details,
                     requestedPath: relativePath,
                     versionedPath: versionedPath,
-                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8)
+                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8),
+                    restoreImpact: impact
                 )
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
                 activeConflictSession = nil
@@ -148,6 +159,7 @@ extension ProjectStore {
                 resolvingConflictSessionID = nil
             }
         }
+        var subtreeBackup: ConflictSubtreeBackup?
         do {
             switch choice {
             case .keepWorkingState:
@@ -159,6 +171,14 @@ extension ProjectStore {
                 )
             case .restoreServerVersion:
                 let projectCredentials = try credentials(for: project)
+                // `svn revert --depth infinity`는 하위 트리를 통째로 지웁니다.
+                // 버전관리되지 않은 파일은 저장소 이력에도 없으므로 먼저 복구본을 만듭니다.
+                subtreeBackup = try conflictFileService.preserveSubtree(
+                    relativePath: session.versionedPath,
+                    projectID: projectID,
+                    workingCopyPath: project.path
+                )
+                guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
                 _ = try await client.revert(
                     at: project.path,
                     relativePath: session.versionedPath,
@@ -188,7 +208,15 @@ extension ProjectStore {
             activeTreeConflictSession = nil
             await refresh()
             guard canApplyCompletedTreeConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+            if let subtreeBackup {
+                notice = AppLanguage.current.localized(
+                    "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3",
+                    String(subtreeBackup.fileCount),
+                    subtreeBackup.directoryURL.path
+                )
+            } else {
+                notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+            }
         } catch {
             guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
             if choice == .restoreServerVersion {
