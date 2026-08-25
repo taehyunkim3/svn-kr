@@ -310,7 +310,7 @@ public actor SVNClient {
             at: path,
             credentials: credentials
         )
-        return try SVNAdditionalXMLParser.properties(from: Data(result.output.utf8))
+        return try SVNXMLParser.properties(from: Data(result.output.utf8))
     }
 
     private func runWorkingCopyCopyOrMove(
@@ -1463,7 +1463,7 @@ public actor SVNClient {
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             allowedServerCertificateFailures: allowedServerCertificateFailures
         )
-        return try SVNAdditionalXMLParser.logs(from: Data(result.output.utf8))
+        return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
 
     public func workingCopyIsOutOfDate(
