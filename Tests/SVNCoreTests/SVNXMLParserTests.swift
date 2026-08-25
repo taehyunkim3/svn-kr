@@ -208,6 +208,51 @@ import Testing
     #expect(details?.operation == "update")
     #expect(details?.previousRevision == "2")
     #expect(details?.serverRevision == "3")
+    #expect(details?.treeConflictAction == "delete")
+    #expect(details?.treeConflictReason == "edit")
+    #expect(details?.treeConflictKind == "file")
+}
+
+@Test func parsesTreeConflictMetadataFromNestedConflictShape() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="dir" path="tree" revision="4">
+      <conflict operation="switch" type="tree">
+        <tree-conflict kind="dir" reason="missing" victim="tree" action="replace">
+          <version kind="dir" revision="3" side="source-left"/>
+          <version kind="dir" revision="4" side="source-right"/>
+        </tree-conflict>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+
+    #expect(details?.path == "tree")
+    #expect(details?.type == "tree")
+    #expect(details?.operation == "switch")
+    #expect(details?.previousRevision == "3")
+    #expect(details?.serverRevision == "4")
+    #expect(details?.treeConflictAction == "replace")
+    #expect(details?.treeConflictReason == "missing")
+    #expect(details?.treeConflictKind == "dir")
+}
+
+@Test func leavesTreeConflictMetadataNilForContentConflict() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="file" path="sample.txt" revision="3">
+      <conflict operation="update" type="text">
+        <version kind="file" revision="2" side="source-left"/>
+        <version kind="file" revision="3" side="source-right"/>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8))
+
+    #expect(details?.type == "text")
+    #expect(details?.treeConflictAction == nil)
+    #expect(details?.treeConflictReason == nil)
+    #expect(details?.treeConflictKind == nil)
 }
 
 @Test func detectsActualRemoteWorkingCopyChanges() throws {
