@@ -75,6 +75,7 @@ struct ChangesView: View {
             Task { await store.captureRepositoryConnectionError(message) }
         }
         .revertConfirmation()
+        .commitDeletionRestoreConfirmation()
         .documentOpenConfirmation()
         .explicitLockConfirmation()
     }
@@ -122,20 +123,6 @@ struct ChangesView: View {
                 .labelsHidden()
                 .accessibilityLabel(appLanguage.localized("ui.include.in.commit.2aaaa224", entry.path))
                 .help(appLanguage.localized("ui.include.or.exclude.this.file.from.the.next.commi.273bb38e"))
-            } else if entry.canScheduleRepositoryDeletion {
-                Menu {
-                    Button(appLanguage.localized("ui.restore.local.file.b40bfb4b")) {
-                        store.requestRevert(entry)
-                    }
-                    Button(appLanguage.localized("ui.delete.from.repository.deb8c2a7"), role: .destructive) {
-                        store.requestDeletion(entry)
-                    }
-                } label: {
-                    Label(appLanguage.localized("ui.choose.action.60c39cbd"), systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
             } else {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
@@ -349,6 +336,25 @@ struct ChangesView: View {
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
             }
+            let restorableDeletionPaths = ProjectStore.commitDeletionRestorePaths(
+                requestedPaths: store.selectedPaths,
+                statuses: store.visibleStatuses
+            )
+            if !restorableDeletionPaths.isEmpty {
+                Button {
+                    store.requestSelectedDeletionRestore()
+                } label: {
+                    ActionProgressLabel(
+                        title: appLanguage.localized(
+                            "ui.restore.selected.pending.deletions.9c4f7a13",
+                            restorableDeletionPaths.count
+                        ),
+                        systemImage: "arrow.uturn.backward",
+                        isInProgress: store.isRevertingSelectedProject
+                    )
+                }
+                .disabled(store.isSelectedProjectActionBlocked)
+            }
             let selectedVersionedFiles = store.visibleStatuses
                 .filter { store.selectedPaths.contains($0.path) && isVersionedFile($0) }
                 .map(lockPath)
@@ -430,7 +436,7 @@ struct ChangesView: View {
         case .added: appLanguage.localized("ui.added.0dce7328")
         case .deleted: appLanguage.localized("ui.pending.deletion.1652cca1")
         case .missing where entry.isMissingScheduledAddition: appLanguage.localized("ui.cleanup.needed.3c5f4e64")
-        case .missing: appLanguage.localized("ui.locally.missing.action.required.50c49ccb")
+        case .missing: appLanguage.localized("ui.pending.deletion.1652cca1")
         case .unversioned: appLanguage.localized("ui.unversioned.ffbcbcb7")
         case .ignored: appLanguage.localized("ui.ignored.b45ee0ef")
         case .conflicted: appLanguage.localized("ui.conflict.37edb628")

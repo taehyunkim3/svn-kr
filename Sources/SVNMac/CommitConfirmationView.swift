@@ -53,11 +53,25 @@ struct CommitConfirmationView: View {
                 .foregroundStyle(.orange)
             }
 
-            List(serverDeletionEntries, selection: $store.selectedCommitDeletionRestorePaths) { entry in
-                HStack {
-                    Image(systemName: entry.nodeKind == .directory ? "folder" : "doc")
-                    Text(entry.path.precomposedStringWithCanonicalMapping)
-                        .font(.body.monospaced())
+            List {
+                ForEach(serverDeletionEntries) { entry in
+                    HStack {
+                        Toggle("", isOn: Binding(
+                            get: { store.selectedCommitDeletionRestorePaths.contains(entry.path) },
+                            set: { checked in
+                                if checked { store.selectedCommitDeletionRestorePaths.insert(entry.path) }
+                                else { store.selectedCommitDeletionRestorePaths.remove(entry.path) }
+                            }
+                        ))
+                        .labelsHidden()
+                        .accessibilityLabel(appLanguage.localized(
+                            "ui.include.in.restore.4d9c1e72",
+                            entry.path
+                        ))
+                        Image(systemName: entry.nodeKind == .directory ? "folder" : "doc")
+                        Text(entry.path.precomposedStringWithCanonicalMapping)
+                            .font(.body.monospaced())
+                    }
                 }
             }
             .overlay {
@@ -122,23 +136,7 @@ struct CommitConfirmationView: View {
                 || store.isDeletingSelectedProject
                 || store.isRevertingSelectedProject
         )
-        .alert(
-            appLanguage.localized("ui.restore.selected.files.confirmation.6d81b3e4"),
-            isPresented: .isPresenting($store.commitDeletionRestoreRequest),
-            presenting: store.commitDeletionRestoreRequest
-        ) { restoreRequest in
-            Button(appLanguage.localized("ui.restore.selected.files.action.7b3e1d95")) {
-                Task { await store.confirmCommitDeletionRestore(restoreRequest) }
-            }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
-                store.cancelCommitDeletionRestore()
-            }
-        } message: { restoreRequest in
-            Text(appLanguage.localized(
-                "ui.restore.selected.files.count.2c9f4a70",
-                restoreRequest.paths.count
-            ))
-        }
+        .commitDeletionRestoreConfirmation()
     }
 
     private var serverDeletionEntries: [SVNStatusEntry] {

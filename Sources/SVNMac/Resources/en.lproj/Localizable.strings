@@ -157,7 +157,7 @@
 "ui.credentials.saved.for.409bff39" = "Credentials saved for %1$@";
 "ui.current.working.file.669bd1d9" = "Current Working File";
 "ui.delete.from.repository.deb8c2a7" = "Delete from Repository…";
-"ui.delete.missing.items.ab0ea8fc" = "Delete %1$@ Missing Items…";
+"ui.delete.missing.items.ab0ea8fc" = "Delete %1$@ Pending Items…";
 "ui.delete.saved.password.a38fa5cf" = "Delete Saved Password";
 "ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666" = "Delete the SVN password stored in Keychain for this local working folder.";
 "ui.deleted.6826dd28" = "Deleted";
@@ -205,6 +205,7 @@
 "ui.ignored.b45ee0ef" = "Ignored";
 "ui.import.git.rules.bbf8aa32" = "Import Git Rules";
 "ui.include.in.commit.2aaaa224" = "Include %1$@ in commit";
+"ui.include.in.restore.4d9c1e72" = "Include %1$@ in restore";
 "ui.include.or.exclude.this.file.from.the.next.commi.273bb38e" = "Include or exclude this file from the next commit.";
 "ui.included.locally.241cf38b" = "Included locally";
 "ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e" = "Incoming changes that overlap local edits may create an SVN conflict.";
@@ -326,6 +327,7 @@
 "ui.resolve.unicode.path.conflicts.before.comparing..17151bba" = "Resolve Unicode path conflicts before comparing Git rules so property locations can be chosen safely.";
 "ui.resolving.d5e0b71c" = "Resolving…";
 "ui.restore.local.file.b40bfb4b" = "Restore Local File…";
+"ui.restore.selected.pending.deletions.9c4f7a13" = "Restore %1$@ Pending Deletions…";
 "ui.restored.98d96c01" = "Restored";
 "ui.reveal.in.finder.52d4a206" = "Reveal in Finder";
 "ui.revert.f621e9ba" = "Revert";

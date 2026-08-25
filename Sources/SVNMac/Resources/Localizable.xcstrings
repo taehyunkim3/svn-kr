@@ -3764,13 +3764,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Delete %1$@ Missing Items…"
+            "value": "Delete %1$@ Pending Items…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "누락 %1$@개 저장소 삭제…"
+            "value": "삭제 예정 %1$@개 저장소 삭제…"
           }
         }
       }
@@ -4961,6 +4961,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ 커밋 포함"
+          }
+        }
+      }
+    },
+    "ui.include.in.restore.4d9c1e72": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include %1$@ in restore"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원 목록에 %1$@ 포함"
           }
         }
       }
@@ -8004,6 +8021,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "선택한 삭제 파일 %1$@개를 서버 파일로 복원합니다."
+          }
+        }
+      }
+    },
+    "ui.restore.selected.pending.deletions.9c4f7a13": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore %1$@ Pending Deletions…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 예정 %1$@개 복원…"
           }
         }
       }

@@ -65,6 +65,20 @@ extension ProjectStore {
         )
     }
 
+    /// 변경 사항 목록에서 체크한 삭제 예정 항목만 서버 파일로 복원합니다.
+    func requestSelectedDeletionRestore() {
+        guard let project = selectedProject else { return }
+        let eligiblePaths = Self.commitDeletionRestorePaths(
+            requestedPaths: selectedPaths,
+            statuses: statuses
+        )
+        guard !eligiblePaths.isEmpty else { return }
+        commitDeletionRestoreRequest = CommitDeletionRestoreRequest(
+            projectID: project.id,
+            paths: eligiblePaths
+        )
+    }
+
     func cancelCommitDeletionRestore() {
         commitDeletionRestoreRequest = nil
     }

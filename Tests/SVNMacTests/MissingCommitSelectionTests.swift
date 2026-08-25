@@ -106,6 +106,13 @@ struct MissingCommitSelectionTests {
         await store.refreshLocalWorkingCopy()
         store.selectedPaths = store.selectAllStatusPaths
 
+        store.requestSelectedDeletionRestore()
+        #expect(try #require(store.commitDeletionRestoreRequest).paths == [
+            "Finder 삭제.txt",
+            "SVN 삭제.txt",
+        ])
+        store.cancelCommitDeletionRestore()
+
         #expect(store.prepareCommitConfirmation(message: "삭제 확인"))
         #expect(store.commitConfirmationRequest?.serverDeletionEntries.map(\.path) == [
             "Finder 삭제.txt",

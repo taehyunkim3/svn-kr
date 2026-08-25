@@ -39,6 +39,9 @@ struct CommitMessageConfirmationTests {
         let commitControls = try source(at: "Sources/SVNMac/CommitControlsView.swift")
         let confirmation = try source(at: "Sources/SVNMac/CommitConfirmationView.swift")
         let fileActions = try source(at: "Sources/SVNMac/ProjectStore+FileActions.swift")
+        let restoreConfirmation = try source(
+            at: "Sources/SVNMac/CommitDeletionRestoreConfirmation.swift"
+        )
 
         #expect(commitControls.contains("store.prepareCommitConfirmation(message: message)"))
         #expect(commitControls.contains("store.commitConfirmationRequest"))
@@ -49,6 +52,7 @@ struct CommitMessageConfirmationTests {
                 commitControls.contains(key)
                     || confirmation.contains(key)
                     || fileActions.contains(key)
+                    || restoreConfirmation.contains(key)
             )
         }
         #expect(confirmation.contains("store.confirmCommit(currentRequest)"))
@@ -56,15 +60,22 @@ struct CommitMessageConfirmationTests {
 
     @Test func confirmationShowsScrollableSelectableDeletionPathsAndBulkRestore() throws {
         let confirmation = try source(at: "Sources/SVNMac/CommitConfirmationView.swift")
+        let restoreConfirmation = try source(
+            at: "Sources/SVNMac/CommitDeletionRestoreConfirmation.swift"
+        )
 
         #expect(confirmation.contains("exclamationmark.triangle.fill"))
         #expect(confirmation.contains(".foregroundStyle(.orange)"))
         #expect(confirmation.contains("serverDeletionEntries.count"))
-        #expect(confirmation.contains("List(serverDeletionEntries, selection: $store.selectedCommitDeletionRestorePaths)"))
+        #expect(confirmation.contains("ForEach(serverDeletionEntries)"))
+        #expect(confirmation.contains("store.selectedCommitDeletionRestorePaths.insert(entry.path)"))
+        #expect(confirmation.contains("store.selectedCommitDeletionRestorePaths.remove(entry.path)"))
+        #expect(confirmation.contains(".labelsHidden()"))
         #expect(confirmation.contains("entry.path.precomposedStringWithCanonicalMapping"))
         #expect(confirmation.contains("store.requestCommitDeletionRestore()"))
-        #expect(confirmation.contains("store.confirmCommitDeletionRestore(restoreRequest)"))
-        #expect(confirmation.contains("restoreRequest.paths.count"))
+        #expect(confirmation.contains(".commitDeletionRestoreConfirmation()"))
+        #expect(restoreConfirmation.contains("store.confirmCommitDeletionRestore(restoreRequest)"))
+        #expect(restoreConfirmation.contains("restoreRequest.paths.count"))
         #expect(confirmation.contains("ui.no.server.deletions.remaining.3e7b9a12"))
         #expect(confirmation.contains("AppLayout.commitConfirmationSheetMinimumSize"))
         #expect(!confirmation.contains("DisclosureGroup"))
