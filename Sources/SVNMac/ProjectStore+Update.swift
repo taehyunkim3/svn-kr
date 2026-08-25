@@ -53,14 +53,12 @@ extension ProjectStore {
             let commits: [SVNLogEntry]
             if isDemoMode {
                 commits = logs
-            } else if let commitClient = client as? any UpdatePreviewCommitServing {
-                commits = try await commitClient.updatePreviewIncomingCommits(
+            } else {
+                commits = try await client.updatePreviewIncomingCommits(
                     at: project.path,
                     credentials: credentials(for: project),
                     allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
                 )
-            } else {
-                throw UpdatePreviewCommitLoadingError.unsupportedClient
             }
             guard selectedProjectID == project.id else { return }
             recoveryState.updatePreview.receive(commits)

@@ -152,6 +152,27 @@ import Testing
     )
 }
 
+@Test func updatePreviewUsesTheInjectedSVNClientWithoutRuntimeCasting() throws {
+    let sources = try svnMacSourcesForUpdatePreviewTests()
+    let dependencies = try String(
+        contentsOf: sources.appendingPathComponent("ProjectDependencies.swift"),
+        encoding: .utf8
+    )
+    let update = try String(
+        contentsOf: sources.appendingPathComponent("ProjectStore+Update.swift"),
+        encoding: .utf8
+    )
+    let state = try String(
+        contentsOf: sources.appendingPathComponent("UpdatePreviewState.swift"),
+        encoding: .utf8
+    )
+
+    #expect(dependencies.contains("func updatePreviewIncomingCommits("))
+    #expect(update.contains("try await client.updatePreviewIncomingCommits("))
+    #expect(!update.contains("as? any"))
+    #expect(!state.contains("UpdatePreviewCommitServing"))
+}
+
 @Test func updatePreviewUsesSharedHistoryPresentationAndLocalizedNotices() throws {
     let sources = try svnMacSourcesForUpdatePreviewTests()
     let view = try String(

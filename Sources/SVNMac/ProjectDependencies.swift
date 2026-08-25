@@ -33,7 +33,10 @@ protocol SVNClientServing: Sendable {
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails?
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
+    func updatePreviewIncomingCommits(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
     func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+    func fileContents(at path: String, relativePath: String, revision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> Data
+    func export(at path: String, relativePath: String, revision: String, destinationPath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String
     func workingCopyRevision(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopyRevision
     func workingCopyRepositoryPath(at path: String, credentials: SVNCredentials?) async throws -> String
     func workingCopyRepositoryURL(at path: String, credentials: SVNCredentials?) async throws -> String
@@ -104,7 +107,19 @@ extension SVNClientServing {
     }
 }
 
-extension SVNClient: SVNClientServing {}
+extension SVNClient: SVNClientServing {
+    func updatePreviewIncomingCommits(
+        at path: String,
+        credentials: SVNCredentials?,
+        allowUntrustedServerCertificate: Bool
+    ) async throws -> [SVNLogEntry] {
+        try await incomingCommits(
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+}
 
 // MARK: - 자격 증명 저장소
 

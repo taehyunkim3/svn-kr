@@ -34,6 +34,10 @@ import Testing
 
 @Test func revisionHistoryUsesOnlyTheClientInjectedIntoProjectStore() throws {
     let sources = try revisionRestoreSources()
+    let dependencies = try String(
+        contentsOf: sources.appendingPathComponent("ProjectDependencies.swift"),
+        encoding: .utf8
+    )
     let historyStore = try String(
         contentsOf: sources.appendingPathComponent("ProjectStore+History.swift"),
         encoding: .utf8
@@ -47,8 +51,14 @@ import Testing
         encoding: .utf8
     )
 
-    #expect(historyStore.contains("client as? any HistoryRevisionClient"))
+    #expect(dependencies.contains("func fileContents("))
+    #expect(dependencies.contains("func export("))
+    #expect(historyStore.contains("using: client"))
+    #expect(historyStore.contains("try await client.fileContents("))
+    #expect(!historyStore.contains("as? any"))
     #expect(!recoveryState.contains("historyRevisionClient"))
+    #expect(service.contains("using client: any SVNClientServing"))
+    #expect(!service.contains("HistoryRevisionClient"))
     #expect(!service.contains("LiveHistoryRevisionClient"))
 }
 
