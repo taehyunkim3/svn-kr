@@ -84,7 +84,7 @@ import Testing
     )
     #expect(lockedUpdate.exitCode != 0)
     #expect(lockedUpdate.error.contains("E155004"))
-    #expect(SVNClient.isWorkingCopyLockedError(lockedUpdate.error))
+    #expect(SVNClient.needsCleanup(lockedUpdate.error))
 
     _ = try await fixture.client.cleanup(at: fixture.firstWorkingCopy.path)
 
@@ -93,6 +93,35 @@ import Testing
         ["update"],
         currentDirectory: fixture.firstWorkingCopy
     )
+}
+
+@Test func realSVNClassifiesInterruptedWorkQueueAsNeedingCleanup() throws {
+    let fixture = try SVNStateIntegrationFixture()
+    defer { fixture.remove() }
+    let sqlitePath = try #require(svnStateExecutable(at: ["/usr/bin/sqlite3"]))
+    let database = fixture.firstWorkingCopy
+        .appendingPathComponent(".svn/wc.db", isDirectory: false)
+    _ = try runSVNStateCommand(
+        sqlitePath,
+        [
+            database.path,
+            "INSERT INTO WORK_QUEUE (work) VALUES (X'282966696c652d696e7374616c6c29');",
+        ]
+    )
+
+    let interruptedUpdate = runSVNStateCommandResult(
+        fixture.svnPath,
+        ["update"],
+        currentDirectory: fixture.firstWorkingCopy
+    )
+
+    #expect(interruptedUpdate.exitCode != 0)
+    #expect(interruptedUpdate.error.contains("E155037"))
+    #expect(SVNClient.needsCleanup(interruptedUpdate.error))
+    #expect(SVNClient.needsCleanup(SVNError.commandFailed(
+        command: "svn update",
+        message: interruptedUpdate.error
+    )))
 }
 
 @Test func realSVNForceUnlockBreaksLockFromAnotherWorkingCopy() async throws {

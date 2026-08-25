@@ -1765,13 +1765,13 @@ public actor SVNClient {
         return hasOutOfDateCode && message.localizedCaseInsensitiveContains("out of date")
     }
 
-    public static func isWorkingCopyLockedError(_ message: String) -> Bool {
-        message.contains("E155004")
+    public static func needsCleanup(_ message: String) -> Bool {
+        message.contains("E155004") || message.contains("E155037")
     }
 
-    public static func isWorkingCopyLockedError(_ error: Error) -> Bool {
+    public static func needsCleanup(_ error: Error) -> Bool {
         guard case let SVNError.commandFailed(_, message) = error else { return false }
-        return isWorkingCopyLockedError(message)
+        return needsCleanup(message)
     }
 
     private func run(

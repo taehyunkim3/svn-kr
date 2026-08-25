@@ -46,6 +46,7 @@ import Testing
     let xml = """
     <?xml version="1.0"?><status><target path=".">
       <entry path="."><wc-status item="normal" revision="2" props="none"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="2" props="normal"/></entry>
     </target></status>
     """
 
