@@ -39,6 +39,7 @@ extension ProjectStore {
                 )
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
                 activeTreeConflictSession = nil
+                recoveryState.propertyConflictSession = nil
                 activeConflictSession = session
             case "tree":
                 let session = TreeConflictSession(
@@ -49,12 +50,83 @@ extension ProjectStore {
                 )
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
                 activeConflictSession = nil
+                recoveryState.propertyConflictSession = nil
                 activeTreeConflictSession = session
+            case "property":
+                let versionedPathIdentity = SVNPathIdentity(rawPath: versionedPath)
+                let nodeKind = snapshot.statuses.first(where: { entry in
+                    SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
+                })?.nodeKind
+                let session = PropertyConflictSession(
+                    details: details,
+                    requestedPath: relativePath,
+                    versionedPath: versionedPath,
+                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8),
+                    propertyNames: PropertyConflictService().propertyNames(
+                        workingCopyPath: project.path,
+                        versionedPath: versionedPath,
+                        nodeKind: nodeKind
+                    )
+                )
+                guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
+                activeConflictSession = nil
+                activeTreeConflictSession = nil
+                recoveryState.propertyConflictSession = session
             default:
                 throw ConflictFileError.unsupportedType(details.type)
             }
         } catch {
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func resolveActivePropertyConflict(using choice: PropertyConflictResolutionChoice) async {
+        guard !isResolvingConflict,
+              let project = selectedProject,
+              let session = recoveryState.propertyConflictSession else { return }
+        let projectID = project.id
+        let sessionID = session.id
+        resolvingConflictProjectID = projectID
+        resolvingConflictSessionID = sessionID
+        let operationID = beginOperation(.resolveConflict(projectID))
+        defer {
+            endOperation(operationID)
+            if resolvingConflictProjectID == projectID,
+               resolvingConflictSessionID == sessionID {
+                resolvingConflictProjectID = nil
+                resolvingConflictSessionID = nil
+            }
+        }
+        do {
+            _ = try await client.resolveConflict(
+                at: project.path,
+                relativePath: session.versionedPath,
+                choice: choice.svnChoice,
+                credentials: nil
+            )
+            guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
+            let verifiedSnapshot = try await client.workingCopySnapshot(
+                at: project.path,
+                credentials: nil
+            )
+            guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
+            let verifiedStatuses = try await client.status(at: project.path, credentials: nil)
+            guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
+            try PropertyConflictResolution.verifyResolved(
+                path: session.versionedPath,
+                in: verifiedSnapshot
+            )
+            try PropertyConflictResolution.verifyResolved(
+                path: session.versionedPath,
+                in: verifiedStatuses
+            )
+            recoveryState.propertyConflictSession = nil
+            await refresh()
+            guard canApplyCompletedPropertyConflictResolution(sessionID, projectID: projectID) else { return }
+            notice = AppLanguage.current.localized("ui.property.conflict.resolved.review.before.commit.7b5e91c4")
+        } catch {
+            guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
         }
     }
@@ -258,6 +330,16 @@ extension ProjectStore {
             && resolvingConflictProjectID == projectID
     }
 
+    private func canApplyPropertyConflictResolution(
+        _ sessionID: PropertyConflictSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && recoveryState.propertyConflictSession?.id == sessionID
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
+    }
+
     private func canApplyCompletedConflictResolution(
         _ sessionID: ConflictResolutionSession.ID,
         projectID: SVNProject.ID
@@ -265,6 +347,7 @@ extension ProjectStore {
         selectedProjectID == projectID
             && activeConflictSession == nil
             && activeTreeConflictSession == nil
+            && recoveryState.propertyConflictSession == nil
             && resolvingConflictSessionID == sessionID
             && resolvingConflictProjectID == projectID
     }
@@ -276,6 +359,19 @@ extension ProjectStore {
         selectedProjectID == projectID
             && activeConflictSession == nil
             && activeTreeConflictSession == nil
+            && recoveryState.propertyConflictSession == nil
+            && resolvingConflictSessionID == sessionID
+            && resolvingConflictProjectID == projectID
+    }
+
+    private func canApplyCompletedPropertyConflictResolution(
+        _ sessionID: PropertyConflictSession.ID,
+        projectID: SVNProject.ID
+    ) -> Bool {
+        selectedProjectID == projectID
+            && activeConflictSession == nil
+            && activeTreeConflictSession == nil
+            && recoveryState.propertyConflictSession == nil
             && resolvingConflictSessionID == sessionID
             && resolvingConflictProjectID == projectID
     }

@@ -125,6 +125,94 @@ import Testing
     #expect(!FileManager.default.fileExists(atPath: workingFile.path))
 }
 
+@Test func realSVNPropertyConflictChoicesResolveWholeProperties() async throws {
+    for choice in PropertyConflictResolutionChoice.allCases {
+        let fixture = try RealSVNConflictFixture()
+        defer { fixture.remove() }
+        let statuses = try await fixture.client.status(at: fixture.conflictedWorkingCopy.path)
+        let entry = try #require(statuses.first { status in
+            status.propertyState == .conflicted
+        })
+        let details = try #require(try await fixture.client.conflictDetails(
+            at: fixture.conflictedWorkingCopy.path,
+            relativePath: fixture.propertyConflictPath
+        ))
+        let propertyNames = PropertyConflictService().propertyNames(
+            workingCopyPath: fixture.conflictedWorkingCopy.path,
+            versionedPath: fixture.propertyConflictPath,
+            nodeKind: entry.nodeKind
+        )
+        let session = PropertyConflictSession(
+            details: details,
+            requestedPath: fixture.propertyConflictPath,
+            versionedPath: fixture.propertyConflictPath,
+            wasCanonicallyResolved: false,
+            propertyNames: propertyNames
+        )
+
+        #expect(session.details.type == "property")
+        #expect(session.propertyNames == ["integration:flag"])
+        _ = try await fixture.client.resolveConflict(
+            at: fixture.conflictedWorkingCopy.path,
+            relativePath: session.versionedPath,
+            choice: choice.svnChoice
+        )
+        let resolvedStatuses = try await fixture.client.status(at: fixture.conflictedWorkingCopy.path)
+        try PropertyConflictResolution.verifyResolved(
+            path: session.versionedPath,
+            in: resolvedStatuses
+        )
+
+        let propertyValue = try fixture.runSVN([
+            "propget", "integration:flag",
+            fixture.conflictedWorkingCopy.appendingPathComponent(fixture.propertyConflictPath).path,
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let expectedValue = choice == .applyServerProperties ? "server" : "mine"
+        #expect(propertyValue == expectedValue)
+    }
+}
+
+@MainActor
+@Test func projectStoreCreatesOnlyPropertySessionAndResolvesBothChoices() async throws {
+    for choice in PropertyConflictResolutionChoice.allCases {
+        let fixture = try RealSVNConflictFixture()
+        defer { fixture.remove() }
+        let project = SVNProject(name: "속성 충돌", path: fixture.conflictedWorkingCopy.path)
+        let store = ProjectStore(
+            client: fixture.client,
+            credentialStore: PropertyConflictCredentialStore(),
+            persistence: PropertyConflictProjectPersistence(projects: [project]),
+            projectAccessManager: PropertyConflictProjectAccessManager(),
+            workspaceOpener: PropertyConflictWorkspaceOpener(),
+            projectPathChecker: PropertyConflictProjectPathChecker(),
+            volumeNormalizationProbe: PropertyConflictVolumeNormalizationProbe(),
+            settingsDefaults: UserDefaults(
+                suiteName: "property-conflict-integration-\(UUID().uuidString)"
+            )!,
+            isDemoMode: true,
+            updateBadgeRefreshInterval: nil
+        )
+
+        await store.prepareConflictResolution(for: fixture.propertyConflictPath)
+
+        let session = try #require(store.recoveryState.propertyConflictSession)
+        #expect(session.propertyNames == ["integration:flag"])
+        #expect(store.activeConflictSession == nil)
+        #expect(store.activeTreeConflictSession == nil)
+
+        await store.resolveActivePropertyConflict(using: choice)
+
+        #expect(store.recoveryState.propertyConflictSession == nil)
+        #expect(store.errorMessage == nil)
+        let propertyValue = try fixture.runSVN([
+            "propget", "integration:flag",
+            fixture.conflictedWorkingCopy.appendingPathComponent(fixture.propertyConflictPath).path,
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let expectedValue = choice == .applyServerProperties ? "server" : "mine"
+        #expect(propertyValue == expectedValue)
+    }
+}
+
 private struct RealContentConflict {
     let path: String
     let mineBytes: Data
@@ -326,4 +414,38 @@ private struct RealSVNConflictCommandError: Error, CustomStringConvertible {
     let output: String
 
     var description: String { "Command failed: \(command)\n\(output)" }
+}
+
+private struct PropertyConflictCredentialStore: CredentialStoring {
+    func password(for projectID: UUID) throws -> String? { nil }
+    func setPassword(_ password: String, for projectID: UUID) throws {}
+    func deletePassword(for projectID: UUID) throws {}
+}
+
+private struct PropertyConflictProjectPersistence: ProjectPersisting {
+    let projects: [SVNProject]
+
+    func loadProjects() -> [SVNProject] { projects }
+    func saveProjects(_ projects: [SVNProject]) {}
+}
+
+private final class PropertyConflictProjectAccessManager: ProjectAccessManaging {
+    func makeBookmark(for url: URL) throws -> Data { Data() }
+    func restoreAccess(for projects: inout [SVNProject]) {}
+    func beginAccessing(_ url: URL, for projectID: SVNProject.ID) {}
+    func endAccessing(projectID: SVNProject.ID) {}
+    func endAccessing(url: URL) {}
+}
+
+@MainActor
+private struct PropertyConflictWorkspaceOpener: WorkspaceOpening {
+    func open(_ url: URL) -> Bool { true }
+}
+
+private struct PropertyConflictProjectPathChecker: ProjectPathChecking {
+    func directoryExists(at path: String) -> Bool { true }
+}
+
+private struct PropertyConflictVolumeNormalizationProbe: VolumeNormalizationProbing {
+    func preservesPrecomposedFilenames(at directoryPath: String) async -> Bool? { nil }
 }
