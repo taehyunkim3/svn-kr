@@ -9078,6 +9078,118 @@
           }
         }
       }
+    },
+    "ui.current.repository.url.1a6f43d2": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Current Repository URL"}}, "ko": {"stringUnit": {"state": "translated", "value": "현재 저장소 URL"}}}
+    },
+    "ui.change.repository.location.8b21c7e4": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Change Repository Location"}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 위치 변경"}}}
+    },
+    "ui.repository.may.have.moved.31d0a5f8": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "The repository may have moved. Relocate to the new URL to restore remote operations."}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 위치가 바뀌었을 수 있습니다. 새 URL로 이전하면 원격 작업을 복구할 수 있습니다."}}}
+    },
+    "ui.open.repository.relocation.9c5e17a3": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Open Repository Relocation"}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 이전 열기"}}}
+    },
+    "ui.new.repository.url.5d4b9f02": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "New Repository URL"}}, "ko": {"stringUnit": {"state": "translated", "value": "새 저장소 URL"}}}
+    },
+    "ui.local.changes.are.preserved.7e12c6a9": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Relocation preserves all uncommitted local changes."}}, "ko": {"stringUnit": {"state": "translated", "value": "이전해도 커밋하지 않은 로컬 변경은 그대로 보존됩니다."}}}
+    },
+    "ui.review.repository.relocation.2f8a41d0": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Review Relocation"}}, "ko": {"stringUnit": {"state": "translated", "value": "이전 내용 확인"}}}
+    },
+    "ui.confirm.repository.relocation.0c9d6e73": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Relocate the repository?"}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 위치를 이전할까요?"}}}
+    },
+    "ui.repository.relocation.summary.4a7e30b1": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Current URL\n%1$@\n\nNew URL\n%2$@\n\nOnly the working copy's repository connection changes. Local changes are preserved."}}, "ko": {"stringUnit": {"state": "translated", "value": "현재 URL\n%1$@\n\n새 URL\n%2$@\n\n작업 복사본의 저장소 연결만 바뀌며 로컬 변경은 보존됩니다."}}}
+    },
+    "ui.relocate.repository.6f3c2a98": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Relocate Repository"}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 이전"}}}
+    },
+    "ui.relocating.repository.18b5d4e7": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Relocating Repository…"}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 이전 중…"}}}
+    },
+    "ui.repository.relocation.failed.recovery.73a9e2c4": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Repository relocation failed.\n\n%1$@\n\nCheck the current URL and relocate to the correct new URL. If the working copy already points to a wrong URL, relocate from that current URL back to the previous or correct URL."}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 이전에 실패했습니다.\n\n%1$@\n\n현재 URL을 다시 확인하고 올바른 새 URL로 이전하세요. 잘못된 URL로 이미 바뀌었다면 현재 URL에서 이전 URL 또는 올바른 URL로 다시 이전할 수 있습니다."}}}
+    },
+    "ui.repository.relocated.4e1b8d60": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Relocated the repository connection to %1$@. Local changes were preserved."}}, "ko": {"stringUnit": {"state": "translated", "value": "저장소 연결을 %1$@로 이전했습니다. 로컬 변경은 보존되었습니다."}}}
+    },
+    "ui.rename.with.history.2a7c91e5": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Rename with History"}}, "ko": {"stringUnit": {"state": "translated", "value": "이력 보존 이름 변경"}}}
+    },
+    "ui.copy.with.history.5f0d3b82": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Copy with History"}}, "ko": {"stringUnit": {"state": "translated", "value": "이력 보존 복사"}}}
+    },
+    "ui.new.file.name.8d41e6a0": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "New File Name"}}, "ko": {"stringUnit": {"state": "translated", "value": "새 파일 이름"}}}
+    },
+    "ui.file.action.commit.required.6c2b9e14": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Commit the %1$@ change to apply it to the server."}}, "ko": {"stringUnit": {"state": "translated", "value": "%1$@ 변경은 커밋해야 서버에 반영됩니다."}}}
+    },
+    "ui.needs.lock.enable.0b7e4c91": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Require Lock Before Editing"}}, "ko": {"stringUnit": {"state": "translated", "value": "편집 전 잠금 강제"}}}
+    },
+    "ui.needs.lock.disable.3d8a20f6": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Remove Required Lock"}}, "ko": {"stringUnit": {"state": "translated", "value": "편집 전 잠금 강제 해제"}}}
+    },
+    "ui.needs.lock.enabled.9a1f5c37": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Lock Required Before Editing"}}, "ko": {"stringUnit": {"state": "translated", "value": "편집 전 잠금 강제됨"}}}
+    },
+    "ui.needs.lock.commit.required.4c6e82a1": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Changed the required-lock property for %1$@ file(s). Commit it to apply the change for other users."}}, "ko": {"stringUnit": {"state": "translated", "value": "%1$@개 파일의 편집 전 잠금 속성을 바꿨습니다. 커밋해야 다른 사용자에게 반영됩니다."}}}
+    },
+    "ui.invalid.file.name.7b2d10e9": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Enter a valid file name without a folder path."}}, "ko": {"stringUnit": {"state": "translated", "value": "폴더 경로가 아닌 올바른 파일 이름을 입력하세요."}}}
+    },
+    "ui.source.is.not.versioned.1e9c4a72": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "This is not an SVN-versioned file: %1$@"}}, "ko": {"stringUnit": {"state": "translated", "value": "SVN 버전 관리 파일이 아니어서 작업할 수 없습니다: %1$@"}}}
+    },
+    "ui.source.is.not.file.6a3f8d20": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Only regular files can be renamed, copied, or assigned the required-lock property: %1$@"}}, "ko": {"stringUnit": {"state": "translated", "value": "일반 파일만 이름 변경, 복사 또는 잠금 강제 속성을 설정할 수 있습니다: %1$@"}}}
+    },
+    "ui.destination.already.exists.5c0e71b4": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "The destination name already exists: %1$@"}}, "ko": {"stringUnit": {"state": "translated", "value": "대상 이름이 이미 있습니다: %1$@"}}}
+    },
+    "ui.destination.matches.source.2d9a64f1": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "The new file name matches the current name."}}, "ko": {"stringUnit": {"state": "translated", "value": "새 파일 이름이 현재 이름과 같습니다."}}}
+    },
+    "ui.invalid.repository.url.8e4c1a70": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Enter a valid repository URL including its scheme."}}, "ko": {"stringUnit": {"state": "translated", "value": "프로토콜을 포함한 올바른 저장소 URL을 입력하세요."}}}
+    },
+    "ui.repository.url.unchanged.3a6d92e5": {
+      "extractionState": "manual",
+      "localizations": {"en": {"stringUnit": {"state": "translated", "value": "The new repository URL matches the current URL."}}, "ko": {"stringUnit": {"state": "translated", "value": "새 저장소 URL이 현재 URL과 같습니다."}}}
     }
   },
   "version": "1.0"

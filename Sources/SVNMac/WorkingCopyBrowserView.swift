@@ -91,8 +91,19 @@ struct WorkingCopyBrowserView: View {
         .sheet(isPresented: $store.isShowingFileHistory) {
             FileHistoryView().environment(store)
         }
+        .sheet(item: $store.recoveryState.versionedFileActionRequest) { request in
+            VersionedFileActionView(request: request)
+                .environment(store)
+        }
         .task(id: searchRequest) {
             await updateSearchResults()
+        }
+        .task(id: needsLockPathsToLoad) {
+            await store.loadNeedsLockState(for: needsLockPathsToLoad)
+        }
+        .onChange(of: store.errorMessage) { _, message in
+            guard let message, SVNClient.isRepositoryConnectionError(message) else { return }
+            Task { await store.captureRepositoryConnectionError(message) }
         }
         .documentOpenConfirmation()
     }
@@ -117,6 +128,11 @@ struct WorkingCopyBrowserView: View {
                     .font(.caption)
                     .foregroundStyle(lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange)
                     .help(lockDescription(lock))
+            }
+            if store.recoveryState.needsLockPaths.contains(node.relativePath) {
+                Image(systemName: "lock.square")
+                    .foregroundStyle(.secondary)
+                    .help(appLanguage.localized("ui.needs.lock.enabled.9a1f5c37"))
             }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
@@ -152,13 +168,34 @@ struct WorkingCopyBrowserView: View {
             Button(appLanguage.localized("ui.copy.full.path.823e26e7")) {
                 store.copyPath(node.relativePath)
             }
-            if !node.isDirectory, node.isVersioned {
+            if node.isRegularFile, node.isVersioned {
                 Divider()
                 Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
                     Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
                 }
+                Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
+                    store.requestVersionedFileAction(.move, path: node.relativePath)
+                }
+                Button(appLanguage.localized("ui.copy.with.history.5f0d3b82")) {
+                    store.requestVersionedFileAction(.copy, path: node.relativePath)
+                }
+                if store.recoveryState.needsLockPaths.contains(node.relativePath) {
+                    Button(appLanguage.localized("ui.needs.lock.disable.3d8a20f6")) {
+                        Task { _ = await store.setNeedsLock(false, paths: [node.relativePath]) }
+                    }
+                } else {
+                    Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
+                        Task { _ = await store.setNeedsLock(true, paths: [node.relativePath]) }
+                    }
+                }
             }
         }
+    }
+
+    private var needsLockPathsToLoad: [String] {
+        displayedState.visibleRows()
+            .filter { !$0.isDirectory && $0.isVersioned && $0.isRegularFile }
+            .map(\.relativePath)
     }
 
     /// 더블클릭은 파일이면 열고 폴더면 펼침 상태를 토글합니다.

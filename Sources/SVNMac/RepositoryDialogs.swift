@@ -176,6 +176,24 @@ struct AddRepositoryView: View {
                             .help(appLanguage.localized("ui.choose.the.local.folder.for.the.checkout.31ee0035"))
                     }
                 }
+                GridRow {
+                    Text(appLanguage.localized("ui.current.repository.url.1a6f43d2"))
+                    HStack {
+                        TextField(
+                            "",
+                            text: Binding(
+                                get: { store.recoveryState.repositoryURL ?? "" },
+                                set: { _ in }
+                            )
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(true)
+                        Button(appLanguage.localized("ui.change.repository.location.8b21c7e4")) {
+                            Task { await store.requestRepositoryRelocation() }
+                        }
+                        .disabled(store.isWorking)
+                    }
+                }
             }
 
             CredentialFieldsGrid(
@@ -459,6 +477,11 @@ struct CredentialsView: View {
         .padding(24)
         .frame(width: AppLayout.credentialsSheetWidth)
         .onAppear { hasSavedPassword = store.hasSavedPassword(for: project.id) }
+        .task(id: project.id) { await store.loadSelectedRepositoryURL() }
+        .sheet(item: $store.recoveryState.repositoryRelocationRequest) { request in
+            RepositoryRelocationView(request: request)
+                .environment(store)
+        }
         .sheet(item: $store.workingCopyCleanupRequest) { request in
             WorkingCopyCleanupView(request: request)
                 .environment(store)
@@ -546,6 +569,163 @@ struct CredentialsView: View {
             allowsUntrustedServerCertificate = project.allowsUntrustedServerCertificate == true
             dismiss()
         }
+    }
+}
+
+struct RepositoryRelocationView: View {
+    @Environment(ProjectStore.self) private var store
+    @Environment(\.appLanguage) private var appLanguage
+    let request: RepositoryRelocationRequest
+    @State private var newRepositoryURL = ""
+    @State private var isConfirming = false
+
+    var body: some View {
+        @Bindable var store = store
+        VStack(alignment: .leading, spacing: 18) {
+            Label(
+                appLanguage.localized("ui.change.repository.location.8b21c7e4"),
+                systemImage: "arrow.triangle.swap"
+            )
+            .font(.title2.bold())
+
+            if let connectionErrorMessage = request.connectionErrorMessage {
+                Label(
+                    appLanguage.localized("ui.repository.may.have.moved.31d0a5f8"),
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .foregroundStyle(.orange)
+                ErrorDetailsText(message: connectionErrorMessage)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text(appLanguage.localized("ui.current.repository.url.1a6f43d2"))
+                    Text(request.currentURL)
+                        .textSelection(.enabled)
+                }
+                GridRow {
+                    Text(appLanguage.localized("ui.new.repository.url.5d4b9f02"))
+                    TextField("https://server/svn/project/trunk", text: $newRepositoryURL)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
+                }
+            }
+
+            Label(
+                appLanguage.localized("ui.local.changes.are.preserved.7e12c6a9"),
+                systemImage: "checkmark.shield"
+            )
+            .font(.callout)
+
+            if let failure = store.recoveryState.repositoryRelocationFailureMessage {
+                ErrorDetailsText(message: failure)
+            }
+
+            Divider()
+            HStack {
+                Spacer()
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                    store.recoveryState.repositoryRelocationRequest = nil
+                    store.recoveryState.repositoryRelocationFailureMessage = nil
+                }
+                .disabled(store.isWorking)
+                Button(appLanguage.localized("ui.review.repository.relocation.2f8a41d0")) {
+                    isConfirming = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newRepositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+            }
+        }
+        .padding(24)
+        .frame(width: AppLayout.credentialsSheetWidth)
+        .interactiveDismissDisabled(store.isWorking)
+        .alert(
+            appLanguage.localized("ui.confirm.repository.relocation.0c9d6e73"),
+            isPresented: $isConfirming
+        ) {
+            Button(appLanguage.localized("ui.relocate.repository.6f3c2a98")) {
+                Task { _ = await store.relocateSelectedRepository(to: newRepositoryURL) }
+            }
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {}
+        } message: {
+            Text(appLanguage.localized(
+                "ui.repository.relocation.summary.4a7e30b1",
+                request.currentURL,
+                newRepositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            ))
+        }
+    }
+}
+
+struct VersionedFileActionView: View {
+    @Environment(ProjectStore.self) private var store
+    @Environment(\.appLanguage) private var appLanguage
+    let request: VersionedFileActionRequest
+    @State private var destinationName: String
+
+    init(request: VersionedFileActionRequest) {
+        self.request = request
+        _destinationName = State(initialValue: (request.sourceRelativePath as NSString).lastPathComponent)
+    }
+
+    var body: some View {
+        @Bindable var store = store
+        VStack(alignment: .leading, spacing: 18) {
+            Label(title, systemImage: request.kind == .move ? "pencil" : "doc.on.doc")
+                .font(.title2.bold())
+            Text(request.sourceRelativePath)
+                .font(.callout.monospaced())
+                .textSelection(.enabled)
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
+                GridRow {
+                    Text(appLanguage.localized("ui.new.file.name.8d41e6a0"))
+                    TextField("", text: $destinationName)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Label(
+                appLanguage.localized("ui.file.action.commit.required.6c2b9e14", destinationName),
+                systemImage: "info.circle"
+            )
+            .font(.callout)
+
+            if let failure = store.recoveryState.versionedFileActionFailureMessage {
+                ErrorDetailsText(message: failure)
+            }
+
+            Divider()
+            HStack {
+                Spacer()
+                Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                    store.recoveryState.versionedFileActionRequest = nil
+                    store.recoveryState.versionedFileActionFailureMessage = nil
+                }
+                .disabled(store.isWorking)
+                Button(title) {
+                    Task {
+                        _ = await store.performVersionedFileAction(
+                            request,
+                            destinationName: destinationName
+                        )
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(destinationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isWorking)
+            }
+        }
+        .padding(24)
+        .frame(width: AppLayout.credentialsSheetWidth)
+        .interactiveDismissDisabled(store.isWorking)
+    }
+
+    private var title: String {
+        appLanguage.localized(
+            request.kind == .move
+                ? "ui.rename.with.history.2a7c91e5"
+                : "ui.copy.with.history.5f0d3b82"
+        )
     }
 }
 
