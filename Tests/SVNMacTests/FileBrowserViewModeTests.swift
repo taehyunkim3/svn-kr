@@ -19,6 +19,9 @@ import Testing
 }
 
 @Test func splitBrowserFolderRowsSupportDoubleClickAndChevronHitArea() throws {
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.width >= 20)
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.height >= 20)
+
     let source = try source(at: "Sources/SVNMac/WorkingCopySplitBrowserView.swift")
     let folderRowStart = try #require(source.range(of: "private func folderRow"))
     let nextFunctionStart = try #require(
@@ -27,8 +30,12 @@ import Testing
     let folderRow = source[folderRowStart.lowerBound..<nextFunctionStart.lowerBound]
     let chevronBranchEnd = try #require(folderRow.range(of: "} else {"))
     let chevronBranch = folderRow[..<chevronBranchEnd.lowerBound]
+    let hitFrame = try #require(chevronBranch.range(of: ".frame("))
+    let contentShape = try #require(chevronBranch.range(of: ".contentShape(Rectangle())"))
 
-    #expect(chevronBranch.contains(".contentShape(Rectangle())"))
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.width"))
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.height"))
+    #expect(hitFrame.lowerBound < contentShape.lowerBound)
     #expect(folderRow.contains("TapGesture(count: 2)"))
     #expect(folderRow.contains("browserState.enterDirectory(row.relativePath)"))
 }

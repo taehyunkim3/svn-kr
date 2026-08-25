@@ -259,11 +259,20 @@ struct WorkingCopySplitBrowserView: View {
                 } label: {
                     Image(systemName: browserState.expandedDirectoryPaths.contains(row.relativePath)
                           ? "chevron.down" : "chevron.right")
+                        .frame(
+                            width: AppLayout.fileBrowserFolderDisclosureHitTargetSize.width,
+                            height: AppLayout.fileBrowserFolderDisclosureHitTargetSize.height
+                        )
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Image(systemName: "chevron.right").hidden()
+                Image(systemName: "chevron.right")
+                    .frame(
+                        width: AppLayout.fileBrowserFolderDisclosureHitTargetSize.width,
+                        height: AppLayout.fileBrowserFolderDisclosureHitTargetSize.height
+                    )
+                    .hidden()
             }
 
             Button {
