@@ -2,19 +2,25 @@ import Foundation
 import Testing
 @testable import SVNMac
 
-/// 소스가 참조하는 문자열 키가 실제 번역 파일에 없으면 화면에 키가 그대로 노출됩니다.
-/// 병렬 작업이 리소스 3개 파일에 각각 키를 추가하고 병합하는 과정에서 실제로 발생했던 사고입니다.
-@Test func everyReferencedLocalizationKeyExistsInBothLanguages() throws {
+@Test func generatedLocalizationKeysMatchEveryLocalizationResource() throws {
     let sources = localizationSourcesDirectory()
-    let referenced = try referencedLocalizationKeys(in: sources)
-    #expect(!referenced.isEmpty)
+    let generatedKeys = Set(LocalizationKey.allCases.map(\.rawValue))
+    #expect(!generatedKeys.isEmpty)
+    #expect(generatedKeys.count == LocalizationKey.allCases.count, "생성 타입에 중복 키가 있습니다")
+
+    let catalogKeys = try catalogLocalizationKeys(
+        at: sources.appendingPathComponent("Resources/Localizable.xcstrings")
+    )
+    #expect(generatedKeys == catalogKeys, "String Catalog와 생성 타입의 키가 다릅니다")
 
     for language in ["ko", "en"] {
         let defined = try definedLocalizationKeys(
             at: sources.appendingPathComponent("Resources/\(language).lproj/Localizable.strings")
         )
-        let missing = referenced.subtracting(defined).sorted()
+        let missing = generatedKeys.subtracting(defined).sorted()
+        let untyped = defined.subtracting(generatedKeys).sorted()
         #expect(missing.isEmpty, "\(language) 번역 누락: \(missing.joined(separator: ", "))")
+        #expect(untyped.isEmpty, "\(language) 타입 누락: \(untyped.joined(separator: ", "))")
     }
 }
 
@@ -50,26 +56,16 @@ private func localizationSourcesDirectory() -> URL {
         .appendingPathComponent("Sources/SVNMac", isDirectory: true)
 }
 
-private func referencedLocalizationKeys(in directory: URL) throws -> Set<String> {
-    let enumerator = try #require(
-        FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil)
-    )
-    var keys: Set<String> = []
-    let pattern = try NSRegularExpression(pattern: "\"(ui\\.[a-z0-9][a-z0-9._]*)\"")
-    for case let url as URL in enumerator where url.pathExtension == "swift" {
-        let contents = try String(contentsOf: url, encoding: .utf8)
-        let range = NSRange(contents.startIndex..., in: contents)
-        for match in pattern.matches(in: contents, range: range) {
-            guard let keyRange = Range(match.range(at: 1), in: contents) else { continue }
-            keys.insert(String(contents[keyRange]))
-        }
-    }
-    return keys
+private func catalogLocalizationKeys(at url: URL) throws -> Set<String> {
+    let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+    let catalog = try #require(object as? [String: Any])
+    let strings = try #require(catalog["strings"] as? [String: Any])
+    return Set(strings.keys)
 }
 
 private func localizationEntries(at url: URL) throws -> [String: String] {
     let contents = try String(contentsOf: url, encoding: .utf8)
-    let pattern = try NSRegularExpression(pattern: "^\"(ui\\.[^\"]+)\"\\s*=\\s*\"(.*)\";$", options: [.anchorsMatchLines])
+    let pattern = try NSRegularExpression(pattern: "^\"([^\"]+)\"\\s*=\\s*\"(.*)\";$", options: [.anchorsMatchLines])
     let range = NSRange(contents.startIndex..., in: contents)
     var entries: [String: String] = [:]
     for match in pattern.matches(in: contents, range: range) {

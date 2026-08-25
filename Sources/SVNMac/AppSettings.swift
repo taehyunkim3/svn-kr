@@ -91,7 +91,21 @@ enum AppLanguage: String, CaseIterable {
         localizedBundle.localizedString(forKey: key, value: key, table: nil)
     }
 
+    func localized(_ key: LocalizationKey) -> String {
+        localized(key.rawValue)
+    }
+
     func localized(_ key: String, _ arguments: Any...) -> String {
+        let format = localized(key)
+        let stringArguments: [CVarArg] = arguments.map { String(describing: $0) }
+        return String(
+            format: format,
+            locale: Locale(identifier: rawValue),
+            arguments: stringArguments
+        )
+    }
+
+    func localized(_ key: LocalizationKey, _ arguments: Any...) -> String {
         let format = localized(key)
         let stringArguments: [CVarArg] = arguments.map { String(describing: $0) }
         return String(
