@@ -1582,6 +1582,23 @@
         }
       }
     },
+    "ui.browse.repository.6f2a9c41": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse Repository"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소 둘러보기"
+          }
+        }
+      }
+    },
     "ui.browse.repository.before.checkout.7c2e1b84": {
       "extractionState": "manual",
       "localizations": {

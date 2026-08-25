@@ -3613,6 +3613,7 @@ private actor StubSVNClient: SVNClientServing {
         if let repositoryPathNormalizationScanError { throw repositoryPathNormalizationScanError }
         return repositoryPathNormalizationTargetsValue
     }
+    func repositoryEntries(at repositoryURL: String, revision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry] { [] }
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult {
         repositoryPathNormalizationRequests += 1
         if let repositoryPathNormalizationError { throw repositoryPathNormalizationError }

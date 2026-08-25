@@ -10,7 +10,7 @@ struct RepositoryBrowserView: View {
 
     @MainActor
     init(
-        repositoryListing: any SVNRepositoryListing,
+        repositoryListing: any SVNClientServing,
         repositoryURL: String,
         revision: String? = nil,
         credentials: SVNCredentials? = nil,

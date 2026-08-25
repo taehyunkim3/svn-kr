@@ -252,6 +252,7 @@ private actor DemoSVNClient: SVNClientServing {
     func repositoryPathsNeedingNormalization(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryPathNormalizationTarget] {
         repositoryPathNormalizationTargets
     }
+    func repositoryEntries(at _: String, revision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry] { [] }
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at _: String, message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult {
         repositoryPathNormalizationTargets.removeAll { targets.contains($0) }
         return SVNRepositoryPathNormalizationResult(
