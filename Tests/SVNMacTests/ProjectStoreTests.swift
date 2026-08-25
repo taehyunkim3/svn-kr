@@ -1630,6 +1630,64 @@ import Testing
 }
 
 @MainActor
+@Test func updateBadgePollingBacksOffAndResetsAfterSuccess() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/badge-backoff")
+    let sleeper = RecordingUpdateBadgeSleeper(stopsAfter: 5)
+    let client = StubSVNClient(
+        revisionsByPath: [project.path: "10"],
+        latestLogRevisionsByPath: [project.path: "11"],
+        updateBadgeFailuresRemaining: 3
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        updateBadgeRefreshInterval: .milliseconds(10),
+        updateBadgeMaximumRefreshInterval: .milliseconds(40),
+        updateBadgeSleep: { duration in
+            try await sleeper.sleep(for: duration)
+        }
+    )
+
+    let deadline = ContinuousClock.now + .seconds(15)
+    while await sleeper.recordedDurations().count < 5, ContinuousClock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+
+    #expect(await sleeper.recordedDurations() == [
+        .milliseconds(10),
+        .milliseconds(20),
+        .milliseconds(40),
+        .milliseconds(40),
+        .milliseconds(10),
+    ])
+    #expect(store.projectSummaries[project.id]?.needsUpdate == true)
+}
+
+@MainActor
+@Test func blockedSelectedProjectDoesNotBlockOtherUpdateBadges() async {
+    let selected = SVNProject(name: "차단 프로젝트", path: "/tmp/badge-blocked-selected")
+    let unselected = SVNProject(name: "정상 프로젝트", path: "/tmp/badge-unselected-after-block")
+    let client = StubSVNClient(
+        revisionsByPath: [selected.path: "10", unselected.path: "20"],
+        latestLogRevisionsByPath: [selected.path: "10", unselected.path: "21"],
+        snapshotError: TestError.automaticRefreshFailed
+    )
+    let store = makeStore(
+        projects: [selected, unselected],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+
+    await store.refreshSelectedProject(manual: false)
+    store.updateRemoteSummary(for: unselected.id, needsUpdate: false)
+
+    await store.refreshSelectedProject(manual: false)
+
+    #expect(store.projectSummaries[unselected.id]?.needsUpdate == true)
+    #expect(await client.snapshotRequestCount() == 1)
+}
+
+@MainActor
 @Test func refreshKeepsKnownUpdateBadgeWhileRequestIsRunning() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/badge-flicker")
     let client = StubSVNClient(
@@ -2844,7 +2902,11 @@ private func makeStore(
     volumeNormalizationProbe: any VolumeNormalizationProbing = StubVolumeNormalizationProbe(),
     settingsDefaults: UserDefaults = UserDefaults(suiteName: "project-store-settings-\(UUID().uuidString)")!,
     hideTemporaryFiles: Bool = true,
-    updateBadgeRefreshInterval: Duration? = nil
+    updateBadgeRefreshInterval: Duration? = nil,
+    updateBadgeMaximumRefreshInterval: Duration = .seconds(15 * 60),
+    updateBadgeSleep: @escaping @Sendable (Duration) async throws -> Void = { duration in
+        try await Task.sleep(for: duration)
+    }
 ) -> ProjectStore {
     ProjectStore(
         client: client,
@@ -2858,7 +2920,9 @@ private func makeStore(
         volumeNormalizationProbe: volumeNormalizationProbe,
         settingsDefaults: settingsDefaults,
         hideTemporaryFiles: hideTemporaryFiles,
-        updateBadgeRefreshInterval: updateBadgeRefreshInterval
+        updateBadgeRefreshInterval: updateBadgeRefreshInterval,
+        updateBadgeMaximumRefreshInterval: updateBadgeMaximumRefreshInterval,
+        updateBadgeSleep: updateBadgeSleep
     )
 }
 
@@ -2938,6 +3002,26 @@ private actor AsyncTestGate {
         let pending = waiters
         waiters.removeAll()
         pending.forEach { $0.resume() }
+    }
+}
+
+private actor RecordingUpdateBadgeSleeper {
+    private let stopsAfter: Int
+    private var durations: [Duration] = []
+
+    init(stopsAfter: Int) {
+        self.stopsAfter = stopsAfter
+    }
+
+    func sleep(for duration: Duration) async throws {
+        durations.append(duration)
+        if durations.count == stopsAfter {
+            throw CancellationError()
+        }
+    }
+
+    func recordedDurations() -> [Duration] {
+        durations
     }
 }
 
@@ -3078,6 +3162,7 @@ private actor StubSVNClient: SVNClientServing {
     let latestLogRevisionsByPath: [String: String]
     let delaysByPath: [String: Duration]
     let outOfDateByPath: [String: Bool]
+    private var updateBadgeFailuresRemaining: Int
     let remoteChangesByPath: [String: [SVNStatusEntry]]
     let fileLogsByPath: [String: [SVNLogEntry]]
     let checkoutResult: String
@@ -3148,6 +3233,7 @@ private actor StubSVNClient: SVNClientServing {
         latestLogRevisionsByPath: [String: String] = [:],
         delaysByPath: [String: Duration] = [:],
         outOfDateByPath: [String: Bool] = [:],
+        updateBadgeFailuresRemaining: Int = 0,
         remoteChangesByPath: [String: [SVNStatusEntry]] = [:],
         fileLogsByPath: [String: [SVNLogEntry]] = [:],
         checkoutResult: String = "checked out",
@@ -3189,6 +3275,7 @@ private actor StubSVNClient: SVNClientServing {
         self.latestLogRevisionsByPath = latestLogRevisionsByPath
         self.delaysByPath = delaysByPath
         self.outOfDateByPath = outOfDateByPath
+        self.updateBadgeFailuresRemaining = updateBadgeFailuresRemaining
         self.remoteChangesByPath = remoteChangesByPath
         self.fileLogsByPath = fileLogsByPath
         self.checkoutResult = checkoutResult
@@ -3386,6 +3473,10 @@ private actor StubSVNClient: SVNClientServing {
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry] {
         logRequests += 1
         await delay(for: path)
+        if updateBadgeFailuresRemaining > 0 {
+            updateBadgeFailuresRemaining -= 1
+            throw TestError.automaticRefreshFailed
+        }
         return [makeLog(revision: latestLogRevisionsByPath[path] ?? revisionsByPath[path] ?? "0")]
     }
     func revisionDiff(at path: String, revision: String, repositoryPath: String, workingCopyRepositoryPath: String?, pegRevision: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
