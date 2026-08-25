@@ -10,11 +10,11 @@ struct ProjectStatusBadges: View {
             HStack(spacing: 7) {
                 if hasFilenameNormalizationWarning {
                     Label(
-                        appLanguage.localized("ui.filename.warning.52af346c"),
+                        appLanguage.localized(.ui.filename.warning),
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .foregroundStyle(.orange)
-                    .help(appLanguage.localized("ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66"))
+                    .help(appLanguage.localized(.ui.this.diskStoresKoreanFilenamesInDecomposed))
                 }
                 if let summary {
                     if summary.conflictCount > 0 {
@@ -27,10 +27,10 @@ struct ProjectStatusBadges: View {
                     if summary.lockCount > 0 {
                         Label("\(summary.lockCount)", systemImage: "lock.fill")
                             .foregroundStyle(.blue)
-                            .help(appLanguage.localized("ui.locked.files.457daf19", summary.lockCount))
+                            .help(appLanguage.localized(.ui.locked.files, summary.lockCount))
                     }
                     if summary.needsUpdate {
-                        Label(appLanguage.localized("ui.update.0f38eb76"), systemImage: "arrow.down.circle.fill")
+                        Label(appLanguage.localized(.ui.update.label), systemImage: "arrow.down.circle.fill")
                             .foregroundStyle(.orange)
                     }
                 }

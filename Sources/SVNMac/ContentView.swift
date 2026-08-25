@@ -32,7 +32,7 @@ struct ContentView: View {
         @Bindable var store = store
         NavigationSplitView {
             List(selection: $store.selectedProjectID) {
-                Section(appLanguage.localized("ui.local.working.folders.341c44b5")) {
+                Section(appLanguage.localized(.ui.local.workingFolders)) {
                     ForEach(store.projects) { project in
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
@@ -63,7 +63,7 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
-                    .help(appLanguage.localized("ui.check.out.a.new.svn.repository.or.register.an.ex.2b1e2b00"))
+                    .help(appLanguage.localized(.ui.check.outANewSvnRepositoryOrRegisterAnEx))
 
                     Button(action: { projectPendingRemoval = store.selectedProject }) {
                         Image(systemName: "minus")
@@ -73,19 +73,19 @@ struct ContentView: View {
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
                     .disabled(store.selectedProject == nil)
-                    .help(appLanguage.localized("ui.remove.the.selected.working.folder.from.the.app..ffe092ae"))
+                    .help(appLanguage.localized(.ui.remove.theSelectedWorkingFolderFromTheApp))
 
                     // 전체 설정은 상단 메뉴에만 있어 찾기 어려우므로 사이드바에도 노출합니다.
                     SettingsLink {
                         Label(
-                            appLanguage.localized("ui.settings.2f7c48b3"),
+                            appLanguage.localized(.ui.settings.label),
                             systemImage: "gearshape"
                         )
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .frame(height: 24)
-                    .help(appLanguage.localized("ui.open.the.app.wide.settings.window.6b0d5a17"))
+                    .help(appLanguage.localized(.ui.localizationOpen.theAppWideSettingsWindow))
                     Spacer()
                 }
                 .padding(8)
@@ -100,21 +100,21 @@ struct ContentView: View {
                 projectView(project)
             } else {
                 ContentUnavailableView(
-                    appLanguage.localized("ui.add.a.local.working.folder.816116ca"),
+                    appLanguage.localized(.ui.add.aLocalWorkingFolder),
                     systemImage: "externaldrive.badge.plus",
-                    description: Text(appLanguage.localized("ui.press.o.or.use.the.button.at.the.bottom.left.42abfdb5"))
+                    description: Text(appLanguage.localized(.ui.press.oOrUseTheButtonAtTheBottomLeft))
                 )
             }
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 if store.isDemoMode {
-                    Button(appLanguage.localized("ui.exit.demo.3a329c52")) {
+                    Button(appLanguage.localized(.ui.exit.demo)) {
                         onExitDemo()
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
-                    .help(appLanguage.localized("ui.close.the.sample.project.and.return.to.normal.mo.6d61e364"))
+                    .help(appLanguage.localized(.ui.close.theSampleProjectAndReturnToNormalMo))
                 }
                 Button {
                     Task { await store.refreshSelectedProject(manual: true) }
@@ -125,12 +125,12 @@ struct ContentView: View {
                         } else {
                             Image(systemName: "arrow.clockwise")
                         }
-                        Text(appLanguage.localized("ui.refresh.0aca6bd2"))
+                        Text(appLanguage.localized(.ui.refresh.label))
                     }
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
-                .help(appLanguage.localized("ui.reload.local.changes.and.the.latest.server.commi.19e409f3"))
+                .help(appLanguage.localized(.ui.reload.localChangesAndTheLatestServerCommi))
                 Button {
                     Task { await store.previewUpdate() }
                 } label: {
@@ -140,7 +140,7 @@ struct ContentView: View {
                         } else {
                             Image(systemName: "arrow.down.circle")
                         }
-                        Text(appLanguage.localized("ui.update.0f38eb76"))
+                        Text(appLanguage.localized(.ui.update.label))
                         if let badgeText = store.incomingUpdateCommitBadgeText {
                             Text(badgeText)
                                 .font(.caption2.bold())
@@ -156,10 +156,10 @@ struct ContentView: View {
                     .padding(.horizontal, AppLayout.toolbarItemHorizontalPadding)
                 }
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
-                .help(appLanguage.localized("ui.download.the.latest.server.changes.into.the.curr.17974067"))
+                .help(appLanguage.localized(.ui.download.theLatestServerChangesIntoTheCurr))
                 .accessibilityValue(
                     store.isWorkingCopyOutOfDate == true
-                        ? appLanguage.localized("ui.update.required.9da93c25")
+                        ? appLanguage.localized(.ui.update.requiredPrimary)
                         : ""
                 )
             }
@@ -174,20 +174,20 @@ struct ContentView: View {
         }
         .alert(
             projectPendingRemoval.map {
-                appLanguage.localized("ui.remove.working.folder.from.app.confirmation.54d24642", $0.name)
+                appLanguage.localized(.ui.remove.workingFolderFromAppConfirmation, $0.name)
             } ?? "",
             isPresented: .isPresenting($projectPendingRemoval),
             presenting: projectPendingRemoval
         ) { project in
-            Button(appLanguage.localized("ui.remove.d4be5a3e"), role: .destructive) {
+            Button(appLanguage.localized(.ui.remove.label), role: .destructive) {
                 store.removeProject(project.id)
                 projectPendingRemoval = nil
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                 projectPendingRemoval = nil
             }
         } message: { _ in
-            Text(appLanguage.localized("ui.remove.the.selected.working.folder.from.the.app..ffe092ae"))
+            Text(appLanguage.localized(.ui.remove.theSelectedWorkingFolderFromTheApp))
         }
         .task(id: store.selectedProjectID) {
             await store.refreshSelectedProject(manual: false)
@@ -254,7 +254,7 @@ struct ContentView: View {
                     Text(project.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     if store.filenameNormalizationWarningProjectIDs.contains(project.id) {
                         Label(
-                            appLanguage.localized("ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66"),
+                            appLanguage.localized(.ui.this.diskStoresKoreanFilenamesInDecomposed),
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.caption)
@@ -264,38 +264,38 @@ struct ContentView: View {
                 Spacer()
                 repositoryPathNormalizationButton
                 repositoryLocksButton
-                Button(appLanguage.localized("ui.open.in.finder.35aa9225"), systemImage: "folder") {
+                Button(appLanguage.localized(.ui.localizationOpen.inFinder), systemImage: "folder") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: project.path, isDirectory: true))
                 }
-                .help(appLanguage.localized("ui.open.this.svn.local.working.folder.in.finder.9befff0f"))
-                Button(appLanguage.localized("ui.folder.settings.6f2a0d43"), systemImage: "person.badge.key") {
+                .help(appLanguage.localized(.ui.localizationOpen.thisSvnLocalWorkingFolderInFinder))
+                Button(appLanguage.localized(.ui.folder.settings), systemImage: "person.badge.key") {
                     store.isShowingCredentials = true
                 }
-                .help(appLanguage.localized("ui.change.this.folder.s.location.svn.account.and.k.5b3e9d20"))
+                .help(appLanguage.localized(.ui.change.thisFolderSLocationSvnAccountAndK))
                 if let notice = store.notice { Text(notice).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
             }
             .padding()
 
             TabView(selection: $selectedProjectTab) {
                 ChangesView()
-                    .tabItem { Label(appLanguage.localized("ui.changes.0e19f519"), systemImage: "checklist") }
+                    .tabItem { Label(appLanguage.localized(.ui.changes.label), systemImage: "checklist") }
                     .tag(ProjectTab.changes)
                 FileBrowserTabView(
                     searchText: $fileSearchText,
                     viewModeIdentifier: $fileBrowserViewModeIdentifier
                 )
-                    .tabItem { Label(appLanguage.localized("ui.files.6075adef"), systemImage: "folder") }
+                    .tabItem { Label(appLanguage.localized(.ui.files.label), systemImage: "folder") }
                     .tag(ProjectTab.files)
                 HistoryView(searchText: $historySearchText)
-                    .tabItem { Label(appLanguage.localized("ui.commit.history.07e0f8de"), systemImage: "clock.arrow.circlepath") }
+                    .tabItem { Label(appLanguage.localized(.ui.commit.history), systemImage: "clock.arrow.circlepath") }
                     .tag(ProjectTab.history)
             }
             .modifier(ProjectTabSearchModifier(
                 selectedTab: selectedProjectTab,
                 fileSearchText: $fileSearchText,
                 historySearchText: $historySearchText,
-                filePrompt: appLanguage.localized("ui.search.files.e3607184"),
-                historyPrompt: appLanguage.localized("ui.search.author.file.message.or.revision.6c2b5d76")
+                filePrompt: appLanguage.localized(.ui.search.files),
+                historyPrompt: appLanguage.localized(.ui.search.authorFileMessageOrRevision)
             ))
         }
     }
@@ -306,14 +306,14 @@ struct ContentView: View {
             Task { await store.beginRepositoryPathNormalization() }
         } label: {
             ActionProgressLabel(
-                title: appLanguage.localized("repository.path.normalization.action"),
-                inProgressTitle: appLanguage.localized("repository.path.normalization.scanning"),
+                title: appLanguage.localized(.repository.pathNormalizationAction),
+                inProgressTitle: appLanguage.localized(.repository.pathNormalizationScanning),
                 systemImage: "character.book.closed",
                 isInProgress: store.isScanningRepositoryPaths
             )
         }
         .disabled(store.isSelectedProjectActionBlocked)
-        .help(appLanguage.localized("repository.path.normalization.action.help"))
+        .help(appLanguage.localized(.repository.pathNormalizationActionHelp))
     }
 
     /// 탭 바깥의 프로젝트 공통 머리글에 두어 어느 탭에서도 잠금 현황을 확인할 수 있게 합니다.
@@ -324,18 +324,18 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "lock")
-                Text(appLanguage.localized("ui.locks.dac8d38d"))
+                Text(appLanguage.localized(.ui.locks.labelSecondary))
                 if !store.repositoryLocks.isEmpty {
                     StatusBadge(
                         label: "\(store.repositoryLocks.count)",
                         color: .accentColor,
                         verticalPadding: 2
                     )
-                    .accessibilityLabel(appLanguage.localized("ui.locks.46e6922e", store.repositoryLocks.count))
+                    .accessibilityLabel(appLanguage.localized(.ui.locks.labelFormatted, store.repositoryLocks.count))
                 }
             }
         }
-        .help(appLanguage.localized("ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51"))
+        .help(appLanguage.localized(.ui.view.theLockedFilesAndTheirCountInThisRe))
     }
 
 }
@@ -359,23 +359,23 @@ private struct FileBrowserTabView: View {
             HStack {
                 Spacer()
                 Picker(
-                    appLanguage.localized("ui.choose.file.browser.view.mode.2c78a451"),
+                    appLanguage.localized(.ui.choose.fileBrowserViewMode),
                     selection: $viewModeIdentifier
                 ) {
                     Label(
-                        appLanguage.localized("ui.file.browser.tree.view.4a29bf3c"),
+                        appLanguage.localized(.ui.file.browserTreeView),
                         systemImage: "list.bullet.indent"
                     )
                     .tag(FileBrowserViewMode.tree.rawValue)
                     Label(
-                        appLanguage.localized("ui.file.browser.split.view.6f8e13d2"),
+                        appLanguage.localized(.ui.file.browserSplitView),
                         systemImage: "sidebar.left"
                     )
                     .tag(FileBrowserViewMode.split.rawValue)
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
-                .help(appLanguage.localized("ui.choose.file.browser.view.mode.2c78a451"))
+                .help(appLanguage.localized(.ui.choose.fileBrowserViewMode))
             }
             .padding(.horizontal)
             .padding(.vertical, 8)

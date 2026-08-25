@@ -946,7 +946,7 @@ import Testing
     #expect(
         store.notice
             == AppLanguage.current.localized(
-                "ui.the.conflict.was.resolved.review.the.file.before.7821924b"
+                .ui.the.conflictWasResolvedReviewTheFileBefore
             )
     )
 }

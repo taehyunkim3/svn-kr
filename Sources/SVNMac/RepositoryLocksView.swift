@@ -11,33 +11,33 @@ struct RepositoryLocksView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.localized("ui.repository.locks.dff91f03")).font(.title2.bold())
+                Text(appLanguage.localized(.ui.repository.locks)).font(.title2.bold())
                 Spacer()
                 Button {
                     Task { await store.loadRepositoryLocks() }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.refresh.0aca6bd2"),
+                        title: appLanguage.localized(.ui.refresh.label),
                         isInProgress: store.isLoadingSelectedProjectLocks
                     )
                 }
                 .disabled(store.isLoadingSelectedProjectLocks)
                 if !store.ownedRepositoryLocks.isEmpty {
                     Button(appLanguage.localized(
-                        "ui.release.all.my.locks.5d8c31a7",
+                        .ui.release.allMyLocks,
                         store.ownedRepositoryLocks.count
                     )) {
                         store.requestBulkUnlock()
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
                 }
-                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized(.ui.close.label)) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
             Label {
-                Text(appLanguage.localized("ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309"))
+                Text(appLanguage.localized(.ui.a.lockedFileIsMarkedOnTheSvnServerToPre))
             } icon: {
                 Image(systemName: "info.circle")
             }
@@ -66,62 +66,62 @@ struct RepositoryLocksView: View {
                         Task { await store.unlock(lock) }
                     } label: {
                         ActionProgressLabel(
-                            title: appLanguage.localized("ui.release.lock.normally.5e1039ab"),
+                            title: appLanguage.localized(.ui.release.lockNormally),
                             isInProgress: store.isLoadingSelectedProjectLocks
                         )
                     }
                     .disabled(store.isSelectedProjectActionBlocked)
-                    .help(appLanguage.localized("ui.try.normal.unlock.before.force.unlock.8a21f763"))
+                    .help(appLanguage.localized(.ui.localizationTry.normalUnlockBeforeForceUnlock))
                 }
                 .padding(.vertical, 4)
             }
             .overlay {
                 if store.repositoryLocks.isEmpty, store.isLoadingSelectedProjectLocks {
-                    ProgressView(appLanguage.localized("ui.loading.repository.locks.3dd2dfdb"))
+                    ProgressView(appLanguage.localized(.ui.loading.repositoryLocks))
                 } else if store.repositoryLocks.isEmpty {
-                    ContentUnavailableView(appLanguage.localized("ui.no.locked.files.7d32eee0"), systemImage: "lock.open")
+                    ContentUnavailableView(appLanguage.localized(.ui.no.lockedFiles), systemImage: "lock.open")
                 }
             }
         }
         .appSheetFrame(minimumSize: AppLayout.repositoryLocksSheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
         .alert(
-            appLanguage.localized("ui.force.release.repository.lock.31d7f2c4"),
+            appLanguage.localized(.ui.force.releaseRepositoryLock),
             isPresented: .isPresenting($store.forceUnlockRequest),
             presenting: store.forceUnlockRequest
         ) { request in
-            Button(appLanguage.localized("ui.force.release.lock.a4ef2d91"), role: .destructive) {
+            Button(appLanguage.localized(.ui.force.releaseLock), role: .destructive) {
                 Task { await store.forceUnlock(request) }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                 store.forceUnlockRequest = nil
             }
         } message: { request in
             Text(forceUnlockDetails(request))
         }
         .alert(
-            appLanguage.localized("ui.bulk.unlock.confirmation.title.a4e70c92"),
+            appLanguage.localized(.ui.bulk.unlockConfirmationTitle),
             isPresented: .isPresenting($store.recoveryState.bulkUnlockRequest),
             presenting: store.recoveryState.bulkUnlockRequest
         ) { request in
-            Button(appLanguage.localized("ui.release.locks.count.1f6b83d4", request.locks.count)) {
+            Button(appLanguage.localized(.ui.release.locksCount, request.locks.count)) {
                 Task { await store.confirmBulkUnlock(request) }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                 store.recoveryState.bulkUnlockRequest = nil
             }
         } message: { request in
             Text(appLanguage.localized(
-                "ui.bulk.unlock.confirmation.details.8c20fd61",
+                .ui.bulk.unlockConfirmationDetails,
                 request.locks.count
             ))
         }
         .alert(
-            appLanguage.localized("ui.bulk.unlock.partial.failure.title.3be91d76"),
+            appLanguage.localized(.ui.bulk.unlockPartialFailureTitle),
             isPresented: .isPresenting($store.recoveryState.bulkUnlockResult),
             presenting: store.recoveryState.bulkUnlockResult
         ) { _ in
-            Button(appLanguage.localized("ui.close.3ea43db3")) {
+            Button(appLanguage.localized(.ui.close.label)) {
                 store.recoveryState.bulkUnlockResult = nil
             }
         } message: { result in
@@ -132,11 +132,11 @@ struct RepositoryLocksView: View {
     private func forceUnlockDetails(_ request: ForceUnlockRequest) -> String {
         let lock = request.lock
         let created = lock.created?.formatted(date: .numeric, time: .standard)
-            ?? appLanguage.localized("ui.not.available.60326cf1")
+            ?? appLanguage.localized(.ui.not.available)
         let comment = lock.comment.flatMap { $0.isEmpty ? nil : $0 }
-            ?? appLanguage.localized("ui.not.available.60326cf1")
+            ?? appLanguage.localized(.ui.not.available)
         return appLanguage.localized(
-            "ui.force.unlock.details.owner.time.comment.original.93c28fb0",
+            .ui.force.unlockDetailsOwnerTimeCommentOriginal,
             lock.path,
             lock.owner,
             created,
@@ -150,7 +150,7 @@ struct RepositoryLocksView: View {
             .map { "\($0.path)\n\($0.message)" }
             .joined(separator: "\n\n")
         return appLanguage.localized(
-            "ui.bulk.unlock.partial.failure.details.71a6c5e8",
+            .ui.bulk.unlockPartialFailureDetails,
             result.releasedPaths.count,
             result.requestedCount,
             failures

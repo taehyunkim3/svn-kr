@@ -213,7 +213,7 @@ import Testing
     #expect(!didSave)
     #expect(
         store.errorMessage
-            == AppLanguage.current.localized("ui.revision.history.client.unavailable.5d7a91c2")
+            == AppLanguage.current.localized(.ui.revision.historyClientUnavailable)
     )
     #expect(!FileManager.default.fileExists(atPath: destination.path))
 }

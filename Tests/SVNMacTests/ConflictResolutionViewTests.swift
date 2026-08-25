@@ -16,7 +16,7 @@ import Testing
 
     #expect(conflictResolution.contains("@State private var isWorkingFileExpanded = false"))
     #expect(conflictResolution.contains("DisclosureGroup(isExpanded: $isWorkingFileExpanded)"))
-    #expect(conflictResolution.contains("ui.confirm.manually.edited.content.97e30ac4"))
+    #expect(conflictResolution.contains(".ui.confirm.manuallyEditedContent"))
 }
 
 @Test func contentConflictShowsLossWarningsInsideSideBySidePrimaryChoices() throws {
@@ -28,7 +28,7 @@ import Testing
     #expect(conflictResolution.contains("choice: .mineFull"))
     #expect(conflictResolution.contains("systemImage: \"exclamationmark.triangle.fill\""))
     #expect(conflictResolution.contains(".foregroundStyle(.orange)"))
-    #expect(conflictResolution.contains("ui.server.version.changes.will.be.discarded.4ab613d2"))
+    #expect(conflictResolution.contains(".ui.server.versionChangesWillBeDiscarded"))
 }
 
 @Test func treeConflictOffersTwoDestructivelyConfirmedChoices() throws {
@@ -39,9 +39,9 @@ import Testing
     #expect(treeConflictResolution.contains("choice: .restoreServerVersion"))
     #expect(treeConflictResolution.contains("Button(confirmationActionTitle, role: .destructive)"))
     #expect(treeConflictResolution.contains("Task { await store.resolveActiveTreeConflict(using: choice) }"))
-    #expect(treeConflictResolution.contains("ui.tree.conflict.is.not.a.choice.between.two.files.66dcb7a1"))
-    #expect(treeConflictResolution.contains("ui.local.deletion.will.remain.and.a.commit.will.de.837b94a0"))
-    #expect(treeConflictResolution.contains("ui.local.changes.will.be.discarded.5e8127cf"))
+    #expect(treeConflictResolution.contains(".ui.tree.conflictIsNotAChoiceBetweenTwoFiles"))
+    #expect(treeConflictResolution.contains(".ui.local.deletionWillRemainAndACommitWillDe"))
+    #expect(treeConflictResolution.contains(".ui.local.changesWillBeDiscarded"))
     #expect(treeConflictResolution.contains("systemImage: \"exclamationmark.triangle.fill\""))
     #expect(treeConflictResolution.contains(".foregroundStyle(.orange)"))
     #expect(treeConflictResolution.contains("ActionProgressLabel("))
@@ -80,10 +80,10 @@ import Testing
     #expect(changes.contains("PropertyConflictResolutionView()"))
     #expect(changes.contains("entry.propertyState == .conflicted"))
     #expect(!changes.contains("entry.item != .conflicted && entry.item != .missing"))
-    #expect(changes.contains("ui.property.modified.4c9a78e1"))
-    #expect(changes.contains("ui.property.conflict.2fd61b8a"))
-    #expect(changes.contains("ui.obstructed.local.file.74a9c2e5"))
-    #expect(changes.contains("ui.move.or.rename.the.local.file.then.update.1e3c7a90"))
+    #expect(changes.contains(".ui.property.modified"))
+    #expect(changes.contains(".ui.property.conflict"))
+    #expect(changes.contains(".ui.obstructed.localFile"))
+    #expect(changes.contains(".ui.move.orRenameTheLocalFileThenUpdate"))
     #expect(changes.contains("store.revealInFinder(entry.path)"))
 }
 
@@ -105,20 +105,20 @@ import Testing
     #expect(view.contains("impact.unversionedPaths"))
     #expect(view.contains("impact.uncommittedPaths"))
     #expect(view.contains("AppLayout.treeConflictRestoreListedPathLimit"))
-    #expect(view.contains("ui.restore.server.version.removes.these.items.9d41c60b"))
-    #expect(view.contains("ui.files.not.in.repository.count.2b7fa508"))
-    #expect(view.contains("ui.uncommitted.changes.count.7e3c19d4"))
-    #expect(view.contains("ui.and.more.items.count.a5d20f16"))
+    #expect(view.contains(".ui.restore.serverVersionRemovesTheseItems"))
+    #expect(view.contains(".ui.files.notInRepositoryCount"))
+    #expect(view.contains(".ui.uncommitted.changesCount"))
+    #expect(view.contains(".ui.and.moreItemsCount"))
 }
 
 @Test func contentConflictViewAnnouncesTheAccompanyingPropertyConflict() throws {
     let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
 
     #expect(view.contains("if session.hasPropertyConflict"))
-    #expect(view.contains("ui.content.and.property.conflict.together.6f0b83e5"))
-    #expect(view.contains("ui.conflicted.properties.849bf370"))
-    #expect(view.contains("ui.server.properties.also.applied.3ac57d92"))
-    #expect(view.contains("ui.my.properties.also.kept.b81e64af"))
+    #expect(view.contains(".ui.content.andPropertyConflictTogether"))
+    #expect(view.contains(".ui.conflicted.properties"))
+    #expect(view.contains(".ui.server.propertiesAlsoApplied"))
+    #expect(view.contains(".ui.my.propertiesAlsoKept"))
 }
 
 @Test func propertyConflictResolutionPreservesTheWorkingFileBeforeResolving() throws {
@@ -191,10 +191,10 @@ import Testing
     }
 
     #expect(
-        AppLanguage.english.localized("ui.keep.my.change.14f3a8c6") == "Keep My Change"
+        AppLanguage.english.localized(.ui.keep.myChange) == "Keep My Change"
     )
     #expect(
-        AppLanguage.korean.localized("ui.keep.my.change.14f3a8c6") == "내 변경 유지"
+        AppLanguage.korean.localized(.ui.keep.myChange) == "내 변경 유지"
     )
 }
 

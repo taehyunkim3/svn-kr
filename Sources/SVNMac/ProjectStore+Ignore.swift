@@ -50,7 +50,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized("ui.added.ignore.rule.commit.the.directory.property..42754ee1", pattern)
+            notice = AppLanguage.current.localized(.ui.added.ignoreRuleCommitTheDirectoryProperty, pattern)
             await refresh()
             await loadIgnoreRules()
         } catch {
@@ -62,7 +62,7 @@ extension ProjectStore {
     func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
         guard let project = selectedProject else { return }
         guard rule.inheritedFrom == nil else {
-            errorMessage = AppLanguage.current.localized("ui.inherited.rules.can.only.be.removed.from.the.par.276c450b")
+            errorMessage = AppLanguage.current.localized(.ui.inherited.rulesCanOnlyBeRemovedFromThePar)
             return
         }
         let operationID = beginOperation(.ignore(project.id))
@@ -76,7 +76,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized("ui.removed.ignore.rule.bb8aeaf0", rule.pattern)
+            notice = AppLanguage.current.localized(.ui.removed.ignoreRule, rule.pattern)
             await refresh()
             await loadIgnoreRules()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
@@ -89,7 +89,7 @@ extension ProjectStore {
     func compareGitIgnore() async {
         guard let project = selectedProject else { return }
         guard pathCollisions.isEmpty else {
-            errorMessage = AppLanguage.current.localized("ui.resolve.unicode.path.conflicts.before.comparing..17151bba")
+            errorMessage = AppLanguage.current.localized(.ui.resolve.unicodePathConflictsBeforeComparing)
             return
         }
         let projectRoot = URL(fileURLWithPath: project.path, isDirectory: true)
@@ -194,7 +194,7 @@ extension ProjectStore {
                 )
             }
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized("ui.applied.git.rule.s.to.svn.ignore.properties.comm.2cfe91aa", proposals.count)
+            notice = AppLanguage.current.localized(.ui.applied.gitRuleSToSvnIgnorePropertiesComm, proposals.count)
             await refreshLocalWorkingCopy()
             await compareGitIgnore()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }

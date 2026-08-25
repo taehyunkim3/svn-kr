@@ -10,16 +10,16 @@ struct TemporaryFileCleanupView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.localized("ui.repository.temporary.file.cleanup.4dd78db2"))
+                Text(appLanguage.localized(.ui.repository.temporaryFileCleanup))
                     .font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }
+                Button(appLanguage.localized(.ui.close.label)) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
-            Text(appLanguage.localized("ui.review.verified.files.before.deleting.and.committ.9aac943d"))
+            Text(appLanguage.localized(.ui.review.verifiedFilesBeforeDeletingAndCommitt))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,7 +50,7 @@ struct TemporaryFileCleanupView: View {
             Divider()
             HStack {
                 Text(appLanguage.localized(
-                    "ui.selected.685ae833",
+                    .ui.selected.label,
                     store.selectedTemporaryFileCleanupPaths.count
                 ))
                 .foregroundStyle(.secondary)
@@ -59,8 +59,8 @@ struct TemporaryFileCleanupView: View {
                     Task { await store.confirmRepositoryTemporaryFileCleanup() }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.delete.and.commit.cleanup.146a3cd1"),
-                        inProgressTitle: appLanguage.localized("ui.cleaning.and.committing.6578bec9"),
+                        title: appLanguage.localized(.ui.delete.andCommitCleanup),
+                        inProgressTitle: appLanguage.localized(.ui.cleaning.andCommitting),
                         isInProgress: store.isCleaningSelectedProjectTemporaryFiles
                     )
                 }

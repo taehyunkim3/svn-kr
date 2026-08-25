@@ -33,7 +33,7 @@ struct ConflictResolutionView: View {
                 pendingChoice = nil
                 Task { await store.resolveActiveConflict(using: choice) }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) { pendingChoice = nil }
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) { pendingChoice = nil }
         } message: {
             if let choice = pendingChoice {
                 Text(confirmationMessage(for: choice))
@@ -44,7 +44,7 @@ struct ConflictResolutionView: View {
 
     private var header: some View {
         HStack {
-            Label(appLanguage.localized("ui.resolve.conflict.d9c365ea"), systemImage: "exclamationmark.triangle.fill")
+            Label(appLanguage.localized(.ui.resolve.conflictSecondary), systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.bold())
                 .foregroundStyle(.orange)
             Spacer()
@@ -56,7 +56,7 @@ struct ConflictResolutionView: View {
         VStack(alignment: .leading, spacing: 14) {
             if session.wasCanonicallyResolved {
                 Label(
-                    appLanguage.localized("ui.the.macos.unicode.path.was.matched.to.the.actual.0575e471"),
+                    appLanguage.localized(.ui.the.macosUnicodePathWasMatchedToTheActual),
                     systemImage: "checkmark.circle"
                 )
                 .font(.caption)
@@ -66,7 +66,7 @@ struct ConflictResolutionView: View {
             if session.hasPropertyConflict {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
-                        appLanguage.localized("ui.content.and.property.conflict.together.6f0b83e5"),
+                        appLanguage.localized(.ui.content.andPropertyConflictTogether),
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .foregroundStyle(.orange)
@@ -79,15 +79,15 @@ struct ConflictResolutionView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
-                        appLanguage.localized("ui.both.versions.were.copied.to.a.backup.folder.edi.259e47d5"),
+                        appLanguage.localized(.ui.both.versionsWereCopiedToABackupFolderEdi),
                         systemImage: "externaldrive.badge.checkmark"
                     )
-                    Text(appLanguage.localized("ui.when.you.choose.a.version.the.current.working.fi.70533c5a"))
+                    Text(appLanguage.localized(.ui.when.youChooseAVersionTheCurrentWorkingFi))
                     .font(.caption)
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
-                Button(appLanguage.localized("ui.open.backup.folder.d8faa2d5"), systemImage: "folder") {
+                Button(appLanguage.localized(.ui.localizationOpen.backupFolder), systemImage: "folder") {
                     store.openConflictBackupFolder()
                 }
                 .disabled(store.isResolvingConflict)
@@ -95,25 +95,25 @@ struct ConflictResolutionView: View {
 
             HStack(alignment: .top, spacing: 14) {
                 versionCard(
-                    title: appLanguage.localized("ui.apply.server.version.61c5a01e"),
+                    title: appLanguage.localized(.ui.apply.serverVersion),
                     originalPath: session.details.path,
                     version: session.server,
-                    openTitle: appLanguage.localized("ui.open.server.file.252d515b"),
-                    useTitle: appLanguage.localized("ui.apply.server.version.61c5a01e"),
+                    openTitle: appLanguage.localized(.ui.localizationOpen.serverFile),
+                    useTitle: appLanguage.localized(.ui.apply.serverVersion),
                     warning: appLanguage.localized(
-                        "ui.replace.with.the.server.file.your.local.edits.le.f08dec1d"
+                        .ui.replace.withTheServerFileYourLocalEditsLe
                     ),
                     choice: .theirsFull
                 )
 
                 versionCard(
-                    title: appLanguage.localized("ui.overwrite.with.mine.8d42f39b"),
+                    title: appLanguage.localized(.ui.overwrite.withMine),
                     originalPath: session.details.path,
                     version: session.mine,
-                    openTitle: appLanguage.localized("ui.open.my.file.537a87cb"),
-                    useTitle: appLanguage.localized("ui.overwrite.with.mine.8d42f39b"),
+                    openTitle: appLanguage.localized(.ui.localizationOpen.myFile),
+                    useTitle: appLanguage.localized(.ui.overwrite.withMine),
                     warning: appLanguage.localized(
-                        "ui.server.version.changes.will.be.discarded.4ab613d2"
+                        .ui.server.versionChangesWillBeDiscarded
                     ),
                     choice: .mineFull
                 )
@@ -123,7 +123,7 @@ struct ConflictResolutionView: View {
                 DisclosureGroup(isExpanded: $isWorkingFileExpanded) {
                     workingFileCard(session)
                 } label: {
-                    Text(appLanguage.localized("ui.confirm.manually.edited.content.97e30ac4"))
+                    Text(appLanguage.localized(.ui.confirm.manuallyEditedContent))
                 }
             }
         }
@@ -131,21 +131,21 @@ struct ConflictResolutionView: View {
 
     private func propertyNamesDescription(_ propertyNames: [String]) -> String {
         guard !propertyNames.isEmpty else {
-            return appLanguage.localized("ui.conflicted.property.name.unavailable.0cc5d784")
+            return appLanguage.localized(.ui.conflicted.propertyNameUnavailable)
         }
         return appLanguage.localized(
-            "ui.conflicted.properties.849bf370",
+            .ui.conflicted.properties,
             propertyNames.joined(separator: ", ")
         )
     }
 
     private func workingFileCard(_ session: ConflictResolutionSession) -> some View {
-        GroupBox(appLanguage.localized("ui.current.working.file.669bd1d9")) {
+        GroupBox(appLanguage.localized(.ui.current.workingFile)) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(session.requestedPath.precomposedStringWithCanonicalMapping)
                     .lineLimit(1)
                     .textSelection(.enabled)
-                Text(appLanguage.localized("ui.after.reviewing.both.backups.keep.the.content.cu.94842c30"))
+                Text(appLanguage.localized(.ui.after.reviewingBothBackupsKeepTheContentCu))
                 .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
@@ -153,8 +153,8 @@ struct ConflictResolutionView: View {
                         pendingChoice = .working
                     } label: {
                         ActionProgressLabel(
-                            title: appLanguage.localized("ui.confirm.manually.edited.content.97e30ac4"),
-                            inProgressTitle: appLanguage.localized("ui.resolving.d5e0b71c"),
+                            title: appLanguage.localized(.ui.confirm.manuallyEditedContent),
+                            inProgressTitle: appLanguage.localized(.ui.resolving.label),
                             isInProgress: store.isResolvingConflict
                         )
                     }
@@ -201,7 +201,7 @@ struct ConflictResolutionView: View {
                     } label: {
                         ActionProgressLabel(
                             title: useTitle,
-                            inProgressTitle: appLanguage.localized("ui.resolving.d5e0b71c"),
+                            inProgressTitle: appLanguage.localized(.ui.resolving.label),
                             isInProgress: store.isResolvingConflict
                         )
                     }
@@ -218,11 +218,11 @@ struct ConflictResolutionView: View {
         guard let choice = pendingChoice else { return "" }
         switch choice {
         case .mineFull:
-            return appLanguage.localized("ui.use.my.file.d12a8b2d")
+            return appLanguage.localized(.ui.use.myFileQuestion)
         case .theirsFull:
-            return appLanguage.localized("ui.use.server.file.949587dc")
+            return appLanguage.localized(.ui.use.serverFileQuestion)
         case .working:
-            return appLanguage.localized("ui.use.current.working.file.40ab0712")
+            return appLanguage.localized(.ui.use.currentWorkingFileQuestion)
         }
     }
 
@@ -230,11 +230,11 @@ struct ConflictResolutionView: View {
         guard let choice = pendingChoice else { return "" }
         switch choice {
         case .mineFull:
-            return appLanguage.localized("ui.use.my.file.36631b8e")
+            return appLanguage.localized(.ui.use.myFilePrimary)
         case .theirsFull:
-            return appLanguage.localized("ui.use.server.file.30c6c26c")
+            return appLanguage.localized(.ui.use.serverFilePrimary)
         case .working:
-            return appLanguage.localized("ui.use.current.working.file.275f4c29")
+            return appLanguage.localized(.ui.use.currentWorkingFilePrimary)
         }
     }
 
@@ -242,37 +242,37 @@ struct ConflictResolutionView: View {
         let base: String
         switch choice {
         case .mineFull:
-            base = appLanguage.localized("ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb")
+            base = appLanguage.localized(.ui.keep.yourFileALaterCommitWillReplaceTheR)
         case .theirsFull:
-            base = appLanguage.localized("ui.replace.with.the.server.file.your.local.edits.le.f08dec1d")
+            base = appLanguage.localized(.ui.replace.withTheServerFileYourLocalEditsLe)
         case .working:
-            base = appLanguage.localized("ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30")
+            base = appLanguage.localized(.ui.keep.theFileCurrentlySavedInTheWorkingCop)
         }
         guard store.activeConflictSession?.hasPropertyConflict == true else { return base }
         // 한 번의 `svn resolve`가 내용과 속성 충돌을 같은 방향으로 함께 해결합니다.
         let propertyOutcome = choice == .theirsFull
-            ? appLanguage.localized("ui.server.properties.also.applied.3ac57d92")
-            : appLanguage.localized("ui.my.properties.also.kept.b81e64af")
+            ? appLanguage.localized(.ui.server.propertiesAlsoApplied)
+            : appLanguage.localized(.ui.my.propertiesAlsoKept)
         return base + "\n" + propertyOutcome
     }
 
     private func versionMetadata(for version: ConflictVersionBackup) -> String {
         if let revision = version.revision {
-            return appLanguage.localized("ui.server.revision.c11b62aa", revision)
+            return appLanguage.localized(.ui.server.revision, revision)
         }
         if let modificationDate = version.modificationDate {
-            return appLanguage.localized("ui.modified.98221376", modificationDate.formatted(date: .abbreviated, time: .shortened))
+            return appLanguage.localized(.ui.modified.labelFormatted, modificationDate.formatted(date: .abbreviated, time: .shortened))
         }
-        return appLanguage.localized("ui.modification.date.unavailable.7b2ebc97")
+        return appLanguage.localized(.ui.modification.dateUnavailable)
     }
 
     private var footer: some View {
         HStack {
-            Text(appLanguage.localized("ui.this.file.cannot.be.committed.until.it.is.marked.201bfa2c"))
+            Text(appLanguage.localized(.ui.this.fileCannotBeCommittedUntilItIsMarked))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(appLanguage.localized("ui.cancel.a2ce2c22")) { dismiss() }
+            Button(appLanguage.localized(.ui.cancel.label)) { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .disabled(store.isResolvingConflict)
         }

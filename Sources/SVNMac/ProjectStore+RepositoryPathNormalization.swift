@@ -19,20 +19,20 @@ struct RepositoryPathNormalizationIssue {
     func localizedMessage(_ language: AppLanguage) -> String {
         switch kind {
         case .blockedByLocalChanges:
-            language.localized("repository.path.normalization.error.local.changes")
+            language.localized(.repository.pathNormalizationErrorLocalChanges)
         case .blockedByLocks:
-            language.localized("repository.path.normalization.error.locks")
+            language.localized(.repository.pathNormalizationErrorLocks)
         case .invalidTargets:
-            language.localized("repository.path.normalization.error.invalid.targets")
+            language.localized(.repository.pathNormalizationErrorInvalidTargets)
         case .partiallyFailed:
             language.localized(
-                "repository.path.normalization.error.partial.failure",
+                .repository.pathNormalizationErrorPartialFailure,
                 result?.renamedTargets.count ?? 0,
                 failedTarget?.repositoryPath ?? paths.first ?? "",
                 details ?? ""
             )
         case .other:
-            details ?? language.localized("repository.path.normalization.error.unknown")
+            details ?? language.localized(.repository.pathNormalizationErrorUnknown)
         }
     }
 }
@@ -60,7 +60,7 @@ extension ProjectStore {
         repositoryPathNormalizationTargets = []
         selectedRepositoryPathNormalizationTargets = []
         repositoryPathNormalizationCommitMessage = AppLanguage.current.localized(
-            "repository.path.normalization.default.commit.message"
+            .repository.pathNormalizationDefaultCommitMessage
         )
         repositoryPathNormalizationResult = nil
         repositoryPathNormalizationIssue = nil
@@ -80,7 +80,7 @@ extension ProjectStore {
             guard selectedProjectID == project.id else { return }
             guard !targets.isEmpty else {
                 notice = AppLanguage.current.localized(
-                    "repository.path.normalization.no.paths"
+                    .repository.pathNormalizationNoPaths
                 )
                 repositoryPathNormalizationSourceProjectID = nil
                 return

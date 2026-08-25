@@ -14,21 +14,21 @@ enum RevisionFileError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .historyClientUnavailable:
-            AppLanguage.current.localized("ui.revision.history.client.unavailable.5d7a91c2")
+            AppLanguage.current.localized(.ui.revision.historyClientUnavailable)
         case .missingWorkingFile:
-            AppLanguage.current.localized("ui.revision.restore.missing.working.file.346db8a7")
+            AppLanguage.current.localized(.ui.revision.restoreMissingWorkingFile)
         case .unsafeWorkingFile:
-            AppLanguage.current.localized("ui.revision.restore.unsafe.working.file.4a960fb3")
+            AppLanguage.current.localized(.ui.revision.restoreUnsafeWorkingFile)
         case .pathOutsideWorkingCopy:
-            AppLanguage.current.localized("ui.revision.restore.path.outside.working.copy.87d5e210")
+            AppLanguage.current.localized(.ui.revision.restorePathOutsideWorkingCopy)
         case .backupRootInsideWorkingCopy:
-            AppLanguage.current.localized("ui.revision.restore.backup.inside.working.copy.107e9c6a")
+            AppLanguage.current.localized(.ui.revision.restoreBackupInsideWorkingCopy)
         case .backupVerificationFailed:
-            AppLanguage.current.localized("ui.revision.restore.backup.verification.failed.d9152a6c")
+            AppLanguage.current.localized(.ui.revision.restoreBackupVerificationFailed)
         case .replacementVerificationFailed:
-            AppLanguage.current.localized("ui.revision.restore.replacement.verification.failed.b8714e35")
+            AppLanguage.current.localized(.ui.revision.restoreReplacementVerificationFailed)
         case .invalidDestination:
-            AppLanguage.current.localized("ui.revision.save.invalid.destination.5f4d2c81")
+            AppLanguage.current.localized(.ui.revision.saveInvalidDestination)
         }
     }
 }

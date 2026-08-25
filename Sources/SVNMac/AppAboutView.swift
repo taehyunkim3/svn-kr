@@ -22,13 +22,13 @@ struct AppAboutView: View {
             VStack(spacing: 4) {
                 Text("SVN KR")
                     .font(.title2.bold())
-                Text(appLanguage.localized("ui.version.6bb2f91c", version, build))
+                Text(appLanguage.localized(.ui.version.label, version, build))
                     .foregroundStyle(.secondary)
             }
 
             updateStatus
 
-            Button(appLanguage.localized("ui.check.for.updates.d0ccb7fe")) {
+            Button(appLanguage.localized(.ui.check.forUpdatesSecondary)) {
                 updateChecker.checkManually()
             }
             .disabled(updateChecker.manualStatus == .checking)
@@ -53,25 +53,25 @@ struct AppAboutView: View {
     private var updateStatus: some View {
         switch updateChecker.manualStatus {
         case .idle:
-            Text(appLanguage.localized("ui.check.the.app.store.for.the.latest.version.969078c0"))
+            Text(appLanguage.localized(.ui.check.theAppStoreForTheLatestVersion))
                 .foregroundStyle(.secondary)
         case .checking:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(appLanguage.localized("ui.checking.for.updates.967c32b4"))
+                Text(appLanguage.localized(.ui.checking.forUpdates))
             }
         case let .updateAvailable(release):
             VStack(spacing: 8) {
-                Text(appLanguage.localized("ui.version.is.available.7e5cfb4e", release.version))
-                Button(appLanguage.localized("ui.view.in.app.store.7c79e972")) {
+                Text(appLanguage.localized(.ui.version.isAvailable, release.version))
+                Button(appLanguage.localized(.ui.view.inAppStore)) {
                     updateChecker.openStore(for: release)
                 }
             }
         case let .upToDate(version):
-            Text(appLanguage.localized("ui.you.re.using.the.latest.version.18d5624c", version))
+            Text(appLanguage.localized(.ui.you.reUsingTheLatestVersion, version))
                 .foregroundStyle(.secondary)
         case .failed:
-            Text(appLanguage.localized("ui.unable.to.check.the.app.store.for.updates.a1a5b5ac"))
+            Text(appLanguage.localized(.ui.unable.toCheckTheAppStoreForUpdates))
                 .foregroundStyle(.red)
         }
     }
@@ -84,13 +84,13 @@ struct SVNMacCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button(appLanguage.localized("ui.about.svn.kr.ddc63e52")) {
+            Button(appLanguage.localized(.ui.about.svnKr)) {
                 openWindow(id: "app-about")
             }
         }
 
         CommandGroup(after: .appInfo) {
-            Button(appLanguage.localized("ui.check.for.updates.6ba78913")) {
+            Button(appLanguage.localized(.ui.check.forUpdatesAction)) {
                 openWindow(id: "app-about")
                 updateChecker.checkManually()
             }

@@ -8,8 +8,8 @@ import Testing
         contentsOf: sources.appendingPathComponent("FileHistoryView.swift"),
         encoding: .utf8
     )
-    let saveKey = "ui.save.this.revision.as.3e8d79a1"
-    let restoreKey = "ui.restore.working.file.to.revision.79c4a2e6"
+    let saveKey = ".ui.save.thisRevisionAs"
+    let restoreKey = ".ui.restore.workingFileToRevision"
 
     let savePosition = try #require(view.range(of: saveKey)?.lowerBound)
     let restorePosition = try #require(view.range(of: restoreKey)?.lowerBound)
@@ -96,7 +96,7 @@ import Testing
     }
 
     #expect(
-        AppLanguage.english.localized("ui.restored.revision.commit.required.f9346b20", "report.xlsx", "17")
+        AppLanguage.english.localized(.ui.restored.revisionCommitRequired, "report.xlsx", "17")
             == "Restored report.xlsx to r17. This is now a local change. Commit it to update the server."
     )
 }

@@ -9,19 +9,19 @@ struct SVNLogMessageView: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(entry.message.isEmpty ? appLanguage.localized("ui.no.commit.message.911ccc29") : entry.message)
+            Text(entry.message.isEmpty ? appLanguage.localized(.ui.no.commitMessage) : entry.message)
                 .textSelection(.enabled)
 
             if let originalMessage = entry.originalMessage {
-                Button(appLanguage.localized("ui.restored.98d96c01")) {
+                Button(appLanguage.localized(.ui.restored.label)) {
                     showsOriginalMessage = true
                 }
-                .help(appLanguage.localized("ui.view.the.original.message.before.restoration.6a5e3b2b"))
+                .help(appLanguage.localized(.ui.view.theOriginalMessageBeforeRestoration))
                 .popover(isPresented: $showsOriginalMessage) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(appLanguage.localized("ui.original.message.fbd14889"))
+                        Text(appLanguage.localized(.ui.original.message))
                             .font(.headline)
-                        Text(appLanguage.localized("ui.this.commit.message.was.saved.with.incorrect.enc.355e2cb5"))
+                        Text(appLanguage.localized(.ui.this.commitMessageWasSavedWithIncorrectEnc))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(originalMessage)

@@ -148,11 +148,11 @@ enum DiffContent: Equatable {
     func localizedText(_ language: AppLanguage) -> String {
         switch self {
         case .placeholder:
-            language.localized("ui.select.a.changed.file.to.view.its.diff.409b3672")
+            language.localized(.ui.select.aChangedFileToViewItsDiff)
         case .unavailableForUnversioned:
-            language.localized("ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5")
+            language.localized(.ui.diff.isUnavailableUntilThisFileIsAddedTo)
         case .noTextDiff:
-            language.localized("ui.no.text.diff.is.available.this.may.be.a.new.or.b.e90ec831")
+            language.localized(.ui.no.textDiffIsAvailableThisMayBeANewOrB)
         case let .text(value):
             value
         case let .failure(message):
@@ -723,7 +723,7 @@ final class ProjectStore {
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = AppLanguage.current.localized("ui.choose.svn.local.working.folders.6d104bc9")
+        panel.title = AppLanguage.current.localized(.ui.choose.svnLocalWorkingFolders)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
@@ -777,14 +777,14 @@ final class ProjectStore {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
-            errorMessage = AppLanguage.current.localized("ui.choose.a.local.folder.for.the.checkout.de1fb4ce")
+            errorMessage = AppLanguage.current.localized(.ui.choose.aLocalFolderForTheCheckout)
             return false
         }
         let destination = destinationURL.standardizedFileURL
         let destinationPath = destination.path
         let destinationWasEmpty = workingCopyRecoveryFileManager.isEmptyDirectory(at: destinationPath)
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -843,7 +843,7 @@ final class ProjectStore {
                 } else {
                     projectAccessManager.endAccessing(url: destination)
                     notice = AppLanguage.current.localized(
-                        "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58",
+                        .ui.the.checkoutWasCanceledPartiallyDownloadedF,
                         destinationPath
                     )
                 }
@@ -888,7 +888,7 @@ final class ProjectStore {
             do {
                 try credentialStore.setPassword(password, for: id)
             } catch {
-                keychainWarning = AppLanguage.current.localized("ui.checkout.completed.but.the.password.could.not.be.ed5274e5", localizedError(error))
+                keychainWarning = AppLanguage.current.localized(.ui.checkout.completedButThePasswordCouldNotBe, localizedError(error))
             }
         }
 
@@ -963,7 +963,7 @@ final class ProjectStore {
         let previousPath = projects[currentIndex].path
         guard destinationPath != previousPath else { return true }
         guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
+            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
             return false
         }
 
@@ -985,7 +985,7 @@ final class ProjectStore {
             projects[index].bookmarkData = bookmarkData
             probeFilenameNormalization(for: projects[index])
             notice = AppLanguage.current.localized(
-                "ui.the.working.folder.was.changed.to.9c6f01b2",
+                .ui.the.workingFolderWasChangedTo,
                 destinationPath
             )
             if selectedProjectID == projectID { await refresh() }
@@ -1124,7 +1124,7 @@ final class ProjectStore {
                 self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
                 updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
             }
-            notice = AppLanguage.current.localized("ui.refreshed.41ebae4b", project.name)
+            notice = AppLanguage.current.localized(.ui.refreshed.label, project.name)
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
                 handleRemoteError(
@@ -1213,7 +1213,7 @@ final class ProjectStore {
             }
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
-            notice = AppLanguage.current.localized("ui.local.changes.refreshed.617acbc6", project.name)
+            notice = AppLanguage.current.localized(.ui.local.changesRefreshed, project.name)
             return true
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -1253,13 +1253,13 @@ final class ProjectStore {
             .map(\.path)
         guard missingPaths.isEmpty else {
             errorMessage = AppLanguage.current.localized(
-                "error.choose.missing.items",
+                .error.chooseMissingItems,
                 missingPaths.joined(separator: ", ")
             )
             return false
         }
         guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
-            errorMessage = AppLanguage.current.localized("ui.resolve.conflicted.files.before.committing.e5cfd21c")
+            errorMessage = AppLanguage.current.localized(.ui.resolve.conflictedFilesBeforeCommitting)
             return false
         }
         let operationID = beginOperation(.commit(project.id))
@@ -1396,7 +1396,7 @@ final class ProjectStore {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.localized("ui.credentials.saved.for.409bff39", projects[index].name)
+            notice = AppLanguage.current.localized(.ui.credentials.savedFor, projects[index].name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1408,7 +1408,7 @@ final class ProjectStore {
         do {
             try credentialStore.deletePassword(for: projectID)
             sessionPasswords[projectID] = nil
-            notice = AppLanguage.current.localized("ui.the.saved.password.was.deleted.a729310e")
+            notice = AppLanguage.current.localized(.ui.the.savedPasswordWasDeleted)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1457,9 +1457,9 @@ final class ProjectStore {
         guard authenticationRequest?.id == request.id else { return }
         authenticationRequest = nil
         if request.serverCertificateTrust == nil {
-            notice = AppLanguage.current.localized("ui.authentication.was.canceled.local.changes.remain.c4984bab")
+            notice = AppLanguage.current.localized(.ui.authentication.wasCanceledLocalChangesRemain)
         } else {
-            notice = AppLanguage.current.localized("ui.certificate.exception.not.allowed.d47c92a1")
+            notice = AppLanguage.current.localized(.ui.certificate.exceptionNotAllowed)
         }
     }
 
@@ -1496,7 +1496,7 @@ final class ProjectStore {
         authenticationRequest = nil
         automaticRefreshBlockedProjectID = nil
         notice = AppLanguage.current.localized(
-            "ui.certificate.exception.saved.for.project.16e0ad73",
+            .ui.certificate.exceptionSavedForProject,
             projects[index].name
         )
     }
@@ -1561,7 +1561,7 @@ final class ProjectStore {
     }
 
     private var authenticationNotice: String {
-        AppLanguage.current.localized("ui.keychain.access.was.denied.choose.how.to.authent.0d8d881a")
+        AppLanguage.current.localized(.ui.keychain.accessWasDeniedChooseHowToAuthent)
     }
 
     private func resume(_ request: SVNAuthenticationRequest) async {
@@ -1605,7 +1605,7 @@ final class ProjectStore {
             guard selectedProjectID == project.id else { return }
             logs = newLogs
             hasMoreHistory = newLogs.count == 50
-            notice = AppLanguage.current.localized("ui.history.refreshed.5c159ee8", project.name)
+            notice = AppLanguage.current.localized(.ui.history.refreshed, project.name)
         } catch {
             if selectedProjectID == project.id {
                 handleRemoteError(error, project: project, action: .refreshHistory)
@@ -1660,14 +1660,14 @@ final class ProjectStore {
     func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized("ui.unable.to.open.file.ae08bd77", relativePath)
+            errorMessage = AppLanguage.current.localized(.ui.unable.toOpenFile, relativePath)
             return
         }
     }
 
     func openWorkspaceURL(_ url: URL) {
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized("ui.could.not.open.the.file.263874fa")
+            errorMessage = AppLanguage.current.localized(.ui.could.notOpenTheFile)
             return
         }
     }
@@ -1769,7 +1769,7 @@ final class ProjectStore {
             guard unavailableProjectID != project.id else { return false }
             unavailableProjectID = project.id
             automaticRefreshBlockedProjectID = project.id
-            errorMessage = AppLanguage.current.localized("ui.the.working.folder.no.longer.exists.restore.the..4946d37c", project.name, project.path)
+            errorMessage = AppLanguage.current.localized(.ui.the.workingFolderNoLongerExistsRestoreThe, project.name, project.path)
             return false
         }
         if unavailableProjectID == project.id {

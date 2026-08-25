@@ -10,18 +10,18 @@ struct IgnoreRulesView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.localized("ui.manage.ignore.rules.7eac76b1")).font(.title2.bold())
+                Text(appLanguage.localized(.ui.manage.ignoreRules)).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }
+                Button(appLanguage.localized(.ui.close.label)) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
             List {
-                Section(appLanguage.localized("ui.svn.ignore.rules.90435aad")) {
+                Section(appLanguage.localized(.ui.svn.ignoreRules)) {
                     if store.ignoreRules.isEmpty {
-                        Text(appLanguage.localized("ui.no.svn.ignore.rules.are.configured.71e0180f"))
+                        Text(appLanguage.localized(.ui.no.svnIgnoreRulesAreConfigured))
                         .foregroundStyle(.secondary)
                     } else {
                         ForEach(store.ignoreRules) { rule in
@@ -35,12 +35,12 @@ struct IgnoreRulesView: View {
                     if store.hasComparedGitIgnore {
                         if !store.gitIgnoreFileExists {
                             ContentUnavailableView(
-                                appLanguage.localized("ui.no.gitignore.44540a9b"),
+                                appLanguage.localized(.ui.no.gitignore),
                                 systemImage: "doc.badge.questionmark",
-                                description: Text(appLanguage.localized("ui.no.gitignore.file.was.found.in.the.working.copy.ce93a706"))
+                                description: Text(appLanguage.localized(.ui.no.gitignoreFileWasFoundInTheWorkingCopy))
                             )
                         } else if store.gitIgnoreImportItems.isEmpty {
-                            Text(appLanguage.localized("ui.there.are.no.git.rules.to.import.03bd12e9"))
+                            Text(appLanguage.localized(.ui.there.areNoGitRulesToImport))
                             .foregroundStyle(.secondary)
                         } else {
                             ForEach(store.gitIgnoreImportItems) { item in
@@ -49,15 +49,15 @@ struct IgnoreRulesView: View {
                         }
                     }
                 } header: {
-                    Text(appLanguage.localized("ui.import.git.rules.bbf8aa32"))
+                    Text(appLanguage.localized(.ui.localizationImport.gitRules))
                 } footer: {
-                    Text(appLanguage.localized("ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7"))
+                    Text(appLanguage.localized(.ui.gitignore.isNotModifiedImportIsOneWayAnd))
                 }
             }
 
             Divider()
             HStack {
-                Text(appLanguage.localized("ui.already.versioned.files.are.not.hidden.by.ignore.ed1d7db7"))
+                Text(appLanguage.localized(.ui.already.versionedFilesAreNotHiddenByIgnore))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
@@ -65,8 +65,8 @@ struct IgnoreRulesView: View {
                     store.requestApplyGitIgnoreSelection()
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized("ui.apply.selected.rules.f6bb01fa"),
-                        inProgressTitle: appLanguage.localized("ui.applying.8c4d1e05"),
+                        title: appLanguage.localized(.ui.apply.selectedRules),
+                        inProgressTitle: appLanguage.localized(.ui.applying.label),
                         isInProgress: store.isIgnoringSelectedProject
                     )
                 }
@@ -81,17 +81,17 @@ struct IgnoreRulesView: View {
         .appSheetFrame(minimumSize: AppLayout.ignoreRulesSheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
         .alert(
-            appLanguage.localized("ui.apply.global.ignore.rules.1ece4ab2"),
+            appLanguage.localized(.ui.apply.globalIgnoreRules),
             isPresented: $store.requiresGlobalIgnoreImportConfirmation
         ) {
-            Button(appLanguage.localized("ui.apply.aa6f48d5"), role: .destructive) {
+            Button(appLanguage.localized(.ui.apply.label), role: .destructive) {
                 Task { await store.applySelectedGitIgnoreRules() }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                 store.requiresGlobalIgnoreImportConfirmation = false
             }
         } message: {
-            Text(appLanguage.localized("ui.global.rules.can.affect.many.directories.below.t.164333fd"))
+            Text(appLanguage.localized(.ui.global.rulesCanAffectManyDirectoriesBelowT))
         }
     }
 
@@ -108,7 +108,7 @@ struct IgnoreRulesView: View {
                     )
                     Text(rule.directory).font(.caption.monospaced())
                     if let inheritedFrom = rule.inheritedFrom {
-                        Text(appLanguage.localized("ui.inherited.from.1feb128b", inheritedFrom))
+                        Text(appLanguage.localized(.ui.inherited.from, inheritedFrom))
                         .font(.caption)
                     }
                 }
@@ -119,15 +119,15 @@ struct IgnoreRulesView: View {
                 Task { await store.removeIgnoreRule(rule) }
             } label: {
                 ActionProgressLabel(
-                    title: appLanguage.localized("ui.remove.d4be5a3e"),
+                    title: appLanguage.localized(.ui.remove.label),
                     systemImage: "trash",
                     isInProgress: store.isIgnoringSelectedProject
                 )
             }
             .disabled(store.isSelectedProjectActionBlocked || rule.inheritedFrom != nil)
             .help(rule.inheritedFrom == nil
-                ? appLanguage.localized("ui.remove.this.rule.2908b9d1")
-                : appLanguage.localized("ui.remove.inherited.rules.from.the.parent.directory.7c2d3995"))
+                ? appLanguage.localized(.ui.remove.thisRule)
+                : appLanguage.localized(.ui.remove.inheritedRulesFromTheParentDirectory))
         }
     }
 
@@ -137,23 +137,23 @@ struct IgnoreRulesView: View {
                 Task { await store.compareGitIgnore() }
             } label: {
                 ActionProgressLabel(
-                    title: appLanguage.localized("ui.compare.git.rules.2220d6b1"),
+                    title: appLanguage.localized(.ui.compare.gitRules),
                     systemImage: "arrow.triangle.2.circlepath",
                     isInProgress: store.isIgnoringSelectedProject
                 )
             }
             .disabled(store.isSelectedProjectActionBlocked)
             if let comparedAt = store.gitIgnoreLastComparedAt {
-                Text(appLanguage.localized("ui.last.compared.cbf0bf20", comparedAt.formatted(date: .omitted, time: .shortened)))
+                Text(appLanguage.localized(.ui.last.compared, comparedAt.formatted(date: .omitted, time: .shortened)))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
             if store.gitIgnoreFileExists {
-                Button(appLanguage.localized("ui.select.all.061b129c")) {
+                Button(appLanguage.localized(.ui.select.allSelectAll)) {
                     store.selectedGitIgnoreImportIDs = store.selectableGitIgnoreImportIDs
                 }
-                Button(appLanguage.localized("ui.clear.8cfe548b")) {
+                Button(appLanguage.localized(.ui.clear.label)) {
                     store.selectedGitIgnoreImportIDs.removeAll()
                 }
             }
@@ -200,13 +200,13 @@ struct IgnoreRulesView: View {
 
     private func importStatus(_ item: IgnoreImportItem) -> String {
         switch item.disposition {
-        case .alreadyApplied: appLanguage.localized("ui.applied.faddeb33")
+        case .alreadyApplied: appLanguage.localized(.ui.applied.label)
         case let .proposal(_, requiresConfirmation):
             requiresConfirmation
-                ? appLanguage.localized("ui.review.618262db")
-                : appLanguage.localized("ui.available.cb60f347")
-        case .unsupported: appLanguage.localized("ui.unsupported.3d400c13")
-        case .conflict: appLanguage.localized("ui.conflict.37edb628")
+                ? appLanguage.localized(.ui.review.label)
+                : appLanguage.localized(.ui.available.label)
+        case .unsupported: appLanguage.localized(.ui.unsupported.label)
+        case .conflict: appLanguage.localized(.ui.conflict.label)
         }
     }
 

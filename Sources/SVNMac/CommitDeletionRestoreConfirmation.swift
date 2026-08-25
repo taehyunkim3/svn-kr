@@ -9,19 +9,19 @@ private struct CommitDeletionRestoreConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var store = store
         content.alert(
-            appLanguage.localized("ui.restore.selected.files.confirmation.6d81b3e4"),
+            appLanguage.localized(.ui.restore.selectedFilesConfirmation),
             isPresented: .isPresenting($store.commitDeletionRestoreRequest),
             presenting: store.commitDeletionRestoreRequest
         ) { restoreRequest in
-            Button(appLanguage.localized("ui.restore.selected.files.action.7b3e1d95")) {
+            Button(appLanguage.localized(.ui.restore.selectedFilesAction)) {
                 Task { await store.confirmCommitDeletionRestore(restoreRequest) }
             }
-            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
                 store.cancelCommitDeletionRestore()
             }
         } message: { restoreRequest in
             Text(appLanguage.localized(
-                "ui.restore.selected.files.count.2c9f4a70",
+                .ui.restore.selectedFilesCount,
                 restoreRequest.paths.count
             ))
         }
