@@ -158,6 +158,7 @@ final class ProjectStore {
     var documentOpenRequest: DocumentOpenRequest?
     var activeConflictSession: ConflictResolutionSession?
     var activeTreeConflictSession: TreeConflictSession?
+    var recoveryState = ProjectRecoveryState()
     var resolvingConflictSessionID: ConflictResolutionSession.ID?
     var resolvingConflictProjectID: SVNProject.ID?
     var revertRequest: RevertRequest?
@@ -1459,6 +1460,7 @@ final class ProjectStore {
         documentOpenRequest = nil
         activeConflictSession = nil
         activeTreeConflictSession = nil
+        recoveryState = ProjectRecoveryState()
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil
