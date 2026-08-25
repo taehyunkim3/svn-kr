@@ -16,6 +16,8 @@ public enum SVNStatusKind: Hashable, Sendable {
     case replaced
     case unknown(String)
 
+    public static let obstructed = SVNStatusKind.unknown("obstructed")
+
     public init(rawValue: String) {
         switch rawValue {
         case "modified": self = .modified
@@ -26,6 +28,7 @@ public enum SVNStatusKind: Hashable, Sendable {
         case "ignored": self = .ignored
         case "conflicted": self = .conflicted
         case "replaced": self = .replaced
+        case "obstructed": self = .obstructed
         default: self = .unknown(rawValue)
         }
     }
@@ -44,6 +47,12 @@ public enum SVNStatusKind: Hashable, Sendable {
         case let .unknown(value): value
         }
     }
+}
+
+public enum SVNPropertyState: String, Hashable, Sendable {
+    case none
+    case modified
+    case conflicted
 }
 
 public enum SVNIgnorePropertyKind: String, Codable, Hashable, Sendable {
@@ -199,6 +208,7 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     public let item: SVNStatusKind
     public let revision: String?
     public let nodeKind: SVNNodeKind?
+    public let propertyState: SVNPropertyState
 
     public var id: String { path }
 
@@ -206,12 +216,14 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
         path: String,
         item: SVNStatusKind,
         revision: String? = nil,
-        nodeKind: SVNNodeKind? = nil
+        nodeKind: SVNNodeKind? = nil,
+        propertyState: SVNPropertyState = .none
     ) {
         self.path = path
         self.item = item
         self.revision = revision
         self.nodeKind = nodeKind
+        self.propertyState = propertyState
     }
 }
 
@@ -225,7 +237,10 @@ public extension SVNStatusEntry {
     }
 
     var isSelectableForCommit: Bool {
-        item != .missing && item != .ignored && item != .conflicted
+        item != .missing
+            && item != .ignored
+            && item != .conflicted
+            && propertyState != .conflicted
     }
 }
 

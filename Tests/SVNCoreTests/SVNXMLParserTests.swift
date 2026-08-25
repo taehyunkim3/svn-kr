@@ -15,6 +15,57 @@ import Testing
     #expect(entries.map(\.item) == [.modified, .unversioned])
 }
 
+@Test func parsesModifiedPropertyStatusOnNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="1" props="modified"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.item.rawValue == "normal")
+    #expect(entry.propertyState == .modified)
+    #expect(entry.isSelectableForCommit)
+}
+
+@Test func parsesConflictedPropertyStatusOnNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status props="conflicted" item="normal" revision="2"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.propertyState == .conflicted)
+    #expect(!entry.isSelectableForCommit)
+}
+
+@Test func discardsNormalItemWithoutPropertyChanges() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="."><wc-status item="normal" revision="2" props="none"/></entry>
+    </target></status>
+    """
+
+    #expect(try SVNXMLParser.statuses(from: Data(xml.utf8)).isEmpty)
+}
+
+@Test func parsesObstructedStatusWithoutChangingUnknownFallback() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="blocked"><wc-status item="obstructed" revision="3" props="none"/></entry>
+      <entry path="future"><wc-status item="future-status" revision="3" props="none"/></entry>
+    </target></status>
+    """
+
+    let entries = try SVNXMLParser.statuses(from: Data(xml.utf8))
+
+    #expect(entries.map(\.item) == [.obstructed, .unknown("future-status")])
+    #expect(entries.map(\.item.rawValue) == ["obstructed", "future-status"])
+}
+
 @Test func parsesWorkingCopyEntriesAndOnlyRepositoryBackedEntriesAreVersioned() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
