@@ -5,4 +5,8 @@ import Foundation
 /// 새 화면 상태가 필요하면 `ProjectStore.swift`를 고치지 말고 여기에 필드를 추가합니다.
 struct ProjectRecoveryState {
     var propertyConflictSession: PropertyConflictSession?
+    var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
+    var historyRevisionOperation: HistoryRevisionOperation?
+    var historyRevisionClient: any HistoryRevisionClient = LiveHistoryRevisionClient()
+    var revisionFileService = RevisionFileService()
 }
