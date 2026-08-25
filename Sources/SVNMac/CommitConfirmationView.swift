@@ -119,13 +119,14 @@ struct CommitConfirmationView: View {
                 Button(appLanguage.localized("ui.no.bafd7322"), role: .cancel) {
                     store.cancelCommitConfirmation()
                 }
-                .keyboardShortcut(.cancelAction)
+                // 서버 삭제가 있으면 Return은 취소. 빈 메시지 확인만 Return으로 커밋한다.
+                .keyboardShortcut(serverDeletionEntries.isEmpty ? .cancelAction : .defaultAction)
                 Button(appLanguage.localized("ui.confirm.commit.7c2e5a90")) {
                     guard let currentRequest = store.commitConfirmationRequest else { return }
                     Task { _ = await store.confirmCommit(currentRequest) }
                 }
                 .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
+                .bindsReturnAsDefaultAction(serverDeletionEntries.isEmpty)
                 .disabled(store.isSelectedProjectActionBlocked)
             }
         }
@@ -141,5 +142,16 @@ struct CommitConfirmationView: View {
 
     private var serverDeletionEntries: [SVNStatusEntry] {
         store.commitConfirmationRequest?.serverDeletionEntries ?? request.serverDeletionEntries
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func bindsReturnAsDefaultAction(_ enabled: Bool) -> some View {
+        if enabled {
+            keyboardShortcut(.defaultAction)
+        } else {
+            self
+        }
     }
 }

@@ -447,7 +447,8 @@ private struct RepositoryPathNormalizationConfirmationView: View {
                 Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
                     store.isConfirmingRepositoryPathNormalization = false
                 }
-                .keyboardShortcut(.cancelAction)
+                // 경로마다 삭제+추가 커밋이 올라간다. Return은 취소만 실행한다.
+                .keyboardShortcut(.defaultAction)
                 Button {
                     Task { await store.normalizeSelectedRepositoryPaths() }
                 } label: {
@@ -463,7 +464,6 @@ private struct RepositoryPathNormalizationConfirmationView: View {
                         isInProgress: store.isNormalizingRepositoryPaths
                     )
                 }
-                .keyboardShortcut(.defaultAction)
                 .disabled(!store.canConfirmRepositoryPathNormalization)
             }
         }
