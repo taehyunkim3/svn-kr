@@ -9,7 +9,10 @@ import Testing
 
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .korean) == "현재 작업 파일을 찾을 수 없습니다.")
     #expect(store.localizedError(ConflictFileError.missingWorkingFile, language: .english) == "The current working file could not be found.")
-    #expect(store.localizedError(ConflictFileError.unsupportedType("tree"), language: .english) == "Unsupported conflict type: tree")
+    #expect(
+        store.localizedError(ConflictFileError.unsupportedType("property"), language: .english)
+            == "Unsupported conflict type: property\nRevert Local Changes… → Run Update"
+    )
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .korean) == "선택한 폴더는 SVN 로컬 작업 폴더가 아닙니다.")
     #expect(store.localizedError(SVNError.invalidWorkingCopy, language: .english) == "The selected folder is not an SVN local working folder.")
 }

@@ -44,7 +44,13 @@ enum SVNErrorLocalization {
     static func message(for error: ConflictFileError, language: AppLanguage) -> String {
         switch error {
         case let .unsupportedType(type):
-            return language.localized("ui.unsupported.conflict.type.1a0e94e8", type)
+            return [
+                language.localized("ui.unsupported.conflict.type.1a0e94e8", type),
+                [
+                    language.localized("ui.revert.local.changes.c62907ae"),
+                    language.localized("ui.run.update.e17c8217"),
+                ].joined(separator: " → "),
+            ].joined(separator: "\n")
         case .missingMine:
             return language.localized("ui.your.file.version.could.not.be.found.576883d5")
         case .missingServer:
