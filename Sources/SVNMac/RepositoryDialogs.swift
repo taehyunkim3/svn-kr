@@ -1,4 +1,5 @@
 import AppKit
+import SVNCore
 import SwiftUI
 
 /// Keychain 접근이 거부됐을 때 사용자가 인증 방식을 다시 선택하는 화면입니다.
@@ -16,9 +17,18 @@ struct AuthenticationRequiredView: View {
         _username = State(initialValue: "")
     }
 
+    @ViewBuilder
     var body: some View {
+        if let trust = request.serverCertificateTrust {
+            ServerCertificateTrustView(request: request, trust: trust)
+        } else {
+            authenticationForm
+        }
+    }
+
+    private var authenticationForm: some View {
         @Bindable var store = store
-        VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(appLanguage.localized("ui.svn.authentication.required.797a2cdb"))
                     .font(.title2.bold())
@@ -87,6 +97,8 @@ struct AuthenticationRequiredView: View {
             appLanguage.localized("ui.authentication.is.required.to.download.the.lates.83127c9a")
         case .commit:
             appLanguage.localized("ui.authentication.is.required.to.commit.the.selecte.4837ef80")
+        case .retryManually:
+            appLanguage.localized("ui.authentication.is.required.to.load.the.latest.se.2b552fac")
         }
     }
 
@@ -101,6 +113,68 @@ struct AuthenticationRequiredView: View {
             )
             if !didStartOperation { isSubmitting = false }
         }
+    }
+}
+
+private struct ServerCertificateTrustView: View {
+    @Environment(ProjectStore.self) private var store
+    @Environment(\.appLanguage) private var appLanguage
+    let request: SVNAuthenticationRequest
+    let trust: ServerCertificateTrust
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Label(
+                    appLanguage.localized("ui.server.certificate.problem.6c18f2a9"),
+                    systemImage: "exclamationmark.shield.fill"
+                )
+                .font(.title2.bold())
+                .foregroundStyle(.orange)
+                Text(appLanguage.localized("ui.server.certificate.problem.detected.281e7d4c"))
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(orderedFailures, id: \.self) { failure in
+                Text(SVNErrorLocalization.serverCertificateGuidance(
+                    for: failure,
+                    language: appLanguage
+                ))
+            }
+
+            Text(appLanguage.localized("ui.certificate.exception.security.warning.b82d4a16"))
+                .font(.callout.weight(.semibold))
+
+            Text(trust.diagnosticDetails)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .lineLimit(8)
+
+            Divider()
+            HStack {
+                Spacer()
+                Button(appLanguage.localized("ui.do.not.allow.certificate.exception.f4c01a6e"), role: .cancel) {
+                    store.cancelAuthentication(for: request)
+                }
+                .keyboardShortcut(.cancelAction)
+                if trust.canAllow {
+                    Button(
+                        appLanguage.localized("ui.allow.certificate.failure.for.project.0d91bc52"),
+                        role: .destructive
+                    ) {
+                        store.allowServerCertificateFailure(for: request)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: AppLayout.authenticationSheetWidth)
+    }
+
+    private var orderedFailures: [SVNServerCertificateFailure] {
+        SVNServerCertificateFailure.allCases.filter(trust.failures.contains)
     }
 }
 
@@ -486,6 +560,10 @@ struct CredentialsView: View {
             WorkingCopyCleanupView(request: request)
                 .environment(store)
         }
+        .sheet(item: $store.authenticationRequest) { request in
+            AuthenticationRequiredView(request: request)
+                .environment(store)
+        }
         .alert(
             appLanguage.localized("ui.the.svn.account.or.password.is.not.valid.6d81e3f4"),
             isPresented: .isPresenting($credentialFailureMessage),
@@ -801,6 +879,10 @@ private struct UntrustedCertificateToggle: View {
             Text(appLanguage.localized("ui.use.this.when.the.target.server.s.certificate.is.2fa0c076"))
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            Text(appLanguage.localized("ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

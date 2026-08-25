@@ -576,3 +576,16 @@
 "ui.revision.restore.replacement.verification.failed.b8714e35" = "복원한 파일이 선택한 리비전과 바이트 단위로 일치하지 않습니다. 복구본은 보존했습니다.";
 "ui.revision.save.invalid.destination.5f4d2c81" = "선택한 위치는 일반 파일을 안전하게 저장할 수 있는 경로가 아닙니다.";
 "ui.revision.history.client.unavailable.5d7a91c2" = "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다.";
+"ui.certificate.unknown.ca.guidance.39a72e10" = "인증서 발급 기관을 신뢰할 수 없습니다. 서버 관리자에게 발급 기관을 확인하세요. 허용하면 이 프로젝트에서 발급 기관 검증을 건너뜁니다.";
+"ui.certificate.name.mismatch.guidance.74c11a2b" = "인증서가 다른 서버 이름으로 발급됐습니다. 허용하기 전에 저장소 URL과 인증서의 서버 이름을 확인하세요.";
+"ui.certificate.expired.guidance.a83d5e91" = "서버 인증서가 만료됐습니다. 인증서를 갱신하는 것이 가장 안전합니다. 허용하면 이 프로젝트는 해당 만료 오류를 무시하고 연결합니다.";
+"ui.certificate.not.yet.valid.guidance.5fb1c4d8" = "인증서의 유효 기간이 아직 시작되지 않았습니다. 허용하기 전에 서버와 Mac의 시계 및 인증서 시작일을 확인하세요. 인증서를 신뢰하는 것보다 시계를 바로잡는 것이 안전합니다.";
+"ui.certificate.unclassified.guidance.c1974a30" = "SVN이 인증서 문제를 보고했지만 지원하는 원인을 특정하지 않았습니다. 앱은 안전한 개별 예외를 만들 수 없습니다. 서버 관리자에게 문의해 인증서를 교체하거나 수정하세요.";
+"ui.certificate.exception.not.allowed.d47c92a1" = "인증서 예외를 허용하지 않았습니다. 프로젝트 설정은 바뀌지 않았습니다.";
+"ui.certificate.exception.saved.for.project.16e0ad73" = "%@의 인증서 예외를 저장했습니다. SVN 작업을 다시 실행하세요.";
+"ui.server.certificate.problem.6c18f2a9" = "서버 인증서 문제";
+"ui.server.certificate.problem.detected.281e7d4c" = "SVN이 서버 인증서를 거부했습니다. 감지된 문제를 확인한 뒤 결정하세요.";
+"ui.certificate.exception.security.warning.b82d4a16" = "이 예외를 허용하면 해당 프로젝트의 서버 신원 검증이 약해집니다. 악성 서버가 SVN 서버를 사칭할 수 있습니다.";
+"ui.do.not.allow.certificate.exception.f4c01a6e" = "허용하지 않음";
+"ui.allow.certificate.failure.for.project.0d91bc52" = "이 프로젝트에서 허용";
+"ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4" = "만료되거나 아직 유효하지 않은 인증서는 SVN이 구체적인 실패를 보고한 뒤 별도 동의가 필요합니다.";
