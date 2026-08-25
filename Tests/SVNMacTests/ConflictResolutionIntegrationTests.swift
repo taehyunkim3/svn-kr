@@ -67,7 +67,7 @@ import Testing
     }
 }
 
-@Test func realSVNContentSessionRejectsConflictDetailsWithoutVersionBackups() async throws {
+@Test func realSVNConflictDetailsSeparateContentAndTreeResolutionFlows() async throws {
     let fixture = try RealSVNConflictFixture()
     defer { fixture.remove() }
 
@@ -108,11 +108,6 @@ import Testing
         at: fixture.conflictedWorkingCopy.path,
         relativePath: fixture.treeConflictPath
     )?.type == "tree")
-}
-
-@Test func realSVNTreeConflictRestoresServerDeletionAfterRevertAndUpdate() async throws {
-    let fixture = try RealSVNConflictFixture()
-    defer { fixture.remove() }
     let workingFile = fixture.conflictedWorkingCopy.appendingPathComponent(fixture.treeConflictPath)
     #expect(FileManager.default.fileExists(atPath: workingFile.path))
 
