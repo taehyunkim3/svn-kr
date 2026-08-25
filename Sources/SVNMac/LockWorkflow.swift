@@ -87,7 +87,8 @@ struct ExplicitLockCommandRunner {
         workingCopyPath: String,
         comment: String,
         credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool
+        allowUntrustedServerCertificate: Bool,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
     ) async throws {
         _ = try await client.lock(
             at: workingCopyPath,
@@ -96,7 +97,7 @@ struct ExplicitLockCommandRunner {
             force: command.force,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: []
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
     }
 }

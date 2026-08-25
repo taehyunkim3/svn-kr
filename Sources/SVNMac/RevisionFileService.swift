@@ -66,7 +66,8 @@ actor RevisionFileService {
         revision: String,
         destinationURL: URL,
         credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool
+        allowUntrustedServerCertificate: Bool,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
     ) async throws {
         let destination = destinationURL.standardizedFileURL
         let parent = destination.deletingLastPathComponent()
@@ -95,7 +96,7 @@ actor RevisionFileService {
             force: false,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: []
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let stagedValues = try staging.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
         guard stagedValues.isRegularFile == true, stagedValues.isSymbolicLink != true else {

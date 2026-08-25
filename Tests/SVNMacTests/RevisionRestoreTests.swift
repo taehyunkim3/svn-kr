@@ -22,7 +22,8 @@ import Testing
         revision: "2",
         destinationURL: destination,
         credentials: nil,
-        allowUntrustedServerCertificate: false
+        allowUntrustedServerCertificate: false,
+        allowedServerCertificateFailures: []
     )
 
     #expect(try Data(contentsOf: destination) == original)

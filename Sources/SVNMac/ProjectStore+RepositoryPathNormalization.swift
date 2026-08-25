@@ -74,7 +74,8 @@ extension ProjectStore {
                 at: project.path,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate:
-                    project.allowsUntrustedServerCertificate == true
+                    project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             guard !targets.isEmpty else {
@@ -140,7 +141,8 @@ extension ProjectStore {
                 message: message,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate:
-                    project.allowsUntrustedServerCertificate == true
+                    project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == projectID else { return }
             repositoryPathNormalizationResult = result

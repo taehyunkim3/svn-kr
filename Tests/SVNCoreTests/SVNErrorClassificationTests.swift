@@ -66,4 +66,19 @@ import Testing
     )
     #expect(explicitArguments.contains("--trust-server-cert-failures=expired,not-yet-valid"))
     #expect(!explicitArguments.contains("unknown-ca"))
+
+    let combinedDestination = root.appendingPathComponent("combined")
+    _ = try await client.checkout(
+        repositoryURL: "https://example.invalid/repository",
+        destinationPath: combinedDestination.path,
+        allowUntrustedServerCertificate: true,
+        allowedServerCertificateFailures: [.expired]
+    )
+    let combinedArguments = try String(
+        contentsOf: combinedDestination.appendingPathComponent("arguments.txt"),
+        encoding: .utf8
+    )
+    #expect(combinedArguments.contains(
+        "--trust-server-cert-failures=unknown-ca,cn-mismatch,expired"
+    ))
 }

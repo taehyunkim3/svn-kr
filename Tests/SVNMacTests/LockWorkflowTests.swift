@@ -15,7 +15,8 @@ import SVNCore
         workingCopyPath: "/tmp/project",
         comment: "editing",
         credentials: nil,
-        allowUntrustedServerCertificate: false
+        allowUntrustedServerCertificate: false,
+        allowedServerCertificateFailures: []
     )
 
     #expect(await client.commands == [command])
@@ -55,7 +56,8 @@ import SVNCore
         workingCopyPath: "/tmp/project",
         comment: "editing",
         credentials: nil,
-        allowUntrustedServerCertificate: false
+        allowUntrustedServerCertificate: false,
+        allowedServerCertificateFailures: []
     )
     #expect(await client.commands == [ExplicitLockCommand(paths: request.paths, force: true)])
 }

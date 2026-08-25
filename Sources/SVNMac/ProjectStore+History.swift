@@ -43,7 +43,8 @@ extension ProjectStore {
                 workingCopyRepositoryPath: workingCopyRepositoryPath,
                 pegRevision: pegRevision(for: changedPath, revision: revision),
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id,
                   selectedHistoryRevision == revision,
@@ -77,7 +78,8 @@ extension ProjectStore {
                 limit: 50,
                 endingAtRevision: String(revision - 1),
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             let existingRevisions = Set(logs.map(\.revision))
@@ -150,7 +152,8 @@ extension ProjectStore {
                 revision: revision,
                 destinationURL: destinationURL,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
@@ -194,7 +197,7 @@ extension ProjectStore {
                 revision: request.revision,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
-                allowedServerCertificateFailures: []
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             _ = try await RevisionFileService().restoreWorkingFile(

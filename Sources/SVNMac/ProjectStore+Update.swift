@@ -12,7 +12,8 @@ extension ProjectStore {
             let result = try await client.update(
                 at: project.path,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             ).trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return }
             notice = result
@@ -57,7 +58,8 @@ extension ProjectStore {
                 commits = try await client.updatePreviewIncomingCommits(
                     at: project.path,
                     credentials: credentials(for: project),
-                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 )
             }
             guard selectedProjectID == project.id else { return }
@@ -71,7 +73,8 @@ extension ProjectStore {
             let changes = try await client.remoteChanges(
                 at: project.path,
                 credentials: credentials(for: project),
-                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
             guard selectedProjectID == project.id else { return }
             remoteChanges = changes
@@ -115,7 +118,8 @@ extension ProjectStore {
                         at: project.path,
                         relativePath: path,
                         credentials: projectCredentials,
-                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                        allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                     ), lock.owner != project.username {
                         failures.append(TemporaryFileCleanupFailure(
                             path: path,
@@ -154,7 +158,8 @@ extension ProjectStore {
                     paths: scheduledPaths,
                     message: repositoryTemporaryFileCleanupCommitMessage(paths: scheduledPaths),
                     credentials: projectCredentials,
-                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
                 ).trimmingCharacters(in: .whitespacesAndNewlines)
                 guard selectedProjectID == project.id else { return }
                 isShowingTemporaryFileCleanup = false

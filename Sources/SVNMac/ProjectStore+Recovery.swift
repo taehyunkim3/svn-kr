@@ -60,7 +60,8 @@ extension ProjectStore {
                 from: sourceProject.path,
                 to: destination.path,
                 credentials: sourceCredentials,
-                allowUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true
+                allowUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: sourceProject)
             )
             let recoveredURL = URL(fileURLWithPath: result.destinationPath, isDirectory: true).standardizedFileURL
             let recoveredProject = SVNProject(

@@ -40,13 +40,15 @@ public actor SVNClient {
         repositoryURL: String,
         destinationPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkout(
             repositoryURL: repositoryURL,
             destinationPath: destinationPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
             progress: nil
         )
     }
@@ -56,6 +58,7 @@ public actor SVNClient {
         destinationPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
         progress: SVNOutputHandler?
     ) async throws -> String {
         let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
@@ -67,6 +70,7 @@ public actor SVNClient {
             at: destination.path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
             progress: progress
         ).output
     }
@@ -342,14 +346,16 @@ public actor SVNClient {
     public func repositoryPathsNeedingNormalization(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNRepositoryPathNormalizationTarget] {
         let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: credentials)
         let result = try await checkedRun(
             ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let entries = try SVNXMLParser.repositoryListEntries(from: Data(result.output.utf8))
         return SVNRepositoryPathNormalization.targets(from: entries)
@@ -383,7 +389,8 @@ public actor SVNClient {
         at path: String,
         message: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNRepositoryPathNormalizationResult {
         let targets = SVNRepositoryPathNormalization.minimalTargets(targets)
         guard !targets.isEmpty else {
@@ -429,7 +436,8 @@ public actor SVNClient {
         let locks = try await repositoryLocks(
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let blockingLockPaths = locks.compactMap { lock in
             targets.contains(where: {
@@ -448,7 +456,8 @@ public actor SVNClient {
             ["list", "--recursive", "--xml", "--", Self.svnPathEscapingPegSyntax(repositoryURL)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         let repositoryEntries = try SVNXMLParser.repositoryListEntries(
             from: Data(listResult.output.utf8)
@@ -495,7 +504,8 @@ public actor SVNClient {
                     ],
                     at: path,
                     credentials: credentials,
-                    allowUntrustedServerCertificate: allowUntrustedServerCertificate
+                    allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures
                 )
             } catch {
                 throw SVNRepositoryPathNormalizationError.failed(
@@ -555,14 +565,16 @@ public actor SVNClient {
     public func verifyCredentials(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws {
         let repositoryURL = try await workingCopyRepositoryURL(at: path, credentials: nil)
         _ = try await checkedRun(
             ["info", "--show-item", "revision", "--", repositoryURL],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
     }
 
@@ -578,7 +590,8 @@ public actor SVNClient {
         from sourcePath: String,
         to destinationPath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNRecoveryResult {
         let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
@@ -593,7 +606,8 @@ public actor SVNClient {
             repositoryURL: repositoryURL,
             destinationPath: destination.path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
 
@@ -1049,13 +1063,15 @@ public actor SVNClient {
     public func repositoryLocks(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLockInfo] {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.repositoryLocks(fromStatus: Data(result.output.utf8))
     }
@@ -1064,14 +1080,16 @@ public actor SVNClient {
         at path: String,
         relativePath: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> SVNLockInfo? {
         let result = try await checkedRunWithSingleWorkingCopyPathArgument(
             ["info", "--xml", "--revision", "HEAD"],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.repositoryLock(fromInfo: Data(result.output.utf8))
     }
@@ -1081,14 +1099,16 @@ public actor SVNClient {
         relativePath: String,
         comment: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkedRunWithSingleWorkingCopyPathArgument(
             ["lock", "--message", comment],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1133,7 +1153,8 @@ public actor SVNClient {
         relativePath: String,
         force: Bool = false,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         var arguments = ["unlock"]
         if force { arguments.append("--force") }
@@ -1142,7 +1163,8 @@ public actor SVNClient {
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1376,14 +1398,16 @@ public actor SVNClient {
         limit: Int = 50,
         endingAtRevision: String? = nil,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let revisionRange = "\(endingAtRevision ?? "HEAD"):1"
         let result = try await checkedRun(
             ["log", "--xml", "--verbose", "--with-all-revprops", "--revision", revisionRange, "--limit", String(limit)],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
@@ -1395,7 +1419,8 @@ public actor SVNClient {
         workingCopyRepositoryPath: String?,
         pegRevision: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         let repositoryRevisionPath = revisionTargetPath(
             repositoryPath: repositoryPath,
@@ -1408,7 +1433,8 @@ public actor SVNClient {
             escapePegSyntax: false,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1494,13 +1520,15 @@ public actor SVNClient {
     public func workingCopyIsOutOfDate(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> Bool {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.workingCopyIsOutOfDate(from: Data(result.output.utf8))
     }
@@ -1508,13 +1536,15 @@ public actor SVNClient {
     public func remoteChanges(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNStatusEntry] {
         let result = try await checkedRun(
             ["status", "--show-updates", "--xml"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.remoteChanges(from: Data(result.output.utf8))
     }
@@ -1522,13 +1552,15 @@ public actor SVNClient {
     public func update(
         at path: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         try await checkedRun(
             ["update"],
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         ).output
     }
 
@@ -1558,14 +1590,16 @@ public actor SVNClient {
         relativePath: String,
         limit: Int = 100,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> [SVNLogEntry] {
         let result = try await checkedRunWithSingleWorkingCopyPathArgument(
             ["log", "--xml", "--verbose", "--with-all-revprops", "--limit", String(limit)],
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
         )
         return try SVNXMLParser.logs(from: Data(result.output.utf8))
     }
@@ -1575,7 +1609,8 @@ public actor SVNClient {
         paths: [String],
         message: String,
         credentials: SVNCredentials? = nil,
-        allowUntrustedServerCertificate: Bool = false
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
     ) async throws -> String {
         // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
         // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
@@ -1708,7 +1743,8 @@ public actor SVNClient {
                 projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
-                allowUntrustedServerCertificate: allowUntrustedServerCertificate
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
             ).output
         } catch {
             let rollbackTargets = Self.normalizedCommitPaths(scheduledByThisCommit)
