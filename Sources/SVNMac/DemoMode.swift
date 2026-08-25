@@ -222,6 +222,7 @@ private actor DemoSVNClient: SVNClientServing {
 
     func checkout(repositoryURL _: String, destinationPath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Demo checkout complete" }
     func validateWorkingCopy(at _: String, credentials _: SVNCredentials?) async throws {}
+    func cleanup(at _: String, credentials _: SVNCredentials?) async throws -> String { "Cleaned" }
     func verifyCredentials(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws {}
     func status(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { currentStatuses }
     func workingCopyEntries(at _: String, credentials _: SVNCredentials?) async throws -> [SVNWorkingCopyEntry] { [] }
@@ -268,7 +269,7 @@ private actor DemoSVNClient: SVNClientServing {
     func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
     func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> SVNLockInfo? { nil }
     func lock(at _: String, relativePath _: String, comment _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Locked" }
-    func unlock(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Unlocked" }
+    func unlock(at _: String, relativePath _: String, force _: Bool, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> String { "Unlocked" }
     func conflictDetails(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> SVNConflictDetails? { nil }
     func resolveConflict(at _: String, relativePath _: String, choice _: SVNConflictChoice, credentials _: SVNCredentials?) async throws -> String { "Resolved" }
     func log(at _: String, limit _: Int, endingAtRevision _: String?, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool) async throws -> [SVNLogEntry] { DemoData.logs }

@@ -159,6 +159,9 @@ final class ProjectStore {
     var activeConflictSession: ConflictResolutionSession?
     var activeTreeConflictSession: TreeConflictSession?
     var recoveryState = ProjectRecoveryState()
+    var workingCopyCleanupRequest: WorkingCopyCleanupRequest?
+    var canceledCheckoutRecoveryRequest: CanceledCheckoutRecoveryRequest?
+    var forceUnlockRequest: ForceUnlockRequest?
     var resolvingConflictSessionID: ConflictResolutionSession.ID?
     var resolvingConflictProjectID: SVNProject.ID?
     var revertRequest: RevertRequest?
@@ -344,6 +347,7 @@ final class ProjectStore {
     let projectAccessManager: any ProjectAccessManaging
     let workingCopyFileService: any WorkingCopyFileListing
     let conflictFileService: ConflictFileService
+    let workingCopyRecoveryFileManager: any WorkingCopyRecoveryFileManaging
     private let workspaceOpener: any WorkspaceOpening
     private let projectPathChecker: any ProjectPathChecking
     private let volumeNormalizationProbe: any VolumeNormalizationProbing
@@ -391,6 +395,18 @@ final class ProjectStore {
 
     var isCheckingOut: Bool {
         activeOperations.contains { $0.kind == .checkout }
+    }
+
+    var isCleaningSelectedWorkingCopy: Bool {
+        guard let path = selectedProject?.path else { return false }
+        return activeOperations.contains { $0.kind == .cleanupWorkingCopy(path) }
+    }
+
+    var isRecoveringCanceledCheckout: Bool {
+        guard let path = canceledCheckoutRecoveryRequest?.destinationPath else { return false }
+        return activeOperations.contains {
+            $0.kind == .recoverCanceledCheckout(path) || $0.kind == .cleanupWorkingCopy(path)
+        }
     }
 
     var isLoadingMoreHistory: Bool {
@@ -579,6 +595,7 @@ final class ProjectStore {
         projectAccessManager: any ProjectAccessManaging = SecurityScopedProjectAccessManager(),
         conflictFileService: ConflictFileService = ConflictFileService(),
         workingCopyFileService: any WorkingCopyFileListing = WorkingCopyFileService(),
+        workingCopyRecoveryFileManager: any WorkingCopyRecoveryFileManaging = FileManagerWorkingCopyRecoveryFileManager(),
         workspaceOpener: any WorkspaceOpening = AppWorkspaceOpener(),
         projectPathChecker: any ProjectPathChecking = FileManagerProjectPathChecker(),
         volumeNormalizationProbe: any VolumeNormalizationProbing = CoreVolumeNormalizationProbe(),
@@ -599,6 +616,7 @@ final class ProjectStore {
         self.projectAccessManager = projectAccessManager
         self.conflictFileService = conflictFileService
         self.workingCopyFileService = workingCopyFileService
+        self.workingCopyRecoveryFileManager = workingCopyRecoveryFileManager
         self.workspaceOpener = workspaceOpener
         self.projectPathChecker = projectPathChecker
         self.volumeNormalizationProbe = volumeNormalizationProbe
@@ -683,6 +701,7 @@ final class ProjectStore {
         }
         let destination = destinationURL.standardizedFileURL
         let destinationPath = destination.path
+        let destinationWasEmpty = workingCopyRecoveryFileManager.isEmptyDirectory(at: destinationPath)
         guard !projects.contains(where: { $0.path == destinationPath }) else {
             errorMessage = AppLanguage.current.localized("ui.this.local.working.folder.is.already.registered.b8836f70")
             return false
@@ -696,17 +715,19 @@ final class ProjectStore {
         // Keychain 저장 실패까지 전체 실패로 취급하면, 화면에는 실패라고 나오지만
         // 디스크에는 파일이 남는 모호한 상태가 됩니다. 그래서 경계를 둘로 나눕니다.
         let id = UUID()
-        let bookmarkData: Data
+        var bookmarkData: Data?
         let checkoutNotice: String
         let progressBuffer = CheckoutProgressBuffer()
+        let checkoutCredentials = username.isEmpty
+            ? nil
+            : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
         do {
             bookmarkData = try projectAccessManager.makeBookmark(for: destination)
             projectAccessManager.beginAccessing(destination, for: id)
-            let credentials = username.isEmpty ? nil : SVNCredentials(username: username, password: password.isEmpty ? nil : password)
             checkoutNotice = try await client.checkout(
                 repositoryURL: repositoryURL,
                 destinationPath: destinationPath,
-                credentials: credentials,
+                credentials: checkoutCredentials,
                 allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
                 progress: { [weak self] output in
                     let accumulatedOutput = progressBuffer.append(output)
@@ -721,17 +742,44 @@ final class ProjectStore {
             checkoutLog = progressBuffer.output
         } catch {
             checkoutLog = progressBuffer.output
-            projectAccessManager.endAccessing(url: destinationURL.standardizedFileURL)
             // 사용자가 직접 멈춘 작업은 실패가 아니므로 오류 대화상자를 띄우지 않습니다.
-            // 다만 이미 내려받은 파일은 디스크에 남으므로 대상 폴더를 함께 알립니다.
-            if error is CancellationError || Task.isCancelled {
+            if (error is CancellationError || Task.isCancelled), let bookmarkData {
                 errorMessage = nil
-                notice = AppLanguage.current.localized(
-                    "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58",
-                    destinationPath
-                )
+                if await prepareCanceledCheckoutRecovery(
+                    id: id,
+                    destination: destination,
+                    username: username,
+                    password: password,
+                    bookmarkData: bookmarkData,
+                    canEmptySafely: destinationWasEmpty,
+                    allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    credentials: checkoutCredentials
+                ) {
+                    notice = nil
+                } else {
+                    projectAccessManager.endAccessing(url: destination)
+                    notice = AppLanguage.current.localized(
+                        "ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58",
+                        destinationPath
+                    )
+                }
                 return false
             }
+            if SVNClient.needsCleanup(error), let bookmarkData,
+               await prepareCanceledCheckoutRecovery(
+                   id: id,
+                   destination: destination,
+                   username: username,
+                   password: password,
+                   bookmarkData: bookmarkData,
+                   canEmptySafely: destinationWasEmpty,
+                   allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                   credentials: checkoutCredentials
+               ) {
+                errorMessage = nil
+                return false
+            }
+            projectAccessManager.endAccessing(url: destination)
             errorMessage = localizedError(error)
             return false
         }
@@ -1095,7 +1143,9 @@ final class ProjectStore {
             diffContent = value.isEmpty ? .noTextDiff : .text(value)
         } catch {
             if canApplyRequest(requestID, kind: .diff, projectID: project.id) {
-                errorMessage = localizedError(error)
+                if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                    errorMessage = localizedError(error)
+                }
             }
         }
     }
@@ -1324,11 +1374,15 @@ final class ProjectStore {
         switch policy {
         case .standalone:
             automaticRefreshBlockedProjectID = projectID
-            errorMessage = localizedError(error)
+            if !offerWorkingCopyCleanup(for: error, projectID: projectID) {
+                errorMessage = localizedError(error)
+            }
         case let .coordinated(cycleID):
             guard failedRefreshCycleIDs.insert(cycleID).inserted else { return }
             automaticRefreshBlockedProjectID = projectID
-            errorMessage = localizedError(error)
+            if !offerWorkingCopyCleanup(for: error, projectID: projectID) {
+                errorMessage = localizedError(error)
+            }
         }
     }
 
@@ -1419,6 +1473,18 @@ final class ProjectStore {
         persistence.saveProjects(projects)
     }
 
+    func registerRecoveredCheckout(_ project: SVNProject) {
+        projects.append(project)
+        selectedProjectID = project.id
+        probeFilenameNormalization(for: project)
+    }
+
+    func clearAutomaticRefreshBlock(for projectID: SVNProject.ID) {
+        if automaticRefreshBlockedProjectID == projectID {
+            automaticRefreshBlockedProjectID = nil
+        }
+    }
+
     func updateLocalSummary(for projectID: SVNProject.ID, statuses: [SVNStatusEntry]) {
         let visibleStatuses = TemporaryFilePolicy.visibleEntries(
             statuses,
@@ -1461,6 +1527,8 @@ final class ProjectStore {
         activeConflictSession = nil
         activeTreeConflictSession = nil
         recoveryState = ProjectRecoveryState()
+        workingCopyCleanupRequest = nil
+        forceUnlockRequest = nil
         resolvingConflictSessionID = nil
         resolvingConflictProjectID = nil
         revertRequest = nil

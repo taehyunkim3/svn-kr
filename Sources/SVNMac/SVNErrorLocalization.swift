@@ -2,10 +2,35 @@ import Foundation
 import SVNCore
 
 enum SVNErrorLocalization {
+    private enum FailureCode: Equatable {
+        case needsCleanup
+        case remainsInConflict(path: String)
+        case notLockedInWorkingCopy
+    }
+
     static func message(for error: SVNError, language: AppLanguage) -> String {
         switch error {
         case let .commandFailed(command, message):
-            return language.localized("ui.failed.cb475070", command, message)
+            switch failureCode(in: message) {
+            case .needsCleanup:
+                return language.localized(
+                    "ui.working.copy.operation.interrupted.run.cleanup.0bc374e1",
+                    message
+                )
+            case let .remainsInConflict(path):
+                return language.localized(
+                    "ui.file.remains.in.conflict.resolve.before.retry.4d17ac82",
+                    path,
+                    message
+                )
+            case .notLockedInWorkingCopy:
+                return language.localized(
+                    "ui.lock.belongs.to.another.working.copy.force.unlock.27e93bd0",
+                    message
+                )
+            case nil:
+                return language.localized("ui.failed.cb475070", command, message)
+            }
         case let .workingCopyOutOfDate(details):
             return language.localized("ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4", details)
         case .invalidWorkingCopy:
@@ -39,6 +64,39 @@ enum SVNErrorLocalization {
         case .svnExecutableNotFound:
             return language.localized("ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae")
         }
+    }
+
+    static func diagnosticDetails(for error: Error) -> String {
+        guard let svnError = error as? SVNError else { return error.localizedDescription }
+        if case let .commandFailed(command, message) = svnError {
+            return "\(command)\n\(message)"
+        }
+        return String(describing: svnError)
+    }
+
+    static func suggestsForceUnlock(_ error: Error) -> Bool {
+        guard case let SVNError.commandFailed(_, message) = error else { return false }
+        return failureCode(in: message) == .notLockedInWorkingCopy
+    }
+
+    private static func failureCode(in message: String) -> FailureCode? {
+        if SVNClient.needsCleanup(message) { return .needsCleanup }
+        if message.contains("E155015") {
+            return .remainsInConflict(path: conflictPath(in: message) ?? message)
+        }
+        if message.contains("E195013") { return .notLockedInWorkingCopy }
+        return nil
+    }
+
+    private static func conflictPath(in message: String) -> String? {
+        let pattern = #"['\"]([^'\"]+)['\"]\s+remains in conflict"#
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let match = expression.firstMatch(
+                  in: message,
+                  range: NSRange(message.startIndex..., in: message)
+              ),
+              let range = Range(match.range(at: 1), in: message) else { return nil }
+        return String(message[range])
     }
 
     static func message(for error: ConflictFileError, language: AppLanguage) -> String {

@@ -18,6 +18,114 @@ import Testing
 }
 
 @MainActor
+@Test func svnFailureCodesUseActionableGuidanceAndKeepOriginalDetails() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+    let cleanup = store.localizedError(SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E155037: Previous operation has not finished"
+    ), language: .korean)
+    let conflict = store.localizedError(SVNError.commandFailed(
+        command: "svn commit",
+        message: "svn: E155015: Aborting commit: '/tmp/project/Docs/report.txt' remains in conflict"
+    ), language: .english)
+    let unlock = store.localizedError(SVNError.commandFailed(
+        command: "svn unlock",
+        message: "svn: E195013: 'Docs/report.txt' is not locked in this working copy"
+    ), language: .korean)
+
+    #expect(cleanup.contains("정리"))
+    #expect(cleanup.contains("E155037"))
+    #expect(conflict.contains("/tmp/project/Docs/report.txt"))
+    #expect(conflict.contains("Resolve Conflicts"))
+    #expect(conflict.contains("E155015"))
+    #expect(unlock.contains("강제 해제"))
+    #expect(unlock.contains("E195013"))
+}
+
+@MainActor
+@Test func cleanupFailureOffersCleanupAndOpensProjectSettings() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-proposal")
+    let store = makeStore(projects: [project])
+    let error = SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E155004: Working copy locked"
+    )
+
+    store.publishRefreshError(error, projectID: project.id, policy: .standalone)
+
+    #expect(store.workingCopyCleanupRequest?.projectID == project.id)
+    #expect(store.workingCopyCleanupRequest?.originalMessage.contains("E155004") == true)
+    #expect(store.isShowingCredentials)
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func workingCopyCleanupTracksProgressAndRejectsDuplicateRuns() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-progress")
+    let cleanupGate = AsyncTestGate()
+    let client = StubSVNClient(cleanupGate: cleanupGate)
+    let store = makeStore(projects: [project], client: client)
+    store.requestSelectedWorkingCopyCleanup()
+
+    let firstCleanup = Task { await store.cleanupSelectedWorkingCopy() }
+    await waitForCleanupRequest(client)
+    let duplicateResult = await store.cleanupSelectedWorkingCopy()
+
+    #expect(store.isCleaningSelectedWorkingCopy)
+    #expect(!duplicateResult)
+    #expect(await client.cleanupRequestCount() == 1)
+
+    await cleanupGate.release()
+    #expect(await firstCleanup.value)
+    #expect(!store.isCleaningSelectedWorkingCopy)
+    #expect(store.workingCopyCleanupRequest == nil)
+}
+
+@MainActor
+@Test func cleanupCommandFailureDoesNotOfferAnotherCleanupRetry() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/cleanup-failure")
+    let client = StubSVNClient(cleanupError: SVNError.commandFailed(
+        command: "svn cleanup",
+        message: "svn: E155009: Failed to run the WC DB work queue"
+    ))
+    let store = makeStore(projects: [project], client: client)
+    store.requestSelectedWorkingCopyCleanup()
+
+    let didCleanup = await store.cleanupSelectedWorkingCopy()
+    #expect(!didCleanup)
+    #expect(store.workingCopyCleanupRequest == nil)
+    #expect(store.errorMessage?.contains("E155009") == true)
+    #expect(store.errorMessage?.contains("관리자") == true)
+}
+
+@MainActor
+@Test func failedRegularUnlockOffersForceAndForceCallIsExplicit() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/force-unlock", username: nil)
+    let lock = SVNLockInfo(
+        path: "Docs/report.txt",
+        owner: "former.employee",
+        comment: "월말 보고서",
+        created: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    let client = StubSVNClient(
+        unlockErrorWhenNotForced: SVNError.commandFailed(
+            command: "svn unlock",
+            message: "svn: E195013: 'Docs/report.txt' is not locked in this working copy"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    await store.unlock(lock)
+    let request = try #require(store.forceUnlockRequest)
+    #expect(request.lock == lock)
+    #expect(await client.requestedUnlockForces() == [false])
+
+    await store.forceUnlock(request)
+    #expect(await client.requestedUnlockForces() == [false, true])
+    #expect(store.forceUnlockRequest == nil)
+}
+
+@MainActor
 @Test func latestRequestTrackerRejectsOlderAndSwitchedProjectResults() {
     let first = SVNProject(name: "첫 프로젝트", path: "/tmp/request-first")
     let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/request-second")
@@ -2335,10 +2443,43 @@ import Testing
     #expect(!succeeded)
     #expect(store.projects.isEmpty)
     #expect(!store.isCheckingOut)
-    // 사용자가 직접 멈춘 작업이므로 오류가 아니라 남은 파일 위치 안내만 남깁니다.
     #expect(store.errorMessage == nil)
-    #expect(store.notice?.contains(destination.path) == true)
-    #expect(accessManager.releasedURLs.contains(destination))
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == destination.path)
+    #expect(!accessManager.releasedURLs.contains(destination))
+}
+
+@MainActor
+@Test func canceledCheckoutCanRegisterCleanupAndContinueUpdating() async throws {
+    let client = StubSVNClient(checkoutRunsUntilCancelled: true)
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker(),
+        updateBadgeRefreshInterval: nil
+    )
+    let destination = URL(fileURLWithPath: "/tmp/canceled-checkout-resume", isDirectory: true)
+    let checkout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationURL: destination,
+            username: "tester",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await waitUntilCheckoutStarts(client)
+    store.cancelCheckout()
+    _ = await checkout.value
+    let request = try #require(store.canceledCheckoutRecoveryRequest)
+
+    #expect(await store.resumeCanceledCheckout(request))
+    #expect(store.projects.map(\.path) == [destination.path])
+    #expect(store.selectedProject?.path == destination.path)
+    #expect(await client.cleanupRequestCount() == 1)
+    #expect(await client.updateRequestCount() == 1)
+    #expect(store.canceledCheckoutRecoveryRequest == nil)
 }
 
 @MainActor
@@ -3063,6 +3204,15 @@ private func waitUntilCheckoutStarts(_ client: StubSVNClient) async {
     Issue.record("체크아웃이 시작되지 않았습니다.")
 }
 
+private func waitForCleanupRequest(_ client: StubSVNClient) async {
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
+        if await client.cleanupRequestCount() > 0 { return }
+        try? await Task.sleep(for: .milliseconds(1))
+    }
+    Issue.record("작업 복사본 정리가 시작되지 않았습니다.")
+}
+
 private func waitForResolveRequest(_ client: StubSVNClient) async {
     let deadline = ContinuousClock.now + .seconds(10)
     while ContinuousClock.now < deadline {
@@ -3219,6 +3369,9 @@ private actor StubSVNClient: SVNClientServing {
     let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
     let repositoryPathNormalizationScanError: Error?
     let repositoryPathNormalizationScanGate: AsyncTestGate?
+    let cleanupError: Error?
+    let cleanupGate: AsyncTestGate?
+    let unlockErrorWhenNotForced: Error?
     private var revisionDiffRequests: [RevisionDiffRequest] = []
     private var lockInfoRequests = 0
     private var lockInfoPaths: [String] = []
@@ -3246,6 +3399,8 @@ private actor StubSVNClient: SVNClientServing {
     private var updateAllowedUntrustedCertificates: [Bool] = []
     private var repositoryCleanupDeletionPaths: [String] = []
     private var commitRequests: [CommitRequest] = []
+    private var cleanupRequests = 0
+    private var unlockForces: [Bool] = []
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -3288,7 +3443,10 @@ private actor StubSVNClient: SVNClientServing {
         repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
         repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
         repositoryPathNormalizationScanError: Error? = nil,
-        repositoryPathNormalizationScanGate: AsyncTestGate? = nil
+        repositoryPathNormalizationScanGate: AsyncTestGate? = nil,
+        cleanupError: Error? = nil,
+        cleanupGate: AsyncTestGate? = nil,
+        unlockErrorWhenNotForced: Error? = nil
     ) {
         self.statusesByPath = statusesByPath
         self.revisionsByPath = revisionsByPath
@@ -3325,6 +3483,9 @@ private actor StubSVNClient: SVNClientServing {
         self.repositoryPathNormalizationError = repositoryPathNormalizationError
         self.repositoryPathNormalizationScanError = repositoryPathNormalizationScanError
         self.repositoryPathNormalizationScanGate = repositoryPathNormalizationScanGate
+        self.cleanupError = cleanupError
+        self.cleanupGate = cleanupGate
+        self.unlockErrorWhenNotForced = unlockErrorWhenNotForced
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
         recoveryPreviewValue = recoveryPreview
@@ -3359,6 +3520,13 @@ private actor StubSVNClient: SVNClientServing {
         validatedPaths.append(path)
         if let validateWorkingCopyError { throw validateWorkingCopyError }
     }
+    func cleanup(at path: String, credentials: SVNCredentials?) async throws -> String {
+        cleanupRequests += 1
+        await cleanupGate?.wait()
+        if let cleanupError { throw cleanupError }
+        return "cleaned"
+    }
+    func cleanupRequestCount() -> Int { cleanupRequests }
 
     func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws {
         verifiedCredentials.append(credentials)
@@ -3466,7 +3634,12 @@ private actor StubSVNClient: SVNClientServing {
         return "locked"
     }
     func requestedLockPaths() -> [String] { lockPaths }
-    func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String { "unlocked" }
+    func unlock(at path: String, relativePath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String {
+        unlockForces.append(force)
+        if !force, let unlockErrorWhenNotForced { throw unlockErrorWhenNotForced }
+        return "unlocked"
+    }
+    func requestedUnlockForces() -> [Bool] { unlockForces }
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails? {
         conflictDetailsRequestCounts[relativePath, default: 0] += 1
         conflictDetailsRequestRawPaths.append(Data(relativePath.utf8))

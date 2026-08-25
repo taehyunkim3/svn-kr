@@ -10,6 +10,7 @@ protocol SVNClientServing: Sendable {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, progress: SVNOutputHandler?) async throws -> String
     func validateWorkingCopy(at path: String, credentials: SVNCredentials?) async throws
+    func cleanup(at path: String, credentials: SVNCredentials?) async throws -> String
     func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
     func workingCopyEntries(at path: String, credentials: SVNCredentials?) async throws -> [SVNWorkingCopyEntry]
@@ -28,7 +29,7 @@ protocol SVNClientServing: Sendable {
     func repositoryLocks(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLockInfo]
     func lockInfo(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> SVNLockInfo?
     func lock(at path: String, relativePath: String, comment: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
-    func unlock(at path: String, relativePath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
+    func unlock(at path: String, relativePath: String, force: Bool, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> String
     func conflictDetails(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> SVNConflictDetails?
     func resolveConflict(at path: String, relativePath: String, choice: SVNConflictChoice, credentials: SVNCredentials?) async throws -> String
     func log(at path: String, limit: Int, endingAtRevision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool) async throws -> [SVNLogEntry]
@@ -183,6 +184,56 @@ struct FileManagerProjectPathChecker: ProjectPathChecking {
     }
 }
 
+protocol WorkingCopyRecoveryFileManaging: Sendable {
+    func isEmptyDirectory(at path: String) -> Bool
+    func emptyWorkingCopy(at path: String) throws
+}
+
+struct FileManagerWorkingCopyRecoveryFileManager: WorkingCopyRecoveryFileManaging {
+    func isEmptyDirectory(at path: String) -> Bool {
+        guard let contents = try? FileManager.default.contentsOfDirectory(atPath: path) else {
+            return false
+        }
+        return contents.isEmpty
+    }
+
+    func emptyWorkingCopy(at path: String) throws {
+        let root = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        let rootValues = try root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard rootValues.isDirectory == true, rootValues.isSymbolicLink != true else {
+            throw WorkingCopyRecoveryFileError.unsafeDestination(path)
+        }
+
+        let metadata = root.appendingPathComponent(".svn/wc.db", isDirectory: false)
+        let metadataValues = try metadata.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard metadataValues.isRegularFile == true, metadataValues.isSymbolicLink != true else {
+            throw WorkingCopyRecoveryFileError.missingMetadata(path)
+        }
+
+        for item in try FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: []
+        ) {
+            try FileManager.default.removeItem(at: item)
+        }
+    }
+}
+
+enum WorkingCopyRecoveryFileError: LocalizedError {
+    case unsafeDestination(String)
+    case missingMetadata(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .unsafeDestination(path):
+            "Unsafe checkout recovery destination: \(path)"
+        case let .missingMetadata(path):
+            "SVN working-copy metadata was not found: \(path)"
+        }
+    }
+}
+
 // MARK: - 볼륨 파일명 정규화
 
 protocol VolumeNormalizationProbing: Sendable {
@@ -203,6 +254,7 @@ struct CoreVolumeNormalizationProbe: VolumeNormalizationProbing {
 struct ProjectOperation: Identifiable, Equatable {
     enum Kind: Equatable {
         case checkout
+        case recoverCanceledCheckout(String)
         case registerProject
         case relocate(SVNProject.ID)
         case verifyCredentials(SVNProject.ID)
@@ -220,6 +272,7 @@ struct ProjectOperation: Identifiable, Equatable {
         case revert(SVNProject.ID)
         case fileHistory(SVNProject.ID)
         case update(SVNProject.ID)
+        case cleanupWorkingCopy(String)
         case cleanupTemporaryFiles(SVNProject.ID)
         case commit(SVNProject.ID)
         case recover(SVNProject.ID)

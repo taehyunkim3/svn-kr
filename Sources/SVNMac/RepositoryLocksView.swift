@@ -53,17 +53,16 @@ struct RepositoryLocksView: View {
                     }
                     .font(.caption)
                     Spacer()
-                    if lock.owner == store.selectedProject?.username {
-                        Button {
-                            Task { await store.unlock(lock) }
-                        } label: {
-                            ActionProgressLabel(
-                                title: appLanguage.localized("ui.release.my.lock.1b0c3150"),
-                                isInProgress: store.isLoadingSelectedProjectLocks
-                            )
-                        }
-                        .disabled(store.isSelectedProjectActionBlocked)
+                    Button {
+                        Task { await store.unlock(lock) }
+                    } label: {
+                        ActionProgressLabel(
+                            title: appLanguage.localized("ui.release.lock.normally.5e1039ab"),
+                            isInProgress: store.isLoadingSelectedProjectLocks
+                        )
                     }
+                    .disabled(store.isSelectedProjectActionBlocked)
+                    .help(appLanguage.localized("ui.try.normal.unlock.before.force.unlock.8a21f763"))
                 }
                 .padding(.vertical, 4)
             }
@@ -77,5 +76,35 @@ struct RepositoryLocksView: View {
         }
         .appSheetFrame(minimumSize: AppLayout.repositoryLocksSheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+        .alert(
+            appLanguage.localized("ui.force.release.repository.lock.31d7f2c4"),
+            isPresented: .isPresenting($store.forceUnlockRequest),
+            presenting: store.forceUnlockRequest
+        ) { request in
+            Button(appLanguage.localized("ui.force.release.lock.a4ef2d91"), role: .destructive) {
+                Task { await store.forceUnlock(request) }
+            }
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                store.forceUnlockRequest = nil
+            }
+        } message: { request in
+            Text(forceUnlockDetails(request))
+        }
+    }
+
+    private func forceUnlockDetails(_ request: ForceUnlockRequest) -> String {
+        let lock = request.lock
+        let created = lock.created?.formatted(date: .numeric, time: .standard)
+            ?? appLanguage.localized("ui.not.available.60326cf1")
+        let comment = lock.comment.flatMap { $0.isEmpty ? nil : $0 }
+            ?? appLanguage.localized("ui.not.available.60326cf1")
+        return appLanguage.localized(
+            "ui.force.unlock.details.owner.time.comment.original.93c28fb0",
+            lock.path,
+            lock.owner,
+            created,
+            comment,
+            request.originalMessage
+        )
     }
 }
