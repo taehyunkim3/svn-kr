@@ -17,6 +17,7 @@ public enum SVNStatusKind: Hashable, Sendable {
     case unknown(String)
 
     public static let obstructed = SVNStatusKind.unknown("obstructed")
+    public static let incomplete = SVNStatusKind.unknown("incomplete")
 
     public init(rawValue: String) {
         switch rawValue {
@@ -29,6 +30,7 @@ public enum SVNStatusKind: Hashable, Sendable {
         case "conflicted": self = .conflicted
         case "replaced": self = .replaced
         case "obstructed": self = .obstructed
+        case "incomplete": self = .incomplete
         default: self = .unknown(rawValue)
         }
     }
@@ -209,6 +211,7 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     public let revision: String?
     public let nodeKind: SVNNodeKind?
     public let propertyState: SVNPropertyState
+    public let isSwitched: Bool
 
     public var id: String { path }
 
@@ -217,13 +220,15 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
         item: SVNStatusKind,
         revision: String? = nil,
         nodeKind: SVNNodeKind? = nil,
-        propertyState: SVNPropertyState = .none
+        propertyState: SVNPropertyState = .none,
+        isSwitched: Bool = false
     ) {
         self.path = path
         self.item = item
         self.revision = revision
         self.nodeKind = nodeKind
         self.propertyState = propertyState
+        self.isSwitched = isSwitched
     }
 }
 

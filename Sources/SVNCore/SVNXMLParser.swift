@@ -9,8 +9,8 @@ public enum SVNXMLParser {
         return delegate.entries
     }
 
-    /// 로컬 작업 복사본의 변경 항목만 읽습니다. 정상 항목과 external은 UI에
-    /// 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
+    /// 로컬 작업 복사본의 변경 항목만 읽습니다. 변경 없는 정상 항목과 external은
+    /// UI에 표시할 필요가 없으므로 파싱 단계에서 제거합니다.
     public static func statuses(from data: Data) throws -> [SVNStatusEntry] {
         let delegate = StatusDelegate()
         let parser = XMLParser(data: data)
@@ -374,13 +374,15 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
             let propertyState = SVNPropertyState(
                 rawValue: attributeDict["props"] ?? "none"
             ) ?? .none
+            let isSwitched = attributeDict["switched"] == "true"
             guard rawItem != "external" else { return }
-            guard rawItem != "normal" || propertyState != .none else { return }
+            guard rawItem != "normal" || propertyState != .none || isSwitched else { return }
             entries.append(SVNStatusEntry(
                 path: path,
                 item: SVNStatusKind(rawValue: rawItem),
                 revision: attributeDict["revision"],
-                propertyState: propertyState
+                propertyState: propertyState,
+                isSwitched: isSwitched
             ))
         }
     }

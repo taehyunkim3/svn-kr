@@ -53,6 +53,35 @@ import Testing
     #expect(try SVNXMLParser.statuses(from: Data(xml.utf8)).isEmpty)
 }
 
+@Test func preservesSwitchedNormalItem() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="Sources"><wc-status item="normal" revision="2" props="none" switched="true"/></entry>
+      <entry path="README.md"><wc-status item="normal" revision="2" props="none"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.path == "Sources")
+    #expect(entry.item.rawValue == "normal")
+    #expect(entry.isSwitched)
+    #expect(entry.isSelectableForCommit)
+}
+
+@Test func parsesIncompleteStatusAsKnownAlias() throws {
+    let xml = """
+    <?xml version="1.0"?><status><target path=".">
+      <entry path="partial"><wc-status item="incomplete" revision="2" props="none"/></entry>
+    </target></status>
+    """
+
+    let entry = try #require(SVNXMLParser.statuses(from: Data(xml.utf8)).first)
+
+    #expect(entry.item == .incomplete)
+    #expect(entry.item.rawValue == "incomplete")
+}
+
 @Test func parsesObstructedStatusWithoutChangingUnknownFallback() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
