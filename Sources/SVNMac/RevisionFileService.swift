@@ -25,51 +25,8 @@ protocol HistoryRevisionClient: Sendable {
 
 extension SVNClient: HistoryRevisionClient {}
 
-struct LiveHistoryRevisionClient: HistoryRevisionClient {
-    private let client = SVNClient()
-
-    func fileContents(
-        at path: String,
-        relativePath: String,
-        revision: String,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
-    ) async throws -> Data {
-        try await client.fileContents(
-            at: path,
-            relativePath: relativePath,
-            revision: revision,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-    }
-
-    func export(
-        at path: String,
-        relativePath: String,
-        revision: String,
-        destinationPath: String,
-        force: Bool,
-        credentials: SVNCredentials?,
-        allowUntrustedServerCertificate: Bool,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
-    ) async throws -> String {
-        try await client.export(
-            at: path,
-            relativePath: relativePath,
-            revision: revision,
-            destinationPath: destinationPath,
-            force: force,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-    }
-}
-
 enum RevisionFileError: LocalizedError {
+    case historyClientUnavailable
     case missingWorkingFile
     case unsafeWorkingFile
     case pathOutsideWorkingCopy
@@ -80,6 +37,8 @@ enum RevisionFileError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .historyClientUnavailable:
+            AppLanguage.current.localized("ui.revision.history.client.unavailable.5d7a91c2")
         case .missingWorkingFile:
             AppLanguage.current.localized("ui.revision.restore.missing.working.file.346db8a7")
         case .unsafeWorkingFile:

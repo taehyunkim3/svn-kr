@@ -7,6 +7,4 @@ struct ProjectRecoveryState {
     var propertyConflictSession: PropertyConflictSession?
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
-    var historyRevisionClient: any HistoryRevisionClient = LiveHistoryRevisionClient()
-    var revisionFileService = RevisionFileService()
 }

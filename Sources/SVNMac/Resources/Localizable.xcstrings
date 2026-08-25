@@ -9183,6 +9183,13 @@
         "en": { "stringUnit": { "state": "translated", "value": "The selected save location is not a safe regular-file destination." } },
         "ko": { "stringUnit": { "state": "translated", "value": "선택한 위치는 일반 파일을 안전하게 저장할 수 있는 경로가 아닙니다." } }
       }
+    },
+    "ui.revision.history.client.unavailable.5d7a91c2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This project's SVN client does not support reading historical file revisions." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다." } }
+      }
     }
   },
   "version": "1.0"

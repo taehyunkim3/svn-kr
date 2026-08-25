@@ -545,3 +545,4 @@
 "ui.revision.restore.backup.verification.failed.d9152a6c" = "The current working file could not be verified in the recovery copy, so it was not replaced.";
 "ui.revision.restore.replacement.verification.failed.b8714e35" = "The restored file did not match the selected revision byte for byte. The recovery copy was preserved.";
 "ui.revision.save.invalid.destination.5f4d2c81" = "The selected save location is not a safe regular-file destination.";
+"ui.revision.history.client.unavailable.5d7a91c2" = "This project's SVN client does not support reading historical file revisions.";

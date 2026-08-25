@@ -28,7 +28,6 @@ import Testing
     #expect(try Data(contentsOf: fixture.workingCopy.appendingPathComponent("document.xlsx")) == changed)
 }
 
-@MainActor
 @Test func realSVNRevisionRestorePreservesCurrentBinaryAndLeavesHistoricalBytesModified() async throws {
     let fixture = try RevisionSVNFixture()
     defer { fixture.remove() }
@@ -38,33 +37,24 @@ import Testing
     try fixture.addAndCommit(message: "original")
     try fixture.write(current, relativePath: "document.xlsx")
     try fixture.commit(message: "changed")
-    let project = SVNProject(name: "binary", path: fixture.workingCopy.path)
     let backupRoot = fixture.root.appendingPathComponent("revision-backups", isDirectory: true)
-    let store = revisionRestoreStore(projects: [project])
-    store.recoveryState.historyRevisionClient = fixture.client
-    store.recoveryState.revisionFileService = RevisionFileService(backupRootURL: backupRoot)
-    store.requestHistoryRevisionRestore(revision: "2", relativePath: "document.xlsx")
-    let request = try #require(store.recoveryState.historyRevisionRestoreRequest)
-
-    #expect(await store.confirmHistoryRevisionRestore(request))
+    let historical = try await fixture.client.fileContents(
+        at: fixture.workingCopy.path,
+        relativePath: "document.xlsx",
+        revision: "2"
+    )
+    let result = try await RevisionFileService(backupRootURL: backupRoot).restoreWorkingFile(
+        contents: historical,
+        workingCopyPath: fixture.workingCopy.path,
+        relativePath: "document.xlsx",
+        projectID: UUID(),
+        revision: "2"
+    )
 
     let workingFile = fixture.workingCopy.appendingPathComponent("document.xlsx")
     #expect(try Data(contentsOf: workingFile) == original)
-    #expect(store.visibleStatuses.contains { $0.path == "document.xlsx" && $0.item == .modified })
-    let projectBackup = backupRoot.appendingPathComponent(project.id.uuidString, isDirectory: true)
-    let session = try #require(
-        FileManager.default.contentsOfDirectory(
-            at: projectBackup,
-            includingPropertiesForKeys: nil
-        ).first
-    )
-    let recoveryFile = try #require(
-        FileManager.default.contentsOfDirectory(
-            at: session,
-            includingPropertiesForKeys: nil
-        ).first
-    )
-    #expect(try Data(contentsOf: recoveryFile) == current)
+    #expect(try fixture.status().contains("M       document.xlsx"))
+    #expect(try Data(contentsOf: result.recoveryURL) == current)
 }
 
 @Test func revisionRestorePreservesRecoveryCopyAndAtomicallyReplacesWorkingFile() async throws {
@@ -147,17 +137,16 @@ import Testing
     try secondContents.write(to: secondFile)
     let first = SVNProject(name: "first", path: firstRoot.path)
     let second = SVNProject(name: "second", path: secondRoot.path)
-    let gate = RevisionContentGate()
-    let client = DelayedHistoryRevisionClient(gate: gate, contents: Data("historical".utf8))
-    let store = revisionRestoreStore(projects: [first, second])
-    store.recoveryState.historyRevisionClient = client
+    let clientFixture = try DelayedSVNExecutableFixture(contents: Data("historical".utf8))
+    defer { clientFixture.remove() }
+    let store = revisionRestoreStore(projects: [first, second], client: clientFixture.client)
     store.requestHistoryRevisionRestore(revision: "9", relativePath: relativePath)
     let request = try #require(store.recoveryState.historyRevisionRestoreRequest)
 
     let restore = Task { await store.confirmHistoryRevisionRestore(request) }
-    await gate.waitUntilStarted()
+    await clientFixture.waitUntilStarted()
     store.selectedProjectID = second.id
-    await gate.release()
+    try clientFixture.release()
 
     #expect(await restore.value == false)
     #expect(try Data(contentsOf: firstFile) == firstContents)
@@ -176,10 +165,9 @@ import Testing
     try FileManager.default.createDirectory(at: workingCopy, withIntermediateDirectories: true)
     try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
     let project = SVNProject(name: "project", path: workingCopy.path)
-    let gate = RevisionContentGate()
-    let client = DelayedRevisionExportClient(gate: gate, contents: Data([0x00, 0xFF, 0x80]))
-    let store = revisionRestoreStore(projects: [project])
-    store.recoveryState.historyRevisionClient = client
+    let clientFixture = try DelayedSVNExecutableFixture(contents: Data([0x00, 0xFF, 0x80]))
+    defer { clientFixture.remove() }
+    let store = revisionRestoreStore(projects: [project], client: clientFixture.client)
     let firstDestination = destinationDirectory.appendingPathComponent("first.xlsx")
     let secondDestination = destinationDirectory.appendingPathComponent("second.xlsx")
 
@@ -190,7 +178,7 @@ import Testing
             to: firstDestination
         )
     }
-    await gate.waitUntilStarted()
+    await clientFixture.waitUntilStarted()
     let duplicateResult = await store.saveHistoryRevision(
         revision: "5",
         relativePath: "report.xlsx",
@@ -199,31 +187,33 @@ import Testing
 
     #expect(store.isHistoryRevisionOperationRunning)
     #expect(duplicateResult == false)
-    #expect(await client.exportCount == 1)
-    await gate.release()
+    #expect(try clientFixture.invocationCount() == 1)
+    try clientFixture.release()
     #expect(await firstSave.value)
     #expect(!store.isHistoryRevisionOperationRunning)
     #expect(try Data(contentsOf: firstDestination) == Data([0x00, 0xFF, 0x80]))
     #expect(!FileManager.default.fileExists(atPath: secondDestination.path))
 }
 
-private actor RevisionContentGate {
-    private var started = false
-    private var continuation: CheckedContinuation<Void, Never>?
+@MainActor
+@Test func demoModeRejectsRevisionSaveWithoutLaunchingLiveSVN() async {
+    let store = ProjectStore.demo()
+    let destination = FileManager.default.temporaryDirectory
+        .appendingPathComponent("demo-revision-save-\(UUID().uuidString).xlsx")
+    defer { try? FileManager.default.removeItem(at: destination) }
 
-    func wait() async {
-        started = true
-        await withCheckedContinuation { continuation = $0 }
-    }
+    let didSave = await store.saveHistoryRevision(
+        revision: "1845",
+        relativePath: "Resources/Quarterly.xlsx",
+        to: destination
+    )
 
-    func waitUntilStarted() async {
-        while !started { await Task.yield() }
-    }
-
-    func release() {
-        continuation?.resume()
-        continuation = nil
-    }
+    #expect(!didSave)
+    #expect(
+        store.errorMessage
+            == AppLanguage.current.localized("ui.revision.history.client.unavailable.5d7a91c2")
+    )
+    #expect(!FileManager.default.fileExists(atPath: destination.path))
 }
 
 private final class ReplacementObservation: @unchecked Sendable {
@@ -239,78 +229,13 @@ private final class ReplacementObservation: @unchecked Sendable {
     }
 }
 
-private actor DelayedHistoryRevisionClient: HistoryRevisionClient {
-    let gate: RevisionContentGate
-    let contents: Data
-
-    init(gate: RevisionContentGate, contents: Data) {
-        self.gate = gate
-        self.contents = contents
-    }
-
-    func fileContents(
-        at _: String,
-        relativePath _: String,
-        revision _: String,
-        credentials _: SVNCredentials?,
-        allowUntrustedServerCertificate _: Bool,
-        allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>
-    ) async throws -> Data {
-        await gate.wait()
-        return contents
-    }
-
-    func export(
-        at _: String,
-        relativePath _: String,
-        revision _: String,
-        destinationPath _: String,
-        force _: Bool,
-        credentials _: SVNCredentials?,
-        allowUntrustedServerCertificate _: Bool,
-        allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>
-    ) async throws -> String { "" }
-}
-
-private actor DelayedRevisionExportClient: HistoryRevisionClient {
-    let gate: RevisionContentGate
-    let contents: Data
-    private(set) var exportCount = 0
-
-    init(gate: RevisionContentGate, contents: Data) {
-        self.gate = gate
-        self.contents = contents
-    }
-
-    func fileContents(
-        at _: String,
-        relativePath _: String,
-        revision _: String,
-        credentials _: SVNCredentials?,
-        allowUntrustedServerCertificate _: Bool,
-        allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>
-    ) async throws -> Data { contents }
-
-    func export(
-        at _: String,
-        relativePath _: String,
-        revision _: String,
-        destinationPath: String,
-        force _: Bool,
-        credentials _: SVNCredentials?,
-        allowUntrustedServerCertificate _: Bool,
-        allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>
-    ) async throws -> String {
-        exportCount += 1
-        await gate.wait()
-        try contents.write(to: URL(fileURLWithPath: destinationPath))
-        return ""
-    }
-}
-
 @MainActor
-private func revisionRestoreStore(projects: [SVNProject]) -> ProjectStore {
+private func revisionRestoreStore(
+    projects: [SVNProject],
+    client: any SVNClientServing = SVNClient()
+) -> ProjectStore {
     ProjectStore(
+        client: client,
         credentialStore: RevisionRestoreCredentialStore(),
         persistence: RevisionRestorePersistence(projects: projects),
         projectAccessManager: RevisionRestoreAccessManager(),
@@ -319,6 +244,85 @@ private func revisionRestoreStore(projects: [SVNProject]) -> ProjectStore {
         settingsDefaults: UserDefaults(suiteName: "revision-restore-\(UUID().uuidString)")!,
         updateBadgeRefreshInterval: nil
     )
+}
+
+private final class DelayedSVNExecutableFixture: @unchecked Sendable {
+    let root: URL
+    let client: SVNClient
+    private let startedURL: URL
+    private let releaseURL: URL
+    private let invocationURL: URL
+
+    init(contents: Data) throws {
+        root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("revision-injected-client-\(UUID().uuidString)", isDirectory: true)
+        let executableURL = root.appendingPathComponent("svn-fixture")
+        let contentsURL = root.appendingPathComponent("contents")
+        let configURL = root.appendingPathComponent("config", isDirectory: true)
+        startedURL = root.appendingPathComponent("started")
+        releaseURL = root.appendingPathComponent("release")
+        invocationURL = root.appendingPathComponent("invocations")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try contents.write(to: contentsURL)
+        let script = """
+        #!/bin/sh
+        command_name=""
+        destination=""
+        for argument in "$@"; do
+          case "$argument" in
+            cat|export) command_name="$argument" ;;
+          esac
+          destination="$argument"
+        done
+        printf x >> \(Self.shellQuote(invocationURL.path))
+        touch \(Self.shellQuote(startedURL.path))
+        while [ ! -e \(Self.shellQuote(releaseURL.path)) ]; do sleep 0.01; done
+        if [ "$command_name" = "cat" ]; then
+          /bin/cat \(Self.shellQuote(contentsURL.path))
+          exit 0
+        fi
+        if [ "$command_name" = "export" ]; then
+          /bin/cp \(Self.shellQuote(contentsURL.path)) "$destination"
+          exit 0
+        fi
+        exit 64
+        """
+        try Data(script.utf8).write(to: executableURL)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: executableURL.path
+        )
+        client = SVNClient(
+            executablePath: executableURL.path,
+            configDirectoryPath: configURL.path
+        )
+    }
+
+    func waitUntilStarted() async {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while ContinuousClock.now < deadline {
+            if FileManager.default.fileExists(atPath: startedURL.path) { return }
+            try? await Task.sleep(for: .milliseconds(1))
+        }
+        Issue.record("주입된 SVN 클라이언트 명령이 시작되지 않았습니다.")
+    }
+
+    func release() throws {
+        try Data().write(to: releaseURL)
+    }
+
+    func invocationCount() throws -> Int {
+        guard FileManager.default.fileExists(atPath: invocationURL.path) else { return 0 }
+        return try Data(contentsOf: invocationURL).count
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    private static func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
 }
 
 private struct RevisionRestoreCredentialStore: CredentialStoring {
@@ -397,6 +401,10 @@ private final class RevisionSVNFixture {
 
     func commit(message: String) throws {
         _ = try Self.run(svnPath, ["commit", "-m", message], currentDirectory: workingCopy)
+    }
+
+    func status() throws -> String {
+        try Self.run(svnPath, ["status"], currentDirectory: workingCopy)
     }
 
     func remove() {

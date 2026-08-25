@@ -130,8 +130,6 @@ extension ProjectStore {
             kind: .save
         )
         recoveryState.historyRevisionOperation = operation
-        let client = recoveryState.historyRevisionClient
-        let service = recoveryState.revisionFileService
         let operationID = beginOperation(.fileHistory(project.id))
         let accessesSecurityScope = destinationURL.startAccessingSecurityScopedResource()
         defer {
@@ -145,8 +143,9 @@ extension ProjectStore {
         }
 
         do {
-            try await service.saveRevision(
-                using: client,
+            let historyClient = try historyRevisionClient()
+            try await RevisionFileService().saveRevision(
+                using: historyClient,
                 workingCopyPath: project.path,
                 relativePath: relativePath,
                 revision: revision,
@@ -181,8 +180,6 @@ extension ProjectStore {
             kind: .restore
         )
         recoveryState.historyRevisionOperation = operation
-        let client = recoveryState.historyRevisionClient
-        let service = recoveryState.revisionFileService
         let operationID = beginOperation(.revert(project.id))
         defer {
             endOperation(operationID)
@@ -192,7 +189,8 @@ extension ProjectStore {
         }
 
         do {
-            let contents = try await client.fileContents(
+            let historyClient = try historyRevisionClient()
+            let contents = try await historyClient.fileContents(
                 at: project.path,
                 relativePath: request.relativePath,
                 revision: request.revision,
@@ -201,7 +199,7 @@ extension ProjectStore {
                 allowedServerCertificateFailures: []
             )
             guard canApplyHistoryRevisionOperation(operation) else { return false }
-            _ = try await service.restoreWorkingFile(
+            _ = try await RevisionFileService().restoreWorkingFile(
                 contents: contents,
                 workingCopyPath: project.path,
                 relativePath: request.relativePath,
@@ -227,5 +225,12 @@ extension ProjectStore {
     private func canApplyHistoryRevisionOperation(_ operation: HistoryRevisionOperation) -> Bool {
         selectedProjectID == operation.projectID
             && recoveryState.historyRevisionOperation?.id == operation.id
+    }
+
+    private func historyRevisionClient() throws -> any HistoryRevisionClient {
+        guard let historyClient = client as? any HistoryRevisionClient else {
+            throw RevisionFileError.historyClientUnavailable
+        }
+        return historyClient
     }
 }

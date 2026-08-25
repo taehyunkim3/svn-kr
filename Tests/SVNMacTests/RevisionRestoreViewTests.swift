@@ -32,6 +32,26 @@ import Testing
     #expect(historyStore.contains("destinationURL.stopAccessingSecurityScopedResource()"))
 }
 
+@Test func revisionHistoryUsesOnlyTheClientInjectedIntoProjectStore() throws {
+    let sources = try revisionRestoreSources()
+    let historyStore = try String(
+        contentsOf: sources.appendingPathComponent("ProjectStore+History.swift"),
+        encoding: .utf8
+    )
+    let recoveryState = try String(
+        contentsOf: sources.appendingPathComponent("ProjectRecoveryState.swift"),
+        encoding: .utf8
+    )
+    let service = try String(
+        contentsOf: sources.appendingPathComponent("RevisionFileService.swift"),
+        encoding: .utf8
+    )
+
+    #expect(historyStore.contains("client as? any HistoryRevisionClient"))
+    #expect(!recoveryState.contains("historyRevisionClient"))
+    #expect(!service.contains("LiveHistoryRevisionClient"))
+}
+
 @Test func revisionRestoreStringsExistInEveryLocalizationResource() throws {
     let keys = [
         "ui.save.this.revision.as.3e8d79a1",
@@ -49,6 +69,7 @@ import Testing
         "ui.revision.restore.backup.verification.failed.d9152a6c",
         "ui.revision.restore.replacement.verification.failed.b8714e35",
         "ui.revision.save.invalid.destination.5f4d2c81",
+        "ui.revision.history.client.unavailable.5d7a91c2",
     ]
     let resources = try revisionRestoreSources().appendingPathComponent("Resources", isDirectory: true)
     let localizationFiles = [
