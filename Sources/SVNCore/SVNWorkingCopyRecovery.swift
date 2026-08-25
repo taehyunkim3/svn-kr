@@ -134,7 +134,8 @@ enum SVNWorkingCopyRecovery {
             case .modified, .replaced, .added, .unversioned:
                 let sourceURL = try safeURL(for: mapping.sourcePath, below: source)
                 try mergeCopy(from: sourceURL, to: targetURL, fileManager: fileManager)
-            case .ignored, .conflicted, .unknown:
+            case .ignored, .conflicted, .unknown, .obstructed, .incomplete:
+                // 방해 상태와 미완료 상태는 원본이 신뢰할 수 없으므로 복구에서 제외합니다.
                 break
             }
         }

@@ -383,7 +383,9 @@ public actor SVNClient {
         let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
         let blockingLocalPaths = snapshot.statuses.compactMap { entry -> String? in
             switch entry.item {
-            case .modified, .added, .deleted, .missing, .conflicted, .replaced:
+            case .modified, .added, .deleted, .missing, .conflicted, .replaced,
+                 .obstructed, .incomplete:
+                // obstructed와 incomplete는 정리되지 않은 상태이므로 보수적으로 차단 대상에 둡니다.
                 break
             case .unversioned, .ignored, .unknown:
                 return nil
