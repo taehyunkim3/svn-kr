@@ -65,6 +65,10 @@ enum AppLayout {
     static let ignoreRulesSheetMinimumSize = CGSize(width: 760, height: 620)
     static let deletionConfirmationSheetMinimumSize = CGSize(width: 620, height: 360)
     static let commitConfirmationSheetMinimumSize = CGSize(width: 840, height: 620)
+    /// 업데이트 미리보기의 커밋 펼침 아이콘입니다. 리비전 숫자와 세로 중앙을 맞추고
+    /// 아이콘 글리프보다 넓은 탭 영역을 확보하기 위해 명시적인 크기를 사용합니다.
+    static let updatePreviewCommitDisclosureSize = CGSize(width: 20, height: 20)
+    static let updatePreviewCommitDisclosureSpacing: CGFloat = 8
     static let documentOpenConfirmationSheetMinimumSize = CGSize(width: 620, height: 320)
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)

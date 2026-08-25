@@ -141,38 +141,35 @@ struct UpdatePreviewView: View {
     }
 
     private func commitRow(_ entry: SVNLogEntry) -> some View {
-        DisclosureGroup(isExpanded: expansionBinding(for: entry.revision)) {
-            VStack(alignment: .leading, spacing: 7) {
-                ForEach(entry.changedPaths) { changedPath in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        StatusBadge(
-                            label: changedPathActionLabel(changedPath.action),
-                            color: changedPath.action.presentationColor,
-                            verticalPadding: 2
-                        )
-                        Text(changedPath.path)
-                            .font(.caption.monospaced())
-                            .textSelection(.enabled)
-                    }
+        let isExpanded = store.recoveryState.updatePreview.isExpanded(entry.revision)
+        let indent = AppLayout.updatePreviewCommitDisclosureSize.width
+            + AppLayout.updatePreviewCommitDisclosureSpacing
+        return VStack(alignment: .leading, spacing: 7) {
+            // 펼침 아이콘은 리비전 숫자와 같은 줄에 두어 세로 중앙을 맞춥니다.
+            // 요약 여러 줄을 라벨로 묶으면 아이콘이 전체 높이 기준으로 정렬되어 어긋납니다.
+            HStack(spacing: AppLayout.updatePreviewCommitDisclosureSpacing) {
+                Image(systemName: "chevron.right")
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .foregroundStyle(.secondary)
+                    .frame(
+                        width: AppLayout.updatePreviewCommitDisclosureSize.width,
+                        height: AppLayout.updatePreviewCommitDisclosureSize.height
+                    )
+                Text("r\(entry.revision)").font(.headline.monospacedDigit())
+                Spacer()
+                if let date = entry.date {
+                    Text(formattedHistoryDate(date))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                } else {
+                    Text(appLanguage.localized("ui.commit.time.unavailable.59140fc5"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(.top, 6)
-        } label: {
+
             VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text("r\(entry.revision)").font(.headline.monospacedDigit())
-                    Spacer()
-                    if let date = entry.date {
-                        Text(formattedHistoryDate(date))
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    } else {
-                        Text(appLanguage.localized("ui.commit.time.unavailable.59140fc5"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
                 Label(
                     entry.author.isEmpty
                         ? appLanguage.localized("ui.unknown.author.511030fa")
@@ -185,16 +182,30 @@ struct UpdatePreviewView: View {
                 Text(appLanguage.localized("ui.changed.paths.89badc04", entry.changedPaths.count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, 6)
-        }
-    }
 
-    private func expansionBinding(for revision: String) -> Binding<Bool> {
-        Binding(
-            get: { store.recoveryState.updatePreview.isExpanded(revision) },
-            set: { store.recoveryState.updatePreview.setExpanded($0, revision: revision) }
-        )
+                if isExpanded {
+                    ForEach(entry.changedPaths) { changedPath in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            StatusBadge(
+                                label: changedPathActionLabel(changedPath.action),
+                                color: changedPath.action.presentationColor,
+                                verticalPadding: 2
+                            )
+                            Text(changedPath.path)
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+            .padding(.leading, indent)
+        }
+        .padding(.vertical, 6)
+        // 아이콘뿐 아니라 행 전체를 눌러도 펼치고 접을 수 있어야 합니다.
+        .contentShape(Rectangle())
+        .onTapGesture {
+            store.recoveryState.updatePreview.setExpanded(!isExpanded, revision: entry.revision)
+        }
     }
 
     private func previewError(_ errorMessage: String) -> some View {
