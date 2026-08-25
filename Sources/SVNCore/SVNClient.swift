@@ -355,6 +355,29 @@ public actor SVNClient {
         return SVNRepositoryPathNormalization.targets(from: entries)
     }
 
+    public func repositoryEntries(
+        at repositoryURL: String,
+        revision: String? = nil,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> [SVNRepositoryEntry] {
+        var arguments = ["list", "--xml"]
+        if let revision, !revision.isEmpty {
+            arguments += ["--revision", revision]
+        }
+        let normalizedRepositoryURL = repositoryURL.precomposedStringWithCanonicalMapping
+        let result = try await checkedRunWithSingleSVNPathArgument(
+            arguments,
+            svnPathArgument: normalizedRepositoryURL,
+            at: FileManager.default.temporaryDirectory.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        return try SVNXMLParser.repositoryEntries(from: Data(result.output.utf8))
+    }
+
     public func normalizeRepositoryPaths(
         _ targets: [SVNRepositoryPathNormalizationTarget],
         at path: String,
