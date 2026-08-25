@@ -1549,7 +1549,8 @@ final class ProjectStore {
                !recovery.hasCompletedUpdate {
                 await update()
             } else {
-                _ = await commit(message: message)
+                // 삭제(missing) 항목을 포함한 선택도 재시도할 수 있어야 합니다.
+                _ = await commitSelectedChanges(message: message)
             }
         case .retryManually:
             break

@@ -248,3 +248,41 @@ private final class MissingCommitFixture {
         return output
     }
 }
+
+@MainActor
+@Test func commitRetryAfterFailureStillSchedulesMissingDeletions() async throws {
+    let fixture = try MissingCommitFixture()
+    defer { fixture.remove() }
+    let defaultsName = "missing-commit-retry-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: defaultsName))
+    defer { defaults.removePersistentDomain(forName: defaultsName) }
+    let store = ProjectStore(
+        client: fixture.client,
+        persistence: MissingCommitProjectPersistence(project: fixture.project),
+        settingsDefaults: defaults,
+        hideTemporaryFiles: true,
+        updateBadgeRefreshInterval: nil
+    )
+
+    try FileManager.default.removeItem(at: fixture.fileURL)
+    await store.refreshLocalWorkingCopy()
+    store.selectedPaths = store.selectAllStatusPaths
+    #expect(store.selectedPaths == [fixture.filePath])
+
+    // 인증 실패나 out-of-date 로 커밋이 막힌 뒤 재개되는 경로는 저장한 선택으로 커밋을 다시 실행합니다.
+    // 그 경로가 commit(message:)를 부르면 삭제 항목을 거부해 재시도가 항상 실패합니다.
+    store.authenticationRequest = SVNAuthenticationRequest(
+        projectID: fixture.project.id,
+        action: .commit(message: "Finder 삭제 재시도")
+    )
+    let request = try #require(store.authenticationRequest)
+    #expect(await store.useCredentials(
+        for: request,
+        username: "user",
+        password: "pw",
+        saveInKeychain: false
+    ))
+
+    #expect(store.errorMessage == nil)
+    #expect(try fixture.repositoryFiles().isEmpty)
+}
