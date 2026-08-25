@@ -111,7 +111,7 @@ struct ChangesView: View {
 
     private func changedFileRow(_ entry: SVNStatusEntry) -> some View {
         HStack {
-            if entry.isSelectableForCommit {
+            if entry.isSelectableForCommit || entry.canScheduleRepositoryDeletion {
                 Toggle("", isOn: Binding(
                     get: { store.selectedPaths.contains(entry.path) },
                     set: { checked in
