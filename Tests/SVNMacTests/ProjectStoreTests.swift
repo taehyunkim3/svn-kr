@@ -606,7 +606,7 @@ import Testing
 }
 
 @MainActor
-@Test func propertyConflictRemainsUnsupported() async throws {
+@Test func propertyConflictCreatesPropertySessionWithoutOtherSessions() async throws {
     let fixture = try ProjectStoreConflictFixture()
     defer { fixture.remove() }
     let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "property"))
@@ -620,6 +620,26 @@ import Testing
 
     #expect(store.activeConflictSession == nil)
     #expect(store.activeTreeConflictSession == nil)
+    #expect(store.recoveryState.propertyConflictSession?.details.type == "property")
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func unknownConflictTypeRemainsUnsupported() async throws {
+    let fixture = try ProjectStoreConflictFixture()
+    defer { fixture.remove() }
+    let client = StubSVNClient(conflictDetailsValue: fixture.details(replacingTypeWith: "future-type"))
+    let store = makeStore(
+        projects: [fixture.project],
+        client: client,
+        conflictFileService: ConflictFileService(backupRootURL: fixture.backupRoot)
+    )
+
+    await store.prepareConflictResolution(for: fixture.details.path)
+
+    #expect(store.activeConflictSession == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(store.recoveryState.propertyConflictSession == nil)
     #expect(store.errorMessage != nil)
 }
 
