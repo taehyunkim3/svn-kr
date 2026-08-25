@@ -110,6 +110,9 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
     public let serverFile: String?
     public let previousRevision: String?
     public let serverRevision: String?
+    public let treeConflictAction: String?
+    public let treeConflictReason: String?
+    public let treeConflictKind: String?
 
     public var id: String { path }
 
@@ -121,7 +124,10 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         myFile: String? = nil,
         serverFile: String? = nil,
         previousRevision: String? = nil,
-        serverRevision: String? = nil
+        serverRevision: String? = nil,
+        treeConflictAction: String? = nil,
+        treeConflictReason: String? = nil,
+        treeConflictKind: String? = nil
     ) {
         self.path = path
         self.type = type
@@ -131,6 +137,9 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         self.serverFile = serverFile
         self.previousRevision = previousRevision
         self.serverRevision = serverRevision
+        self.treeConflictAction = treeConflictAction
+        self.treeConflictReason = treeConflictReason
+        self.treeConflictKind = treeConflictKind
     }
 }
 

@@ -174,18 +174,31 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
     private var serverFile: String?
     private var previousRevision: String?
     private var serverRevision: String?
+    private var treeConflictAction: String?
+    private var treeConflictReason: String?
+    private var treeConflictKind: String?
     private var inConflict = false
-    private var conflictElementName = ""
+    private var conflictRootElementName = ""
     private var text = ""
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
         if elementName == "entry" { entryPath = attributeDict["path"] ?? "" }
         if elementName == "conflict" || elementName == "tree-conflict" {
-            inConflict = true
-            conflictElementName = elementName
-            type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
-            operation = attributeDict["operation"] ?? "unknown"
+            if !inConflict {
+                inConflict = true
+                conflictRootElementName = elementName
+                type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
+                operation = attributeDict["operation"] ?? "unknown"
+            } else if elementName == "tree-conflict" {
+                type = "tree"
+                operation = attributeDict["operation"] ?? operation
+            }
+            if elementName == "tree-conflict" {
+                treeConflictAction = attributeDict["action"]
+                treeConflictReason = attributeDict["reason"]
+                treeConflictKind = attributeDict["kind"]
+            }
         } else if elementName == "version", inConflict {
             if attributeDict["side"] == "source-left" { previousRevision = attributeDict["revision"] }
             if attributeDict["side"] == "source-right" { serverRevision = attributeDict["revision"] }
@@ -200,7 +213,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
         case "prev-base-file": previousBaseFile = text
         case "prev-wc-file": myFile = text
         case "cur-base-file": serverFile = text
-        case conflictElementName:
+        case conflictRootElementName:
             details = SVNConflictDetails(
                 path: entryPath,
                 type: type,
@@ -209,10 +222,13 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
                 myFile: myFile,
                 serverFile: serverFile,
                 previousRevision: previousRevision,
-                serverRevision: serverRevision
+                serverRevision: serverRevision,
+                treeConflictAction: type == "tree" ? treeConflictAction : nil,
+                treeConflictReason: type == "tree" ? treeConflictReason : nil,
+                treeConflictKind: type == "tree" ? treeConflictKind : nil
             )
             inConflict = false
-            conflictElementName = ""
+            conflictRootElementName = ""
         default: break
         }
         text = ""
