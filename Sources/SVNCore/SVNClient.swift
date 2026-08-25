@@ -1058,14 +1058,13 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        try await lock(
+        try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["lock", "--message", comment],
+            projectRelativePath: relativePath,
             at: path,
-            relativePaths: [relativePath],
-            comment: comment,
-            force: false,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
-        )
+        ).output
     }
 
     public func lock(
@@ -1111,13 +1110,15 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
-        try await unlock(
+        var arguments = ["unlock"]
+        if force { arguments.append("--force") }
+        return try await checkedRunWithSingleWorkingCopyPathArgument(
+            arguments,
+            projectRelativePath: relativePath,
             at: path,
-            relativePaths: [relativePath],
-            force: force,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate
-        )
+        ).output
     }
 
     public func unlock(
