@@ -371,13 +371,17 @@ private final class StatusDelegate: NSObject, XMLParserDelegate {
             path = attributeDict["path"]
         } else if elementName == "wc-status", let path {
             let rawItem = attributeDict["item"] ?? "unknown"
-            if rawItem != "normal" && rawItem != "external" {
-                entries.append(SVNStatusEntry(
-                    path: path,
-                    item: SVNStatusKind(rawValue: rawItem),
-                    revision: attributeDict["revision"]
-                ))
-            }
+            let propertyState = SVNPropertyState(
+                rawValue: attributeDict["props"] ?? "none"
+            ) ?? .none
+            guard rawItem != "external" else { return }
+            guard rawItem != "normal" || propertyState != .none else { return }
+            entries.append(SVNStatusEntry(
+                path: path,
+                item: SVNStatusKind(rawValue: rawItem),
+                revision: attributeDict["revision"],
+                propertyState: propertyState
+            ))
         }
     }
 }

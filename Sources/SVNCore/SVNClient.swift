@@ -330,6 +330,13 @@ public actor SVNClient {
         return try SVNXMLParser.statuses(from: Data(result.output.utf8))
     }
 
+    public func cleanup(
+        at path: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> String {
+        try await checkedRun(["cleanup"], at: path, credentials: credentials).output
+    }
+
     public func workingCopyEntries(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNWorkingCopyEntry] {
         let result = try await checkedRun(["status", "--verbose", "--no-ignore", "--xml"], at: path, credentials: credentials)
         let entries = try SVNXMLParser.workingCopyEntries(from: Data(result.output.utf8))
@@ -808,8 +815,26 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false
     ) async throws -> String {
+        try await unlock(
+            at: path,
+            relativePath: relativePath,
+            force: false,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate
+        )
+    }
+
+    public func unlock(
+        at path: String,
+        relativePath: String,
+        force: Bool = false,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false
+    ) async throws -> String {
+        var arguments = ["unlock"]
+        if force { arguments.append("--force") }
         return try await checkedRunWithSingleWorkingCopyPathArgument(
-            ["unlock"],
+            arguments,
             projectRelativePath: relativePath,
             at: path,
             credentials: credentials,
@@ -1738,6 +1763,15 @@ public actor SVNClient {
     private static func isWorkingCopyOutOfDateError(_ message: String) -> Bool {
         let hasOutOfDateCode = message.contains("E155011") || message.contains("E170004")
         return hasOutOfDateCode && message.localizedCaseInsensitiveContains("out of date")
+    }
+
+    public static func needsCleanup(_ message: String) -> Bool {
+        message.contains("E155004") || message.contains("E155037")
+    }
+
+    public static func needsCleanup(_ error: Error) -> Bool {
+        guard case let SVNError.commandFailed(_, message) = error else { return false }
+        return needsCleanup(message)
     }
 
     private func run(
