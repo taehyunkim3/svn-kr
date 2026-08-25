@@ -3,9 +3,70 @@ import SVNCore
 import Testing
 @testable import SVNMac
 
-// 감사 A 2번: 트리 충돌의 "서버 버전으로 파일 복구"가 하위 트리를 백업 없이 지우던 회귀 테스트입니다.
-// 실제 `svn`을 실행합니다. `svn revert --depth infinity`의 실제 동작이 재현 조건이라
+// 감사 A 1번·2번: 백업 없이 사용자 문서가 사라지던 두 경로의 회귀 테스트입니다.
+// 두 테스트 모두 실제 `svn` 을 실행합니다. 재현 조건이 SVN 출력 형태에 달려 있어
 // 가짜 클라이언트로는 같은 사고를 다시 잡아낼 수 없습니다.
+
+// MARK: - 1번: 텍스트·속성 동시 충돌
+
+@MainActor
+@Test func combinedTextAndPropertyConflictKeepsContentConflictProtection() async throws {
+    let fixture = try CombinedConflictFixture()
+    defer { fixture.remove() }
+
+    // `svn info --xml` 은 충돌마다 `<conflict>` 요소를 내보내고 파서는 마지막 요소만 남깁니다.
+    // 그래서 내용 충돌이 있는데도 분류가 "property" 로 도착합니다. 이 사실이 사고의 출발점입니다.
+    // 디스크가 한글 이름을 자모 분리로 저장할 수 있으므로 앱과 같은 방식으로 경로를 맞춥니다.
+    let snapshot = try await fixture.client.workingCopySnapshot(at: fixture.workingCopy.path)
+    let versionedPath = try #require(snapshot.resolvedPath(for: fixture.conflictPath))
+    let details = try #require(try await fixture.client.conflictDetails(
+        at: fixture.workingCopy.path,
+        relativePath: versionedPath
+    ))
+    #expect(details.type == "property")
+
+    let pathIdentity = SVNPathIdentity(rawPath: versionedPath)
+    let entry = try #require(snapshot.statuses.first {
+        SVNPathIdentity(rawPath: $0.path) == pathIdentity
+    })
+    #expect(entry.item == .conflicted)
+    #expect(entry.propertyState == .conflicted)
+
+    let store = fixture.makeStore()
+    await store.prepareConflictResolution(for: fixture.conflictPath)
+
+    // 내용 충돌이 함께 있으면 반드시 내용 충돌 화면으로 가야 합니다.
+    // 속성 화면으로 가면 백업 없이 작업 파일이 서버 버전으로 덮어써집니다.
+    let session = try #require(store.activeConflictSession)
+    #expect(store.recoveryState.propertyConflictSession == nil)
+    #expect(store.activeTreeConflictSession == nil)
+    #expect(session.hasPropertyConflict)
+    #expect(session.propertyNames == ["integration:flag"])
+    #expect(try Data(contentsOf: session.server.url) == fixture.serverBytes)
+
+    // 사용자가 화면을 열어 둔 사이 손으로 더 편집한 내용까지 복구본에 남아야 합니다.
+    let latestWorkingBytes = Data("사용자가 마지막으로 손댄 내용\n".utf8)
+    let workingURL = fixture.workingCopy.appendingPathComponent(versionedPath)
+    try latestWorkingBytes.write(to: workingURL)
+    let sessionDirectory = session.directoryURL
+
+    await store.resolveActiveConflict(using: .theirsFull)
+
+    #expect(store.errorMessage == nil)
+    #expect(store.activeConflictSession == nil)
+    #expect(try Data(contentsOf: workingURL) == fixture.serverBytes)
+
+    let propertyValue = try fixture.runSVN([
+        "propget", "integration:flag", workingURL.path,
+    ]).trimmingCharacters(in: .whitespacesAndNewlines)
+    #expect(propertyValue == "server")
+
+    let recovered = try regularFileContents(under: sessionDirectory)
+    #expect(recovered.contains(latestWorkingBytes))
+    #expect(recovered.contains(fixture.serverBytes))
+}
+
+// MARK: - 2번: 디렉터리 트리 충돌의 서버 복구
 
 @MainActor
 @Test func directoryTreeConflictRestoreBacksUpUnversionedFilesBeforeRevert() async throws {
@@ -45,6 +106,62 @@ import Testing
 }
 
 // MARK: - 순수 로직
+
+@Test func classifyRoutesCombinedConflictToContentPathAndKeepsPureCases() {
+    let propertyTyped = SVNConflictDetails(
+        path: "예산.xlsx",
+        type: "property",
+        operation: "update",
+        myFile: "예산.xlsx.mine",
+        serverFile: "예산.xlsx.r2"
+    )
+    #expect(
+        ConflictClassification.classify(
+            details: propertyTyped,
+            statusItem: .conflicted,
+            propertyState: .conflicted
+        ) == .text(hasPropertyConflict: true)
+    )
+    #expect(
+        ConflictClassification.classify(
+            details: propertyTyped,
+            statusItem: .modified,
+            propertyState: .conflicted
+        ) == .property
+    )
+    #expect(
+        ConflictClassification.classify(
+            details: SVNConflictDetails(path: "문서", type: "tree", operation: "update"),
+            statusItem: .added,
+            propertyState: .none
+        ) == .tree
+    )
+    #expect(
+        ConflictClassification.classify(
+            details: SVNConflictDetails(
+                path: "보고서.txt",
+                type: "text",
+                operation: "update",
+                myFile: "보고서.txt.mine",
+                serverFile: "보고서.txt.r2"
+            ),
+            statusItem: .conflicted,
+            propertyState: .none
+        ) == .text(hasPropertyConflict: false)
+    )
+    #expect(
+        ConflictClassification.classify(
+            details: SVNConflictDetails(path: "알수없음", type: "unknown", operation: "update"),
+            statusItem: .modified,
+            propertyState: .none
+        ) == .unsupported("unknown")
+    )
+
+    let normalized = ConflictClassification.textConflictDetails(from: propertyTyped)
+    #expect(normalized.type == "text")
+    #expect(normalized.myFile == propertyTyped.myFile)
+    #expect(normalized.serverFile == propertyTyped.serverFile)
+}
 
 @Test func restoreScanExpandsUnversionedDirectoriesAndSkipsVersionedDirectories() {
     let statuses = [
@@ -191,6 +308,41 @@ private class DataLossFixture {
             )
         }
         return text
+    }
+}
+
+/// 한 파일에 내용 충돌과 속성 충돌을 동시에 만듭니다.
+/// 두 사람이 같은 문서를 편집하면서 같은 속성을 서로 다르게 바꾸면 실제로 이 상태가 됩니다.
+private final class CombinedConflictFixture: DataLossFixture {
+    let conflictPath = "예산.xlsx"
+    let serverBytes = Data("서버가 커밋한 내용\n".utf8)
+    let mineBytes = Data("내가 작업하던 내용\n".utf8)
+
+    init() throws {
+        try super.init(name: "combined")
+        _ = try runSVN(["checkout", repositoryURL, publisher.path])
+        try Data("처음 내용\n".utf8).write(to: publisher.appendingPathComponent(conflictPath))
+        _ = try runSVN(["add", publisher.appendingPathComponent(conflictPath).path])
+        _ = try runSVN([
+            "propset", "integration:flag", "base",
+            publisher.appendingPathComponent(conflictPath).path,
+        ])
+        _ = try runSVN(["commit", publisher.path, "-m", "initial"])
+        _ = try runSVN(["checkout", repositoryURL, workingCopy.path])
+
+        try serverBytes.write(to: publisher.appendingPathComponent(conflictPath))
+        _ = try runSVN([
+            "propset", "integration:flag", "server",
+            publisher.appendingPathComponent(conflictPath).path,
+        ])
+        _ = try runSVN(["commit", publisher.path, "-m", "server change"])
+
+        try mineBytes.write(to: workingCopy.appendingPathComponent(conflictPath))
+        _ = try runSVN([
+            "propset", "integration:flag", "mine",
+            workingCopy.appendingPathComponent(conflictPath).path,
+        ])
+        _ = try runSVN(["update", "--non-interactive", "--accept", "postpone", workingCopy.path])
     }
 }
 

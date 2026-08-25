@@ -11220,6 +11220,57 @@
           }
         }
       }
+    },
+    "ui.content.and.property.conflict.together.6f0b83e5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file also has a property conflict. Choosing a version below resolves the properties the same way."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일에는 속성 충돌도 함께 있습니다. 아래에서 버전을 고르면 속성도 같은 쪽으로 함께 해결됩니다."
+          }
+        }
+      }
+    },
+    "ui.server.properties.also.applied.3ac57d92": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server property values are applied as well."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 속성 값도 함께 적용됩니다."
+          }
+        }
+      }
+    },
+    "ui.my.properties.also.kept.b81e64af": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your property values are kept as well."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 속성 값이 그대로 유지됩니다."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

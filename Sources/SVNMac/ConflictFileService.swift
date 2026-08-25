@@ -19,6 +19,10 @@ struct ConflictResolutionSession: Identifiable, Hashable {
     let server: ConflictVersionBackup
     let mineResolveSourceURL: URL?
     let isBinary: Bool
+    /// 같은 경로에 속성 충돌이 함께 걸려 있는지입니다.
+    /// `svn resolve`는 한 번의 선택으로 내용과 속성 충돌을 같은 방향으로 함께 해결합니다.
+    let hasPropertyConflict: Bool
+    let propertyNames: [String]
 }
 
 /// 하위 트리를 통째로 되돌리기 전에 만들어 두는 복구본입니다.
@@ -26,6 +30,47 @@ struct ConflictSubtreeBackup: Hashable {
     let directoryURL: URL
     let fileCount: Int
     let byteCount: Int64
+}
+
+/// 한 경로에 내용 충돌과 속성 충돌이 동시에 날 수 있습니다.
+/// `svn info --xml`은 충돌마다 `<conflict>` 요소를 따로 내보내지만 파서는 마지막 요소만
+/// 남기므로 `details.type`만으로는 분류를 신뢰할 수 없습니다. 같은 경로의 `svn status`
+/// 항목 상태(`item`)와 속성 상태(`props`)를 함께 보고 판정합니다.
+enum ConflictClassification: Hashable {
+    case text(hasPropertyConflict: Bool)
+    case tree
+    case property
+    case unsupported(String)
+
+    static func classify(
+        details: SVNConflictDetails,
+        statusItem: SVNStatusKind?,
+        propertyState: SVNPropertyState
+    ) -> ConflictClassification {
+        if details.type == "tree" { return .tree }
+        let hasPropertyConflict = propertyState == .conflicted || details.type == "property"
+        if statusItem == .conflicted || details.type == "text" {
+            return .text(hasPropertyConflict: hasPropertyConflict)
+        }
+        if hasPropertyConflict { return .property }
+        return .unsupported(details.type)
+    }
+
+    /// 내용 충돌 보호 경로로 보내기 위해 마지막 `<conflict>` 요소가 남긴 분류만 바로잡습니다.
+    /// 보조 파일 경로(`myFile`/`serverFile`)는 파서가 요소 사이에서 유지하므로 그대로 씁니다.
+    static func textConflictDetails(from details: SVNConflictDetails) -> SVNConflictDetails {
+        guard details.type != "text" else { return details }
+        return SVNConflictDetails(
+            path: details.path,
+            type: "text",
+            operation: details.operation,
+            previousBaseFile: details.previousBaseFile,
+            myFile: details.myFile,
+            serverFile: details.serverFile,
+            previousRevision: details.previousRevision,
+            serverRevision: details.serverRevision
+        )
+    }
 }
 
 enum ConflictFileError: Error {
@@ -69,7 +114,9 @@ struct ConflictFileService {
         projectID: UUID,
         workingCopyPath: String,
         requestedPath: String? = nil,
-        versionedPath: String? = nil
+        versionedPath: String? = nil,
+        hasPropertyConflict: Bool = false,
+        propertyNames: [String] = []
     ) throws -> ConflictResolutionSession {
         guard details.type == "text" else { throw ConflictFileError.unsupportedType(details.type) }
         // Real SVN binary conflicts may omit prev-wc-file because the working file itself
@@ -166,7 +213,9 @@ struct ConflictFileService {
                 mineResolveSourceURL: usesWorkingFileAsMine
                     ? directory.appendingPathComponent(stagedMineResolveSourceURL.lastPathComponent)
                     : nil,
-                isBinary: isBinary
+                isBinary: isBinary,
+                hasPropertyConflict: hasPropertyConflict,
+                propertyNames: propertyNames
             )
         } catch {
             do {
@@ -239,7 +288,7 @@ struct ConflictFileService {
         return recoveryURL
     }
 
-/// 하위 트리를 통째로 되돌리기 전에 그 아래 모든 정규 파일을 복구본으로 복사합니다.
+    /// 하위 트리를 통째로 되돌리기 전에 그 아래 모든 정규 파일을 복구본으로 복사합니다.
     /// `svn revert --depth infinity`는 버전관리되지 않은 파일까지 지우므로,
     /// SVN 상태로 걸러내지 않고 `.svn`을 뺀 전부를 바이트 검증과 함께 보존합니다.
     /// 대상이 파일 하나이면 그 파일만 보존합니다. 보존할 파일이 없으면 nil을 반환합니다.

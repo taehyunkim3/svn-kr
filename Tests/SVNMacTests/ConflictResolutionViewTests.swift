@@ -90,7 +90,7 @@ import Testing
 @Test func propertyConflictPreparationKeepsOtherConflictSessionsNil() throws {
     let storeConflicts = try source(named: "ProjectStore+Conflicts.swift", in: try svnMacSources())
 
-    #expect(storeConflicts.contains("case \"property\":"))
+    #expect(storeConflicts.contains("case .property:"))
     #expect(storeConflicts.contains("activeConflictSession = nil"))
     #expect(storeConflicts.contains("activeTreeConflictSession = nil"))
     #expect(storeConflicts.contains("recoveryState.propertyConflictSession = session"))
@@ -109,6 +109,27 @@ import Testing
     #expect(view.contains("ui.files.not.in.repository.count.2b7fa508"))
     #expect(view.contains("ui.uncommitted.changes.count.7e3c19d4"))
     #expect(view.contains("ui.and.more.items.count.a5d20f16"))
+}
+
+@Test func contentConflictViewAnnouncesTheAccompanyingPropertyConflict() throws {
+    let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
+
+    #expect(view.contains("if session.hasPropertyConflict"))
+    #expect(view.contains("ui.content.and.property.conflict.together.6f0b83e5"))
+    #expect(view.contains("ui.conflicted.properties.849bf370"))
+    #expect(view.contains("ui.server.properties.also.applied.3ac57d92"))
+    #expect(view.contains("ui.my.properties.also.kept.b81e64af"))
+}
+
+@Test func propertyConflictResolutionPreservesTheWorkingFileBeforeResolving() throws {
+    let storeConflicts = try source(named: "ProjectStore+Conflicts.swift", in: try svnMacSources())
+    let resolvePropertyRange = try #require(
+        storeConflicts.range(of: "func resolveActivePropertyConflict")
+    )
+    let body = storeConflicts[resolvePropertyRange.lowerBound...]
+    let preserveIndex = try #require(body.range(of: "conflictFileService.preserveSubtree"))
+    let resolveIndex = try #require(body.range(of: "client.resolveConflict"))
+    #expect(preserveIndex.lowerBound < resolveIndex.lowerBound)
 }
 
 @Test func propertyConflictStringsExistInEveryLocalizationResource() throws {

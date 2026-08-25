@@ -658,3 +658,6 @@
 "ui.uncommitted.changes.count.7e3c19d4" = "커밋하지 않은 변경 %1$@개";
 "ui.and.more.items.count.a5d20f16" = "외 %1$@개";
 "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3" = "충돌을 해결했습니다. 사라진 항목 %1$@개의 복구본을 다음 폴더에 만들었습니다: %2$@";
+"ui.content.and.property.conflict.together.6f0b83e5" = "이 파일에는 속성 충돌도 함께 있습니다. 아래에서 버전을 고르면 속성도 같은 쪽으로 함께 해결됩니다.";
+"ui.server.properties.also.applied.3ac57d92" = "서버 속성 값도 함께 적용됩니다.";
+"ui.my.properties.also.kept.b81e64af" = "내 속성 값이 그대로 유지됩니다.";

@@ -63,6 +63,19 @@ struct ConflictResolutionView: View {
                 .foregroundStyle(.secondary)
             }
 
+            if session.hasPropertyConflict {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(
+                        appLanguage.localized("ui.content.and.property.conflict.together.6f0b83e5"),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.orange)
+                    Text(propertyNamesDescription(session.propertyNames))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(
@@ -114,6 +127,16 @@ struct ConflictResolutionView: View {
                 }
             }
         }
+    }
+
+    private func propertyNamesDescription(_ propertyNames: [String]) -> String {
+        guard !propertyNames.isEmpty else {
+            return appLanguage.localized("ui.conflicted.property.name.unavailable.0cc5d784")
+        }
+        return appLanguage.localized(
+            "ui.conflicted.properties.849bf370",
+            propertyNames.joined(separator: ", ")
+        )
     }
 
     private func workingFileCard(_ session: ConflictResolutionSession) -> some View {
@@ -216,14 +239,21 @@ struct ConflictResolutionView: View {
     }
 
     private func confirmationMessage(for choice: SVNConflictChoice) -> String {
+        let base: String
         switch choice {
         case .mineFull:
-            appLanguage.localized("ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb")
+            base = appLanguage.localized("ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb")
         case .theirsFull:
-            appLanguage.localized("ui.replace.with.the.server.file.your.local.edits.le.f08dec1d")
+            base = appLanguage.localized("ui.replace.with.the.server.file.your.local.edits.le.f08dec1d")
         case .working:
-            appLanguage.localized("ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30")
+            base = appLanguage.localized("ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30")
         }
+        guard store.activeConflictSession?.hasPropertyConflict == true else { return base }
+        // 한 번의 `svn resolve`가 내용과 속성 충돌을 같은 방향으로 함께 해결합니다.
+        let propertyOutcome = choice == .theirsFull
+            ? appLanguage.localized("ui.server.properties.also.applied.3ac57d92")
+            : appLanguage.localized("ui.my.properties.also.kept.b81e64af")
+        return base + "\n" + propertyOutcome
     }
 
     private func versionMetadata(for version: ConflictVersionBackup) -> String {

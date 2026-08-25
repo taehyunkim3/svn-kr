@@ -658,3 +658,6 @@
 "ui.uncommitted.changes.count.7e3c19d4" = "%1$@ uncommitted change(s)";
 "ui.and.more.items.count.a5d20f16" = "and %1$@ more";
 "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3" = "The conflict was resolved. Backups for %1$@ removed item(s) were created in: %2$@";
+"ui.content.and.property.conflict.together.6f0b83e5" = "This file also has a property conflict. Choosing a version below resolves the properties the same way.";
+"ui.server.properties.also.applied.3ac57d92" = "Server property values are applied as well.";
+"ui.my.properties.also.kept.b81e64af" = "Your property values are kept as well.";
