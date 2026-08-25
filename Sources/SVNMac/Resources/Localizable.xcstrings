@@ -9700,6 +9700,125 @@
         "en": { "stringUnit": { "state": "translated", "value": "This project's SVN client does not support reading historical file revisions." } },
         "ko": { "stringUnit": { "state": "translated", "value": "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다." } }
       }
+    },
+    "ui.browse.svn.repository.4a9d3c10": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Browse SVN Repository" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "SVN 저장소 탐색" } }
+      }
+    },
+    "ui.browse.repository.before.checkout.7c2e1b84": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check folders and files before choosing the repository path to check out." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "체크아웃할 저장소 경로를 고르기 전에 폴더와 파일을 확인합니다." } }
+      }
+    },
+    "ui.browse.5f8b6e21": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Browse" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탐색" } }
+      }
+    },
+    "ui.revision.optional.63ad9f02": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Revision (Optional)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "리비전(선택)" } }
+      }
+    },
+    "ui.parent.directory.1b7e4a93": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Parent Directory" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "상위 폴더" } }
+      }
+    },
+    "ui.copy.current.repository.url.82c5d1f0": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Copy Current Repository URL" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "현재 저장소 URL 복사" } }
+      }
+    },
+    "ui.directory.9e3f2a70": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Directory" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "폴더" } }
+      }
+    },
+    "ui.file.6d4b8c21": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "File" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "파일" } }
+      }
+    },
+    "ui.enter.repository.url.to.browse.3f6a9d20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter a repository URL to browse." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탐색할 저장소 URL을 입력하세요." } }
+      }
+    },
+    "ui.loading.repository.contents.5e1c7a84": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Loading repository contents…" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 목록 불러오는 중…" } }
+      }
+    },
+    "ui.repository.directory.empty.7a2c5e90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This Directory Is Empty" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "빈 폴더입니다" } }
+      }
+    },
+    "ui.no.items.in.repository.directory.4d8b1f63": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The repository returned no files or subdirectories for this path." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 저장소 경로에 파일이나 하위 폴더가 없습니다." } }
+      }
+    },
+    "ui.repository.authentication.failed.6b2e9c14": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Repository Authentication Failed" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 인증 실패" } }
+      }
+    },
+    "ui.repository.connection.failed.1e5a7c93": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could Not Connect to the Repository" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소에 연결할 수 없습니다" } }
+      }
+    },
+    "ui.repository.contents.failed.3c8f2d61": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Could Not Load Repository Contents" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장소 목록을 불러올 수 없습니다" } }
+      }
+    },
+    "ui.open.selected.directory.2c7e5a91": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open Selected Directory" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "선택한 폴더 열기" } }
+      }
+    },
+    "ui.use.repository.path.8f1d4b62": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use This Repository Path" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 저장소 경로 사용" } }
+      }
     }
   },
   "version": "1.0"
