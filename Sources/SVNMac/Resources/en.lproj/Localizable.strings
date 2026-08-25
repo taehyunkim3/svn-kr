@@ -530,3 +530,5 @@
 "ui.empty.folder.destructive.30d295e8" = "Empty Folder";
 "ui.only.verified.working.copy.will.be.deleted.path.d8c0a71e" = "All contents of the verified interrupted SVN working-copy folder below will be deleted. This cannot be undone.\n\n%1$@";
 "ui.checkout.folder.was.not.empty.cannot.delete.0e6d49b2" = "This folder already had files before checkout, so the app will not empty it. Continue the checkout or close this message and review the folder in Finder.";
+"ui.showing.first.commits.of.total.8d6f4a21" = "Showing the first %1$@ of %2$@ commits.";
+"ui.preview.failed.update.still.available.2c71be90" = "The complete update preview could not be loaded. You can still try the update.\n\n%1$@";

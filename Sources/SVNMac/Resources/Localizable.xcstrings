@@ -9078,6 +9078,40 @@
           }
         }
       }
+    },
+    "ui.showing.first.commits.of.total.8d6f4a21": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the first %1$@ of %2$@ commits."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 %2$@개 커밋 중 처음 %1$@개만 표시합니다."
+          }
+        }
+      }
+    },
+    "ui.preview.failed.update.still.available.2c71be90": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The complete update preview could not be loaded. You can still try the update.\n\n%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트 미리보기 전체를 불러오지 못했습니다. 그래도 업데이트를 시도할 수 있습니다.\n\n%1$@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
