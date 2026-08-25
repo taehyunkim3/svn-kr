@@ -48,6 +48,7 @@ struct RepositoryBrowserView: View {
             }
             await state.browse()
         }
+        .onDisappear { state.cancelLoading() }
     }
 
     private var header: some View {
@@ -74,7 +75,7 @@ struct RepositoryBrowserView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
                 Button {
-                    Task { await state.browse() }
+                    state.beginBrowse()
                 } label: {
                     ActionProgressLabel(
                         title: appLanguage.localized("ui.browse.5f8b6e21"),
@@ -101,7 +102,7 @@ struct RepositoryBrowserView: View {
     private var currentLocation: some View {
         HStack(spacing: 8) {
             Button {
-                Task { await state.navigateUp() }
+                state.beginNavigateUp()
             } label: {
                 Label(
                     appLanguage.localized("ui.parent.directory.1b7e4a93"),
@@ -144,7 +145,7 @@ struct RepositoryBrowserView: View {
                 .onTapGesture(count: 2) {
                     guard entry.kind == .directory else { return }
                     state.selectedEntryID = entry.id
-                    Task { await state.enterSelectedDirectory() }
+                    state.beginEnterSelectedDirectory()
                 }
         }
         .overlay { repositoryListOverlay }
@@ -211,7 +212,7 @@ struct RepositoryBrowserView: View {
     private var footer: some View {
         HStack {
             Button {
-                Task { await state.refresh() }
+                state.beginRefresh()
             } label: {
                 ActionProgressLabel(
                     title: appLanguage.localized("ui.refresh.0aca6bd2"),
@@ -221,7 +222,7 @@ struct RepositoryBrowserView: View {
             .disabled(state.currentURL.isEmpty || state.isLoading)
             Spacer()
             Button(appLanguage.localized("ui.open.selected.directory.2c7e5a91")) {
-                Task { await state.enterSelectedDirectory() }
+                state.beginEnterSelectedDirectory()
             }
             .disabled(state.selectedEntry?.kind != .directory || state.isLoading)
             Button(appLanguage.localized("ui.use.repository.path.8f1d4b62")) {
