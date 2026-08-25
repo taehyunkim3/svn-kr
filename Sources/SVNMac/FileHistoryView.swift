@@ -84,7 +84,7 @@ struct FileHistoryView: View {
             ) {
                 Task { await store.confirmHistoryRevisionRestore(request) }
             }
-            Button(appLanguage.localized("ui.cancel.89b99401"), role: .cancel) {}
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {}
         } message: { request in
             Text(
                 appLanguage.localized(

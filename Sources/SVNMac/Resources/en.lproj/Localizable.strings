@@ -651,3 +651,5 @@
 "ui.update.conflicts.blocked.commit.retry.8b3d6f20" = "Update created conflicts, so the commit was not retried. Resolve these paths first: %1$@";
 "ui.update.required.before.commit.retry.3f8c1d67" = "Update Before Retrying Commit";
 "ui.review.update.then.retry.commit.6a1e9c43" = "SVN requires a working-copy update. Confirm Update to retry the commit with the saved message and selection when no conflicts occur.";
+"ui.filename.warning.52af346c" = "Filename warning";
+"ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66" = "The disk containing this folder stores Korean filenames only in decomposed form. Filenames may appear broken on Windows. We recommend working on an APFS-formatted disk.";

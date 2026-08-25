@@ -651,3 +651,5 @@
 "ui.update.conflicts.blocked.commit.retry.8b3d6f20" = "업데이트 중 충돌이 발생해 커밋을 다시 실행하지 않았습니다. 다음 경로의 충돌을 먼저 해결하세요: %1$@";
 "ui.update.required.before.commit.retry.3f8c1d67" = "업데이트 후 커밋 가능";
 "ui.review.update.then.retry.commit.6a1e9c43" = "SVN이 작업 복사본 업데이트를 요구했습니다. 업데이트를 확인하면 충돌이 없을 때 저장한 메시지와 선택 목록으로 커밋을 다시 실행합니다.";
+"ui.filename.warning.52af346c" = "파일명 경고";
+"ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66" = "이 폴더가 있는 디스크는 한글 파일 이름을 자모 분리 형태로만 저장합니다. 윈도우에서 파일 이름이 깨져 보일 수 있습니다. APFS로 포맷된 디스크에서 작업하는 것을 권장합니다.";
