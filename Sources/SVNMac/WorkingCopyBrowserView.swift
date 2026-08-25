@@ -106,6 +106,7 @@ struct WorkingCopyBrowserView: View {
             Task { await store.captureRepositoryConnectionError(message) }
         }
         .documentOpenConfirmation()
+        .explicitLockConfirmation()
     }
 
     private func fileNameCell(_ node: WorkingCopyFileNode) -> some View {
@@ -170,6 +171,15 @@ struct WorkingCopyBrowserView: View {
             }
             if node.isRegularFile, node.isVersioned {
                 Divider()
+                if lockInfo(for: node)?.owner != store.selectedProject?.username {
+                    Button(
+                        lockInfo(for: node) == nil
+                            ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
+                            : appLanguage.localized("ui.review.force.lock.6c91f2da")
+                    ) {
+                        Task { await store.prepareExplicitLock(paths: [node.relativePath]) }
+                    }
+                }
                 Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {
                     Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
                 }

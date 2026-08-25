@@ -76,6 +76,7 @@ struct ChangesView: View {
         }
         .revertConfirmation()
         .documentOpenConfirmation()
+        .explicitLockConfirmation()
     }
 
     // MARK: - 변경 파일 목록
@@ -152,6 +153,14 @@ struct ChangesView: View {
                     .foregroundStyle(.secondary)
                     .help(appLanguage.localized("ui.needs.lock.enabled.9a1f5c37"))
             }
+            if let lock = lockInfo(for: entry) {
+                Label(lock.owner, systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(
+                        lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange
+                    )
+                    .help(lockDescription(lock))
+            }
             Button {
                 Task { await store.loadDiff(for: entry.path) }
             } label: {
@@ -214,6 +223,15 @@ struct ChangesView: View {
             }
             if isVersionedFile(entry) {
                 Divider()
+                if lockInfo(for: entry)?.owner != store.selectedProject?.username {
+                    Button(
+                        lockInfo(for: entry) == nil
+                            ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
+                            : appLanguage.localized("ui.review.force.lock.6c91f2da")
+                    ) {
+                        Task { await store.prepareExplicitLock(paths: [entry.path]) }
+                    }
+                }
                 Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
                     store.requestVersionedFileAction(.move, path: entry.path)
                 }
@@ -335,6 +353,13 @@ struct ChangesView: View {
                 .filter { store.selectedPaths.contains($0.path) && isVersionedFile($0) }
                 .map(\.path)
             if !selectedVersionedFiles.isEmpty {
+                Button(appLanguage.localized(
+                    "ui.lock.selected.files.7a3e9c21",
+                    selectedVersionedFiles.count
+                )) {
+                    Task { await store.prepareExplicitLock(paths: selectedVersionedFiles) }
+                }
+                .disabled(store.isSelectedProjectActionBlocked)
                 Menu {
                     Button(appLanguage.localized("ui.needs.lock.enable.0b7e4c91")) {
                         Task { _ = await store.setNeedsLock(true, paths: selectedVersionedFiles) }
@@ -433,5 +458,17 @@ struct ChangesView: View {
             && entry.item != .missing
             && entry.item != .deleted
             && entry.item != .obstructed
+            && entry.item != .incomplete
+    }
+
+    private func lockInfo(for entry: SVNStatusEntry) -> SVNLockInfo? {
+        store.repositoryLocks.first { Data($0.path.utf8) == Data(entry.path.utf8) }
+    }
+
+    private func lockDescription(_ lock: SVNLockInfo) -> String {
+        if lock.owner == store.selectedProject?.username {
+            return appLanguage.localized("ui.locked.by.you.f2a7c3f2")
+        }
+        return appLanguage.localized("ui.locked.by.192b78cf", lock.owner)
     }
 }

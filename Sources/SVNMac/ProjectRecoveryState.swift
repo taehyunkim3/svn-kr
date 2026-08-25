@@ -12,6 +12,9 @@ struct ProjectRecoveryState {
     var versionedFileActionRequest: VersionedFileActionRequest?
     var versionedFileActionFailureMessage: String?
     var needsLockPaths: Set<String> = []
+    var explicitLockRequest: ExplicitLockRequest?
+    var bulkUnlockRequest: BulkUnlockRequest?
+    var bulkUnlockResult: BulkUnlockResult?
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
 }

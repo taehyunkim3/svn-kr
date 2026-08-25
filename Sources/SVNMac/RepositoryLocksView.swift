@@ -22,6 +22,15 @@ struct RepositoryLocksView: View {
                     )
                 }
                 .disabled(store.isLoadingSelectedProjectLocks)
+                if !store.ownedRepositoryLocks.isEmpty {
+                    Button(appLanguage.localized(
+                        "ui.release.all.my.locks.5d8c31a7",
+                        store.ownedRepositoryLocks.count
+                    )) {
+                        store.requestBulkUnlock()
+                    }
+                    .disabled(store.isSelectedProjectActionBlocked)
+                }
                 Button(appLanguage.localized("ui.close.3ea43db3")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
@@ -90,6 +99,34 @@ struct RepositoryLocksView: View {
         } message: { request in
             Text(forceUnlockDetails(request))
         }
+        .alert(
+            appLanguage.localized("ui.bulk.unlock.confirmation.title.a4e70c92"),
+            isPresented: .isPresenting($store.recoveryState.bulkUnlockRequest),
+            presenting: store.recoveryState.bulkUnlockRequest
+        ) { request in
+            Button(appLanguage.localized("ui.release.locks.count.1f6b83d4", request.locks.count)) {
+                Task { await store.confirmBulkUnlock(request) }
+            }
+            Button(appLanguage.localized("ui.cancel.a2ce2c22"), role: .cancel) {
+                store.recoveryState.bulkUnlockRequest = nil
+            }
+        } message: { request in
+            Text(appLanguage.localized(
+                "ui.bulk.unlock.confirmation.details.8c20fd61",
+                request.locks.count
+            ))
+        }
+        .alert(
+            appLanguage.localized("ui.bulk.unlock.partial.failure.title.3be91d76"),
+            isPresented: .isPresenting($store.recoveryState.bulkUnlockResult),
+            presenting: store.recoveryState.bulkUnlockResult
+        ) { _ in
+            Button(appLanguage.localized("ui.close.3ea43db3")) {
+                store.recoveryState.bulkUnlockResult = nil
+            }
+        } message: { result in
+            Text(bulkUnlockResultDetails(result))
+        }
     }
 
     private func forceUnlockDetails(_ request: ForceUnlockRequest) -> String {
@@ -105,6 +142,18 @@ struct RepositoryLocksView: View {
             created,
             comment,
             request.originalMessage
+        )
+    }
+
+    private func bulkUnlockResultDetails(_ result: BulkUnlockResult) -> String {
+        let failures = result.failures
+            .map { "\($0.path)\n\($0.message)" }
+            .joined(separator: "\n\n")
+        return appLanguage.localized(
+            "ui.bulk.unlock.partial.failure.details.71a6c5e8",
+            result.releasedPaths.count,
+            result.requestedCount,
+            failures
         )
     }
 }

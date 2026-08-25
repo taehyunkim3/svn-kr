@@ -16,6 +16,140 @@ struct ForceUnlockRequest: Identifiable, Equatable {
 }
 
 extension ProjectStore {
+    var ownedRepositoryLocks: [SVNLockInfo] {
+        BulkUnlockPlanner.ownedLocks(
+            in: repositoryLocks,
+            username: selectedProject?.username
+        )
+    }
+
+    func prepareExplicitLock(paths: [String]) async {
+        guard let project = selectedProject, !paths.isEmpty else { return }
+        await loadRepositoryLocks()
+        guard selectedProjectID == project.id else { return }
+
+        switch ExplicitLockPlanner.plan(
+            paths: paths,
+            locks: repositoryLocks,
+            username: project.username
+        ) {
+        case .noAction:
+            notice = AppLanguage.current.localized("ui.all.selected.files.already.locked.by.you.6a91cd42")
+        case let .run(command):
+            await executeExplicitLock(command, project: project)
+        case let .confirmForce(request):
+            recoveryState.explicitLockRequest = request
+        }
+    }
+
+    func forceExplicitLock(_ request: ExplicitLockRequest) async {
+        guard recoveryState.explicitLockRequest?.id == request.id,
+              let project = selectedProject else { return }
+        await executeExplicitLock(request.forceCommand, project: project)
+    }
+
+    func requestBulkUnlock() {
+        let locks = ownedRepositoryLocks
+        guard !locks.isEmpty else { return }
+        recoveryState.bulkUnlockRequest = BulkUnlockRequest(locks: locks)
+    }
+
+    func confirmBulkUnlock(_ request: BulkUnlockRequest) async {
+        guard recoveryState.bulkUnlockRequest?.id == request.id,
+              let project = selectedProject else { return }
+        recoveryState.bulkUnlockRequest = nil
+        let operationID = beginOperation(.lock(project.id))
+        let credentials: SVNCredentials?
+        do {
+            credentials = try self.credentials(for: project)
+        } catch {
+            endOperation(operationID)
+            errorMessage = localizedError(error)
+            return
+        }
+        let allowsUntrustedCertificate = project.allowsUntrustedServerCertificate == true
+        let client = client
+        let result = await BulkUnlockExecutor.run(request.locks) { lock in
+            _ = try await client.unlock(
+                at: project.path,
+                relativePath: lock.path,
+                force: false,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowsUntrustedCertificate
+            )
+        }
+        endOperation(operationID)
+        guard selectedProjectID == project.id else { return }
+
+        if result.failures.isEmpty {
+            notice = AppLanguage.current.localized(
+                "ui.bulk.unlock.completed.4b7e0ad3",
+                result.releasedPaths.count
+            )
+        } else {
+            recoveryState.bulkUnlockResult = result
+        }
+        await loadRepositoryLocks()
+    }
+
+    private func executeExplicitLock(
+        _ command: ExplicitLockCommand,
+        project: SVNProject
+    ) async {
+        let operationID = beginOperation(.lock(project.id))
+        defer { endOperation(operationID) }
+        do {
+            let comment = AppLanguage.current.localized("ui.editing.document.in.svn.kr.5e6ac9cc")
+            if let multiplePathClient = client as? any MultiplePathLockServing {
+                try await ExplicitLockCommandRunner(client: multiplePathClient).run(
+                    command,
+                    workingCopyPath: project.path,
+                    comment: comment,
+                    credentials: credentials(for: project),
+                    allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                )
+            } else if command.force {
+                throw ExplicitLockExecutionError.forceUnsupported
+            } else {
+                for path in command.paths {
+                    _ = try await client.lock(
+                        at: project.path,
+                        relativePath: path,
+                        comment: comment,
+                        credentials: credentials(for: project),
+                        allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true
+                    )
+                }
+            }
+            guard selectedProjectID == project.id else { return }
+            recoveryState.explicitLockRequest = nil
+            notice = AppLanguage.current.localized(
+                "ui.explicit.lock.completed.1c4f8e72",
+                command.paths.count
+            )
+            await loadRepositoryLocks()
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            if !command.force {
+                await loadRepositoryLocks()
+                guard selectedProjectID == project.id else { return }
+                if case let .confirmForce(request) = ExplicitLockPlanner.plan(
+                    paths: command.paths,
+                    locks: repositoryLocks,
+                    username: project.username
+                ) {
+                    recoveryState.explicitLockRequest = request
+                    errorMessage = nil
+                    return
+                }
+            }
+            recoveryState.explicitLockRequest = nil
+            if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
+                errorMessage = localizedError(error)
+            }
+        }
+    }
+
     func prepareToOpen(
         path relativePath: String,
         repositoryPath: String? = nil,
