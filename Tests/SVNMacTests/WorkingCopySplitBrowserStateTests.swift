@@ -90,7 +90,25 @@ import Testing
     #expect(state.currentDirectoryPath == "Documents/Reports")
     #expect(state.selectedFolderPath == "Documents/Reports")
     #expect(state.selectedContentPath == nil)
-    #expect(state.expandedDirectoryPaths.isSuperset(of: ["", "Documents"]))
+    #expect(state.expandedDirectoryPaths.isSuperset(of: ["", "Documents", "Documents/Reports"]))
+}
+
+@Test func splitBrowserExpansionAppearsBeforeUncachedChildrenLoad() {
+    var state = WorkingCopySplitBrowserState()
+    state.cache([
+        makeSplitBrowserNode("Sources", isDirectory: true, hasChildren: true),
+    ], for: "")
+
+    let pathToLoad = state.toggleFolderExpansion("Sources")
+
+    #expect(pathToLoad == "Sources")
+    #expect(state.expandedDirectoryPaths.contains("Sources"))
+    #expect(state.visibleFolderRows(rootName: "Root").map(\.relativePath) == ["", "Sources"])
+
+    state.cache([
+        makeSplitBrowserNode("App", parent: "Sources", isDirectory: true),
+    ], for: "Sources")
+    #expect(state.visibleFolderRows(rootName: "Root").map(\.relativePath) == ["", "Sources", "Sources/App"])
 }
 
 @Test func splitBrowserContentLeftMovesToParentAndIsSafeAtRoot() {

@@ -259,10 +259,20 @@ struct WorkingCopySplitBrowserView: View {
                 } label: {
                     Image(systemName: browserState.expandedDirectoryPaths.contains(row.relativePath)
                           ? "chevron.down" : "chevron.right")
+                        .frame(
+                            width: AppLayout.fileBrowserFolderDisclosureHitTargetSize.width,
+                            height: AppLayout.fileBrowserFolderDisclosureHitTargetSize.height
+                        )
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Image(systemName: "chevron.right").hidden()
+                Image(systemName: "chevron.right")
+                    .frame(
+                        width: AppLayout.fileBrowserFolderDisclosureHitTargetSize.width,
+                        height: AppLayout.fileBrowserFolderDisclosureHitTargetSize.height
+                    )
+                    .hidden()
             }
 
             Button {
@@ -285,6 +295,12 @@ struct WorkingCopySplitBrowserView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded {
+                    browserState.enterDirectory(row.relativePath)
+                    synchronizeFolderSelection()
+                }
+            )
         }
         .padding(.leading, CGFloat(row.depth) * 16)
         .padding(.horizontal, 8)

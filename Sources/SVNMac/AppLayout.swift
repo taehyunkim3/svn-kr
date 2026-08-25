@@ -28,6 +28,7 @@ enum AppLayout {
     /// 분할 보기의 폴더 트리는 이름만 보여주므로 좁게 시작하고, 내용 표가 넓게 열립니다.
     static let fileBrowserFolderPaneMinimumWidth: CGFloat = 180
     static let fileBrowserContentsPaneMinimumWidth: CGFloat = 520
+    static let fileBrowserFolderDisclosureHitTargetSize = CGSize(width: 20, height: 20)
     /// 좌측 대 우측을 1:3으로 시작합니다. 창 크기가 달라도 같은 비율을 유지하려면
     /// 고정 너비가 아니라 사용 가능한 너비에서 계산해야 합니다.
     static let fileBrowserFolderPaneWidthFraction: CGFloat = 0.25

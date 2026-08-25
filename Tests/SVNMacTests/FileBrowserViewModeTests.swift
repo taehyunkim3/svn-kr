@@ -2,20 +2,42 @@ import Foundation
 import Testing
 @testable import SVNMac
 
-@Test func fileBrowserViewModeDefaultsToTreeAndRestoresStoredSelection() {
+@Test func fileBrowserViewModeDefaultsToSplitAndRestoresStoredSelection() {
     let suiteName = "file-browser-view-mode-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
-    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.tree.rawValue)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.defaultFileBrowserViewMode == FileBrowserViewMode.split.rawValue)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
 
-    defaults.set(FileBrowserViewMode.split.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
+    defaults.set(FileBrowserViewMode.tree.rawValue, forKey: AppSettings.fileBrowserViewModeKey)
     let restoredDefaults = UserDefaults(suiteName: suiteName)!
-    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .split)
+    #expect(AppSettings.fileBrowserViewMode(in: restoredDefaults) == .tree)
 
     defaults.set("unknown", forKey: AppSettings.fileBrowserViewModeKey)
-    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .tree)
+    #expect(AppSettings.fileBrowserViewMode(in: defaults) == .split)
+}
+
+@Test func splitBrowserFolderRowsSupportDoubleClickAndChevronHitArea() throws {
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.width >= 20)
+    #expect(AppLayout.fileBrowserFolderDisclosureHitTargetSize.height >= 20)
+
+    let source = try source(at: "Sources/SVNMac/WorkingCopySplitBrowserView.swift")
+    let folderRowStart = try #require(source.range(of: "private func folderRow"))
+    let nextFunctionStart = try #require(
+        source.range(of: "private func fileNameCell", range: folderRowStart.upperBound..<source.endIndex)
+    )
+    let folderRow = source[folderRowStart.lowerBound..<nextFunctionStart.lowerBound]
+    let chevronBranchEnd = try #require(folderRow.range(of: "} else {"))
+    let chevronBranch = folderRow[..<chevronBranchEnd.lowerBound]
+    let hitFrame = try #require(chevronBranch.range(of: ".frame("))
+    let contentShape = try #require(chevronBranch.range(of: ".contentShape(Rectangle())"))
+
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.width"))
+    #expect(chevronBranch.contains("AppLayout.fileBrowserFolderDisclosureHitTargetSize.height"))
+    #expect(hitFrame.lowerBound < contentShape.lowerBound)
+    #expect(folderRow.contains("TapGesture(count: 2)"))
+    #expect(folderRow.contains("browserState.enterDirectory(row.relativePath)"))
 }
 
 @Test func filesTabSwitchesBetweenPersistentTreeAndSplitBrowsers() throws {
