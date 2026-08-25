@@ -177,7 +177,7 @@ struct WorkingCopyBrowserView: View {
                             ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
                             : appLanguage.localized("ui.review.force.lock.6c91f2da")
                     ) {
-                        Task { await store.prepareExplicitLock(paths: [node.relativePath]) }
+                        Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                     }
                 }
                 Button(appLanguage.localized("ui.file.commit.history.342bfaac")) {

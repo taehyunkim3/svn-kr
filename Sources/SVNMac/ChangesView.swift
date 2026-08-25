@@ -229,7 +229,7 @@ struct ChangesView: View {
                             ? appLanguage.localized("ui.lock.file.explicitly.45d18c7b")
                             : appLanguage.localized("ui.review.force.lock.6c91f2da")
                     ) {
-                        Task { await store.prepareExplicitLock(paths: [entry.path]) }
+                        Task { await store.prepareExplicitLock(paths: [lockPath(for: entry)]) }
                     }
                 }
                 Button(appLanguage.localized("ui.rename.with.history.2a7c91e5")) {
@@ -351,7 +351,7 @@ struct ChangesView: View {
             }
             let selectedVersionedFiles = store.visibleStatuses
                 .filter { store.selectedPaths.contains($0.path) && isVersionedFile($0) }
-                .map(\.path)
+                .map(lockPath)
             if !selectedVersionedFiles.isEmpty {
                 Button(appLanguage.localized(
                     "ui.lock.selected.files.7a3e9c21",
@@ -462,7 +462,15 @@ struct ChangesView: View {
     }
 
     private func lockInfo(for entry: SVNStatusEntry) -> SVNLockInfo? {
-        store.repositoryLocks.first { Data($0.path.utf8) == Data(entry.path.utf8) }
+        let repositoryPath = lockPath(for: entry)
+        return store.repositoryLocks.first {
+            Data($0.path.utf8) == Data(repositoryPath.utf8)
+        }
+    }
+
+    private func lockPath(for entry: SVNStatusEntry) -> String {
+        store.workingCopyBrowserTreeState.node(at: entry.path)?.repositoryRelativePath
+            ?? entry.path
     }
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
