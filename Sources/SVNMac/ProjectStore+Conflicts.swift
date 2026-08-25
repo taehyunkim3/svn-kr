@@ -28,52 +28,96 @@ extension ProjectStore {
                 throw ConflictFileError.unsupportedType("unknown")
             }
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
-            switch details.type {
-            case "text":
-                let session = try conflictFileService.prepareSession(
-                    details,
-                    projectID: projectID,
+            let versionedPathIdentity = SVNPathIdentity(rawPath: versionedPath)
+            let statusEntry = snapshot.statuses.first { entry in
+                SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
+            }
+            let classification = ConflictClassification.classify(
+                details: details,
+                statusItem: statusEntry?.item,
+                propertyState: statusEntry?.propertyState ?? .none
+            )
+            let wasCanonicallyResolved = Data(relativePath.utf8) != Data(versionedPath.utf8)
+
+            func propertyNames() -> [String] {
+                PropertyConflictService().propertyNames(
                     workingCopyPath: project.path,
-                    requestedPath: relativePath,
-                    versionedPath: versionedPath
+                    versionedPath: versionedPath,
+                    nodeKind: statusEntry?.nodeKind
                 )
+            }
+
+            func makePropertySession() -> PropertyConflictSession {
+                PropertyConflictSession(
+                    details: details,
+                    requestedPath: relativePath,
+                    versionedPath: versionedPath,
+                    wasCanonicallyResolved: wasCanonicallyResolved,
+                    propertyNames: propertyNames()
+                )
+            }
+
+            switch classification {
+            case let .text(hasPropertyConflict):
+                // 내용 충돌이 함께 있으면 항상 내용 충돌 경로로 보냅니다.
+                // 이 경로만 mine/server 백업과 작업 파일 복구본을 만듭니다.
+                let textSession: ConflictResolutionSession?
+                do {
+                    textSession = try conflictFileService.prepareSession(
+                        ConflictClassification.textConflictDetails(from: details),
+                        projectID: projectID,
+                        workingCopyPath: project.path,
+                        requestedPath: relativePath,
+                        versionedPath: versionedPath,
+                        hasPropertyConflict: hasPropertyConflict,
+                        propertyNames: hasPropertyConflict ? propertyNames() : []
+                    )
+                } catch ConflictFileError.missingMine, ConflictFileError.missingServer {
+                    // 내용 보조 파일이 없으면 비교 화면을 만들 수 없습니다.
+                    // 속성 화면으로 보내되, 그 경로도 해결 직전에 작업 파일을 보존합니다.
+                    guard hasPropertyConflict else { throw ConflictFileError.missingServer }
+                    textSession = nil
+                }
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
-                activeTreeConflictSession = nil
-                recoveryState.propertyConflictSession = nil
-                activeConflictSession = session
-            case "tree":
+                if let textSession {
+                    activeTreeConflictSession = nil
+                    recoveryState.propertyConflictSession = nil
+                    activeConflictSession = textSession
+                } else {
+                    activeConflictSession = nil
+                    activeTreeConflictSession = nil
+                    recoveryState.propertyConflictSession = makePropertySession()
+                }
+            case .tree:
+                let impact = TreeConflictRestoreScan.impact(
+                    target: versionedPath,
+                    statuses: snapshot.statuses,
+                    containedFilePaths: { path in
+                        conflictFileService.containedFilePaths(
+                            relativePath: path,
+                            workingCopyPath: project.path
+                        )
+                    }
+                )
                 let session = TreeConflictSession(
                     details: details,
                     requestedPath: relativePath,
                     versionedPath: versionedPath,
-                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8)
+                    wasCanonicallyResolved: wasCanonicallyResolved,
+                    restoreImpact: impact
                 )
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
                 activeConflictSession = nil
                 recoveryState.propertyConflictSession = nil
                 activeTreeConflictSession = session
-            case "property":
-                let versionedPathIdentity = SVNPathIdentity(rawPath: versionedPath)
-                let nodeKind = snapshot.statuses.first(where: { entry in
-                    SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
-                })?.nodeKind
-                let session = PropertyConflictSession(
-                    details: details,
-                    requestedPath: relativePath,
-                    versionedPath: versionedPath,
-                    wasCanonicallyResolved: Data(relativePath.utf8) != Data(versionedPath.utf8),
-                    propertyNames: PropertyConflictService().propertyNames(
-                        workingCopyPath: project.path,
-                        versionedPath: versionedPath,
-                        nodeKind: nodeKind
-                    )
-                )
+            case .property:
+                let session = makePropertySession()
                 guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
                 activeConflictSession = nil
                 activeTreeConflictSession = nil
                 recoveryState.propertyConflictSession = session
-            default:
-                throw ConflictFileError.unsupportedType(details.type)
+            case let .unsupported(type):
+                throw ConflictFileError.unsupportedType(type)
             }
         } catch {
             guard canApplyConflictPreparation(requestID, projectID: projectID) else { return }
@@ -99,6 +143,13 @@ extension ProjectStore {
             }
         }
         do {
+            // `svn resolve`는 같은 경로에 내용 충돌이 남아 있으면 작업 파일까지 교체합니다.
+            // 분류가 어긋난 경우에도 되돌릴 수 있도록 실행 전에 복구본을 남깁니다.
+            _ = try conflictFileService.preserveSubtree(
+                relativePath: session.versionedPath,
+                projectID: projectID,
+                workingCopyPath: project.path
+            )
             _ = try await client.resolveConflict(
                 at: project.path,
                 relativePath: session.versionedPath,
@@ -148,6 +199,7 @@ extension ProjectStore {
                 resolvingConflictSessionID = nil
             }
         }
+        var subtreeBackup: ConflictSubtreeBackup?
         do {
             switch choice {
             case .keepWorkingState:
@@ -159,6 +211,14 @@ extension ProjectStore {
                 )
             case .restoreServerVersion:
                 let projectCredentials = try credentials(for: project)
+                // `svn revert --depth infinity`는 하위 트리를 통째로 지웁니다.
+                // 버전관리되지 않은 파일은 저장소 이력에도 없으므로 먼저 복구본을 만듭니다.
+                subtreeBackup = try conflictFileService.preserveSubtree(
+                    relativePath: session.versionedPath,
+                    projectID: projectID,
+                    workingCopyPath: project.path
+                )
+                guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
                 _ = try await client.revert(
                     at: project.path,
                     relativePath: session.versionedPath,
@@ -188,7 +248,15 @@ extension ProjectStore {
             activeTreeConflictSession = nil
             await refresh()
             guard canApplyCompletedTreeConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+            if let subtreeBackup {
+                notice = AppLanguage.current.localized(
+                    "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3",
+                    String(subtreeBackup.fileCount),
+                    subtreeBackup.directoryURL.path
+                )
+            } else {
+                notice = AppLanguage.current.localized("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
+            }
         } catch {
             guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
             if choice == .restoreServerVersion {
@@ -260,6 +328,12 @@ extension ProjectStore {
                     && SVNPathIdentity(rawPath: entry.path) == versionedPathIdentity
             }) else {
                 throw ConflictFileError.conflictResolutionVerificationFailed
+            }
+            if session.hasPropertyConflict {
+                try PropertyConflictResolution.verifyResolved(
+                    path: session.versionedPath,
+                    in: verifiedSnapshot
+                )
             }
             activeConflictSession = nil
             await refresh()

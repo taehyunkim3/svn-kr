@@ -653,3 +653,11 @@
 "ui.review.update.then.retry.commit.6a1e9c43" = "SVN requires a working-copy update. Confirm Update to retry the commit with the saved message and selection when no conflicts occur.";
 "ui.filename.warning.52af346c" = "Filename warning";
 "ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66" = "The disk containing this folder stores Korean filenames only in decomposed form. Filenames may appear broken on Windows. We recommend working on an APFS-formatted disk.";
+"ui.restore.server.version.removes.these.items.9d41c60b" = "Reverting removes the items below from the working folder. They are copied to a backup folder first.";
+"ui.files.not.in.repository.count.2b7fa508" = "%1$@ file(s) that are not in the repository";
+"ui.uncommitted.changes.count.7e3c19d4" = "%1$@ uncommitted change(s)";
+"ui.and.more.items.count.a5d20f16" = "and %1$@ more";
+"ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3" = "The conflict was resolved. Backups for %1$@ removed item(s) were created in: %2$@";
+"ui.content.and.property.conflict.together.6f0b83e5" = "This file also has a property conflict. Choosing a version below resolves the properties the same way.";
+"ui.server.properties.also.applied.3ac57d92" = "Server property values are applied as well.";
+"ui.my.properties.also.kept.b81e64af" = "Your property values are kept as well.";

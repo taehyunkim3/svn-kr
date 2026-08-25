@@ -148,10 +148,48 @@ struct TreeConflictResolutionView: View {
     private func warningMessage(for choice: TreeConflictResolutionChoice) -> String {
         switch choice {
         case .keepWorkingState:
-            appLanguage.localized("ui.local.deletion.will.remain.and.a.commit.will.de.837b94a0")
+            return appLanguage.localized("ui.local.deletion.will.remain.and.a.commit.will.de.837b94a0")
         case .restoreServerVersion:
-            appLanguage.localized("ui.local.changes.will.be.discarded.5e8127cf")
+            return restoreWarningMessage(store.activeTreeConflictSession?.restoreImpact)
         }
+    }
+
+    /// 되돌리기는 하위 트리를 통째로 지우므로 개수만이 아니라 경로를 보여 줍니다.
+    /// 저장소에 없는 파일이 먼저 오게 해서 영구 손실 항목을 눈에 띄게 합니다.
+    private func restoreWarningMessage(_ impact: TreeConflictRestoreImpact?) -> String {
+        guard let impact, !impact.isEmpty else {
+            return appLanguage.localized("ui.local.changes.will.be.discarded.5e8127cf")
+        }
+        var lines = [appLanguage.localized("ui.restore.server.version.removes.these.items.9d41c60b")]
+        lines += pathSection(
+            title: appLanguage.localized(
+                "ui.files.not.in.repository.count.2b7fa508",
+                String(impact.unversionedPaths.count)
+            ),
+            paths: impact.unversionedPaths
+        )
+        lines += pathSection(
+            title: appLanguage.localized(
+                "ui.uncommitted.changes.count.7e3c19d4",
+                String(impact.uncommittedPaths.count)
+            ),
+            paths: impact.uncommittedPaths
+        )
+        return lines.joined(separator: "\n")
+    }
+
+    private func pathSection(title: String, paths: [String]) -> [String] {
+        guard !paths.isEmpty else { return [] }
+        let listed = paths.prefix(AppLayout.treeConflictRestoreListedPathLimit)
+        var lines = [title]
+        lines += listed.map { "  " + $0.precomposedStringWithCanonicalMapping }
+        if paths.count > listed.count {
+            lines.append("  " + appLanguage.localized(
+                "ui.and.more.items.count.a5d20f16",
+                String(paths.count - listed.count)
+            ))
+        }
+        return lines
     }
 
     private var footer: some View {

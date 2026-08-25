@@ -11135,6 +11135,142 @@
           }
         }
       }
+    },
+    "ui.restore.server.version.removes.these.items.9d41c60b": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reverting removes the items below from the working folder. They are copied to a backup folder first."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌리면 아래 항목이 작업 폴더에서 사라집니다. 실행 전에 복구본 폴더로 복사합니다."
+          }
+        }
+      }
+    },
+    "ui.files.not.in.repository.count.2b7fa508": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ file(s) that are not in the repository"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장소에 없는 파일 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.uncommitted.changes.count.7e3c19d4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ uncommitted change(s)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋하지 않은 변경 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.and.more.items.count.a5d20f16": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "and %1$@ more"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "외 %1$@개"
+          }
+        }
+      }
+    },
+    "ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conflict was resolved. Backups for %1$@ removed item(s) were created in: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌을 해결했습니다. 사라진 항목 %1$@개의 복구본을 다음 폴더에 만들었습니다: %2$@"
+          }
+        }
+      }
+    },
+    "ui.content.and.property.conflict.together.6f0b83e5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file also has a property conflict. Choosing a version below resolves the properties the same way."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일에는 속성 충돌도 함께 있습니다. 아래에서 버전을 고르면 속성도 같은 쪽으로 함께 해결됩니다."
+          }
+        }
+      }
+    },
+    "ui.server.properties.also.applied.3ac57d92": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server property values are applied as well."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 속성 값도 함께 적용됩니다."
+          }
+        }
+      }
+    },
+    "ui.my.properties.also.kept.b81e64af": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your property values are kept as well."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 속성 값이 그대로 유지됩니다."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
