@@ -14,10 +14,9 @@ public enum SVNStatusKind: Hashable, Sendable {
     case ignored
     case conflicted
     case replaced
+    case obstructed
+    case incomplete
     case unknown(String)
-
-    public static let obstructed = SVNStatusKind.unknown("obstructed")
-    public static let incomplete = SVNStatusKind.unknown("incomplete")
 
     public init(rawValue: String) {
         switch rawValue {
@@ -46,6 +45,8 @@ public enum SVNStatusKind: Hashable, Sendable {
         case .ignored: "ignored"
         case .conflicted: "conflicted"
         case .replaced: "replaced"
+        case .obstructed: "obstructed"
+        case .incomplete: "incomplete"
         case let .unknown(value): value
         }
     }
