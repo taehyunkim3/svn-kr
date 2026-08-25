@@ -576,3 +576,8 @@
 "ui.revision.restore.replacement.verification.failed.b8714e35" = "The restored file did not match the selected revision byte for byte. The recovery copy was preserved.";
 "ui.revision.save.invalid.destination.5f4d2c81" = "The selected save location is not a safe regular-file destination.";
 "ui.revision.history.client.unavailable.5d7a91c2" = "This project's SVN client does not support reading historical file revisions.";
+"ui.incomplete.update.required.c5e83d20" = "Update Incomplete";
+"ui.continue.incomplete.by.updating.b64e2a19" = "Checkout or update was interrupted. Do not revert local changes; continue by updating.";
+"ui.continue.update.2ce71b84" = "Continue by Updating";
+"ui.switched.path.8f2c4a71" = "Switched Path";
+"ui.switched.path.commit.warning.3d7b91e6" = "This path points to a different repository location. Verify the commit destination.";

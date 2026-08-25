@@ -69,7 +69,7 @@ import Testing
     #expect(entry.isSelectableForCommit)
 }
 
-@Test func parsesIncompleteStatusAsKnownAlias() throws {
+@Test func parsesIncompleteStatusAsKnownCase() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
       <entry path="partial"><wc-status item="incomplete" revision="2" props="none"/></entry>
@@ -80,9 +80,12 @@ import Testing
 
     #expect(entry.item == .incomplete)
     #expect(entry.item.rawValue == "incomplete")
+    if case .unknown = entry.item {
+        Issue.record("incomplete must not use the unknown fallback")
+    }
 }
 
-@Test func parsesObstructedStatusWithoutChangingUnknownFallback() throws {
+@Test func parsesObstructedStatusAsKnownCaseWithoutChangingUnknownFallback() throws {
     let xml = """
     <?xml version="1.0"?><status><target path=".">
       <entry path="blocked"><wc-status item="obstructed" revision="3" props="none"/></entry>
@@ -94,6 +97,15 @@ import Testing
 
     #expect(entries.map(\.item) == [.obstructed, .unknown("future-status")])
     #expect(entries.map(\.item.rawValue) == ["obstructed", "future-status"])
+    if case .unknown = entries[0].item {
+        Issue.record("obstructed must not use the unknown fallback")
+    }
+}
+
+@Test func knownStatusCasesRoundTripRawValues() {
+    let values = ["obstructed", "incomplete"]
+
+    #expect(values.map(SVNStatusKind.init(rawValue:)).map(\.rawValue) == values)
 }
 
 @Test func parsesWorkingCopyEntriesAndOnlyRepositoryBackedEntriesAreVersioned() throws {

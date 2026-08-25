@@ -9700,6 +9700,41 @@
         "en": { "stringUnit": { "state": "translated", "value": "This project's SVN client does not support reading historical file revisions." } },
         "ko": { "stringUnit": { "state": "translated", "value": "이 프로젝트의 SVN 클라이언트는 과거 리비전 파일 읽기를 지원하지 않습니다." } }
       }
+    },
+    "ui.incomplete.update.required.c5e83d20": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Update Incomplete" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "업데이트 미완료" } }
+      }
+    },
+    "ui.continue.incomplete.by.updating.b64e2a19": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Checkout or update was interrupted. Do not revert local changes; continue by updating." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "체크아웃이나 업데이트가 중간에 끊겼습니다. 로컬 변경을 되돌리지 말고 업데이트로 이어받으세요." } }
+      }
+    },
+    "ui.continue.update.2ce71b84": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Continue by Updating" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "업데이트로 이어받기" } }
+      }
+    },
+    "ui.switched.path.8f2c4a71": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Switched Path" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "전환 경로" } }
+      }
+    },
+    "ui.switched.path.commit.warning.3d7b91e6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This path points to a different repository location. Verify the commit destination." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "다른 저장소 위치를 가리킵니다. 커밋 대상 위치를 확인하세요." } }
+      }
     }
   },
   "version": "1.0"

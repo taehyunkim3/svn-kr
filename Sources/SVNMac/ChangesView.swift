@@ -139,6 +139,14 @@ struct ChangesView: View {
                 Image(systemName: "eye.slash").frame(width: 18)
             }
             statusBadge(entry)
+            if WorkingCopyStatusPolicy.showsSwitchedWarning(entry) {
+                StatusBadge(
+                    label: appLanguage.localized("ui.switched.path.8f2c4a71"),
+                    color: WorkingCopyStatusTone.purple.color,
+                    style: .tinted
+                )
+                .help(appLanguage.localized("ui.switched.path.commit.warning.3d7b91e6"))
+            }
             if store.recoveryState.needsLockPaths.contains(entry.path) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
@@ -154,8 +162,13 @@ struct ChangesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
-                    if entry.item == .obstructed {
+                    if WorkingCopyStatusPolicy.showsObstructionGuidance(entry) {
                         Text(appLanguage.localized("ui.move.or.rename.the.local.file.then.update.1e3c7a90"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if WorkingCopyStatusPolicy.showsIncompleteRecovery(entry) {
+                        Text(appLanguage.localized("ui.continue.incomplete.by.updating.b64e2a19"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -168,6 +181,11 @@ struct ChangesView: View {
                 Button(appLanguage.localized("ui.reveal.in.finder.52d4a206")) {
                     store.revealInFinder(entry.path)
                 }
+            } else if WorkingCopyStatusPolicy.showsIncompleteRecovery(entry) {
+                Button(appLanguage.localized("ui.continue.update.2ce71b84")) {
+                    Task { await store.update() }
+                }
+                .disabled(store.isSelectedProjectActionBlocked)
             }
         }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
@@ -238,7 +256,10 @@ struct ChangesView: View {
                     store.requestDeletion(entry)
                 }
             }
-            if entry.item != .unversioned && entry.item != .ignored && entry.item != .missing {
+            if entry.item != .unversioned
+                && entry.item != .ignored
+                && entry.item != .missing
+                && WorkingCopyStatusPolicy.allowsRevert(entry) {
                 Divider()
                 Button(
                     entry.item == .conflicted || entry.propertyState == .conflicted
@@ -379,9 +400,6 @@ struct ChangesView: View {
         if TemporaryFilePolicy.isTemporaryFile(entry) {
             return appLanguage.localized("ui.temporary.5738ffab")
         }
-        if entry.item == .obstructed {
-            return appLanguage.localized("ui.obstructed.local.file.74a9c2e5")
-        }
         return switch entry.item {
         case .modified: appLanguage.localized("ui.modified.01365bb2")
         case .added: appLanguage.localized("ui.added.0dce7328")
@@ -392,21 +410,16 @@ struct ChangesView: View {
         case .ignored: appLanguage.localized("ui.ignored.b45ee0ef")
         case .conflicted: appLanguage.localized("ui.conflict.37edb628")
         case .replaced: appLanguage.localized("ui.replaced.6da39732")
+        case .obstructed: appLanguage.localized("ui.obstructed.local.file.74a9c2e5")
+        case .incomplete: appLanguage.localized("ui.incomplete.update.required.c5e83d20")
         case let .unknown(value): value
         }
     }
 
     private func statusColor(_ entry: SVNStatusEntry) -> Color {
         if TemporaryFilePolicy.isTemporaryFile(entry) { return .gray }
-        if entry.item == .obstructed { return .orange }
-        return switch entry.item {
-        case .modified: .orange
-        case .added, .unversioned: .blue
-        case .ignored: .gray
-        case .missing where entry.isMissingScheduledAddition: .gray
-        case .deleted, .missing, .conflicted: .red
-        default: .gray
-        }
+        if entry.isMissingScheduledAddition { return .gray }
+        return WorkingCopyStatusPolicy.tone(for: entry.item).color
     }
 
     private var versionedFilePaths: [String] {
