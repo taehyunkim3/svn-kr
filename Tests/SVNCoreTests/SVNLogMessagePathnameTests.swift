@@ -38,6 +38,36 @@ import Testing
     #expect(information.contains("Lock Comment"))
 }
 
+@Test func lockPreservesNFCCommentBytesAndRejectsNUL() async throws {
+    let fixture = try LogMessagePathnameFixture()
+    defer { fixture.remove() }
+    let comment = "편집 중"
+
+    _ = try await fixture.client.lock(
+        at: fixture.workingCopy.path,
+        relativePath: fixture.existingName,
+        comment: comment
+    )
+
+    let information = try fixture.runSVN([
+        "info", "--xml", fixture.workingCopy.appendingPathComponent(fixture.existingName).path,
+    ])
+    let start = try #require(information.range(of: "<comment>"))
+    let end = try #require(information.range(
+        of: "</comment>",
+        range: start.upperBound..<information.endIndex
+    ))
+    #expect(Data(information[start.upperBound..<end.lowerBound].utf8) == Data(comment.utf8))
+
+    await #expect(throws: Error.self) {
+        try await fixture.client.lock(
+            at: fixture.workingCopy.path,
+            relativePath: fixture.existingName,
+            comment: "편집\0중"
+        )
+    }
+}
+
 private struct LogMessagePathnameFixture {
     let root: URL
     let workingCopy: URL

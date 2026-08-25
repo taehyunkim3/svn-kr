@@ -24,8 +24,12 @@ import Testing
 
 @Test func targetFilesEscapePegSyntaxAndRejectLineBreaks() throws {
     #expect(SVNClient.svnPathEscapingPegSyntax("보고서@최종.hwp") == "보고서@최종.hwp@")
+    #expect(SVNClient.svnPathEscapingPegSyntax("file:///repo/report%40final.hwp") == "file:///repo/report%40final.hwp@")
     #expect(SVNClient.svnPathEscapingPegSyntax("보고서.hwp") == "보고서.hwp")
     #expect(try SVNClient.svnTargetsFileContents(["보고서@최종.hwp"]) == Data("보고서@최종.hwp@\n".utf8))
+    #expect(throws: SVNClientArgumentError.self) {
+        _ = try SVNClient.svnTargetsFileContents([])
+    }
     #expect(throws: SVNError.self) {
         _ = try SVNClient.svnTargetsFileContents(["보고서\n최종.hwp"])
     }
@@ -65,7 +69,7 @@ import Testing
     #expect(!argumentsLine.contains("--trust-server-cert-failures"))
 }
 
-@Test func normalizesCheckoutURLToPrecomposedUnicode() async throws {
+@Test func preservesCheckoutURLUnicodeNormalization() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-url-normalization-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -89,8 +93,8 @@ import Testing
         destinationPath: directory.appendingPathComponent("checkout").path
     )
 
-    #expect(result.contains("https://example.test/svn/%ED%95%9C%EA%B5%AD"))
-    #expect(!result.contains("%E1%84%92%E1%85%A1"))
+    #expect(result.contains("https://example.test/svn/%E1%84%92%E1%85%A1%E1%86%AB%E1%84%80%E1%85%AE%E1%86%A8"))
+    #expect(!result.contains("%ED%95%9C%EA%B5%AD"))
 }
 
 @Test func runsCheckoutInsideSelectedDestination() async throws {
@@ -1651,20 +1655,33 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
       *"status --verbose --no-ignore --xml"*)
         printf '<?xml version="1.0"?><status><target path="."><entry path="한글.txt"><wc-status item="modified" revision="1"/></entry></target></status>'
         ;;
-      *"commit --message"*)
+      *"commit --file"*)
         targets=
+        message_file=
         expects_targets=0
+        expects_message_file=0
         for argument in "$@"; do
           if [ "$expects_targets" = 1 ]; then
             targets=$argument
             expects_targets=0
             continue
           fi
+          if [ "$expects_message_file" = 1 ]; then
+            message_file=$argument
+            expects_message_file=0
+            continue
+          fi
           if [ "$argument" = --targets ]; then
             expects_targets=1
           fi
+          if [ "$argument" = --file ]; then
+            expects_message_file=1
+          fi
         done
         printf 'LANG=%s\nLC_ALL=%s\nargs=%s\n' "$LANG" "$LC_ALL" "$*"
+        printf 'message='
+        /bin/cat "$message_file"
+        printf '\n'
         if [ -n "$targets" ]; then
           while IFS= read -r target || [ -n "$target" ]; do
             printf 'target=%s\n' "$target"
@@ -1689,7 +1706,8 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
 
     #expect(result.contains("LANG=en_US.UTF-8"))
     #expect(result.contains("LC_ALL=en_US.UTF-8"))
-    #expect(result.contains("commit --message 한글 커밋 메시지 --force-log --targets"))
+    #expect(result.contains("commit --file"))
+    #expect(result.contains("message=한글 커밋 메시지"))
     #expect(result.contains("target=한글.txt"))
 }
 
