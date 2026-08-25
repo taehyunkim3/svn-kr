@@ -20,6 +20,7 @@ struct ProjectRecoveryState {
     var explicitLockRequest: ExplicitLockRequest?
     var bulkUnlockRequest: BulkUnlockRequest?
     var bulkUnlockResult: BulkUnlockResult?
+    var fileHistoryRequest: FileHistoryRequest?
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
     var repositoryBrowseSelectedURL: String?

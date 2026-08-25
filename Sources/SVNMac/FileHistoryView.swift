@@ -42,11 +42,7 @@ struct FileHistoryView: View {
                         .buttonStyle(.borderedProminent)
 
                         Button(role: .destructive) {
-                            guard let path = store.fileHistoryPath else { return }
-                            store.requestHistoryRevisionRestore(
-                                revision: entry.revision,
-                                relativePath: path
-                            )
+                            store.requestHistoryRevisionRestore(revision: entry.revision)
                         } label: {
                             ActionProgressLabel(
                                 title: appLanguage.localized(.ui.restore.workingFileToRevision),
@@ -109,18 +105,22 @@ struct FileHistoryView: View {
     }
 
     private func saveRevision(_ revision: String) {
-        guard let relativePath = store.fileHistoryPath else { return }
+        guard let fileHistoryRequest = store.fileHistoryRequest else { return }
+        let relativePath = fileHistoryRequest.relativePath
         let panel = NSSavePanel()
         panel.title = appLanguage.localized(.ui.save.thisRevisionAs)
         panel.prompt = appLanguage.localized(.ui.save.thisRevisionAs)
         panel.nameFieldStringValue = defaultSaveName(for: relativePath, revision: revision)
         guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
+        let request = HistoryRevisionSaveRequest(
+            fileHistoryRequestID: fileHistoryRequest.id,
+            projectID: fileHistoryRequest.projectID,
+            relativePath: relativePath,
+            revision: revision,
+            destinationURL: destinationURL
+        )
         Task {
-            await store.saveHistoryRevision(
-                revision: revision,
-                relativePath: relativePath,
-                to: destinationURL
-            )
+            await store.saveHistoryRevision(request)
         }
     }
 

@@ -178,6 +178,8 @@ enum ProjectRequestKind: Hashable {
     case updateBadge(SVNProject.ID)
     case updatePreview
     case diff
+    case fileHistory
+    case revert
     case fileTree
     case repositoryLocks
     case conflictPreparation
@@ -394,6 +396,10 @@ final class ProjectStore {
     var fileHistoryPath: String? {
         get { historyState.fileHistoryPath }
         set { historyState.fileHistoryPath = newValue }
+    }
+    var fileHistoryRequest: FileHistoryRequest? {
+        get { recoveryState.fileHistoryRequest }
+        set { recoveryState.fileHistoryRequest = newValue }
     }
     var remoteChanges: [SVNStatusEntry] {
         get { updateState.remoteChanges }

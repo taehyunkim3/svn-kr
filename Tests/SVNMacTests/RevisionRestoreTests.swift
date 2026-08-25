@@ -111,10 +111,16 @@ import Testing
 @Test func revisionRestoreRequiresExplicitDestructiveConfirmation() throws {
     let project = SVNProject(name: "first", path: "/tmp/revision-confirmation")
     let store = revisionRestoreStore(projects: [project])
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: project.id,
+        relativePath: "forms/report.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
 
-    store.requestHistoryRevisionRestore(revision: "31", relativePath: "forms/report.xlsx")
+    store.requestHistoryRevisionRestore(revision: "31")
 
     let request = try #require(store.recoveryState.historyRevisionRestoreRequest)
+    #expect(request.fileHistoryRequestID == fileHistoryRequest.id)
     #expect(request.projectID == project.id)
     #expect(request.revision == "31")
     #expect(request.relativePath == "forms/report.xlsx")
@@ -142,7 +148,11 @@ import Testing
     let clientFixture = try DelayedSVNExecutableFixture(contents: Data("historical".utf8))
     defer { clientFixture.remove() }
     let store = revisionRestoreStore(projects: [first, second], client: clientFixture.client)
-    store.requestHistoryRevisionRestore(revision: "9", relativePath: relativePath)
+    store.fileHistoryRequest = FileHistoryRequest(
+        projectID: first.id,
+        relativePath: relativePath
+    )
+    store.requestHistoryRevisionRestore(revision: "9")
     let request = try #require(store.recoveryState.historyRevisionRestoreRequest)
 
     let restore = Task { await store.confirmHistoryRevisionRestore(request) }
@@ -153,6 +163,34 @@ import Testing
     #expect(await restore.value == false)
     #expect(try Data(contentsOf: firstFile) == firstContents)
     #expect(try Data(contentsOf: secondFile) == secondContents)
+    #expect(store.notice == nil)
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func switchedProjectRejectsCapturedRevisionRestoreBeforeSVNRead() async throws {
+    let first = SVNProject(name: "first", path: "/tmp/revision-restore-confirm-first")
+    let second = SVNProject(name: "second", path: "/tmp/revision-restore-confirm-second")
+    let clientFixture = try DelayedSVNExecutableFixture(contents: Data("historical".utf8))
+    defer { clientFixture.remove() }
+    let store = revisionRestoreStore(projects: [first, second], client: clientFixture.client)
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: first.id,
+        relativePath: "report.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
+    store.requestHistoryRevisionRestore(revision: "9")
+    let request = try #require(store.recoveryState.historyRevisionRestoreRequest)
+
+    store.selectedProjectID = second.id
+    store.fileHistoryRequest = fileHistoryRequest
+    store.recoveryState.historyRevisionRestoreRequest = request
+    try clientFixture.release()
+    let didRestore = await store.confirmHistoryRevisionRestore(request)
+
+    #expect(!didRestore)
+    #expect(try clientFixture.invocationCount() == 0)
+    #expect(store.recoveryState.historyRevisionRestoreRequest == nil)
     #expect(store.notice == nil)
     #expect(store.errorMessage == nil)
 }
@@ -172,20 +210,31 @@ import Testing
     let store = revisionRestoreStore(projects: [project], client: clientFixture.client)
     let firstDestination = destinationDirectory.appendingPathComponent("first.xlsx")
     let secondDestination = destinationDirectory.appendingPathComponent("second.xlsx")
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: project.id,
+        relativePath: "report.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
+    let firstRequest = HistoryRevisionSaveRequest(
+        fileHistoryRequestID: fileHistoryRequest.id,
+        projectID: project.id,
+        relativePath: fileHistoryRequest.relativePath,
+        revision: "5",
+        destinationURL: firstDestination
+    )
+    let secondRequest = HistoryRevisionSaveRequest(
+        fileHistoryRequestID: fileHistoryRequest.id,
+        projectID: project.id,
+        relativePath: fileHistoryRequest.relativePath,
+        revision: "5",
+        destinationURL: secondDestination
+    )
 
     let firstSave = Task {
-        await store.saveHistoryRevision(
-            revision: "5",
-            relativePath: "report.xlsx",
-            to: firstDestination
-        )
+        await store.saveHistoryRevision(firstRequest)
     }
     await clientFixture.waitUntilStarted()
-    let duplicateResult = await store.saveHistoryRevision(
-        revision: "5",
-        relativePath: "report.xlsx",
-        to: secondDestination
-    )
+    let duplicateResult = await store.saveHistoryRevision(secondRequest)
 
     #expect(store.isHistoryRevisionOperationRunning)
     #expect(duplicateResult == false)
@@ -198,17 +247,26 @@ import Testing
 }
 
 @MainActor
-@Test func demoModeRejectsRevisionSaveWithoutLaunchingLiveSVN() async {
+@Test func demoModeRejectsRevisionSaveWithoutLaunchingLiveSVN() async throws {
     let store = ProjectStore.demo()
     let destination = FileManager.default.temporaryDirectory
         .appendingPathComponent("demo-revision-save-\(UUID().uuidString).xlsx")
     defer { try? FileManager.default.removeItem(at: destination) }
-
-    let didSave = await store.saveHistoryRevision(
-        revision: "1845",
-        relativePath: "Resources/Quarterly.xlsx",
-        to: destination
+    let project = try #require(store.selectedProject)
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: project.id,
+        relativePath: "Resources/Quarterly.xlsx"
     )
+    store.fileHistoryRequest = fileHistoryRequest
+    let request = HistoryRevisionSaveRequest(
+        fileHistoryRequestID: fileHistoryRequest.id,
+        projectID: project.id,
+        relativePath: fileHistoryRequest.relativePath,
+        revision: "1845",
+        destinationURL: destination
+    )
+
+    let didSave = await store.saveHistoryRevision(request)
 
     #expect(!didSave)
     #expect(
@@ -216,6 +274,47 @@ import Testing
             == AppLanguage.current.localized(.ui.revision.historyClientUnavailable)
     )
     #expect(!FileManager.default.fileExists(atPath: destination.path))
+}
+
+@MainActor
+@Test func switchedProjectRejectsCapturedRevisionSaveRequestBeforeSVNExport() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("revision-save-project-switch-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let destinationDirectory = root.appendingPathComponent("destination", isDirectory: true)
+    try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+    let firstDirectory = root.appendingPathComponent("first", isDirectory: true)
+    let secondDirectory = root.appendingPathComponent("second", isDirectory: true)
+    try FileManager.default.createDirectory(at: firstDirectory, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: secondDirectory, withIntermediateDirectories: true)
+    let first = SVNProject(name: "first", path: firstDirectory.path)
+    let second = SVNProject(name: "second", path: secondDirectory.path)
+    let clientFixture = try DelayedSVNExecutableFixture(contents: Data("historical".utf8))
+    defer { clientFixture.remove() }
+    let store = revisionRestoreStore(projects: [first, second], client: clientFixture.client)
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: first.id,
+        relativePath: "report.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
+    let destination = destinationDirectory.appendingPathComponent("report.xlsx")
+    let request = HistoryRevisionSaveRequest(
+        fileHistoryRequestID: fileHistoryRequest.id,
+        projectID: first.id,
+        relativePath: fileHistoryRequest.relativePath,
+        revision: "5",
+        destinationURL: destination
+    )
+
+    store.selectedProjectID = second.id
+    try clientFixture.release()
+    let didSave = await store.saveHistoryRevision(request)
+
+    #expect(!didSave)
+    #expect(try clientFixture.invocationCount() == 0)
+    #expect(!FileManager.default.fileExists(atPath: destination.path))
+    #expect(store.notice == nil)
+    #expect(store.errorMessage == nil)
 }
 
 private final class ReplacementObservation: @unchecked Sendable {

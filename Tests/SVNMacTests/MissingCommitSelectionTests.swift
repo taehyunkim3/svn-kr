@@ -50,7 +50,10 @@ struct MissingCommitSelectionTests {
         await store.refreshLocalWorkingCopy()
         store.selectedPaths = store.selectAllStatusPaths
         #expect(!store.prepareCommitConfirmation(message: "일반 수정"))
-        await store.confirmRevert(RevertRequest(entry: try #require(store.statuses.first)))
+        await store.confirmRevert(RevertRequest(
+            projectID: fixture.project.id,
+            entry: try #require(store.statuses.first)
+        ))
 
         try FileManager.default.removeItem(at: fixture.fileURL)
         await store.refreshLocalWorkingCopy()
