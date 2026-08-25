@@ -4,6 +4,10 @@ import Foundation
 /// `ProjectStore`는 이 구조체 하나만 저장 프로퍼티로 들고 있으므로,
 /// 새 화면 상태가 필요하면 `ProjectStore.swift`를 고치지 말고 여기에 필드를 추가합니다.
 struct ProjectRecoveryState {
+    var commitConfirmationRequest: CommitConfirmationRequest?
+    var selectedCommitDeletionRestorePaths: Set<String> = []
+    var commitDeletionRestoreRequest: CommitDeletionRestoreRequest?
+    var commitDeletionRestoreFailureMessage: String?
     var propertyConflictSession: PropertyConflictSession?
     var updatePreview = UpdatePreviewState()
     var repositoryURL: String?

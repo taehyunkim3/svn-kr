@@ -12,10 +12,23 @@ struct DeletionRequest: Identifiable, Equatable {
 }
 
 extension ProjectStore {
+    var commitConfirmationRequest: CommitConfirmationRequest? {
+        get { recoveryState.commitConfirmationRequest }
+        set { recoveryState.commitConfirmationRequest = newValue }
+    }
+
+    var selectedServerDeletionEntries: [SVNStatusEntry] {
+        guard let project = selectedProject else { return [] }
+        return CommitConfirmationRequest(
+            projectID: project.id,
+            message: "",
+            selectedPaths: selectedPaths,
+            statuses: statuses
+        ).serverDeletionEntries
+    }
+
     var scheduledDeletionCount: Int {
-        selectedPaths.count { path in
-            statuses.first { $0.path == path }?.item == .deleted
-        }
+        selectedServerDeletionEntries.count
     }
 
     func requestDeletion(_ entry: SVNStatusEntry) {
@@ -31,6 +44,42 @@ extension ProjectStore {
 
     func cancelDeletion() {
         deletionRequest = nil
+    }
+
+    func prepareCommitConfirmation(message: String) -> Bool {
+        guard let project = selectedProject, canCommitSelectedPaths else { return false }
+        let request = CommitConfirmationRequest(
+            projectID: project.id,
+            message: message,
+            selectedPaths: selectedPaths,
+            statuses: statuses
+        )
+        guard message.isEmpty || !request.serverDeletionEntries.isEmpty else { return false }
+        selectedCommitDeletionRestorePaths.removeAll()
+        commitDeletionRestoreRequest = nil
+        commitDeletionRestoreFailureMessage = nil
+        commitConfirmationRequest = request
+        return true
+    }
+
+    func cancelCommitConfirmation() {
+        commitConfirmationRequest = nil
+        selectedCommitDeletionRestorePaths.removeAll()
+        commitDeletionRestoreRequest = nil
+        commitDeletionRestoreFailureMessage = nil
+    }
+
+    func confirmCommit(_ request: CommitConfirmationRequest) async -> Bool {
+        guard selectedProjectID == request.projectID else {
+            commitConfirmationRequest = nil
+            return false
+        }
+        commitConfirmationRequest = nil
+        selectedCommitDeletionRestorePaths.removeAll()
+        commitDeletionRestoreRequest = nil
+        commitDeletionRestoreFailureMessage = nil
+        selectedPaths = request.selectedPaths
+        return await commitSelectedChanges(message: request.message)
     }
 
     func confirmDeletion(_ request: DeletionRequest) async {

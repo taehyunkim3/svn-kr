@@ -46,6 +46,12 @@ struct MissingCommitSelectionTests {
             updateBadgeRefreshInterval: nil
         )
 
+        try Data("수정된 보고서\n".utf8).write(to: fixture.fileURL)
+        await store.refreshLocalWorkingCopy()
+        store.selectedPaths = store.selectAllStatusPaths
+        #expect(!store.prepareCommitConfirmation(message: "일반 수정"))
+        await store.confirmRevert(RevertRequest(entry: try #require(store.statuses.first)))
+
         try FileManager.default.removeItem(at: fixture.fileURL)
         await store.refreshLocalWorkingCopy()
         let missing = try #require(store.statuses.first { $0.path == fixture.filePath })
@@ -60,9 +66,82 @@ struct MissingCommitSelectionTests {
         store.selectedPaths = store.selectAllStatusPaths
 
         #expect(store.selectedPaths == [fixture.filePath])
-        #expect(await store.commitSelectedChanges(message: "Finder 삭제"))
+        #expect(store.prepareCommitConfirmation(message: "Finder 삭제"))
+        let canceledRequest = try #require(store.commitConfirmationRequest)
+        store.cancelCommitConfirmation()
+        #expect(store.commitConfirmationRequest == nil)
+        #expect(store.selectedPaths == [fixture.filePath])
+        #expect(try fixture.repositoryFiles() == fixture.filePath + "\n")
+
+        #expect(store.prepareCommitConfirmation(message: "Finder 삭제"))
+        let confirmedRequest = try #require(store.commitConfirmationRequest)
+        #expect(confirmedRequest.id != canceledRequest.id)
+        #expect(await store.confirmCommit(confirmedRequest))
         #expect(try fixture.repositoryFiles().isEmpty)
         #expect(try fixture.workingCopyStatus().isEmpty)
+    }
+
+    @MainActor
+    @Test func bulkRestoreRevivesMissingAndScheduledDeletionButExcludesModifiedFile() async throws {
+        let fixture = try MissingCommitFixture(filePaths: [
+            "Finder 삭제.txt",
+            "SVN 삭제.txt",
+            "수정.txt",
+        ])
+        defer { fixture.remove() }
+        let defaultsName = "bulk-deletion-restore-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        let store = ProjectStore(
+            client: fixture.client,
+            persistence: MissingCommitProjectPersistence(project: fixture.project),
+            settingsDefaults: defaults,
+            hideTemporaryFiles: true,
+            updateBadgeRefreshInterval: nil
+        )
+
+        try FileManager.default.removeItem(at: fixture.fileURL(for: "Finder 삭제.txt"))
+        try fixture.scheduleDeletion("SVN 삭제.txt")
+        try Data("수정됨\n".utf8).write(to: fixture.fileURL(for: "수정.txt"))
+        await store.refreshLocalWorkingCopy()
+        store.selectedPaths = store.selectAllStatusPaths
+
+        #expect(store.prepareCommitConfirmation(message: "삭제 확인"))
+        #expect(store.commitConfirmationRequest?.serverDeletionEntries.map(\.path) == [
+            "Finder 삭제.txt",
+            "SVN 삭제.txt",
+        ])
+        store.selectedCommitDeletionRestorePaths = [
+            "Finder 삭제.txt",
+            "SVN 삭제.txt",
+            "수정.txt",
+        ]
+        store.requestCommitDeletionRestore()
+        let restoreRequest = try #require(store.commitDeletionRestoreRequest)
+        #expect(restoreRequest.paths == ["Finder 삭제.txt", "SVN 삭제.txt"])
+
+        await store.confirmCommitDeletionRestore(restoreRequest)
+
+        #expect(FileManager.default.fileExists(atPath: fixture.fileURL(for: "Finder 삭제.txt").path))
+        #expect(FileManager.default.fileExists(atPath: fixture.fileURL(for: "SVN 삭제.txt").path))
+        #expect(store.commitConfirmationRequest?.serverDeletionEntries.isEmpty == true)
+        #expect(store.selectedCommitDeletionRestorePaths.isEmpty)
+        #expect(store.commitDeletionRestoreFailureMessage == nil)
+    }
+
+    @Test func partialRestoreResultKeepsEveryFailedPath() {
+        let failedPaths = ["실패-8.txt", "실패-9.txt", "실패-10.txt"]
+        let result = CommitDeletionRestoreResult(
+            restoredPaths: (1 ... 7).map { "성공-\($0).txt" },
+            failures: failedPaths.map { CommitDeletionRestoreFailure(path: $0, message: "E155010") }
+        )
+
+        #expect(result.restoredPaths.count == 7)
+        #expect(result.failures.map(\.path) == failedPaths)
+        #expect(result.localizedFailureMessage(.korean)?.contains("3개") == true)
+        for path in failedPaths {
+            #expect(result.localizedFailureMessage(.korean)?.contains(path) == true)
+        }
     }
 }
 
@@ -76,16 +155,18 @@ private struct MissingCommitProjectPersistence: ProjectPersisting {
 private final class MissingCommitFixture {
     let root: URL
     let workingCopy: URL
-    let filePath = "월간 보고서.txt"
+    let filePaths: [String]
     let project: SVNProject
     let client: SVNClient
 
-    var fileURL: URL { workingCopy.appendingPathComponent(filePath) }
+    var filePath: String { filePaths[0] }
+    var fileURL: URL { fileURL(for: filePath) }
 
     private let svnPath: String
     private let repositoryURL: String
 
-    init() throws {
+    init(filePaths: [String] = ["월간 보고서.txt"]) throws {
+        self.filePaths = filePaths
         svnPath = try #require(Self.firstExecutable(at: [
             "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
         ]))
@@ -107,9 +188,19 @@ private final class MissingCommitFixture {
         _ = try Self.run(svnadminPath, ["create", repository.path])
         _ = try Self.run(svnPath, ["mkdir", repositoryURL, "-m", "초기화"])
         _ = try Self.run(svnPath, ["checkout", repositoryURL, workingCopy.path])
-        try Data("보고서\n".utf8).write(to: fileURL)
-        _ = try Self.run(svnPath, ["add", fileURL.path])
-        _ = try Self.run(svnPath, ["commit", fileURL.path, "-m", "보고서 추가"])
+        for path in filePaths {
+            try Data("보고서\n".utf8).write(to: fileURL(for: path))
+        }
+        _ = try Self.run(svnPath, ["add", "--force", workingCopy.path])
+        _ = try Self.run(svnPath, ["commit", workingCopy.path, "-m", "보고서 추가"])
+    }
+
+    func fileURL(for path: String) -> URL {
+        workingCopy.appendingPathComponent(path)
+    }
+
+    func scheduleDeletion(_ path: String) throws {
+        _ = try Self.run(svnPath, ["delete", fileURL(for: path).path])
     }
 
     func repositoryFiles() throws -> String {

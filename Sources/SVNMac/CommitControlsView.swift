@@ -5,10 +5,10 @@ struct CommitControlsView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @State private var commitMessage = ""
-    @State private var isConfirmingEmptyMessageCommit = false
     @FocusState private var isCommitMessageFocused: Bool
 
     var body: some View {
+        @Bindable var store = store
         VStack(spacing: 8) {
             TextField(appLanguage.localized("ui.commit.message.c5139167"), text: $commitMessage)
                 .textFieldStyle(.roundedBorder)
@@ -54,26 +54,16 @@ struct CommitControlsView: View {
             isCommitMessageFocused = false
             store.lastCompletedCommitMessage = nil
         }
-        .alert(
-            appLanguage.localized("ui.commit.without.a.message.6f0f2d41"),
-            isPresented: $isConfirmingEmptyMessageCommit
-        ) {
-            Button(appLanguage.localized("ui.yes.93cba074")) {
-                Task { _ = await store.commit(message: "") }
-            }
-            Button(appLanguage.localized("ui.no.bafd7322"), role: .cancel) {}
-        } message: {
-            Text(appLanguage.localized("ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05"))
+        .sheet(item: $store.commitConfirmationRequest) { request in
+            CommitConfirmationView(request: request)
+                .environment(store)
         }
     }
 
     private func submitCommit() {
         let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else {
-            isConfirmingEmptyMessageCommit = true
-            return
-        }
-        Task { _ = await store.commit(message: message) }
+        guard !store.prepareCommitConfirmation(message: message) else { return }
+        Task { _ = await store.commitSelectedChanges(message: message) }
     }
 
     private func submitCommitAfterEndingTextInput() {
