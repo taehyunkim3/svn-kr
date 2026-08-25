@@ -1,5 +1,22 @@
 import Foundation
 
+public enum SVNClientArgumentError: Error, LocalizedError, Sendable, Equatable {
+    case emptyTargets(command: String)
+    case unsupportedLogMessage
+    case unsupportedPropertyName(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .emptyTargets(command):
+            "svn \(command) requires at least one target."
+        case .unsupportedLogMessage:
+            "SVN log messages cannot contain NUL characters."
+        case let .unsupportedPropertyName(name):
+            "Unsupported SVN property name: \(name)"
+        }
+    }
+}
+
 public enum SVNServerCertificateFailure: String, CaseIterable, Hashable, Sendable {
     case unknownCertificateAuthority = "unknown-ca"
     case commonNameMismatch = "cn-mismatch"
