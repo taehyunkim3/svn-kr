@@ -7444,7 +7444,22 @@
           }
         }
       }
-    }
+    },
+    "ui.apply.server.properties.51ad840e": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Apply Server Properties"}},"ko":{"stringUnit":{"state":"translated","value":"서버 속성으로 반영"}}}},
+    "ui.conflicted.properties.849bf370": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Conflicted properties: %1$@"}},"ko":{"stringUnit":{"state":"translated","value":"충돌한 속성: %1$@"}}}},
+    "ui.conflicted.property.name.unavailable.0cc5d784": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The conflicted property name could not be determined."}},"ko":{"stringUnit":{"state":"translated","value":"충돌한 속성 이름을 확인할 수 없습니다."}}}},
+    "ui.keep.local.properties.as.resolved.values.4a0d2c6f": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Confirm the current local properties as the resolved values."}},"ko":{"stringUnit":{"state":"translated","value":"현재 로컬 속성을 해결 결과로 확정합니다."}}}},
+    "ui.keep.my.properties.68b12ae4": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Keep My Properties"}},"ko":{"stringUnit":{"state":"translated","value":"내 속성 유지"}}}},
+    "ui.local.property.values.will.be.discarded.f98a7c20": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Your local property values will be discarded."}},"ko":{"stringUnit":{"state":"translated","value":"내 로컬 속성 값이 사라집니다."}}}},
+    "ui.move.or.rename.the.local.file.then.update.1e3c7a90": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"An unversioned local file is blocking a server file with the same name. Move or rename it, then update."}},"ko":{"stringUnit":{"state":"translated","value":"버전관리 안 된 로컬 파일이 같은 이름의 서버 파일을 막고 있습니다. 옮기거나 이름을 바꾼 뒤 업데이트하세요."}}}},
+    "ui.obstructed.local.file.74a9c2e5": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Local File Blocking Update"}},"ko":{"stringUnit":{"state":"translated","value":"로컬 파일이 업데이트 방해"}}}},
+    "ui.property.conflict.2fd61b8a": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Property Conflict"}},"ko":{"stringUnit":{"state":"translated","value":"속성 충돌"}}}},
+    "ui.property.conflict.blocks.commit.until.resolved.bf3c8a12": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"This path cannot be committed until its property conflict is resolved."}},"ko":{"stringUnit":{"state":"translated","value":"속성 충돌을 해결하기 전에는 이 경로를 커밋할 수 없습니다."}}}},
+    "ui.property.conflict.resolved.review.before.commit.7b5e91c4": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The property conflict was resolved. Review the properties before committing."}},"ko":{"stringUnit":{"state":"translated","value":"속성 충돌을 해결했습니다. 커밋 전에 속성을 확인하세요."}}}},
+    "ui.property.modified.4c9a78e1": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Properties Modified"}},"ko":{"stringUnit":{"state":"translated","value":"속성 변경"}}}},
+    "ui.replace.local.properties.with.server.values.c2804d9a": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Replace the local properties with the server values."}},"ko":{"stringUnit":{"state":"translated","value":"로컬 속성을 서버 값으로 바꿉니다."}}}},
+    "ui.revert.conflict.discards.local.changes.and.conflict.51b3d907": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Revert Conflict and Local Changes…"}},"ko":{"stringUnit":{"state":"translated","value":"충돌 상태와 로컬 변경 되돌리기…"}}}},
+    "ui.server.property.values.will.be.discarded.84d6f2c1": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Incoming server property values will be discarded from this working copy."}},"ko":{"stringUnit":{"state":"translated","value":"서버에서 받은 속성 값이 이 작업 복사본에서 사라집니다."}}}}
   },
   "version": "1.0"
 }
