@@ -593,8 +593,12 @@ final class ProjectStore {
 
     var isRelocatingProject: Bool {
         activeOperations.contains { operation in
-            if case .relocate = operation.kind { return true }
-            return false
+            switch operation.kind {
+            case .relocate, .relocateRepository:
+                true
+            default:
+                false
+            }
         }
     }
 

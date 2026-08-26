@@ -3929,6 +3929,17 @@ import Testing
 }
 
 @MainActor
+@Test func repositoryRelocationOperationAppearsInFolderSettingsProgress() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+    let operationID = store.beginOperation(.relocateRepository(store.projects[0].id))
+
+    #expect(store.isRelocatingProject)
+
+    store.endOperation(operationID)
+    #expect(!store.isRelocatingProject)
+}
+
+@MainActor
 @Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() async {
     let warningProject = SVNProject(name: "HFS 프로젝트", path: "/Volumes/HFS/project")
     let unknownProject = SVNProject(name: "알 수 없는 프로젝트", path: "/Volumes/Unknown/project")
