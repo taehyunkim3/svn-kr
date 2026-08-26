@@ -112,6 +112,36 @@ public actor SVNClient {
         ).output
     }
 
+    /// 지정한 리비전으로 체크아웃합니다. 복구처럼 원본 작업 복사본의 BASE를 그대로
+    /// 재현해야 하는 흐름은 HEAD로 체크아웃하면 그 사이 다른 사람이 올린 커밋을
+    /// out-of-date 검사 없이 덮어쓰게 되므로 이 오버로드를 사용합니다.
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        revision: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
+        progress: SVNOutputHandler? = nil
+    ) async throws -> String {
+        guard let revisionNumber = Int(revision), revisionNumber >= 0 else {
+            throw SVNClientArgumentError.unsupportedRevision(revision)
+        }
+        let repositoryURL = URL(string: repositoryURL)?.absoluteString ?? repositoryURL
+        let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        return try await checkedRunWithSVNPathArguments(
+            ["checkout", "--revision", String(revisionNumber)],
+            svnPathArguments: [repositoryURL, "."],
+            escapePegSyntax: [true, false],
+            at: destination.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: progress
+        ).output
+    }
+
     public func validateWorkingCopy(at path: String, credentials: SVNCredentials? = nil) async throws {
         let result = try await run(["info", "--show-item", "wc-root"], at: path, credentials: credentials)
         guard result.exitCode == 0 else { throw SVNError.invalidWorkingCopy }
@@ -446,15 +476,8 @@ public actor SVNClient {
                 committedRevisions: []
             )
         }
-        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
-            throw SVNClientArgumentError.unsupportedLogMessage
-        }
-        let messageDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: messageDirectory) }
-        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
-        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
 
         let invalidTargets = targets.filter { target in
             !SVNRepositoryPathNormalization.isValidTarget(target)
@@ -466,16 +489,11 @@ public actor SVNClient {
         }
 
         let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        // 스냅샷의 표시 목록은 정상·무시·external 항목을 이미 제외합니다. 남는 것은
+        // 내용 변경, 속성 전용 변경, switched, 미버전 문서처럼 서버 경로가 움직이면
+        // 옛 이름 아래에 남거나 트리 충돌이 되는 항목이므로 전부 차단 대상입니다.
         let blockingLocalPaths = snapshot.statuses.compactMap { entry -> String? in
-            switch entry.item {
-            case .modified, .added, .deleted, .missing, .conflicted, .replaced,
-                 .obstructed, .incomplete:
-                // obstructed와 incomplete는 정리되지 않은 상태이므로 보수적으로 차단 대상에 둡니다.
-                break
-            case .unversioned, .ignored, .unknown:
-                return nil
-            }
-            return targets.contains(where: {
+            targets.contains(where: {
                 SVNRepositoryPathNormalization.isAtOrBelowCanonicalPath(
                     entry.path,
                     root: $0.repositoryPath
@@ -552,7 +570,7 @@ public actor SVNClient {
             let result: SVNCommandResult
             do {
                 result = try await run(
-                    ["move", "--file", messageFileURL.path, "--force-log"],
+                    ["move", "--file", messageFile.path, "--force-log"],
                     svnPathArguments: [
                         Self.svnPathEscapingPegSyntax(sourceURL),
                         destinationURL,
@@ -653,14 +671,26 @@ public actor SVNClient {
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
         try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
 
-        let preview = try await recoveryPreview(at: source.path, credentials: credentials)
+        let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
+        let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
         guard preview.blockingPaths.isEmpty else {
             throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
         }
         let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
+        // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
+        // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
+        // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
         _ = try await checkout(
             repositoryURL: repositoryURL,
             destinationPath: destination.path,
+            revision: sourceSnapshot.revision.minimum,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        try await pinRecoveryBaseRevisions(
+            of: sourceSnapshot,
+            at: destination.path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             allowedServerCertificateFailures: allowedServerCertificateFailures
@@ -676,6 +706,48 @@ public actor SVNClient {
             snapshot: recoveredSnapshot,
             migratedPaths: preview.mappings.map(\.destinationPath)
         )
+    }
+
+    /// 혼합 리비전 작업 복사본은 경로마다 BASE가 다릅니다. 가장 낮은 리비전으로 체크아웃한
+    /// 새 작업 복사본에서 더 높은 BASE를 가진 경로만 원본과 같은 리비전으로 올려, 커밋 시
+    /// out-of-date 판정이 원본과 동일하게 나오도록 맞춥니다.
+    private func pinRecoveryBaseRevisions(
+        of snapshot: SVNWorkingCopySnapshot,
+        at destinationPath: String,
+        credentials: SVNCredentials?,
+        allowUntrustedServerCertificate: Bool,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+    ) async throws {
+        let baseRevision = snapshot.revision.minimum
+        // 상위 경로가 먼저 존재해야 하위 경로를 받을 수 있으므로 깊이 오름차순으로 처리합니다.
+        let pending = snapshot.baseRevisionsByPath
+            .filter { $0.value != baseRevision && Int($0.value) != nil }
+            .map { (path: $0.key.rawPath, revision: $0.value) }
+            .sorted {
+                let leftDepth = $0.path.split(separator: "/").count
+                let rightDepth = $1.path.split(separator: "/").count
+                if leftDepth != rightDepth { return leftDepth < rightDepth }
+                return $0.path < $1.path
+            }
+        guard !pending.isEmpty else { return }
+
+        var index = pending.startIndex
+        while index < pending.endIndex {
+            let revision = pending[index].revision
+            var end = index
+            while end < pending.endIndex, pending[end].revision == revision { end += 1 }
+            let paths = pending[index ..< end].map(\.path)
+            _ = try await checkedRunWithSVNPathArguments(
+                ["update", "--revision", revision, "--depth", "empty"],
+                svnPathArguments: paths,
+                escapePegSyntax: Array(repeating: true, count: paths.count),
+                at: destinationPath,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            index = end
+        }
     }
 
     public func status(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
@@ -850,7 +922,10 @@ public actor SVNClient {
                     resolution.modified.insert(versionedIdentity)
                 }
             } catch {
-                continue
+                // BASE를 읽지 못하면 내용이 같은지 알 수 없습니다. 여기서 물러나면
+                // 디스크에 있는 파일이 "누락"으로 남아 사용자가 되돌리기로 편집을
+                // 지울 수 있으므로, 보수적으로 수정된 것으로 표시합니다.
+                resolution.modified.insert(SVNPathIdentity(rawPath: replacement.versionedPath))
             }
         }
 
@@ -971,14 +1046,45 @@ public actor SVNClient {
             propertyKind: propertyKind,
             credentials: credentials
         )
-        guard !existing.contains(pattern) else { return }
+        let alignedPattern = Self.ignorePatternMatchingWorkingCopyEntry(
+            pattern,
+            inProjectRelativeDirectory: directory,
+            at: path
+        )
+        guard !existing.contains(alignedPattern) else { return }
         try await setIgnorePatterns(
-            existing + [pattern],
+            existing + [alignedPattern],
             at: path,
             directory: directory,
             propertyKind: propertyKind,
             credentials: credentials
         )
+    }
+
+    /// svn의 무시 판정은 이름 바이트 비교입니다. `.gitignore`처럼 외부 파일에서 온
+    /// NFC 패턴은 디스크가 NFD로 들고 있는 한글 이름과 매칭되지 않아 아무것도 무시하지
+    /// 못합니다. 같은 NFC 키를 가진 실제 항목이 있으면 그 항목의 원문 바이트로 맞춥니다.
+    /// glob 패턴과 아직 존재하지 않는 이름은 맞출 대상이 없으므로 원문 그대로 둡니다.
+    static func ignorePatternMatchingWorkingCopyEntry(
+        _ pattern: String,
+        inProjectRelativeDirectory directory: String,
+        at localProjectPath: String
+    ) -> String {
+        guard pattern.unicodeScalars.contains(where: { !$0.isASCII }) else { return pattern }
+        let projectRoot = URL(fileURLWithPath: localProjectPath, isDirectory: true)
+        let directoryURL = directory.isEmpty || directory == "."
+            ? projectRoot
+            : projectRoot.appendingPathComponent(directory, isDirectory: true)
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: directoryURL.path) else {
+            return pattern
+        }
+        let patternBytes = Data(pattern.utf8)
+        let canonicalPattern = pattern.precomposedStringWithCanonicalMapping
+        let alias = names.first {
+            Data($0.utf8) != patternBytes
+                && $0.precomposedStringWithCanonicalMapping == canonicalPattern
+        }
+        return alias ?? pattern
     }
 
     public func removeIgnoreRule(
@@ -1721,15 +1827,8 @@ public actor SVNClient {
         guard !paths.isEmpty else {
             throw SVNClientArgumentError.emptyTargets(command: "commit")
         }
-        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
-            throw SVNClientArgumentError.unsupportedLogMessage
-        }
-        let messageDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: messageDirectory) }
-        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
-        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
 
         // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
         // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
@@ -1858,7 +1957,7 @@ public actor SVNClient {
                 )
             }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--file", messageFileURL.path, "--force-log"],
+                ["commit", "--file", messageFile.path, "--force-log"],
                 projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
@@ -2052,20 +2151,25 @@ public actor SVNClient {
         return normalizedCommitPaths(roots)
     }
 
+    /// SVN 경로 공간은 원문 UTF-8 바이트입니다. Swift String의 동등성은 NFC와 NFD를
+    /// 같게 보므로, 정규화만 다른 두 경로를 여기서 접으면 한쪽이 조용히 커밋 목록에서
+    /// 빠집니다. 중복 제거와 상위 경로 판정 모두 바이트 기준으로 합니다.
     static func normalizedCommitPaths(_ paths: [String]) -> [String] {
-        let selectedPaths = Set(paths)
-        if selectedPaths.contains(".") { return ["."] }
+        let selectedPaths = Set(paths.map { SVNPathIdentity(rawPath: $0) })
+        if selectedPaths.contains(SVNPathIdentity(rawPath: ".")) { return ["."] }
 
-        return selectedPaths.filter { path in
+        return selectedPaths.filter { identity in
+            let path = identity.rawPath
             var searchEnd = path.endIndex
             while let separator = path[..<searchEnd].lastIndex(of: "/") {
-                if selectedPaths.contains(String(path[..<separator])) {
+                if selectedPaths.contains(SVNPathIdentity(rawPath: String(path[..<separator]))) {
                     return false
                 }
                 searchEnd = separator
             }
             return true
         }
+        .map(\.rawPath)
         .sorted()
     }
 
@@ -2099,20 +2203,28 @@ public actor SVNClient {
         }
     }
 
-    private func withSVNLogMessageFile<Result>(
-        _ message: String,
-        operation: (String) async throws -> Result
-    ) async throws -> Result {
+    /// 로그 메시지를 임시 파일에 씁니다. NUL 검사와 atomic 쓰기가 한곳에만 있도록
+    /// 로그 메시지를 쓰는 모든 명령이 이 함수를 통과합니다. 반환한 폴더는 호출부가
+    /// `defer`로 지웁니다.
+    private static func makeSVNLogMessageFile(_ message: String) throws -> (directory: URL, path: String) {
         guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
             throw SVNClientArgumentError.unsupportedLogMessage
         }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
         let fileURL = directory.appendingPathComponent("message", isDirectory: false)
         try Data(message.utf8).write(to: fileURL, options: .atomic)
-        return try await operation(fileURL.path)
+        return (directory, fileURL.path)
+    }
+
+    private func withSVNLogMessageFile<Result>(
+        _ message: String,
+        operation: (String) async throws -> Result
+    ) async throws -> Result {
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
+        return try await operation(messageFile.path)
     }
 
     // MARK: - 공통 명령 실행
@@ -2490,40 +2602,67 @@ public actor SVNClient {
             globalArguments.append("--trust-server-cert-failures=\(values)")
         }
         var password: String?
+        var rawUsername: String?
         if let credentials, !credentials.username.isEmpty {
-            globalArguments += ["--username", credentials.username]
+            guard !credentials.username.unicodeScalars.contains(where: {
+                $0.value == 0 || $0.value == 10 || $0.value == 13
+            }) else {
+                throw SVNClientArgumentError.unsupportedUsername
+            }
+            if credentials.username.allSatisfy(\.isASCII) {
+                globalArguments += ["--username", credentials.username]
+            } else {
+                // 사용자명도 경로와 같은 이유로 원문 UTF-8 파일 운반이 필요합니다.
+                rawUsername = credentials.username
+            }
             if let storedPassword = credentials.password, !storedPassword.isEmpty {
                 globalArguments += ["--password-from-stdin", "--no-auth-cache"]
                 password = storedPassword
             }
         }
-        var svnPathArgumentDirectory: URL?
-        if let svnPathArguments {
-            precondition(!svnPathArguments.isEmpty)
-            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
+
+        // `Process.arguments`에 한글 값을 직접 넣으면 Foundation이 NFD로 바꿀 수 있습니다.
+        // 원문 UTF-8을 파일에 쓰고 POSIX shell이 읽어 argv로 넘기면 그 변환을 피할 수 있습니다.
+        if let svnPathArguments { precondition(!svnPathArguments.isEmpty) }
+        let rawPathArguments = svnPathArguments ?? svnPathArgument.map { [$0] } ?? []
+        var rawTransportDirectory: URL?
+        defer {
+            if let rawTransportDirectory {
+                try? FileManager.default.removeItem(at: rawTransportDirectory)
+            }
+        }
+
+        if rawUsername == nil, rawPathArguments.isEmpty {
+            process.executableURL = svnExecutable
+            process.arguments = globalArguments + arguments
+        } else {
+            let transportDirectory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("svn-mac-raw-arguments-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
-            svnPathArgumentDirectory = svnPathTransportDirectory
-            let argumentURLs = try svnPathArguments.enumerated().map { index, argument in
-                let argumentURL = svnPathTransportDirectory
-                    .appendingPathComponent("argument-\(index + 1)")
-                try (Data(argument.utf8) + Data([0x0A])).write(to: argumentURL)
-                return argumentURL
+            try FileManager.default.createDirectory(at: transportDirectory, withIntermediateDirectories: true)
+            rawTransportDirectory = transportDirectory
+
+            let rawValues = (rawUsername.map { [(name: "username", value: $0)] } ?? [])
+                + rawPathArguments.enumerated().map { (name: "argument_\($0.offset + 1)", value: $0.element) }
+            let valueURLs = try rawValues.enumerated().map { index, rawValue in
+                let valueURL = transportDirectory.appendingPathComponent("value-\(index + 1)")
+                try (Data(rawValue.value.utf8) + Data([0x0A])).write(to: valueURL)
+                return valueURL
             }
-            let fileAssignments = argumentURLs.indices.map {
-                "argument_file_\($0 + 1)=$\($0 + 1)"
+            let fileAssignments = rawValues.indices.map { "\(rawValues[$0].name)_file=$\($0 + 1)" }
+            let svnExecutableIndex = rawValues.count + 1
+            let valueReads = rawValues.indices.map {
+                "IFS= read -r \(rawValues[$0].name) < \"$\(rawValues[$0].name)_file\""
             }
-            let svnExecutableIndex = argumentURLs.count + 1
-            let valueReads = argumentURLs.indices.map {
-                "IFS= read -r argument_\($0 + 1) < \"$argument_file_\($0 + 1)\""
-            }
-            let argumentReferences = argumentURLs.indices.map { "\"$argument_\($0 + 1)\"" }
+            let usernameOption = rawUsername == nil ? "" : "--username \"$username\" "
+            let pathReferences = rawPathArguments.indices
+                .map { "\"$argument_\($0 + 1)\"" }
                 .joined(separator: " ")
+            let pathSuffix = rawPathArguments.isEmpty ? "" : " -- \(pathReferences)"
             let shellCommand = (
                 fileAssignments
                 + ["svn_executable=$\(svnExecutableIndex)", "shift \(svnExecutableIndex)"]
                 + valueReads
-                + ["exec \"$svn_executable\" \"$@\" -- \(argumentReferences)"]
+                + ["exec \"$svn_executable\" \(usernameOption)\"$@\"\(pathSuffix)"]
             ).joined(separator: "; ")
 
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -2531,34 +2670,7 @@ public actor SVNClient {
                 "-c",
                 shellCommand,
                 "svn-mac-raw-arguments",
-            ] + argumentURLs.map(\.path) + [svnExecutable.path] + globalArguments + arguments
-        } else if let svnPathArgument {
-            // `Process.arguments`에 SVN 경로를 직접 넣으면 Foundation이 한글을
-            // NFD로 바꿀 수 있습니다. 원문 UTF-8을 파일에 쓰고 POSIX shell이
-            // 읽어 argv로 넘기면 Swift 문자열의 자동 파일 경로 변환을 피할 수 있습니다.
-            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("svn-mac-raw-argument-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
-            svnPathArgumentDirectory = svnPathTransportDirectory
-            let svnPathArgumentURL = svnPathTransportDirectory.appendingPathComponent("argument", isDirectory: false)
-            try (Data(svnPathArgument.utf8) + Data([0x0A])).write(to: svnPathArgumentURL)
-
-            process.executableURL = URL(fileURLWithPath: "/bin/sh")
-            process.arguments = [
-                "-c",
-                "svn_path_file=$1; svn_executable=$2; shift 2; IFS= read -r svn_path < \"$svn_path_file\"; exec \"$svn_executable\" \"$@\" -- \"$svn_path\"",
-                "svn-mac-raw-argument",
-                svnPathArgumentURL.path,
-                svnExecutable.path,
-            ] + globalArguments + arguments
-        } else {
-            process.executableURL = svnExecutable
-            process.arguments = globalArguments + arguments
-        }
-        defer {
-            if let svnPathArgumentDirectory {
-                try? FileManager.default.removeItem(at: svnPathArgumentDirectory)
-            }
+            ] + valueURLs.map(\.path) + [svnExecutable.path] + globalArguments + arguments
         }
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectoryPath)
 

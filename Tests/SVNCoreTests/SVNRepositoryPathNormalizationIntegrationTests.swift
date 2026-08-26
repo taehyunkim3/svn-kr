@@ -248,6 +248,97 @@ import Testing
     }
 }
 
+/// 속성만 바뀐 로컬 변경도 정규화가 진행되면 이동한 서버 경로와 어긋납니다.
+@Test func realSVNRejectsRepositoryNormalizationWhenTargetTreeHasPropertyOnlyChange() async throws {
+    let fixture = try RepositoryNormalizationFixture()
+    defer { fixture.remove() }
+    let directory = "속성폴더".decomposedStringWithCanonicalMapping
+    let child = "tracked.txt"
+    let childPath = fixture.workingCopy.path + "/" + directory + "/" + child
+
+    try createRepositoryNormalizationDirectory(
+        atPath: fixture.workingCopy.path + "/" + directory
+    )
+    try writeRepositoryNormalizationFile(Data("base".utf8), atPath: childPath)
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["add", "--force", fixture.workingCopy.path]
+    )
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["commit", fixture.workingCopy.path, "-m", "NFD seed"]
+    )
+    // 내용은 그대로 두고 속성만 바꾼다.
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["propset", "svn:needs-lock", "*", childPath]
+    )
+
+    let targets = try await fixture.client.repositoryPathsNeedingNormalization(
+        at: fixture.workingCopy.path
+    )
+    do {
+        _ = try await fixture.client.normalizeRepositoryPaths(
+            targets,
+            at: fixture.workingCopy.path,
+            message: "must not commit"
+        )
+        Issue.record("Expected local-change precondition failure")
+    } catch let SVNRepositoryPathNormalizationError.blockedByLocalChanges(paths) {
+        #expect(paths.contains { Data($0.utf8) == Data((directory + "/" + child).utf8) })
+    }
+
+    let remaining = try fixture.repositoryPaths()
+    #expect(remaining.contains { Data($0.utf8) == Data(directory.utf8) })
+}
+
+/// 대상 폴더 아래 미버전 문서를 두고 정규화하면 그 문서가 옛 이름 폴더에 남아
+/// 뒤이은 update에서 트리 충돌이 됩니다.
+@Test func realSVNRejectsRepositoryNormalizationWhenTargetTreeHasUnversionedFile() async throws {
+    let fixture = try RepositoryNormalizationFixture()
+    defer { fixture.remove() }
+    let directory = "미버전폴더".decomposedStringWithCanonicalMapping
+    let child = "tracked.txt"
+    let unversioned = "새 문서.xlsx"
+
+    try createRepositoryNormalizationDirectory(
+        atPath: fixture.workingCopy.path + "/" + directory
+    )
+    try writeRepositoryNormalizationFile(
+        Data("base".utf8),
+        atPath: fixture.workingCopy.path + "/" + directory + "/" + child
+    )
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["add", "--force", fixture.workingCopy.path]
+    )
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        ["commit", fixture.workingCopy.path, "-m", "NFD seed"]
+    )
+    try writeRepositoryNormalizationFile(
+        Data("draft".utf8),
+        atPath: fixture.workingCopy.path + "/" + directory + "/" + unversioned
+    )
+
+    let targets = try await fixture.client.repositoryPathsNeedingNormalization(
+        at: fixture.workingCopy.path
+    )
+    do {
+        _ = try await fixture.client.normalizeRepositoryPaths(
+            targets,
+            at: fixture.workingCopy.path,
+            message: "must not commit"
+        )
+        Issue.record("Expected local-change precondition failure")
+    } catch let SVNRepositoryPathNormalizationError.blockedByLocalChanges(paths) {
+        #expect(paths.contains { Data($0.utf8) == Data((directory + "/" + unversioned).utf8) })
+    }
+
+    let remaining = try fixture.repositoryPaths()
+    #expect(remaining.contains { Data($0.utf8) == Data(directory.utf8) })
+}
+
 private struct RepositoryNormalizationFixture {
     let root: URL
     let repository: URL

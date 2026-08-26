@@ -197,3 +197,19 @@ private final class CountingDirectoryFileManager: FileManager, @unchecked Sendab
         readCounts[path, default: 0]
     }
 }
+
+@Test func commitPathNormalizationKeepsBothUnicodeFormsAndFoldsByteIdenticalDescendants() {
+    let precomposed = "기능/보고서.txt".precomposedStringWithCanonicalMapping
+    let decomposed = "기능/보고서.txt".decomposedStringWithCanonicalMapping
+
+    // 정규화만 다른 두 원문 경로는 SVN 경로 공간에서 서로 다른 경로입니다.
+    #expect(SVNClient.normalizedCommitPaths([precomposed, decomposed]).count == 2)
+
+    // 바이트가 같은 상위 경로가 선택되면 하위 경로는 접힙니다.
+    let precomposedParent = "기능".precomposedStringWithCanonicalMapping
+    #expect(SVNClient.normalizedCommitPaths([precomposedParent, precomposed]) == [precomposedParent])
+
+    // 상위 경로의 정규화가 다르면 접지 않습니다.
+    let decomposedParent = "기능".decomposedStringWithCanonicalMapping
+    #expect(SVNClient.normalizedCommitPaths([decomposedParent, precomposed]).count == 2)
+}

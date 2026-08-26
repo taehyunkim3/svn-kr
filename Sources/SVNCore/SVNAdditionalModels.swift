@@ -4,6 +4,8 @@ public enum SVNClientArgumentError: Error, LocalizedError, Sendable, Equatable {
     case emptyTargets(command: String)
     case unsupportedLogMessage
     case unsupportedPropertyName(String)
+    case unsupportedRevision(String)
+    case unsupportedUsername
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +15,10 @@ public enum SVNClientArgumentError: Error, LocalizedError, Sendable, Equatable {
             "SVN log messages cannot contain NUL characters."
         case let .unsupportedPropertyName(name):
             "Unsupported SVN property name: \(name)"
+        case let .unsupportedRevision(revision):
+            "Unsupported SVN revision: \(revision)"
+        case .unsupportedUsername:
+            "SVN usernames cannot contain NUL or newline characters."
         }
     }
 }
