@@ -60,12 +60,39 @@ enum TemporaryFilePolicy {
             && isTemporaryFile(entry)
     }
 
+    /// SVN이 충돌을 남길 때 만든 산출물입니다.
+    /// `svn resolve`가 충돌을 해제하면 SVN이 이 파일들을 지웁니다.
+    /// 저장소에 올릴 대상이 아니므로 변경 목록에서 항상 뺍니다.
+    /// `SVNXMLParser.statuses`가 이미 `.mine`과 `.rN`에 같은 규칙을 씁니다.
+    /// 스냅샷 경로는 그 필터를 지나지 않으므로 여기서 다시 겁니다.
+    static func isConflictArtifact(
+        _ entry: SVNStatusEntry,
+        conflictedPaths: Set<String>
+    ) -> Bool {
+        guard entry.item == .unversioned,
+              let basePath = conflictArtifactBasePath(entry.path) else { return false }
+        return conflictedPaths.contains(basePath.precomposedStringWithCanonicalMapping)
+    }
+
+    /// 내용 충돌과 속성 충돌 모두 산출물을 남깁니다.
+    /// 속성만 충돌한 경우 항목 상태는 `conflicted`가 아니므로 속성 상태도 함께 봅니다.
+    static func conflictedPaths(in entries: [SVNStatusEntry]) -> Set<String> {
+        Set(
+            entries
+                .filter { $0.item == .conflicted || $0.propertyState == .conflicted }
+                .map { $0.path.precomposedStringWithCanonicalMapping }
+        )
+    }
+
     static func visibleEntries(
         _ entries: [SVNStatusEntry],
         hideTemporaryFiles: Bool
     ) -> [SVNStatusEntry] {
-        guard hideTemporaryFiles else { return entries }
-        return entries.filter { !isHideableTemporaryFile($0) }
+        let conflicted = conflictedPaths(in: entries)
+        return entries.filter { entry in
+            if isConflictArtifact(entry, conflictedPaths: conflicted) { return false }
+            return !hideTemporaryFiles || !isHideableTemporaryFile(entry)
+        }
     }
 
     static func commitEligibleEntries(
@@ -77,9 +104,11 @@ enum TemporaryFilePolicy {
     }
 
     static func automaticallySelectedEntries(_ entries: [SVNStatusEntry]) -> [SVNStatusEntry] {
-        entries.filter {
+        let conflicted = conflictedPaths(in: entries)
+        return entries.filter {
             ($0.isSelectableForCommit || $0.canScheduleRepositoryDeletion)
                 && !isHideableTemporaryFile($0)
+                && !isConflictArtifact($0, conflictedPaths: conflicted)
         }
     }
 
@@ -109,6 +138,20 @@ enum TemporaryFilePolicy {
                 )
             )
         }
+    }
+
+    /// `.mine` / `.rN` / `.prej` / `.working` 은 SVN 이 붙이는 충돌 산출물 접미사입니다.
+    private static let conflictArtifactSuffixes = [".mine", ".prej", ".working"]
+
+    private static func conflictArtifactBasePath(_ path: String) -> String? {
+        if let suffix = conflictArtifactSuffixes.first(where: path.hasSuffix) {
+            return String(path.dropLast(suffix.count))
+        }
+        guard let revisionSuffix = path.range(
+            of: #"\.r[0-9]+$"#,
+            options: .regularExpression
+        ) else { return nil }
+        return String(path[..<revisionSuffix.lowerBound])
     }
 
     private static let officeExtensions: Set<String> = [
