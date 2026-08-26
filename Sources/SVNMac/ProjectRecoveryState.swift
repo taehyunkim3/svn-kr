@@ -22,6 +22,8 @@ struct ProjectRecoveryState {
     var bulkUnlockResult: BulkUnlockResult?
     var fileHistoryRequest: FileHistoryRequest?
     var historyRevisionActionContext: HistoryRevisionActionContext?
+    var routesNextFileHistoryRequestToCommitHistory = false
+    var commitHistoryRevisionOperationRequest: FileHistoryRequest?
     var historyRevisionRestoreRequest: HistoryRevisionRestoreRequest?
     var historyRevisionOperation: HistoryRevisionOperation?
     var repositoryBrowseSelectedURL: String?

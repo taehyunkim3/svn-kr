@@ -404,8 +404,54 @@ final class ProjectStore {
         set { historyState.fileHistoryPath = newValue }
     }
     var fileHistoryRequest: FileHistoryRequest? {
-        get { recoveryState.fileHistoryRequest }
-        set { recoveryState.fileHistoryRequest = newValue }
+        get {
+            if let request = recoveryState.commitHistoryRevisionOperationRequest {
+                return request
+            }
+            if let restoreRequest = recoveryState.historyRevisionRestoreRequest,
+               let context = recoveryState.historyRevisionActionContext,
+               restoreRequest.fileHistoryRequestID == context.fileHistoryRequest.id {
+                return context.fileHistoryRequest
+            }
+            return recoveryState.fileHistoryRequest
+        }
+        set {
+            if recoveryState.routesNextFileHistoryRequestToCommitHistory {
+                recoveryState.routesNextFileHistoryRequestToCommitHistory = false
+            } else {
+                recoveryState.fileHistoryRequest = newValue
+            }
+        }
+    }
+
+    func routeNextFileHistoryRequestToCommitHistory() {
+        recoveryState.routesNextFileHistoryRequestToCommitHistory = true
+    }
+
+    func requestCommitHistoryRevisionRestore(
+        fileHistoryRequest: FileHistoryRequest,
+        revision: String
+    ) {
+        guard recoveryState.historyRevisionActionContext?.fileHistoryRequest == fileHistoryRequest
+        else { return }
+        recoveryState.commitHistoryRevisionOperationRequest = fileHistoryRequest
+        defer { recoveryState.commitHistoryRevisionOperationRequest = nil }
+        requestHistoryRevisionRestore(revision: revision)
+    }
+
+    func saveCommitHistoryRevision(
+        _ request: HistoryRevisionSaveRequest,
+        fileHistoryRequest: FileHistoryRequest
+    ) async -> Bool {
+        guard recoveryState.historyRevisionActionContext?.fileHistoryRequest == fileHistoryRequest
+        else { return false }
+        recoveryState.commitHistoryRevisionOperationRequest = fileHistoryRequest
+        defer {
+            if recoveryState.commitHistoryRevisionOperationRequest?.id == fileHistoryRequest.id {
+                recoveryState.commitHistoryRevisionOperationRequest = nil
+            }
+        }
+        return await saveHistoryRevision(request)
     }
     var remoteChanges: [SVNStatusEntry] {
         get { updateState.remoteChanges }

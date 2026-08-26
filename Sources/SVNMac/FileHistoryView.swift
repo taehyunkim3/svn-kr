@@ -57,6 +57,17 @@ struct HistoryRevisionActions: View {
 
     let fileHistoryRequest: FileHistoryRequest
     let revision: String
+    let source: HistoryRevisionActionSource
+
+    init(
+        fileHistoryRequest: FileHistoryRequest,
+        revision: String,
+        source: HistoryRevisionActionSource = .fileHistory
+    ) {
+        self.fileHistoryRequest = fileHistoryRequest
+        self.revision = revision
+        self.source = source
+    }
 
     var body: some View {
         HStack {
@@ -72,8 +83,16 @@ struct HistoryRevisionActions: View {
             .buttonStyle(.borderedProminent)
 
             Button(role: .destructive) {
-                guard store.fileHistoryRequest?.id == fileHistoryRequest.id else { return }
-                store.requestHistoryRevisionRestore(revision: revision)
+                switch source {
+                case .fileHistory:
+                    guard store.fileHistoryRequest?.id == fileHistoryRequest.id else { return }
+                    store.requestHistoryRevisionRestore(revision: revision)
+                case .commitHistory:
+                    store.requestCommitHistoryRevisionRestore(
+                        fileHistoryRequest: fileHistoryRequest,
+                        revision: revision
+                    )
+                }
             } label: {
                 ActionProgressLabel(
                     title: appLanguage.localized(.ui.revision.restoreWorkingFileRevision),
@@ -90,7 +109,10 @@ struct HistoryRevisionActions: View {
     }
 
     private func saveRevision() {
-        guard store.fileHistoryRequest?.id == fileHistoryRequest.id else { return }
+        if source == .fileHistory,
+           store.fileHistoryRequest?.id != fileHistoryRequest.id {
+            return
+        }
         let relativePath = fileHistoryRequest.relativePath
         let panel = NSSavePanel()
         panel.title = appLanguage.localized(.ui.revision.saveRevision)
@@ -105,7 +127,15 @@ struct HistoryRevisionActions: View {
             destinationURL: destinationURL
         )
         Task {
-            await store.saveHistoryRevision(request)
+            switch source {
+            case .fileHistory:
+                await store.saveHistoryRevision(request)
+            case .commitHistory:
+                await store.saveCommitHistoryRevision(
+                    request,
+                    fileHistoryRequest: fileHistoryRequest
+                )
+            }
         }
     }
 
@@ -115,6 +145,11 @@ struct HistoryRevisionActions: View {
         guard !original.pathExtension.isEmpty else { return "\(stem)_r\(revision)" }
         return "\(stem)_r\(revision).\(original.pathExtension)"
     }
+}
+
+enum HistoryRevisionActionSource {
+    case fileHistory
+    case commitHistory
 }
 
 private struct HistoryRevisionRestoreConfirmationModifier: ViewModifier {

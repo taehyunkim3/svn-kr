@@ -3258,6 +3258,41 @@ import Testing
 }
 
 @MainActor
+@Test func commitHistoryPreparationPreservesTheOpenFileHistoryRequest() throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: project.id,
+        relativePath: "docs/현재-기록.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
+    store.workingCopyRepositoryPath = "/project/trunk"
+    store.routeNextFileHistoryRequestToCommitHistory()
+
+    store.prepareHistoryRevisionActions(
+        revision: "42",
+        changedPath: SVNChangedPath(
+            path: "/project/trunk/docs/과거-기록.xlsx",
+            action: .modified,
+            kind: .file
+        )
+    )
+
+    let context = try #require(store.recoveryState.historyRevisionActionContext)
+    #expect(store.fileHistoryRequest == fileHistoryRequest)
+    #expect(context.fileHistoryRequest != fileHistoryRequest)
+
+    store.requestCommitHistoryRevisionRestore(
+        fileHistoryRequest: context.fileHistoryRequest,
+        revision: context.contentRevision
+    )
+    #expect(
+        store.recoveryState.historyRevisionRestoreRequest?.fileHistoryRequestID
+            == context.fileHistoryRequest.id
+    )
+}
+
+@MainActor
 @Test func commitHistoryDoesNotOfferRevisionActionsOutsideWorkingCopyRoot() {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let store = makeStore(projects: [project])
