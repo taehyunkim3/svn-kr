@@ -3021,6 +3021,62 @@ import Testing
 }
 
 @MainActor
+@Test func olderCanceledCheckoutValidationCannotOverwriteNewerRecoveryRequest() async throws {
+    let firstDestination = URL(fileURLWithPath: "/tmp/canceled-checkout-first", isDirectory: true)
+    let secondDestination = URL(fileURLWithPath: "/tmp/canceled-checkout-second", isDirectory: true)
+    let firstValidationGate = AsyncTestGate()
+    let secondValidationGate = AsyncTestGate()
+    let client = StubSVNClient(
+        checkoutRunsUntilCancelled: true,
+        validateWorkingCopyGatesByPath: [
+            firstDestination.path: firstValidationGate,
+            secondDestination.path: secondValidationGate,
+        ]
+    )
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let firstCheckout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/first",
+            destinationURL: firstDestination,
+            username: "",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await client.waitUntilCheckoutStarts()
+    store.cancelCheckout()
+    await firstValidationGate.waitUntilEntered()
+
+    let secondCheckout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/second",
+            destinationURL: secondDestination,
+            username: "",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await client.waitUntilCheckoutStarts(2)
+    store.cancelCheckout()
+    await secondValidationGate.waitUntilEntered()
+    await secondValidationGate.release()
+    _ = await secondCheckout.value
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == secondDestination.path)
+
+    await firstValidationGate.release()
+    _ = await firstCheckout.value
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == secondDestination.path)
+}
+
+@MainActor
 @Test func relocatingProjectKeepsIdentityAndCredentialsWhileMovingTheFolder() async {
     let project = SVNProject(name: "이전 폴더", path: "/tmp/old-location", username: "tester")
     let client = StubSVNClient()
@@ -4242,8 +4298,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let validateWorkingCopyGatesByPath: [String: AsyncTestGate]
     let validateWorkingCopyErrorsByPath: [String: Error]
     let verifyCredentialsError: Error?
-    private var checkoutStarted = false
-    private var checkoutStartWaiters: [CheckedContinuation<Void, Never>] = []
+    private var checkoutStartCount = 0
+    private var checkoutStartWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
     private var validatedPaths: [String] = []
     private var verifiedCredentials: [SVNCredentials?] = []
     private var verifiedPaths: [String] = []
@@ -4462,10 +4518,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
         for output in checkoutProgress { progress?(output) }
         if checkoutRunsUntilCancelled {
-            checkoutStarted = true
-            let pending = checkoutStartWaiters
-            checkoutStartWaiters.removeAll()
-            pending.forEach { $0.resume() }
+            checkoutStartCount += 1
+            let pending = checkoutStartWaiters.filter { $0.count <= checkoutStartCount }
+            checkoutStartWaiters.removeAll { $0.count <= checkoutStartCount }
+            pending.forEach { $0.continuation.resume() }
             // 실제 SVNClient는 취소 시 svn 프로세스를 종료하고 CancellationError를
             // 던집니다. sleep도 같은 오류를 던지므로 취소 경로를 그대로 재현합니다.
             try await Task.sleep(for: .seconds(60))
@@ -4495,10 +4551,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
     func recordedVerifiedPaths() -> [String] { verifiedPaths }
     func recordedValidatedPaths() -> [String] { validatedPaths }
-    func waitUntilCheckoutStarts() async {
-        guard !checkoutStarted else { return }
+    func waitUntilCheckoutStarts(_ count: Int = 1) async {
+        guard checkoutStartCount < count else { return }
         await withCheckedContinuation { continuation in
-            checkoutStartWaiters.append(continuation)
+            checkoutStartWaiters.append((count, continuation))
         }
     }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {

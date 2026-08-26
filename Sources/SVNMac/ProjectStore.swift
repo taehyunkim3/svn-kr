@@ -848,6 +848,8 @@ final class ProjectStore {
     ) async -> Bool {
         let checkoutLogSessionID = UUID()
         self.checkoutLogSessionID = checkoutLogSessionID
+        recoveryState.canceledCheckoutRecoverySessionID = checkoutLogSessionID
+        recoveryState.latestCanceledCheckoutRecoveryRequest = canceledCheckoutRecoveryRequest
         checkoutLog = ""
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -904,7 +906,8 @@ final class ProjectStore {
             // 사용자가 직접 멈춘 작업은 실패가 아니므로 오류 대화상자를 띄우지 않습니다.
             if (error is CancellationError || Task.isCancelled), let bookmarkData {
                 errorMessage = nil
-                if await prepareCanceledCheckoutRecovery(
+                let preparedRecovery = await prepareCurrentCanceledCheckoutRecovery(
+                    sessionID: checkoutLogSessionID,
                     id: id,
                     destination: destination,
                     username: username,
@@ -913,7 +916,12 @@ final class ProjectStore {
                     canEmptySafely: destinationWasEmpty,
                     allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
                     credentials: checkoutCredentials
-                ) {
+                )
+                guard let preparedRecovery else {
+                    projectAccessManager.endAccessing(url: destination)
+                    return false
+                }
+                if preparedRecovery {
                     notice = nil
                 } else {
                     projectAccessManager.endAccessing(url: destination)
@@ -924,19 +932,26 @@ final class ProjectStore {
                 }
                 return false
             }
-            if SVNClient.needsCleanup(error), let bookmarkData,
-               await prepareCanceledCheckoutRecovery(
-                   id: id,
-                   destination: destination,
-                   username: username,
-                   password: password,
-                   bookmarkData: bookmarkData,
-                   canEmptySafely: destinationWasEmpty,
-                   allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
-                   credentials: checkoutCredentials
-               ) {
-                errorMessage = nil
-                return false
+            if SVNClient.needsCleanup(error), let bookmarkData {
+                let preparedRecovery = await prepareCurrentCanceledCheckoutRecovery(
+                    sessionID: checkoutLogSessionID,
+                    id: id,
+                    destination: destination,
+                    username: username,
+                    password: password,
+                    bookmarkData: bookmarkData,
+                    canEmptySafely: destinationWasEmpty,
+                    allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    credentials: checkoutCredentials
+                )
+                guard let preparedRecovery else {
+                    projectAccessManager.endAccessing(url: destination)
+                    return false
+                }
+                if preparedRecovery {
+                    errorMessage = nil
+                    return false
+                }
             }
             projectAccessManager.endAccessing(url: destination)
             errorMessage = localizedError(error)
@@ -972,6 +987,39 @@ final class ProjectStore {
         // 마지막에 다시 적용해 사용자가 다음 실행에 대비할 수 있게 합니다.
         if let keychainWarning { notice = keychainWarning }
         return true
+    }
+
+    private func prepareCurrentCanceledCheckoutRecovery(
+        sessionID: UUID,
+        id: SVNProject.ID,
+        destination: URL,
+        username: String,
+        password: String,
+        bookmarkData: Data,
+        canEmptySafely: Bool,
+        allowsUntrustedServerCertificate: Bool,
+        credentials: SVNCredentials?
+    ) async -> Bool? {
+        let prepared = await prepareCanceledCheckoutRecovery(
+            id: id,
+            destination: destination,
+            username: username,
+            password: password,
+            bookmarkData: bookmarkData,
+            canEmptySafely: canEmptySafely,
+            allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+            credentials: credentials
+        )
+        guard recoveryState.canceledCheckoutRecoverySessionID == sessionID else {
+            if canceledCheckoutRecoveryRequest?.id == id {
+                canceledCheckoutRecoveryRequest = recoveryState.latestCanceledCheckoutRecoveryRequest
+            }
+            return nil
+        }
+        if prepared {
+            recoveryState.latestCanceledCheckoutRecoveryRequest = canceledCheckoutRecoveryRequest
+        }
+        return prepared
     }
 
     func addProject(_ url: URL) {
