@@ -2060,14 +2060,20 @@ public actor SVNClient {
             throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
         }
         var additions = Self.normalizedCommitPaths(resolvedPaths.filter {
-            statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
+            Self.isUnversionedPath($0, statuses: currentStatuses)
         })
 
         if !additions.isEmpty {
+            let protectedPathsByCanonicalKey = snapshot.versionedPathsByCanonicalKey.merging(
+                Dictionary(grouping: snapshot.scheduledAdditionPaths) {
+                    SVNPathIdentity(rawPath: $0).canonicalKey
+                },
+                uniquingKeysWith: { versioned, scheduled in versioned + scheduled }
+            )
             let pathNormalization = SVNPathNormalization.normalizeNewPaths(
                 rootPath: path,
                 relativePaths: additions,
-                versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+                versionedPathsByCanonicalKey: protectedPathsByCanonicalKey
             )
             // HFS+처럼 rename 뒤에도 NFD로 되돌리는 볼륨에서는 원문 경로로 add를 계속합니다.
             // NFC 문자열만 넘기면 E155010(추가 예약 경로 누락)이 발생하므로 실패를 삼켜
@@ -2116,12 +2122,25 @@ public actor SVNClient {
                 guard unresolvedMissingPaths.isEmpty else {
                     throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
                 }
-                additions = Self.normalizedCommitPaths(resolvedPaths.filter {
-                    statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
-                })
+                additions = Self.normalizedCommitPaths(normalizedAdditions)
             }
         }
 
+        let selectedDirectoryPaths = resolvedPaths.filter { relativePath in
+            Self.nodeKind(
+                at: URL(fileURLWithPath: path, isDirectory: true)
+                    .appendingPathComponent(relativePath, isDirectory: true)
+            ) == .directory
+        }
+        let additionCommitRoots = Self.additionRollbackRoots(
+            additions,
+            versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+        )
+        let requiredAdditionParentPaths = additionCommitRoots.filter { root in
+            !selectedDirectoryPaths.contains { selectedDirectory in
+                Self.isRawPath(root, atOrBelow: selectedDirectory)
+            }
+        }
         var scheduledByThisCommit: [String] = []
         let commitOutput: String
         do {
@@ -2139,9 +2158,30 @@ public actor SVNClient {
                     progress: progress
                 )
             }
+            var commitArguments = ["commit", "--file", messageFile.path, "--force-log"]
+            var commitPaths = normalizedPaths
+            if !requiredAdditionParentPaths.isEmpty {
+                commitArguments.insert(contentsOf: ["--depth", "empty"], at: 1)
+                var explicitPaths = resolvedPaths + requiredAdditionParentPaths
+                if !selectedDirectoryPaths.isEmpty {
+                    let afterAdd = try await workingCopySnapshot(at: path, credentials: credentials)
+                    explicitPaths += afterAdd.statuses.compactMap { status in
+                        guard status.item != .unversioned,
+                              status.item != .ignored,
+                              status.item != .missing,
+                              selectedDirectoryPaths.contains(where: {
+                                  Self.isRawPath(status.path, atOrBelow: $0)
+                              }) else {
+                            return nil
+                        }
+                        return status.path
+                    }
+                }
+                commitPaths = Self.distinctCommitPaths(explicitPaths)
+            }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--file", messageFile.path, "--force-log"],
-                projectRelativePaths: normalizedPaths,
+                commitArguments,
+                projectRelativePaths: commitPaths,
                 at: path,
                 credentials: credentials,
                 allowUntrustedServerCertificate: allowUntrustedServerCertificate,
@@ -2333,6 +2373,24 @@ public actor SVNClient {
             return path
         }
         return normalizedCommitPaths(roots)
+    }
+
+    private static func isUnversionedPath(_ path: String, statuses: [SVNStatusEntry]) -> Bool {
+        statuses.contains {
+            $0.item == .unversioned && isRawPath(path, atOrBelow: $0.path)
+        }
+    }
+
+    private static func isRawPath(_ path: String, atOrBelow root: String) -> Bool {
+        let pathBytes = Data(path.utf8)
+        let rootBytes = Data(root.utf8)
+        return pathBytes == rootBytes || pathBytes.starts(with: rootBytes + Data([0x2F]))
+    }
+
+    private static func distinctCommitPaths(_ paths: [String]) -> [String] {
+        var seen: Set<SVNPathIdentity> = []
+        return paths.filter { seen.insert(SVNPathIdentity(rawPath: $0)).inserted }
+            .sorted { Data($0.utf8).lexicographicallyPrecedes(Data($1.utf8)) }
     }
 
     /// SVN 경로 공간은 원문 UTF-8 바이트입니다. Swift String의 동등성은 NFC와 NFD를
