@@ -21,13 +21,7 @@ struct ChangesView: View {
                 CommitControlsView()
             }
         } detail: {
-            ScrollView([.horizontal, .vertical]) {
-                Text(store.diffContent.localizedText(appLanguage))
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding()
-            }
+            DiffTextView(store.diffContent.localizedText(appLanguage))
             // 배경보다 먼저 전체 크기를 확정해야 빈 diff와 긴 diff가 같은 패널 크기를 사용합니다.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(nsColor: .textBackgroundColor))
