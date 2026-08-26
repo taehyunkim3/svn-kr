@@ -5,6 +5,8 @@ struct FileHistoryView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppSettings.historyTimeZoneKey)
+    private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
 
     var body: some View {
         @Bindable var store = store
@@ -26,7 +28,15 @@ struct FileHistoryView: View {
                         Text("r\(entry.revision)").font(.headline.monospacedDigit())
                         Label(entry.author, systemImage: "person").font(.caption)
                         Spacer()
-                        if let date = entry.date { Text(date.formatted(date: .numeric, time: .standard)).font(.caption).foregroundStyle(.secondary) }
+                        if let date = entry.date {
+                            Text(FileHistoryDatePresentation.string(
+                                from: date,
+                                language: appLanguage,
+                                timeZoneIdentifier: historyTimeZoneIdentifier
+                            ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
                     }
                     SVNLogMessageView(entry: entry)
                     if let fileHistoryRequest = store.fileHistoryRequest {
@@ -48,6 +58,26 @@ struct FileHistoryView: View {
         }
         .appSheetFrame(minimumSize: AppLayout.fileHistorySheetMinimumSize)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
+    }
+}
+
+enum FileHistoryDatePresentation {
+    static func string(
+        from date: Date,
+        language: AppLanguage,
+        timeZoneIdentifier: String
+    ) -> String {
+        let timeZone = timeZoneIdentifier == AppSettings.systemHistoryTimeZone
+            ? TimeZone.current
+            : TimeZone(identifier: timeZoneIdentifier)
+                ?? TimeZone(identifier: AppSettings.defaultHistoryTimeZone)
+                ?? .current
+        return HistoryDateFormatting.shared.string(
+            from: date,
+            language: language,
+            timeZone: timeZone,
+            usesKSTAbbreviation: timeZoneIdentifier == "Asia/Seoul"
+        )
     }
 }
 
