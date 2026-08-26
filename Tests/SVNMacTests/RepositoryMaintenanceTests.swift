@@ -129,18 +129,18 @@ import Testing
     #expect(changes.contains("Text(repositoryURL)"))
     #expect(changes.contains("captureRepositoryConnectionError"))
     #expect(!changes.contains("requestRepositoryRelocation"))
-    #expect(!changes.contains(".ui.change.repositoryLocation"))
+    #expect(!changes.contains(".ui.repository.changeRepositoryLocation"))
 
     #expect(!addView.contains("requestRepositoryRelocation"))
-    #expect(!addView.contains(".ui.change.repositoryLocation"))
-    #expect(!addView.contains(".ui.current.repositoryUrl"))
+    #expect(!addView.contains(".ui.repository.changeRepositoryLocation"))
+    #expect(!addView.contains(".ui.repository.currentRepositoryUrl"))
 
     #expect(credentials.contains("requestRepositoryRelocation"))
-    #expect(credentials.contains(".ui.change.repositoryLocation"))
-    #expect(credentials.contains(".ui.current.repositoryUrl"))
+    #expect(credentials.contains(".ui.repository.changeRepositoryLocation"))
+    #expect(credentials.contains(".ui.repository.currentRepositoryUrl"))
     #expect(credentials.contains("repositoryRelocationRequest"))
 
-    let urlLabel = try #require(credentials.range(of: ".ui.current.repositoryUrl"))
+    let urlLabel = try #require(credentials.range(of: ".ui.repository.currentRepositoryUrl"))
     let credentialFields = try #require(credentials.range(of: "CredentialFieldsGrid("))
     #expect(urlLabel.lowerBound < credentialFields.lowerBound)
     #expect(

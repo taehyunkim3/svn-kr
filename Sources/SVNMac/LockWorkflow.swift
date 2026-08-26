@@ -74,7 +74,7 @@ enum ExplicitLockExecutionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .forceUnsupported:
-            AppLanguage.current.localized(.ui.force.lockClientUnavailable)
+            AppLanguage.current.localized(.ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking)
         }
     }
 }

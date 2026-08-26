@@ -271,7 +271,7 @@ import Testing
     #expect(!didSave)
     #expect(
         store.errorMessage
-            == AppLanguage.current.localized(.ui.revision.historyClientUnavailable)
+            == AppLanguage.current.localized(.ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions)
     )
     #expect(!FileManager.default.fileExists(atPath: destination.path))
 }

@@ -9,2225 +9,1463 @@ struct LocalizationKey: Hashable, Sendable {
     static let history = LocalizationHistoryKeys()
     static let recovery = LocalizationRecoveryKeys()
     static let repository = LocalizationRepositoryKeys()
-    static let ui = LocalizationUiKeys()
+    static let ui = LocalizationUIKeys()
 
-    static let allCases: [LocalizationKey] = [
-        .error.chooseMissingItems,
-        .error.deletionPartial,
-        .error.deletionValidation,
-        .error.fileReplacementRecovery,
-        .error.pathAliasRepair,
-        .error.pathNormalizationCollision,
-        .error.recoveryBlocked,
-        .error.recoveryValidation,
-        .error.unresolvedMissingPaths,
-        .error.unsupportedTargetPath,
-        .history.copiedFrom,
-        .recovery.reviewPaths,
-        .repository.pathNormalizationAction,
-        .repository.pathNormalizationActionHelp,
-        .repository.pathNormalizationAfter,
-        .repository.pathNormalizationBefore,
-        .repository.pathNormalizationCodepointsDetail,
-        .repository.pathNormalizationConfirmationCommits,
-        .repository.pathNormalizationConfirmationDeleteAdd,
-        .repository.pathNormalizationConfirmationDirectory,
-        .repository.pathNormalizationConfirmationRun,
-        .repository.pathNormalizationConfirmationTeam,
-        .repository.pathNormalizationConfirmationTitle,
-        .repository.pathNormalizationDefaultCommitMessage,
-        .repository.pathNormalizationDeselectAll,
-        .repository.pathNormalizationDifferentComponent,
-        .repository.pathNormalizationDirectoryNote,
-        .repository.pathNormalizationErrorInvalidTargets,
-        .repository.pathNormalizationErrorLocalChanges,
-        .repository.pathNormalizationErrorLocks,
-        .repository.pathNormalizationErrorPartialFailure,
-        .repository.pathNormalizationErrorUnknown,
-        .repository.pathNormalizationFormComposed,
-        .repository.pathNormalizationFormDecomposed,
-        .repository.pathNormalizationNoPaths,
-        .repository.pathNormalizationProblem,
-        .repository.pathNormalizationResult,
-        .repository.pathNormalizationResultRevisions,
-        .repository.pathNormalizationResultSummary,
-        .repository.pathNormalizationReviewAction,
-        .repository.pathNormalizationRunning,
-        .repository.pathNormalizationSameAppearanceNote,
-        .repository.pathNormalizationScanAgain,
-        .repository.pathNormalizationScanning,
-        .repository.pathNormalizationScanningDetail,
-        .repository.pathNormalizationSkipped,
-        .repository.pathNormalizationSkippedReason,
-        .repository.pathNormalizationTargets,
-        .repository.pathNormalizationTitle,
-        .repository.pathNormalizationWaiting,
-        .repository.pathNormalizationWindowsNote,
-        .ui.a.cleanWorkingCopyIsCheckedOutFromTheSer,
-        .ui.a.conflictFilePathPointsOutsideTheWorking,
-        .ui.a.lockedFileIsMarkedOnTheSvnServerToPre,
-        .ui.a.passwordForThisFolderIsStoredInMacosKe,
-        .ui.about.svnKr,
-        .ui.add.aLocalWorkingFolder,
-        .ui.add.repositoryTemporaryFileCleanupCommit,
-        .ui.add.svnRepository,
-        .ui.added.label,
-        .ui.added.ignoreRuleCommitTheDirectoryProperty,
-        .ui.additional.revisionProperties,
-        .ui.affected.label,
-        .ui.after.reviewingBothBackupsKeepTheContentCu,
-        .ui.after.updateVerifyCandidatesThenReviewAndC,
-        .ui.all.selectedFilesAlreadyLockedByYou,
-        .ui.allow.certificateFailureForProject,
-        .ui.allow.selfSignedAndCertificateNameMismatch,
-        .ui.allow.untrustedSslCertificates,
-        .ui.already.versionedFilesAreNotHiddenByIgnore,
-        .ui.always.lockAndOpenDocuments,
-        .ui.always.openDocumentsWithoutLocking,
-        .ui.an.updateIsAvailable,
-        .ui.and.moreItemsCount,
-        .ui.applied.label,
-        .ui.applied.gitRuleSToSvnIgnorePropertiesComm,
-        .ui.apply.label,
-        .ui.apply.globalIgnoreRules,
-        .ui.apply.selectedRules,
-        .ui.apply.serverProperties,
-        .ui.apply.serverVersion,
-        .ui.applying.label,
-        .ui.ask.everyTimeBeforeOpeningDocuments,
-        .ui.authentication.isRequiredToCommitTheSelecte,
-        .ui.authentication.isRequiredToDownloadTheLates,
-        .ui.authentication.isRequiredToLoadTheLatestSe,
-        .ui.authentication.usesTheExistingSvnCredential,
-        .ui.authentication.wasCanceledLocalChangesRemain,
-        .ui.automatic.unicodePathRecovery,
-        .ui.available.label,
-        .ui.blue.dotsAreServerCommitsTheGreenRingIsYBase,
-        .ui.blue.dotsAreServerCommitsTheGreenRingIsYHighestRevision,
-        .ui.both.versionsWereCopiedToABackupFolderEdi,
-        .ui.browse.label,
-        .ui.browse.repository,
-        .ui.browse.repositoryBeforeCheckout,
-        .ui.browse.sampleProject,
-        .ui.browse.svnRepository,
-        .ui.bulk.unlockCompleted,
-        .ui.bulk.unlockConfirmationDetails,
-        .ui.bulk.unlockConfirmationTitle,
-        .ui.bulk.unlockPartialFailureDetails,
-        .ui.bulk.unlockPartialFailureTitle,
-        .ui.cancel.label,
-        .ui.cancel.addingTheRepositoryAndCloseThisWind,
-        .ui.cancel.deletionAndRestore,
-        .ui.cancel.theRepositoryDeletionStateForAndRes,
-        .ui.canceled.checkoutFolderEmptied,
-        .ui.canceled.checkoutFolderNotEmptied,
-        .ui.canceling.doesNotPreventViewingLocalChanges,
-        .ui.certificate.exceptionNotAllowed,
-        .ui.certificate.exceptionSavedForProject,
-        .ui.certificate.exceptionSecurityWarning,
-        .ui.certificate.expiredGuidance,
-        .ui.certificate.nameMismatchGuidance,
-        .ui.certificate.notYetValidGuidance,
-        .ui.certificate.unclassifiedGuidance,
-        .ui.certificate.unknownCaGuidance,
-        .ui.change.label,
-        .ui.change.repositoryLocation,
-        .ui.change.thisFolderSLocationSvnAccountAndK,
-        .ui.changed.paths,
-        .ui.changes.label,
-        .ui.check.forUpdatesAction,
-        .ui.check.forUpdatesSecondary,
-        .ui.check.outANewSvnRepositoryOrRegisterAnEx,
-        .ui.check.outARepositoryUrlAndAddItToYourLo,
-        .ui.check.outAndAdd,
-        .ui.check.outRepositoryUrl,
-        .ui.check.outTheSvnRepositoryIntoTheLocalFold,
-        .ui.check.theAppStoreForTheLatestVersion,
-        .ui.checking.forUpdates,
-        .ui.checking.incomingChanges,
-        .ui.checking.out,
-        .ui.checking.theAccount,
-        .ui.checkout.completedButThePasswordCouldNotBe,
-        .ui.checkout.folderWasNotEmptyCannotDelete,
-        .ui.checkout.progressLog,
-        .ui.checkout.recoveryValidationFailed,
-        .ui.checkout.wasInterrupted,
-        .ui.choose.labelPrimary,
-        .ui.choose.labelAction,
-        .ui.choose.aChangedFileAboveToDisplayOnlyThat,
-        .ui.choose.aLocalFolderForTheCheckout,
-        .ui.choose.action,
-        .ui.choose.anEmptyFolder,
-        .ui.choose.anEmptyRecoveryFolder,
-        .ui.choose.fileBrowserViewMode,
-        .ui.choose.folder,
-        .ui.choose.localCheckoutFolder,
-        .ui.choose.svnLocalWorkingFolders,
-        .ui.choose.theLanguageUsedInTheAppInterface,
-        .ui.choose.theLocalFolderForTheCheckout,
-        .ui.choose.theTimeZoneUsedForCommitDatesAndT,
-        .ui.choose.viewChangesInTheHistoryToDisplayTh,
-        .ui.clean.upEquivalentPath,
-        .ui.cleaned.repositoryTemporaryFiles,
-        .ui.cleaning.andCommitting,
-        .ui.cleaning.andContinuingCheckout,
-        .ui.cleaning.workingCopy,
-        .ui.cleanup.commitFailedUpdateSucceeded,
-        .ui.cleanup.couldNotStartUpdateSucceeded,
-        .ui.cleanup.interruptedWorkingCopyManually,
-        .ui.cleanup.needed,
-        .ui.cleanup.reasonFileMissing,
-        .ui.cleanup.reasonInvalidAppledoubleSignature,
-        .ui.cleanup.reasonInvalidDsStoreSignature,
-        .ui.cleanup.reasonLockedBy,
-        .ui.cleanup.reasonNotRegularFile,
-        .ui.cleanup.reasonOfficeLockTooLarge,
-        .ui.cleanup.reasonSymbolicLink,
-        .ui.cleanup.reasonUnreadable,
-        .ui.cleanup.reasonUnsafePath,
-        .ui.cleanup.someItemsFailed,
-        .ui.clear.label,
-        .ui.clear.allSelectedCommitTargets,
-        .ui.clear.selection,
-        .ui.close.label,
-        .ui.close.theSampleProjectAndReturnToNormalMo,
-        .ui.close.withoutSavingCredentialChanges,
-        .ui.commit.changes,
-        .ui.commit.deletionRestorePartial,
-        .ui.commit.history,
-        .ui.commit.historyTimeZone,
-        .ui.commit.inputSavedUpdateThenRetry,
-        .ui.commit.message,
-        .ui.commit.notFound,
-        .ui.commit.requiresUpdateBeforeRetry,
-        .ui.commit.selected,
-        .ui.commit.theSelectedFilesToTheSvnServerWith,
-        .ui.commit.timeUnavailable,
-        .ui.commit.withoutAMessage,
-        .ui.committing.label,
-        .ui.compare.gitRules,
-        .ui.configure.theSvnAccountAndKeychainPassword,
-        .ui.confirm.commit,
-        .ui.confirm.currentWorkingCopyState,
-        .ui.confirm.manuallyEditedContent,
-        .ui.confirm.repositoryRelocation,
-        .ui.conflict.label,
-        .ui.conflict.backupsMustBeStoredOutsideTheWork,
-        .ui.conflicted.properties,
-        .ui.conflicted.propertyNameUnavailable,
-        .ui.content.andPropertyConflictTogether,
-        .ui.content.changed,
-        .ui.localizationContinue.checkout,
-        .ui.localizationContinue.incompleteByUpdating,
-        .ui.localizationContinue.update,
-        .ui.coordinated.universalTimeUtc,
-        .ui.copied.label,
-        .ui.copied.theFilePath,
-        .ui.copy.allDisplayedErrorDetailsToTheClipboar,
-        .ui.copy.currentRepositoryUrl,
-        .ui.copy.errorDetails,
-        .ui.copy.fullPath,
-        .ui.copy.withHistory,
-        .ui.could.notOpenTheFile,
-        .ui.credentials.label,
-        .ui.credentials.savedFor,
-        .ui.current.repositoryUrl,
-        .ui.current.workingFile,
-        .ui.delete.andCommitCleanup,
-        .ui.delete.fromRepository,
-        .ui.delete.missingItems,
-        .ui.delete.savedPassword,
-        .ui.delete.theSvnPasswordStoredInKeychainForT,
-        .ui.deleted.label,
-        .ui.destination.alreadyExists,
-        .ui.destination.matchesSource,
-        .ui.diff.isUnavailableUntilThisFileIsAddedTo,
-        .ui.directory.label,
-        .ui.discard.changesAndClose,
-        .ui.discard.localChangeAndRestoreServerFile,
-        .ui.localizationDo.notAllowCertificateException,
-        .ui.document.openingMethod,
-        .ui.download.theLatestServerChangesIntoTheCurr,
-        .ui.earlier.history,
-        .ui.editing.documentInSvnKr,
-        .ui.empty.canceledCheckoutFolderConfirmation,
-        .ui.empty.checkoutFolder,
-        .ui.empty.folderDestructive,
-        .ui.enter.password,
-        .ui.enter.repositoryUrlToBrowse,
-        .ui.enter.validCredentials,
-        .ui.error.label,
-        .ui.exit.demo,
-        .ui.expired.andNotYetValidRequireSeparateConsent,
-        .ui.explicit.lockCompleted,
-        .ui.explore.theMainFeaturesWithSampleDataAndN,
-        .ui.failed.label,
-        .ui.failed.toRemoveAnIncompleteConflictBackup,
-        .ui.localizationFalse.aliasesExcluded,
-        .ui.file.labelFile,
-        .ui.file.labelFile2,
-        .ui.file.actionCommitRequired,
-        .ui.file.browserActions,
-        .ui.file.browserItemsCount,
-        .ui.file.browserKindColumn,
-        .ui.file.browserModifiedColumn,
-        .ui.file.browserNameColumn,
-        .ui.file.browserSizeColumn,
-        .ui.file.browserSplitView,
-        .ui.file.browserTreeView,
-        .ui.file.browserWorkingCopyRoot,
-        .ui.file.commitHistoryFileCommitHistory,
-        .ui.file.commitHistoryFileCommitHistory2,
-        .ui.file.remainsInConflictResolveBeforeRetry,
-        .ui.filename.warning,
-        .ui.files.label,
-        .ui.files.beingDownloadedWillAppearHereAfterCh,
-        .ui.files.insideThisFolderWillBeAddedTogether,
-        .ui.files.notInRepositoryCount,
-        .ui.folder.credentials,
-        .ui.folder.label,
-        .ui.folder.settings,
-        .ui.force.lockClientUnavailable,
-        .ui.force.lockConfirmationAction,
-        .ui.force.lockConfirmationDetails,
-        .ui.force.lockConfirmationTitle,
-        .ui.force.releaseLock,
-        .ui.force.releaseRepositoryLock,
-        .ui.force.unlockDetailsOwnerTimeCommentOriginal,
-        .ui.gitignore.isNotModifiedImportIsOneWayAnd,
-        .ui.global.rulesCanAffectManyDirectoriesBelowT,
-        .ui.go.resolveUpdateConflicts,
-        .ui.hide.macOfficeTemporaryFiles,
-        .ui.hide.password,
-        .ui.hide.temporaryFilesFromChangesAndCommitTarg,
-        .ui.highest.localRevision,
-        .ui.history.refreshed,
-        .ui.ignore.thisExtension,
-        .ui.ignore.thisItem,
-        .ui.ignored.label,
-        .ui.localizationImport.gitRules,
-        .ui.include.inCommit,
-        .ui.include.inRestore,
-        .ui.include.orExcludeThisFileFromTheNextCommi,
-        .ui.included.locally,
-        .ui.incoming.changesThatOverlapLocalEditsMayCr,
-        .ui.incomplete.checkoutRecoveryOptions,
-        .ui.incomplete.updateRequired,
-        .ui.inherited.from,
-        .ui.inherited.rulesCanOnlyBeRemovedFromThePar,
-        .ui.invalid.fileName,
-        .ui.invalid.repositoryUrl,
-        .ui.item.s,
-        .ui.japan.standardTimeJstUtc9,
-        .ui.keep.downloading,
-        .ui.keep.localPropertiesAsResolvedValues,
-        .ui.keep.myChange,
-        .ui.keep.myProperties,
-        .ui.keep.theFileCurrentlySavedInTheWorkingCop,
-        .ui.keep.yourFileALaterCommitWillReplaceTheR,
-        .ui.keychain.accessWasDenied,
-        .ui.keychain.accessWasDeniedChooseHowToAuthent,
-        .ui.keychain.operationFailed,
-        .ui.korea.standardTimeKstUtc9,
-        .ui.language.label,
-        .ui.last.compared,
-        .ui.later.label,
-        .ui.leave.blankToKeepTheCurrentPassword,
-        .ui.load.localization50more,
-        .ui.loading.label,
-        .ui.loading.changes,
-        .ui.loading.commitHistory,
-        .ui.loading.fileHistory,
-        .ui.loading.files,
-        .ui.loading.repositoryContents,
-        .ui.loading.repositoryLocks,
-        .ui.local.changes,
-        .ui.local.changesArePreserved,
-        .ui.local.changesRefreshed,
-        .ui.local.changesWillBeDiscarded,
-        .ui.local.deletionWillRemainAndACommitWillDe,
-        .ui.local.folder,
-        .ui.local.propertyValuesWillBeDiscarded,
-        .ui.local.workingFolders,
-        .ui.locally.missingActionRequired,
-        .ui.locally.missing,
-        .ui.lock.andOpen,
-        .ui.lock.belongsToAnotherWorkingCopyForceUnlock,
-        .ui.lock.fileExplicitly,
-        .ui.lock.informationCouldNotBeCheckedYouCanOp,
-        .ui.lock.selectedFiles,
-        .ui.lock.thisFileBeforeOpening,
-        .ui.locked.by,
-        .ui.locked.byYou,
-        .ui.locked.files,
-        .ui.locked.filesBlockOtherUsersUntilCommitOrUnl,
-        .ui.locking.preventsConcurrentCommitsByOtherUse,
-        .ui.locks.labelFormatted,
-        .ui.locks.labelSecondary,
-        .ui.mac.systemTimeZone,
-        .ui.manage.ignoreRules,
-        .ui.mark.forDeletion,
-        .ui.mark.forRepositoryDeletion,
-        .ui.marked.itemSForDeletionCommitToDeleteThem,
-        .ui.mixed.revisions,
-        .ui.modification.dateUnavailable,
-        .ui.modified.labelPrimary,
-        .ui.modified.labelFormatted,
-        .ui.move.orRenameTheLocalFileThenUpdate,
-        .ui.multiple.canonicallyEquivalentServerPathsExi,
-        .ui.my.file,
-        .ui.my.localBase,
-        .ui.my.localFolderR,
-        .ui.my.propertiesAlsoKept,
-        .ui.need.help,
-        .ui.needs.lockCommitRequired,
-        .ui.needs.lockDisable,
-        .ui.needs.lockEnable,
-        .ui.needs.lockEnabled,
-        .ui.new.label,
-        .ui.new.fileName,
-        .ui.new.repositoryUrl,
-        .ui.new.workingFolder,
-        .ui.no.label,
-        .ui.no.changedFiles,
-        .ui.no.changes,
-        .ui.no.commitHistory,
-        .ui.no.commitMessage,
-        .ui.no.fileHistory,
-        .ui.no.files,
-        .ui.no.gitignore,
-        .ui.no.gitignoreFileWasFoundInTheWorkingCopy,
-        .ui.no.incomingChanges,
-        .ui.no.itemsInRepositoryDirectory,
-        .ui.no.lockedFiles,
-        .ui.no.passwordIsStored,
-        .ui.no.searchResults,
-        .ui.no.serverDeletionsRemaining,
-        .ui.no.svnIgnoreRulesAreConfigured,
-        .ui.no.textDiffIsAvailableThisMayBeANewOrB,
-        .ui.no.value,
-        .ui.not.available,
-        .ui.obstructed.localFile,
-        .ui.on.successBothTheOriginalAndRecoveredCopie,
-        .ui.only.verifiedWorkingCopyWillBeDeletedPath,
-        .ui.localizationOpen.backupFolder,
-        .ui.localizationOpen.file,
-        .ui.localizationOpen.inFinder,
-        .ui.localizationOpen.myFile,
-        .ui.localizationOpen.repositoryRelocation,
-        .ui.localizationOpen.selectedDirectory,
-        .ui.localizationOpen.serverFile,
-        .ui.localizationOpen.theAppWideSettingsWindow,
-        .ui.localizationOpen.thisSvnLocalWorkingFolderInFinder,
-        .ui.localizationOpen.withoutLockAndDoNotAskAgain,
-        .ui.localizationOpen.withoutLock,
-        .ui.opened.withoutALockAConcurrentCommitByAno,
-        .ui.opening.aFileLockedByYou,
-        .ui.operation.wasInterruptedCleanupPrompt,
-        .ui.original.message,
-        .ui.overwrite.withMine,
-        .ui.parent.directory,
-        .ui.password.label,
-        .ui.path.recoveryCompletedTheOriginalWorkingFol,
-        .ui.pending.deletionPrimary,
-        .ui.pending.deletionFormatted,
-        .ui.pick.theNewLocationOfThisSvnWorkingFolder,
-        .ui.please.sendQuestionsTo,
-        .ui.press.oOrUseTheButtonAtTheBottomLeft,
-        .ui.preview.failedUpdateStillAvailable,
-        .ui.properties.changed,
-        .ui.property.conflict,
-        .ui.property.conflictBlocksCommitUntilResolved,
-        .ui.property.conflictResolvedReviewBeforeCommit,
-        .ui.property.modified,
-        .ui.questions.support,
-        .ui.recover.toNewWorkingFolder,
-        .ui.recovery.preview,
-        .ui.refresh.label,
-        .ui.refreshed.label,
-        .ui.register.anExistingSvnWorkingFolderInTheA,
-        .ui.register.existingLocalFolder,
-        .ui.release.allMyLocks,
-        .ui.release.lock,
-        .ui.release.lockNormally,
-        .ui.release.locksCount,
-        .ui.release.myLock,
-        .ui.reload.localChangesAndTheLatestServerCommi,
-        .ui.relocate.repository,
-        .ui.relocating.repository,
-        .ui.remove.label,
-        .ui.remove.inheritedRulesFromTheParentDirectory,
-        .ui.remove.theSelectedWorkingFolderFromTheApp,
-        .ui.remove.thisRule,
-        .ui.remove.workingFolderFromAppConfirmation,
-        .ui.removed.ignoreRule,
-        .ui.rename.withHistory,
-        .ui.replace.localPropertiesWithServerValues,
-        .ui.replace.withTheServerFileYourLocalEditsLe,
-        .ui.replaced.label,
-        .ui.repository.authenticationFailed,
-        .ui.repository.connectionFailed,
-        .ui.repository.contentsFailed,
-        .ui.repository.directoryEmpty,
-        .ui.repository.locks,
-        .ui.repository.mayHaveMoved,
-        .ui.repository.relocated,
-        .ui.repository.relocationFailedRecovery,
-        .ui.repository.relocationSummary,
-        .ui.repository.temporaryFileCleanup,
-        .ui.repository.url,
-        .ui.repository.urlUnchanged,
-        .ui.resolve.conflictAction,
-        .ui.resolve.conflictSecondary,
-        .ui.resolve.conflictedFilesBeforeCommitting,
-        .ui.resolve.duplicateServerPathsManually,
-        .ui.resolve.unicodePathConflictsBeforeComparing,
-        .ui.resolving.label,
-        .ui.restore.fileFromServerVersion,
-        .ui.restore.localFile,
-        .ui.restore.selectedFilesAction,
-        .ui.restore.selectedFilesConfirmation,
-        .ui.restore.selectedFilesCount,
-        .ui.restore.selectedPendingDeletions,
-        .ui.restore.selectedServerFiles,
-        .ui.restore.serverVersionRemovesTheseItems,
-        .ui.restore.targetNotDeleted,
-        .ui.restore.workingFileConfirmation,
-        .ui.restore.workingFileToRevision,
-        .ui.restore.workingFileWarning,
-        .ui.restored.label,
-        .ui.restored.revisionCommitRequired,
-        .ui.restored.selectedServerFiles,
-        .ui.restoring.revision,
-        .ui.reveal.inFinder,
-        .ui.revert.conflictDiscardsLocalChangesAndConflict,
-        .ui.revert.label,
-        .ui.revert.localChangesQuestion,
-        .ui.revert.localChangesAction,
-        .ui.reverted.localChanges,
-        .ui.review.label,
-        .ui.review.commit,
-        .ui.review.forceLock,
-        .ui.review.repositoryRelocation,
-        .ui.review.updateThenRetryCommit,
-        .ui.review.verifiedFilesBeforeDeletingAndCommitt,
-        .ui.revision.historyClientUnavailable,
-        .ui.revision.optional,
-        .ui.revision.restoreBackupInsideWorkingCopy,
-        .ui.revision.restoreBackupVerificationFailed,
-        .ui.revision.restoreMissingWorkingFile,
-        .ui.revision.restorePathOutsideWorkingCopy,
-        .ui.revision.restoreReplacementVerificationFailed,
-        .ui.revision.restoreUnsafeWorkingFile,
-        .ui.revision.saveInvalidDestination,
-        .ui.run.update,
-        .ui.run.workingCopyCleanup,
-        .ui.save.label,
-        .ui.save.inKeychainAndUse,
-        .ui.save.inMacosKeychainOptional,
-        .ui.save.theSvnUsernameAndNewPasswordForThis,
-        .ui.save.theWorkingFolderLocationSvnUsernameAn,
-        .ui.save.thisRevisionAs,
-        .ui.saved.commitSelectionNoLongerAvailable,
-        .ui.saved.historicalRevision,
-        .ui.saving.label,
-        .ui.saving.revision,
-        .ui.search.authorFileMessageOrRevision,
-        .ui.search.files,
-        .ui.secure.entryBlocksTheKoreanInputMethodReve,
-        .ui.select.aChangedFileToViewItsDiff,
-        .ui.select.aCommit,
-        .ui.select.aFile,
-        .ui.select.allSelectAll,
-        .ui.select.allCurrentlyChangedFilesForCommit,
-        .ui.select.allSelectAll2,
-        .ui.selected.label,
-        .ui.send.email,
-        .ui.server.certificateProblem,
-        .ui.server.certificateProblemDetected,
-        .ui.server.changesInsideAPendingDeletionMayNot,
-        .ui.server.commit,
-        .ui.server.deletionCount,
-        .ui.server.deletionWarning,
-        .ui.server.file,
-        .ui.server.latest,
-        .ui.server.latestR,
-        .ui.server.propertiesAlsoApplied,
-        .ui.server.propertyValuesWillBeDiscarded,
-        .ui.server.revision,
-        .ui.server.versionChangesWillBeDiscarded,
-        .ui.settings.label,
-        .ui.show.ignoredFiles,
-        .ui.show.password,
-        .ui.show.theMacosKeychainAccessPromptAgain,
-        .ui.showing.firstCommitsOfTotal,
-        .ui.shows.theDiffForThisFile,
-        .ui.source.isNotFile,
-        .ui.source.isNotVersioned,
-        .ui.stop.checkout,
-        .ui.stop.theCheckoutInProgress,
-        .ui.svn.authenticationRequired,
-        .ui.svn.ignoreRules,
-        .ui.svn.password,
-        .ui.svn.username,
-        .ui.svn.usernameOptional,
-        .ui.switched.path,
-        .ui.switched.pathCommitWarning,
-        .ui.symbolic.link,
-        .ui.temporary.label,
-        .ui.the.bundledSvnExecutableCouldNotBeFoundRe,
-        .ui.the.checkoutWasCanceledPartiallyDownloadedF,
-        .ui.the.commitCompletedButWorkingCopyValidation,
-        .ui.the.commitIsBasedOnAnOlderWorkingCopySta,
-        .ui.the.commitWillBeRecordedWithAnEmptyMessag,
-        .ui.the.conflictRemainsAfterTheSvnCommandRevie,
-        .ui.the.conflictWasResolvedReviewTheFileBefore,
-        .ui.the.currentWorkingFileCouldNotBeFound,
-        .ui.the.currentWorkingFileMustBeARegularFile,
-        .ui.the.defaultIsKoreaStandardTimeKstThisDoes,
-        .ui.the.fileIsLockedASuccessfulCommitAutomatic,
-        .ui.the.lockWasForceReleased,
-        .ui.the.lockWasReleased,
-        .ui.the.macosUnicodePathWasMatchedToTheActual,
-        .ui.the.newFolderIsAppliedWhenYouSave,
-        .ui.the.recoveryBackupOfTheCurrentWorkingFile,
-        .ui.the.recoveryDestinationFolderMustBeEmpty,
-        .ui.the.runningSvnCheckoutWillBeStoppedAlready,
-        .ui.the.savedPasswordWasDeleted,
-        .ui.the.selectedFolderIsNotAnSvnLocalWorking,
-        .ui.the.selectedVersionOfYourFileCouldNotBeR,
-        .ui.the.serverFileVersionCouldNotBeFound,
-        .ui.the.serverFileVersionMustBeARegularFileN,
-        .ui.the.svnAccountOrPasswordIsNotValid,
-        .ui.the.svnResponseCouldNotBeRead,
-        .ui.the.svnServerDeniedReadAccessToThisFileC,
-        .ui.the.workingCopyContainsMixedRevisionsRThis,
-        .ui.the.workingCopyIsUpToDateWithTheServer,
-        .ui.the.workingFolderNoLongerExistsRestoreThe,
-        .ui.the.workingFolderWasChangedTo,
-        .ui.there.areNoGitRulesToImport,
-        .ui.there.areNoLocallyModifiedFiles,
-        .ui.this.commitMessageWasSavedWithIncorrectEnc,
-        .ui.this.diskStoresKoreanFilenamesInDecomposed,
-        .ui.this.fileCannotBeCommittedUntilItIsMarked,
-        .ui.this.fileIsCurrentlyLockedByOpeningWithout,
-        .ui.this.isAServerCommit,
-        .ui.this.isYourLocalBaseRevision,
-        .ui.this.localWorkingFolderIsAlreadyRegistered,
-        .ui.this.onlyMarksTheItemsForDeletionTheyAre,
-        .ui.tree.conflict,
-        .ui.tree.conflictIsNotAChoiceBetweenTwoFiles,
-        .ui.tree.conflictResolvedWithSubtreeBackup,
-        .ui.localizationTry.keychainAgain,
-        .ui.localizationTry.normalUnlockBeforeForceUnlock,
-        .ui.uk.time,
-        .ui.unable.toCheckTheAppStoreForUpdates,
-        .ui.unable.toLoadChanges,
-        .ui.unable.toOpenFile,
-        .ui.uncommitted.changes,
-        .ui.uncommitted.changesBranchFromYourLocalBase,
-        .ui.uncommitted.changesCount,
-        .ui.uncommitted.changesInWillBeDiscardedAndCan,
-        .ui.unicode.pathConflict,
-        .ui.unknown.author,
-        .ui.unknown.error,
-        .ui.unsupported.label,
-        .ui.unsupported.conflictType,
-        .ui.unversioned.label,
-        .ui.up.toDate,
-        .ui.update.label,
-        .ui.update.andRetryCommit,
-        .ui.update.conflictsBlockedCommitRetry,
-        .ui.update.createdConflictsCommitNotRetried,
-        .ui.update.preview,
-        .ui.update.requiredPrimary,
-        .ui.update.requiredBeforeCommitRetry,
-        .ui.update.requiredSecondary,
-        .ui.updating.label,
-        .ui.us.easternTime,
-        .ui.us.pacificTime,
-        .ui.use.currentWorkingFilePrimary,
-        .ui.use.currentWorkingFileQuestion,
-        .ui.use.myFilePrimary,
-        .ui.use.myFileQuestion,
-        .ui.use.onlyForServersWithSelfSignedCertificat,
-        .ui.use.repositoryPath,
-        .ui.use.serverFilePrimary,
-        .ui.use.serverFileQuestion,
-        .ui.use.thisSessionOnly,
-        .ui.use.thisWhenTheTargetServerSCertificateIs,
-        .ui.username.label,
-        .ui.version.label,
-        .ui.version.isAvailable,
-        .ui.versioned.itemsBelowTheSelectedDirectoryWil,
-        .ui.view.changesInThisCommit,
-        .ui.view.inAppStore,
-        .ui.view.theLockedFilesAndTheirCountInThisRe,
-        .ui.view.theOriginalMessageBeforeRestoration,
-        .ui.when.youChooseAVersionTheCurrentWorkingFi,
-        .ui.working.copyCleanup,
-        .ui.working.copyCleanupCompleted,
-        .ui.working.copyCleanupFailedContactSupport,
-        .ui.working.copyOperationInterruptedRunCleanup,
-        .ui.yes.label,
-        .ui.you.reUsingTheLatestVersion,
-        .ui.your.fileVersionCouldNotBeFound,
-        .ui.your.fileVersionMustBeARegularFileNotAS,
-        .ui.your.localBaseRevisionIsEarlierThanTheLat,
-        .ui.your.localUpdateBaseFallsBetweenTwoServer,
-    ]
+    static let allCases: [LocalizationKey] = """
+        error.deletion.chooseMissingItems
+        error.deletion.partial
+        error.deletion.unresolvedMissingPaths
+        error.deletion.validation
+        error.path.aliasRepair
+        error.path.normalizationCollision
+        error.path.unsupportedTarget
+        error.recovery.blocked
+        error.recovery.fileReplacement
+        error.recovery.validation
+        history.copy.copiedFrom
+        recovery.path.reviewPaths
+        repository.pathNormalization.action
+        repository.pathNormalization.actionHelp
+        repository.pathNormalization.after
+        repository.pathNormalization.before
+        repository.pathNormalization.codepointsDetail
+        repository.pathNormalization.confirmationCommits
+        repository.pathNormalization.confirmationDeleteAdd
+        repository.pathNormalization.confirmationDirectory
+        repository.pathNormalization.confirmationRun
+        repository.pathNormalization.confirmationTeam
+        repository.pathNormalization.confirmationTitle
+        repository.pathNormalization.defaultCommitMessage
+        repository.pathNormalization.deselectAll
+        repository.pathNormalization.differentComponent
+        repository.pathNormalization.directoryNote
+        repository.pathNormalization.errorInvalidTargets
+        repository.pathNormalization.errorLocalChanges
+        repository.pathNormalization.errorLocks
+        repository.pathNormalization.errorPartialFailure
+        repository.pathNormalization.errorUnknown
+        repository.pathNormalization.formComposed
+        repository.pathNormalization.formDecomposed
+        repository.pathNormalization.noPaths
+        repository.pathNormalization.problem
+        repository.pathNormalization.result
+        repository.pathNormalization.resultRevisions
+        repository.pathNormalization.resultSummary
+        repository.pathNormalization.reviewAction
+        repository.pathNormalization.running
+        repository.pathNormalization.sameAppearanceNote
+        repository.pathNormalization.scanAgain
+        repository.pathNormalization.scanning
+        repository.pathNormalization.scanningDetail
+        repository.pathNormalization.skipped
+        repository.pathNormalization.skippedReason
+        repository.pathNormalization.targets
+        repository.pathNormalization.title
+        repository.pathNormalization.waiting
+        repository.pathNormalization.windowsNote
+        ui.about.needHelp
+        ui.about.pleaseSendQuestions
+        ui.about.questionsSupport
+        ui.about.sendEmail
+        ui.about.svnKr
+        ui.about.version
+        ui.authentication.canceledLocalChangesRemainAvailable
+        ui.authentication.cancelingDoesNotPreventViewingLocalChangesDiffs
+        ui.authentication.changeFolderLocationSvnAccountKeychainPassword
+        ui.authentication.checkingAccount
+        ui.authentication.checkoutCompletedButPasswordCouldNotSavedKeychain
+        ui.authentication.closeWithoutSavingCredentialChanges
+        ui.authentication.configureSvnAccountKeychainPasswordLocalWorkingFolder
+        ui.authentication.credentials
+        ui.authentication.credentialsSaved
+        ui.authentication.deleteSavedPassword
+        ui.authentication.deleteSvnPasswordStoredKeychainLocalWorkingFolder
+        ui.authentication.discardChangesClose
+        ui.authentication.enterPassword
+        ui.authentication.enterValidCredentials
+        ui.authentication.folderCredentials
+        ui.authentication.hidePassword
+        ui.authentication.keychainAccessDenied
+        ui.authentication.keychainAccessDeniedChooseHowAuthenticate
+        ui.authentication.keychainOperationFailed
+        ui.authentication.leaveBlankKeepCurrentPassword
+        ui.authentication.noPasswordStored
+        ui.authentication.password
+        ui.authentication.passwordFolderStoredMacosKeychain
+        ui.authentication.repositoryAuthenticationFailed
+        ui.authentication.requiredCommitSelectedChanges
+        ui.authentication.requiredDownloadLatestServerChanges
+        ui.authentication.requiredLoadLatestServerHistory
+        ui.authentication.saveKeychainUse
+        ui.authentication.saveMacosKeychainOptional
+        ui.authentication.saveSvnUsernameNewPasswordLocalWorkingFolder
+        ui.authentication.saveWorkingFolderLocationSvnUsernameNewPasswordFolder
+        ui.authentication.savedPasswordDeleted
+        ui.authentication.saving
+        ui.authentication.secureEntryBlocksKoreanInputMethodRevealPasswordEyeButton
+        ui.authentication.showMacosKeychainAccessPromptAgain
+        ui.authentication.showPassword
+        ui.authentication.svnAccountPasswordNotValid
+        ui.authentication.svnAuthenticationRequired
+        ui.authentication.svnPassword
+        ui.authentication.svnServerDeniedReadAccessFileCheckProjectCredentialsServer
+        ui.authentication.svnUsername
+        ui.authentication.svnUsernameOptional
+        ui.authentication.tryKeychainAgain
+        ui.authentication.useSessionOnly
+        ui.authentication.username
+        ui.authentication.usesExistingSvnCredentialCacheMacosKeychain
+        ui.browser.actions
+        ui.browser.browse
+        ui.browser.browseRepository
+        ui.browser.browseSvnRepository
+        ui.browser.checkFoldersFilesBeforeChoosingRepositoryPathCheckOut
+        ui.browser.chooseHowFilesDisplayed
+        ui.browser.couldNotConnectRepository
+        ui.browser.couldNotLoadRepositoryContents
+        ui.browser.dateModified
+        ui.browser.directory
+        ui.browser.directoryEmpty
+        ui.browser.enterRepositoryUrlBrowse
+        ui.browser.fileAccessibilityLabel
+        ui.browser.files
+        ui.browser.items
+        ui.browser.kind
+        ui.browser.loadingFiles
+        ui.browser.loadingRepositoryContents
+        ui.browser.name
+        ui.browser.noFiles
+        ui.browser.noSearchResults
+        ui.browser.openSelectedDirectory
+        ui.browser.parentDirectory
+        ui.browser.repositoryReturnedNoFilesSubdirectoriesPath
+        ui.browser.repositoryUrl
+        ui.browser.revisionOptional
+        ui.browser.searchFiles
+        ui.browser.size
+        ui.browser.splitView
+        ui.browser.symbolicLink
+        ui.browser.treeView
+        ui.browser.useRepositoryPath
+        ui.browser.workingCopy
+        ui.certificate.allowProject
+        ui.certificate.allowSelfSignedCertificateNameMismatchErrorsRepository
+        ui.certificate.allowUntrustedSslCertificates
+        ui.certificate.doNotAllow
+        ui.certificate.exceptionNotAllowedNoProjectSettingChanged
+        ui.certificate.exceptionSecurityWarning
+        ui.certificate.expiredNotYetValidCertificatesRequireSeparateConsentAfterSvn
+        ui.certificate.issuedDifferentHostnameCheckRepositoryUrlCertificateHostnameBeforeAllowing
+        ui.certificate.issuerNotTrustedConfirmIssuerServerAdministratorAllowingItBypasses
+        ui.certificate.notYetValidCheckServerMacClocksCertificateStartDate
+        ui.certificate.savedCertificateExceptionRetrySvnOperation
+        ui.certificate.serverCertificateExpiredRenewingItSafestAllowingItLetsProject
+        ui.certificate.serverCertificateProblem
+        ui.certificate.svnRejectedServerCertificateReviewDetectedProblemBeforeDeciding
+        ui.certificate.svnReportedCertificateProblemButDidNotIdentifySupportedReason
+        ui.certificate.useOnlyServersSelfSignedCertificatesCertificateNameMismatches
+        ui.certificate.useWhenTargetServerCertificateInvalidButTrustServer
+        ui.changes.affected
+        ui.changes.cancelDeletionRestore
+        ui.changes.deletePendingItems
+        ui.changes.deleteRepository
+        ui.changes.filesInsideFolderAddedTogether
+        ui.changes.includeCommit
+        ui.changes.includeExcludeFileNextCommit
+        ui.changes.localChangesRefreshed
+        ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose
+        ui.changes.noChanges
+        ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination
+        ui.changes.pendingDeletionStatus
+        ui.changes.propertiesModified
+        ui.changes.resolveDuplicateServerPathsManually
+        ui.changes.restoreLocalFile
+        ui.changes.restorePendingDeletions
+        ui.changes.revertConflictLocalChanges
+        ui.changes.selectChangedFileViewItsDiff
+        ui.changes.showIgnoredFiles
+        ui.changes.showsDiffFile
+        ui.changes.switchedPath
+        ui.changes.temporary
+        ui.changes.thereNoLocallyModifiedFiles
+        ui.changes.unicodePathConflict
+        ui.changes.unversionedLocalFileBlockingServerFileSameNameMoveRename
+        ui.checkout.checkOutAdd
+        ui.checkout.checkOutNewSvnRepositoryRegisterExistingLocalWorkingFolder
+        ui.checkout.checkOutRepositoryUrl
+        ui.checkout.checkOutRepositoryUrlAddItLocalWorkingFolders
+        ui.checkout.checkOutSvnRepositoryLocalFolderAddItApp
+        ui.checkout.checkingOut
+        ui.checkout.chooseLocalCheckoutFolder
+        ui.checkout.filesDownloadedAppearHereAfterCheckoutStarts
+        ui.checkout.keepDownloading
+        ui.checkout.localFolderPickerHelp
+        ui.checkout.localFolderRequiredError
+        ui.checkout.progressLog
+        ui.checkout.runningSvnCheckoutStoppedAlreadyDownloadedFilesStayLocalFolder
+        ui.checkout.stopCheckout
+        ui.checkout.stopCheckoutProgress
+        ui.cleanup.candidateNotRegularFile
+        ui.cleanup.cleanUpEquivalentPath
+        ui.cleanup.cleaningCommitting
+        ui.cleanup.cleaningWorkingCopy
+        ui.cleanup.deleteCommitCleanup
+        ui.cleanup.fileContentsCouldNotRead
+        ui.cleanup.fileDoesNotAppledoubleMagicBytes
+        ui.cleanup.fileDoesNotDsStoreBud1Signature
+        ui.cleanup.fileNotFoundAfterUpdate
+        ui.cleanup.manuallyCleanUpInterruptedLockedSvnWorkingCopy
+        ui.cleanup.needed
+        ui.cleanup.officeLockFileExceedsByteSafetyLimit
+        ui.cleanup.onlyVerifiedCandidatesSelectedReviewEveryPathBeforeDeletingCommitting
+        ui.cleanup.operationInterruptedLikeCleanUpWorkingCopyTryAgainCleanup
+        ui.cleanup.pathOutsideWorkingCopySafetyBoundary
+        ui.cleanup.repositoryTemporaryFileCleanup
+        ui.cleanup.runCleanup
+        ui.cleanup.symbolicLinksNeverCleanedAutomatically
+        ui.cleanup.workingCopyCleanup
+        ui.cleanup.workingCopyCleanupCompleted
+        ui.cleanup.workingCopyCleanupFailedDoNotRetryCleanupRepeatedlyCopy
+        ui.commit.cancelRepositoryDeletionStateRestoreRepositoryVersionLocally
+        ui.commit.clearAllSelectedCommitTargets
+        ui.commit.clearSelection
+        ui.commit.committing
+        ui.commit.confirm
+        ui.commit.diffUnavailableUntilFileAddedSvnItAddedAutomaticallyWhen
+        ui.commit.includeRestore
+        ui.commit.item
+        ui.commit.itemDeletedServer
+        ui.commit.markDeletion
+        ui.commit.markRepositoryDeletion
+        ui.commit.markedItemDeletionCommitDeleteThemRepository
+        ui.commit.message
+        ui.commit.messageSavedIncorrectEncodingShownAfterRestorationOtherSvnUsers
+        ui.commit.no
+        ui.commit.noCommitMessage
+        ui.commit.noFilesDeleted
+        ui.commit.onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted
+        ui.commit.pendingDeletionCount
+        ui.commit.recordedEmptyMessage
+        ui.commit.restoreSelectedDeletionFileServer
+        ui.commit.restoreSelectedFilesAction
+        ui.commit.restoreSelectedFilesConfirmationTitle
+        ui.commit.restoreServer
+        ui.commit.revert
+        ui.commit.revertLocalChangesAction
+        ui.commit.revertLocalChangesConfirmationTitle
+        ui.commit.reviewCommit
+        ui.commit.selectAll
+        ui.commit.selectAllCurrentlyChangedFilesCommit
+        ui.commit.selected
+        ui.commit.selectedFilesSvnServerEnteredMessage
+        ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould
+        ui.commit.uncommittedChangesDiscardedCannotRestoredSvn
+        ui.commit.versionedItemsBelowSelectedDirectoryAlsoMarkedDeletion
+        ui.commit.withoutMessage
+        ui.common.cancel
+        ui.common.changes
+        ui.common.close
+        ui.common.copyFullPath
+        ui.common.couldNotOpenFile
+        ui.common.fileType
+        ui.common.folder
+        ui.common.noTextDiffAvailableMayNewBinaryFile
+        ui.common.openFile
+        ui.common.refresh
+        ui.common.refreshed
+        ui.common.remove
+        ui.common.revealFinder
+        ui.common.save
+        ui.common.selectedCount
+        ui.common.unknownAuthor
+        ui.common.yes
+        ui.conflict.afterReviewingBothBackupsKeepContentCurrentlySavedWorkingFile
+        ui.conflict.applyServerProperties
+        ui.conflict.applyServerVersion
+        ui.conflict.bothVersionsCopiedBackupFolderEditingCopiesDoesNotChange
+        ui.conflict.confirmCurrentLocalPropertiesResolvedValues
+        ui.conflict.confirmCurrentWorkingCopyState
+        ui.conflict.confirmManuallyEditedContent
+        ui.conflict.conflict
+        ui.conflict.conflictedProperties
+        ui.conflict.conflictedPropertyNameCouldNotDetermined
+        ui.conflict.currentWorkingFile
+        ui.conflict.discardLocalChangeRestoreServerFile
+        ui.conflict.fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame
+        ui.conflict.fileCannotCommittedUntilItMarkedResolved
+        ui.conflict.fileThatNotRepository
+        ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer
+        ui.conflict.incomingServerPropertyValuesDiscardedWorkingCopy
+        ui.conflict.keepFileCurrentlySavedWorkingCopyMarkConflictResolvedFile
+        ui.conflict.keepFileLaterCommitReplaceRepositoryFileContent
+        ui.conflict.keepMyChange
+        ui.conflict.keepMyProperties
+        ui.conflict.localPropertyValuesDiscarded
+        ui.conflict.macosUnicodePathMatchedActualSvnManagedPath
+        ui.conflict.modificationDateUnavailable
+        ui.conflict.modified
+        ui.conflict.more
+        ui.conflict.myFile
+        ui.conflict.openBackupFolder
+        ui.conflict.openMyFile
+        ui.conflict.openResolutionAction
+        ui.conflict.openServerFile
+        ui.conflict.overwriteMyVersion
+        ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile
+        ui.conflict.pathCannotCommittedUntilItsPropertyConflictResolved
+        ui.conflict.propertyConflict
+        ui.conflict.propertyConflictResolvedReviewPropertiesBeforeCommitting
+        ui.conflict.propertyValuesKeptWell
+        ui.conflict.replaceLocalPropertiesServerValues
+        ui.conflict.replaceServerFileLocalEditsLeaveWorkingCopyButRemain
+        ui.conflict.resolutionHeader
+        ui.conflict.resolveConflictedFilesBeforeCommitting
+        ui.conflict.resolvedBackupsRemovedItemCreated
+        ui.conflict.resolvedReviewFileBeforeCommitting
+        ui.conflict.resolving
+        ui.conflict.restoreFileServerVersion
+        ui.conflict.revertingRemovesItemsBelowWorkingFolderTheyCopiedBackupFolder
+        ui.conflict.serverFile
+        ui.conflict.serverPropertyValuesAppliedWell
+        ui.conflict.serverRevision
+        ui.conflict.treeConflict
+        ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice
+        ui.conflict.uncommittedChange
+        ui.conflict.uncommittedLocalChangesDiscarded
+        ui.conflict.useMineAction
+        ui.conflict.useMineConfirmationTitle
+        ui.conflict.useServerAction
+        ui.conflict.useServerConfirmationTitle
+        ui.conflict.useWorkingFileAction
+        ui.conflict.useWorkingFileConfirmationTitle
+        ui.conflict.whenChooseVersionCurrentWorkingFilePreservedSeparatelyHiddenRecovery
+        ui.demo.browseSampleProject
+        ui.demo.closeSampleProjectReturnNormalMode
+        ui.demo.exitDemo
+        ui.demo.exploreMainFeaturesSampleDataNoServerConnectionAccount
+        ui.error.bundledSvnExecutableCouldNotFoundReinstallApp
+        ui.error.commitBasedOlderWorkingCopyStateRunUpdateResolveAny
+        ui.error.commitCompletedButWorkingCopyValidationFailedDoNotRetry
+        ui.error.conflictBackupsMustStoredOutsideWorkingCopy
+        ui.error.conflictFilePathPointsOutsideWorkingCopy
+        ui.error.conflictRemainsAfterSvnCommandReviewBackupsTryAgain
+        ui.error.copied
+        ui.error.copyAllDisplayedErrorDetailsClipboard
+        ui.error.copyErrorDetails
+        ui.error.currentWorkingFileCouldNotFound
+        ui.error.currentWorkingFileMustRegularFileNotSymbolicLink
+        ui.error.error
+        ui.error.failed
+        ui.error.failedRemoveIncompleteConflictBackup
+        ui.error.fileRemainsConflictGoChangesChooseResolveConflictsResolveIt
+        ui.error.fileVersionCouldNotFound
+        ui.error.fileVersionMustRegularFileNotSymbolicLink
+        ui.error.lockTokenDoesNotBelongCurrentWorkingCopyReviewOwner
+        ui.error.recoveryBackupCurrentWorkingFileCouldNotVerified
+        ui.error.recoveryDestinationFolderMustEmpty
+        ui.error.selectedFolderNotSvnLocalWorkingFolder
+        ui.error.selectedVersionFileCouldNotRestoredWorkingFile
+        ui.error.serverFileVersionCouldNotFound
+        ui.error.serverFileVersionMustRegularFileNotSymbolicLink
+        ui.error.svnResponseCouldNotRead
+        ui.error.unableLoadChanges
+        ui.error.unableOpenFile
+        ui.error.unknownError
+        ui.error.unsupportedConflictType
+        ui.error.workingCopyOperationInterruptedRunWorkingCopyCleanupTryOperation
+        ui.file.copiedFilePath
+        ui.file.noLongerMarkedDeleted
+        ui.file.restoredButFailed
+        ui.file.restoredSelectedDeletionFileServer
+        ui.file.revertedLocalChanges
+        ui.history.additionalRevisionProperties
+        ui.history.blueDotsServerCommitsGreenRingHighestLocalRevisionOrange
+        ui.history.blueDotsServerCommitsGreenRingLocalBaseOrangeBranch
+        ui.history.changedPaths
+        ui.history.commitHistory
+        ui.history.commitTimeUnavailable
+        ui.history.contentChanged
+        ui.history.copyHistory
+        ui.history.earlierHistory
+        ui.history.fileCommitHistory
+        ui.history.highestLocalRevision
+        ui.history.includedLocally
+        ui.history.load50More
+        ui.history.loading
+        ui.history.loadingCommitHistory
+        ui.history.localBaseRevision
+        ui.history.localBaseRevisionEarlierThanLatest50ServerRecords
+        ui.history.localChanges
+        ui.history.localUpdateBaseFallsBetweenTwoServerCommits
+        ui.history.mixedRevisions
+        ui.history.myLocalBase
+        ui.history.myLocalFolderR
+        ui.history.noCommitHistory
+        ui.history.noValue
+        ui.history.originalMessage
+        ui.history.propertiesChanged
+        ui.history.refreshed
+        ui.history.reloadLocalChangesLatestServerCommitHistory
+        ui.history.renameHistory
+        ui.history.restored
+        ui.history.serverCommitDetail
+        ui.history.serverCommitLegend
+        ui.history.serverLatest
+        ui.history.serverLatestR
+        ui.history.uncommittedChanges
+        ui.history.uncommittedChangesBranchLocalBaseRevision
+        ui.history.upDate
+        ui.history.viewChangesCommit
+        ui.history.viewOriginalMessageBeforeRestoration
+        ui.history.workingCopyContainsMixedRevisionsRMarkerShowsHighestRevision
+        ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam
+        ui.ignore.alreadyVersionedFilesNotHiddenIgnoreRules
+        ui.ignore.applied
+        ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare
+        ui.ignore.apply
+        ui.ignore.applyGlobalIgnoreRules
+        ui.ignore.applySelectedRules
+        ui.ignore.applying
+        ui.ignore.available
+        ui.ignore.clear
+        ui.ignore.compareGitRules
+        ui.ignore.fileExtension
+        ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust
+        ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply
+        ui.ignore.importGitRules
+        ui.ignore.inherited
+        ui.ignore.inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty
+        ui.ignore.item
+        ui.ignore.lastCompared
+        ui.ignore.manageIgnoreRules
+        ui.ignore.noGitignore
+        ui.ignore.noGitignoreFileFoundWorkingCopy
+        ui.ignore.noSvnIgnoreRulesConfigured
+        ui.ignore.removeInheritedRulesParentDirectoryThatOwnsProperty
+        ui.ignore.removeRule
+        ui.ignore.removedIgnoreRule
+        ui.ignore.resolveUnicodePathConflictsBeforeComparingGitRulesSoProperty
+        ui.ignore.review
+        ui.ignore.selectAll
+        ui.ignore.svnIgnoreRules
+        ui.ignore.thereNoGitRulesImport
+        ui.ignore.unsupported
+        ui.lock.alreadyHoldLocksAllSelectedFiles
+        ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther
+        ui.lock.countAccessibilityLabel
+        ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking
+        ui.lock.editingDocumentSvnKr
+        ui.lock.file
+        ui.lock.fileBeforeOpening
+        ui.lock.fileCurrentlyLockedOpeningWithoutLockMayPreventCommittingCause
+        ui.lock.fileLockedSuccessfulCommitAutomaticallyReleasesLock
+        ui.lock.forceLock
+        ui.lock.forceLockingSelectedFileRemovesExistingUsersLocksReviewOwners
+        ui.lock.forceReleaseLock
+        ui.lock.forceReleaseRepositoryLock
+        ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked
+        ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt
+        ui.lock.loadingRepositoryLocks
+        ui.lock.lockAndOpenAction
+        ui.lock.lockedByCurrentUser
+        ui.lock.lockedByOwner
+        ui.lock.lockedFile
+        ui.lock.lockedFileMarkedSvnServerPreventAnotherUserCommittingIt
+        ui.lock.lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful
+        ui.lock.noLockedFiles
+        ui.lock.notAvailable
+        ui.lock.openWithoutLock
+        ui.lock.openWithoutLockingDonTAskAgain
+        ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict
+        ui.lock.openingFileLocked
+        ui.lock.releaseAllAction
+        ui.lock.releaseAllConfirmationTitle
+        ui.lock.releaseFromBrowserAction
+        ui.lock.releaseFromListAction
+        ui.lock.releaseLocks
+        ui.lock.releaseLocksOwnedCurrentUserOtherUsersAbleModifyFiles
+        ui.lock.releaseMyLock
+        ui.lock.released
+        ui.lock.releasedAllLocks
+        ui.lock.releasedLocksLocksBelowCouldNotReleased
+        ui.lock.removeRequiredLock
+        ui.lock.repositoryLockForceReleased
+        ui.lock.repositoryLocks
+        ui.lock.requireLockBeforeEditing
+        ui.lock.requiredBeforeEditing
+        ui.lock.reviewForceLock
+        ui.lock.selectedFile
+        ui.lock.sheetTitle
+        ui.lock.someLocksNotReleased
+        ui.lock.takeAnotherUserLock
+        ui.lock.tryNormalUnlockFirstIfWorkingCopyNoMatchingLock
+        ui.lock.viewLockedFilesTheirCountRepository
+        ui.recovery.allContentsVerifiedInterruptedSvnWorkingCopyFolderBelowDeleted
+        ui.recovery.automaticUnicodePathRecovery
+        ui.recovery.checkoutCanceledPartiallyDownloadedFilesMayRemain
+        ui.recovery.checkoutInterrupted
+        ui.recovery.chooseAction
+        ui.recovery.chooseEmptyFolder
+        ui.recovery.chooseEmptyRecoveryFolder
+        ui.recovery.chooseFolder
+        ui.recovery.cleanWorkingCopyCheckedOutServerOnlyRealLocalChanges
+        ui.recovery.cleaningContinuing
+        ui.recovery.continueCheckout
+        ui.recovery.emptiedInterruptedCheckoutFolder
+        ui.recovery.emptyFolderConfirmationAction
+        ui.recovery.emptyFolderRequestAction
+        ui.recovery.emptyInterruptedCheckoutFolder
+        ui.recovery.falseAliasesExcluded
+        ui.recovery.folderAlreadyFilesBeforeCheckoutSoAppNotEmptyIt
+        ui.recovery.folderIncompleteSvnWorkingCopyContinueRegisteringItCleaningIt
+        ui.recovery.folderNotEmptiedBecauseItCouldNotVerifiedSafelyInterrupted
+        ui.recovery.interruptedCheckoutFolderNoLongerValidSvnWorkingCopySo
+        ui.recovery.localWorkingFolderAlreadyRegistered
+        ui.recovery.locallyMissing
+        ui.recovery.locallyMissingActionRequired
+        ui.recovery.new
+        ui.recovery.newWorkingFolder
+        ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved
+        ui.recovery.preview
+        ui.recovery.recoverNewWorkingFolder
+        ui.recovery.successBothOriginalRecoveredCopiesRemainSidebar
+        ui.repository.addLocalWorkingFolder
+        ui.repository.addSvnRepository
+        ui.repository.cancelAddingRepositoryCloseWindow
+        ui.repository.change
+        ui.repository.changeRepositoryLocation
+        ui.repository.chooseSvnLocalWorkingFolders
+        ui.repository.commitChangeApplyItServer
+        ui.repository.copyCurrentRepositoryUrl
+        ui.repository.currentRepositoryUrl
+        ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges
+        ui.repository.destinationNameAlreadyExists
+        ui.repository.enterValidFileNameWithoutFolderPath
+        ui.repository.enterValidRepositoryUrlIncludingItsScheme
+        ui.repository.filePanelPrompt
+        ui.repository.localFolder
+        ui.repository.localFolderPickerAction
+        ui.repository.localWorkingFolders
+        ui.repository.mayMovedRelocateNewUrlRestoreRemoteOperations
+        ui.repository.newFileName
+        ui.repository.newFileNameMatchesCurrentName
+        ui.repository.newFolderAppliedWhenSave
+        ui.repository.newRepositoryUrl
+        ui.repository.newRepositoryUrlMatchesCurrentUrl
+        ui.repository.notSvnVersionedFile
+        ui.repository.onlyRegularFilesCanRenamedCopiedAssignedRequiredLockProperty
+        ui.repository.openFinder
+        ui.repository.openRepositoryRelocation
+        ui.repository.openSvnLocalWorkingFolderFinder
+        ui.repository.pickNewLocationSvnWorkingFolder
+        ui.repository.pressOUseButtonBottomLeft
+        ui.repository.registerExistingLocalFolder
+        ui.repository.registerExistingSvnWorkingFolderApp
+        ui.repository.relocateAction
+        ui.repository.relocatedRepositoryConnectionLocalChangesPreserved
+        ui.repository.relocatingRepository
+        ui.repository.relocationConfirmationTitle
+        ui.repository.relocationFailedCheckCurrentUrlRelocateCorrectNewUrlIf
+        ui.repository.relocationPreservesAllUncommittedLocalChanges
+        ui.repository.removeApp
+        ui.repository.removeSelectedWorkingFolderAppLocalFilesNotDeleted
+        ui.repository.reviewRelocation
+        ui.repository.workingFolderChanged
+        ui.repository.workingFolderNoLongerExistsRestoreFolderRemoveItList
+        ui.revision.chooseChangedFileAboveDisplayOnlyThatFileDiff
+        ui.revision.chooseViewChangesHistoryDisplayActualDiff
+        ui.revision.commitChanges
+        ui.revision.commitNotFound
+        ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult
+        ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould
+        ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt
+        ui.revision.fileCommitHistory
+        ui.revision.filePathPointsOutsideLocalWorkingFolder
+        ui.revision.loadingChanges
+        ui.revision.loadingFileHistory
+        ui.revision.noChangedFiles
+        ui.revision.noFileHistory
+        ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions
+        ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder
+        ui.revision.restoreWorkingFile
+        ui.revision.restoreWorkingFileRevision
+        ui.revision.restoredFileDidNotMatchSelectedRevisionByteByteRecovery
+        ui.revision.restoredRNowLocalChangeCommitItUpdateServer
+        ui.revision.restoringRevision
+        ui.revision.saveRevision
+        ui.revision.savedR
+        ui.revision.savingRevision
+        ui.revision.searchAuthorFileMessageRevision
+        ui.revision.selectCommit
+        ui.revision.selectFile
+        ui.revision.selectedSaveLocationNotSafeRegularFileDestination
+        ui.revision.workingFileMustRegularFileNotSymbolicLink
+        ui.settings.alwaysLockOpenWithoutAsking
+        ui.settings.alwaysOpenWithoutLockingAsking
+        ui.settings.askEveryTime
+        ui.settings.chooseLanguageUsedAppInterface
+        ui.settings.chooseTimeZoneUsedCommitDatesTimes
+        ui.settings.commitDisplayTimeZone
+        ui.settings.coordinatedUniversalTimeUtc
+        ui.settings.defaultKoreaStandardTimeKstDoesNotChangeOriginalCommit
+        ui.settings.folderSettings
+        ui.settings.hideMacOfficeTemporaryFiles
+        ui.settings.hideTemporaryFilesChangesPreventThemCommittedVersionedFilesRemain
+        ui.settings.japanStandardTime
+        ui.settings.koreaStandardTime
+        ui.settings.language
+        ui.settings.macSystemTimeZone
+        ui.settings.openAppWideSettingsWindow
+        ui.settings.otherUsersCannotModifyLockedFileUntilCommitItRelease
+        ui.settings.settings
+        ui.settings.ukTime
+        ui.settings.usEasternTime
+        ui.settings.usPacificTime
+        ui.settings.whenOpeningDocuments
+        ui.status.added
+        ui.status.deleted
+        ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames
+        ui.status.filenameWarning
+        ui.status.ignored
+        ui.status.lockedFiles
+        ui.status.modified
+        ui.status.replaced
+        ui.status.unversioned
+        ui.update.addRepositoryTemporaryFileCleanupCommitAfterUpdating
+        ui.update.afterUpdateCandidateContentsVerifiedReviewFinalListBeforeAny
+        ui.update.beforeRetryingCommit
+        ui.update.checkAppStoreLatestVersion
+        ui.update.checkFromAppMenu
+        ui.update.checkNow
+        ui.update.checkingIncomingChanges
+        ui.update.checkingUpdates
+        ui.update.checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating
+        ui.update.cleanedRepositoryTemporaryFile
+        ui.update.commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts
+        ui.update.completeUpdatePreviewCouldNotLoadedCanStillTryUpdate
+        ui.update.continueUpdating
+        ui.update.createdConflictsSoCommitNotRetried
+        ui.update.createdConflictsSoCommitNotRetriedResolvePathsFirst
+        ui.update.downloadLatestServerChangesCurrentLocalWorkingFolder
+        ui.update.goConflictResolution
+        ui.update.incomingChangesThatOverlapLocalEditsMayCreateSvnConflict
+        ui.update.incomplete
+        ui.update.later
+        ui.update.localFileBlockingUpdate
+        ui.update.lockedRepository
+        ui.update.newVersionDialogTitle
+        ui.update.noIncomingChanges
+        ui.update.preview
+        ui.update.previewAvailableStatus
+        ui.update.reUsingLatestVersion
+        ui.update.requiredBeforeCommit
+        ui.update.retryCommit
+        ui.update.runUpdate
+        ui.update.serverChangesInsidePendingDeletionMayNotAppearListRun
+        ui.update.showingFirstCommits
+        ui.update.sidebarAvailableBadge
+        ui.update.someSavedCommitSelectionsDisappearedChangeListAfterUpdateReview
+        ui.update.someTemporaryFilesNotCleaned
+        ui.update.succeededButCleanupCommitFailedScheduledDeletionsRestored
+        ui.update.succeededButCleanupCouldNotStart
+        ui.update.svnRequiresWorkingCopyUpdateConfirmUpdateRetryCommitSaved
+        ui.update.unableCheckAppStoreUpdates
+        ui.update.update
+        ui.update.updating
+        ui.update.versionAvailable
+        ui.update.viewAppStore
+        ui.update.workingCopyUpDateServer
+        """
+        .split(separator: "\n")
+        .map { LocalizationKey(String($0)) }
 }
 
 struct LocalizationErrorKeys {
-    let chooseMissingItems = LocalizationKey("error.choose.missing.items")
-    let deletionPartial = LocalizationKey("error.deletion.partial")
-    let deletionValidation = LocalizationKey("error.deletion.validation")
-    let fileReplacementRecovery = LocalizationKey("error.file.replacement.recovery")
-    let pathAliasRepair = LocalizationKey("error.path.alias.repair")
-    let pathNormalizationCollision = LocalizationKey("error.path.normalization.collision")
-    let recoveryBlocked = LocalizationKey("error.recovery.blocked")
-    let recoveryValidation = LocalizationKey("error.recovery.validation")
-    let unresolvedMissingPaths = LocalizationKey("error.unresolved.missing.paths")
-    let unsupportedTargetPath = LocalizationKey("error.unsupported.target.path")
+    let deletion = LocalizationErrorDeletionKeys()
+    let path = LocalizationErrorPathKeys()
+    let recovery = LocalizationErrorRecoveryKeys()
+}
+
+struct LocalizationErrorDeletionKeys {
+    let chooseMissingItems = LocalizationKey("error.deletion.chooseMissingItems")
+    let partial = LocalizationKey("error.deletion.partial")
+    let unresolvedMissingPaths = LocalizationKey("error.deletion.unresolvedMissingPaths")
+    let validation = LocalizationKey("error.deletion.validation")
+}
+
+struct LocalizationErrorPathKeys {
+    let aliasRepair = LocalizationKey("error.path.aliasRepair")
+    let normalizationCollision = LocalizationKey("error.path.normalizationCollision")
+    let unsupportedTarget = LocalizationKey("error.path.unsupportedTarget")
+}
+
+struct LocalizationErrorRecoveryKeys {
+    let blocked = LocalizationKey("error.recovery.blocked")
+    let fileReplacement = LocalizationKey("error.recovery.fileReplacement")
+    let validation = LocalizationKey("error.recovery.validation")
 }
 
 struct LocalizationHistoryKeys {
-    let copiedFrom = LocalizationKey("history.copied.from")
+    let copy = LocalizationHistoryCopyKeys()
+}
+
+struct LocalizationHistoryCopyKeys {
+    let copiedFrom = LocalizationKey("history.copy.copiedFrom")
 }
 
 struct LocalizationRecoveryKeys {
-    let reviewPaths = LocalizationKey("recovery.review.paths")
+    let path = LocalizationRecoveryPathKeys()
+}
+
+struct LocalizationRecoveryPathKeys {
+    let reviewPaths = LocalizationKey("recovery.path.reviewPaths")
 }
 
 struct LocalizationRepositoryKeys {
-    let pathNormalizationAction = LocalizationKey("repository.path.normalization.action")
-    let pathNormalizationActionHelp = LocalizationKey("repository.path.normalization.action.help")
-    let pathNormalizationAfter = LocalizationKey("repository.path.normalization.after")
-    let pathNormalizationBefore = LocalizationKey("repository.path.normalization.before")
-    let pathNormalizationCodepointsDetail = LocalizationKey("repository.path.normalization.codepoints.detail")
-    let pathNormalizationConfirmationCommits = LocalizationKey("repository.path.normalization.confirmation.commits")
-    let pathNormalizationConfirmationDeleteAdd = LocalizationKey("repository.path.normalization.confirmation.delete.add")
-    let pathNormalizationConfirmationDirectory = LocalizationKey("repository.path.normalization.confirmation.directory")
-    let pathNormalizationConfirmationRun = LocalizationKey("repository.path.normalization.confirmation.run")
-    let pathNormalizationConfirmationTeam = LocalizationKey("repository.path.normalization.confirmation.team")
-    let pathNormalizationConfirmationTitle = LocalizationKey("repository.path.normalization.confirmation.title")
-    let pathNormalizationDefaultCommitMessage = LocalizationKey("repository.path.normalization.default.commit.message")
-    let pathNormalizationDeselectAll = LocalizationKey("repository.path.normalization.deselect.all")
-    let pathNormalizationDifferentComponent = LocalizationKey("repository.path.normalization.different.component")
-    let pathNormalizationDirectoryNote = LocalizationKey("repository.path.normalization.directory.note")
-    let pathNormalizationErrorInvalidTargets = LocalizationKey("repository.path.normalization.error.invalid.targets")
-    let pathNormalizationErrorLocalChanges = LocalizationKey("repository.path.normalization.error.local.changes")
-    let pathNormalizationErrorLocks = LocalizationKey("repository.path.normalization.error.locks")
-    let pathNormalizationErrorPartialFailure = LocalizationKey("repository.path.normalization.error.partial.failure")
-    let pathNormalizationErrorUnknown = LocalizationKey("repository.path.normalization.error.unknown")
-    let pathNormalizationFormComposed = LocalizationKey("repository.path.normalization.form.composed")
-    let pathNormalizationFormDecomposed = LocalizationKey("repository.path.normalization.form.decomposed")
-    let pathNormalizationNoPaths = LocalizationKey("repository.path.normalization.no.paths")
-    let pathNormalizationProblem = LocalizationKey("repository.path.normalization.problem")
-    let pathNormalizationResult = LocalizationKey("repository.path.normalization.result")
-    let pathNormalizationResultRevisions = LocalizationKey("repository.path.normalization.result.revisions")
-    let pathNormalizationResultSummary = LocalizationKey("repository.path.normalization.result.summary")
-    let pathNormalizationReviewAction = LocalizationKey("repository.path.normalization.review.action")
-    let pathNormalizationRunning = LocalizationKey("repository.path.normalization.running")
-    let pathNormalizationSameAppearanceNote = LocalizationKey("repository.path.normalization.same.appearance.note")
-    let pathNormalizationScanAgain = LocalizationKey("repository.path.normalization.scan.again")
-    let pathNormalizationScanning = LocalizationKey("repository.path.normalization.scanning")
-    let pathNormalizationScanningDetail = LocalizationKey("repository.path.normalization.scanning.detail")
-    let pathNormalizationSkipped = LocalizationKey("repository.path.normalization.skipped")
-    let pathNormalizationSkippedReason = LocalizationKey("repository.path.normalization.skipped.reason")
-    let pathNormalizationTargets = LocalizationKey("repository.path.normalization.targets")
-    let pathNormalizationTitle = LocalizationKey("repository.path.normalization.title")
-    let pathNormalizationWaiting = LocalizationKey("repository.path.normalization.waiting")
-    let pathNormalizationWindowsNote = LocalizationKey("repository.path.normalization.windows.note")
+    let pathNormalization = LocalizationRepositoryPathNormalizationKeys()
 }
 
-struct LocalizationUiKeys {
-    let a = LocalizationUIAKeys()
+struct LocalizationRepositoryPathNormalizationKeys {
+    let action = LocalizationKey("repository.pathNormalization.action")
+    let actionHelp = LocalizationKey("repository.pathNormalization.actionHelp")
+    let after = LocalizationKey("repository.pathNormalization.after")
+    let before = LocalizationKey("repository.pathNormalization.before")
+    let codepointsDetail = LocalizationKey("repository.pathNormalization.codepointsDetail")
+    let confirmationCommits = LocalizationKey("repository.pathNormalization.confirmationCommits")
+    let confirmationDeleteAdd = LocalizationKey("repository.pathNormalization.confirmationDeleteAdd")
+    let confirmationDirectory = LocalizationKey("repository.pathNormalization.confirmationDirectory")
+    let confirmationRun = LocalizationKey("repository.pathNormalization.confirmationRun")
+    let confirmationTeam = LocalizationKey("repository.pathNormalization.confirmationTeam")
+    let confirmationTitle = LocalizationKey("repository.pathNormalization.confirmationTitle")
+    let defaultCommitMessage = LocalizationKey("repository.pathNormalization.defaultCommitMessage")
+    let deselectAll = LocalizationKey("repository.pathNormalization.deselectAll")
+    let differentComponent = LocalizationKey("repository.pathNormalization.differentComponent")
+    let directoryNote = LocalizationKey("repository.pathNormalization.directoryNote")
+    let errorInvalidTargets = LocalizationKey("repository.pathNormalization.errorInvalidTargets")
+    let errorLocalChanges = LocalizationKey("repository.pathNormalization.errorLocalChanges")
+    let errorLocks = LocalizationKey("repository.pathNormalization.errorLocks")
+    let errorPartialFailure = LocalizationKey("repository.pathNormalization.errorPartialFailure")
+    let errorUnknown = LocalizationKey("repository.pathNormalization.errorUnknown")
+    let formComposed = LocalizationKey("repository.pathNormalization.formComposed")
+    let formDecomposed = LocalizationKey("repository.pathNormalization.formDecomposed")
+    let noPaths = LocalizationKey("repository.pathNormalization.noPaths")
+    let problem = LocalizationKey("repository.pathNormalization.problem")
+    let result = LocalizationKey("repository.pathNormalization.result")
+    let resultRevisions = LocalizationKey("repository.pathNormalization.resultRevisions")
+    let resultSummary = LocalizationKey("repository.pathNormalization.resultSummary")
+    let reviewAction = LocalizationKey("repository.pathNormalization.reviewAction")
+    let running = LocalizationKey("repository.pathNormalization.running")
+    let sameAppearanceNote = LocalizationKey("repository.pathNormalization.sameAppearanceNote")
+    let scanAgain = LocalizationKey("repository.pathNormalization.scanAgain")
+    let scanning = LocalizationKey("repository.pathNormalization.scanning")
+    let scanningDetail = LocalizationKey("repository.pathNormalization.scanningDetail")
+    let skipped = LocalizationKey("repository.pathNormalization.skipped")
+    let skippedReason = LocalizationKey("repository.pathNormalization.skippedReason")
+    let targets = LocalizationKey("repository.pathNormalization.targets")
+    let title = LocalizationKey("repository.pathNormalization.title")
+    let waiting = LocalizationKey("repository.pathNormalization.waiting")
+    let windowsNote = LocalizationKey("repository.pathNormalization.windowsNote")
+}
+
+struct LocalizationUIKeys {
     let about = LocalizationUIAboutKeys()
-    let add = LocalizationUIAddKeys()
-    let added = LocalizationUIAddedKeys()
-    let additional = LocalizationUIAdditionalKeys()
-    let affected = LocalizationUIAffectedKeys()
-    let after = LocalizationUIAfterKeys()
-    let all = LocalizationUIAllKeys()
-    let allow = LocalizationUIAllowKeys()
-    let already = LocalizationUIAlreadyKeys()
-    let always = LocalizationUIAlwaysKeys()
-    let an = LocalizationUIAnKeys()
-    let and = LocalizationUIAndKeys()
-    let applied = LocalizationUIAppliedKeys()
-    let apply = LocalizationUIApplyKeys()
-    let applying = LocalizationUIApplyingKeys()
-    let ask = LocalizationUIAskKeys()
     let authentication = LocalizationUIAuthenticationKeys()
-    let automatic = LocalizationUIAutomaticKeys()
-    let available = LocalizationUIAvailableKeys()
-    let blue = LocalizationUIBlueKeys()
-    let both = LocalizationUIBothKeys()
-    let browse = LocalizationUIBrowseKeys()
-    let bulk = LocalizationUIBulkKeys()
-    let cancel = LocalizationUICancelKeys()
-    let canceled = LocalizationUICanceledKeys()
-    let canceling = LocalizationUICancelingKeys()
+    let browser = LocalizationUIBrowserKeys()
     let certificate = LocalizationUICertificateKeys()
-    let change = LocalizationUIChangeKeys()
-    let changed = LocalizationUIChangedKeys()
     let changes = LocalizationUIChangesKeys()
-    let check = LocalizationUICheckKeys()
-    let checking = LocalizationUICheckingKeys()
     let checkout = LocalizationUICheckoutKeys()
-    let choose = LocalizationUIChooseKeys()
-    let clean = LocalizationUICleanKeys()
-    let cleaned = LocalizationUICleanedKeys()
-    let cleaning = LocalizationUICleaningKeys()
     let cleanup = LocalizationUICleanupKeys()
-    let clear = LocalizationUIClearKeys()
-    let close = LocalizationUICloseKeys()
     let commit = LocalizationUICommitKeys()
-    let committing = LocalizationUICommittingKeys()
-    let compare = LocalizationUICompareKeys()
-    let configure = LocalizationUIConfigureKeys()
-    let confirm = LocalizationUIConfirmKeys()
+    let common = LocalizationUICommonKeys()
     let conflict = LocalizationUIConflictKeys()
-    let conflicted = LocalizationUIConflictedKeys()
-    let content = LocalizationUIContentKeys()
-    let coordinated = LocalizationUICoordinatedKeys()
-    let copied = LocalizationUICopiedKeys()
-    let copy = LocalizationUICopyKeys()
-    let could = LocalizationUICouldKeys()
-    let credentials = LocalizationUICredentialsKeys()
-    let current = LocalizationUICurrentKeys()
-    let delete = LocalizationUIDeleteKeys()
-    let deleted = LocalizationUIDeletedKeys()
-    let destination = LocalizationUIDestinationKeys()
-    let diff = LocalizationUIDiffKeys()
-    let directory = LocalizationUIDirectoryKeys()
-    let discard = LocalizationUIDiscardKeys()
-    let document = LocalizationUIDocumentKeys()
-    let download = LocalizationUIDownloadKeys()
-    let earlier = LocalizationUIEarlierKeys()
-    let editing = LocalizationUIEditingKeys()
-    let empty = LocalizationUIEmptyKeys()
-    let enter = LocalizationUIEnterKeys()
+    let demo = LocalizationUIDemoKeys()
     let error = LocalizationUIErrorKeys()
-    let exit = LocalizationUIExitKeys()
-    let expired = LocalizationUIExpiredKeys()
-    let explicit = LocalizationUIExplicitKeys()
-    let explore = LocalizationUIExploreKeys()
-    let failed = LocalizationUIFailedKeys()
     let file = LocalizationUIFileKeys()
-    let filename = LocalizationUIFilenameKeys()
-    let files = LocalizationUIFilesKeys()
-    let folder = LocalizationUIFolderKeys()
-    let force = LocalizationUIForceKeys()
-    let gitignore = LocalizationUIGitignoreKeys()
-    let global = LocalizationUIGlobalKeys()
-    let go = LocalizationUIGoKeys()
-    let hide = LocalizationUIHideKeys()
-    let highest = LocalizationUIHighestKeys()
     let history = LocalizationUIHistoryKeys()
     let ignore = LocalizationUIIgnoreKeys()
-    let ignored = LocalizationUIIgnoredKeys()
-    let include = LocalizationUIIncludeKeys()
-    let included = LocalizationUIIncludedKeys()
-    let incoming = LocalizationUIIncomingKeys()
-    let incomplete = LocalizationUIIncompleteKeys()
-    let inherited = LocalizationUIInheritedKeys()
-    let invalid = LocalizationUIInvalidKeys()
-    let item = LocalizationUIItemKeys()
-    let japan = LocalizationUIJapanKeys()
-    let keep = LocalizationUIKeepKeys()
-    let keychain = LocalizationUIKeychainKeys()
-    let korea = LocalizationUIKoreaKeys()
-    let language = LocalizationUILanguageKeys()
-    let last = LocalizationUILastKeys()
-    let later = LocalizationUILaterKeys()
-    let leave = LocalizationUILeaveKeys()
-    let load = LocalizationUILoadKeys()
-    let loading = LocalizationUILoadingKeys()
-    let local = LocalizationUILocalKeys()
-    let localizationContinue = LocalizationUILocalizationcontinueKeys()
-    let localizationDo = LocalizationUILocalizationdoKeys()
-    let localizationFalse = LocalizationUILocalizationfalseKeys()
-    let localizationImport = LocalizationUILocalizationimportKeys()
-    let localizationOpen = LocalizationUILocalizationopenKeys()
-    let localizationTry = LocalizationUILocalizationtryKeys()
-    let locally = LocalizationUILocallyKeys()
     let lock = LocalizationUILockKeys()
-    let locked = LocalizationUILockedKeys()
-    let locking = LocalizationUILockingKeys()
-    let locks = LocalizationUILocksKeys()
-    let mac = LocalizationUIMacKeys()
-    let manage = LocalizationUIManageKeys()
-    let mark = LocalizationUIMarkKeys()
-    let marked = LocalizationUIMarkedKeys()
-    let mixed = LocalizationUIMixedKeys()
-    let modification = LocalizationUIModificationKeys()
-    let modified = LocalizationUIModifiedKeys()
-    let move = LocalizationUIMoveKeys()
-    let multiple = LocalizationUIMultipleKeys()
-    let my = LocalizationUIMyKeys()
-    let need = LocalizationUINeedKeys()
-    let needs = LocalizationUINeedsKeys()
-    let new = LocalizationUINewKeys()
-    let no = LocalizationUINoKeys()
-    let not = LocalizationUINotKeys()
-    let obstructed = LocalizationUIObstructedKeys()
-    let on = LocalizationUIOnKeys()
-    let only = LocalizationUIOnlyKeys()
-    let opened = LocalizationUIOpenedKeys()
-    let opening = LocalizationUIOpeningKeys()
-    let operation = LocalizationUIOperationKeys()
-    let original = LocalizationUIOriginalKeys()
-    let overwrite = LocalizationUIOverwriteKeys()
-    let parent = LocalizationUIParentKeys()
-    let password = LocalizationUIPasswordKeys()
-    let path = LocalizationUIPathKeys()
-    let pending = LocalizationUIPendingKeys()
-    let pick = LocalizationUIPickKeys()
-    let please = LocalizationUIPleaseKeys()
-    let press = LocalizationUIPressKeys()
-    let preview = LocalizationUIPreviewKeys()
-    let properties = LocalizationUIPropertiesKeys()
-    let property = LocalizationUIPropertyKeys()
-    let questions = LocalizationUIQuestionsKeys()
-    let recover = LocalizationUIRecoverKeys()
     let recovery = LocalizationUIRecoveryKeys()
-    let refresh = LocalizationUIRefreshKeys()
-    let refreshed = LocalizationUIRefreshedKeys()
-    let register = LocalizationUIRegisterKeys()
-    let release = LocalizationUIReleaseKeys()
-    let reload = LocalizationUIReloadKeys()
-    let relocate = LocalizationUIRelocateKeys()
-    let relocating = LocalizationUIRelocatingKeys()
-    let remove = LocalizationUIRemoveKeys()
-    let removed = LocalizationUIRemovedKeys()
-    let rename = LocalizationUIRenameKeys()
-    let replace = LocalizationUIReplaceKeys()
-    let replaced = LocalizationUIReplacedKeys()
     let repository = LocalizationUIRepositoryKeys()
-    let resolve = LocalizationUIResolveKeys()
-    let resolving = LocalizationUIResolvingKeys()
-    let restore = LocalizationUIRestoreKeys()
-    let restored = LocalizationUIRestoredKeys()
-    let restoring = LocalizationUIRestoringKeys()
-    let reveal = LocalizationUIRevealKeys()
-    let revert = LocalizationUIRevertKeys()
-    let reverted = LocalizationUIRevertedKeys()
-    let review = LocalizationUIReviewKeys()
     let revision = LocalizationUIRevisionKeys()
-    let run = LocalizationUIRunKeys()
-    let save = LocalizationUISaveKeys()
-    let saved = LocalizationUISavedKeys()
-    let saving = LocalizationUISavingKeys()
-    let search = LocalizationUISearchKeys()
-    let secure = LocalizationUISecureKeys()
-    let select = LocalizationUISelectKeys()
-    let selected = LocalizationUISelectedKeys()
-    let send = LocalizationUISendKeys()
-    let server = LocalizationUIServerKeys()
     let settings = LocalizationUISettingsKeys()
-    let show = LocalizationUIShowKeys()
-    let showing = LocalizationUIShowingKeys()
-    let shows = LocalizationUIShowsKeys()
-    let source = LocalizationUISourceKeys()
-    let stop = LocalizationUIStopKeys()
-    let svn = LocalizationUISvnKeys()
-    let switched = LocalizationUISwitchedKeys()
-    let symbolic = LocalizationUISymbolicKeys()
-    let temporary = LocalizationUITemporaryKeys()
-    let the = LocalizationUITheKeys()
-    let there = LocalizationUIThereKeys()
-    let this = LocalizationUIThisKeys()
-    let tree = LocalizationUITreeKeys()
-    let uk = LocalizationUIUkKeys()
-    let unable = LocalizationUIUnableKeys()
-    let uncommitted = LocalizationUIUncommittedKeys()
-    let unicode = LocalizationUIUnicodeKeys()
-    let unknown = LocalizationUIUnknownKeys()
-    let unsupported = LocalizationUIUnsupportedKeys()
-    let unversioned = LocalizationUIUnversionedKeys()
-    let up = LocalizationUIUpKeys()
+    let status = LocalizationUIStatusKeys()
     let update = LocalizationUIUpdateKeys()
-    let updating = LocalizationUIUpdatingKeys()
-    let us = LocalizationUIUsKeys()
-    let use = LocalizationUIUseKeys()
-    let username = LocalizationUIUsernameKeys()
-    let version = LocalizationUIVersionKeys()
-    let versioned = LocalizationUIVersionedKeys()
-    let view = LocalizationUIViewKeys()
-    let when = LocalizationUIWhenKeys()
-    let working = LocalizationUIWorkingKeys()
-    let yes = LocalizationUIYesKeys()
-    let you = LocalizationUIYouKeys()
-    let your = LocalizationUIYourKeys()
-}
-
-struct LocalizationUIAKeys {
-    let cleanWorkingCopyIsCheckedOutFromTheSer = LocalizationKey("ui.a.clean.working.copy.is.checked.out.from.the.ser.a49ce026")
-    let conflictFilePathPointsOutsideTheWorking = LocalizationKey("ui.a.conflict.file.path.points.outside.the.working..137a7ed6")
-    let lockedFileIsMarkedOnTheSvnServerToPre = LocalizationKey("ui.a.locked.file.is.marked.on.the.svn.server.to.pre.d248a309")
-    let passwordForThisFolderIsStoredInMacosKe = LocalizationKey("ui.a.password.for.this.folder.is.stored.in.macos.ke.676ba875")
 }
 
 struct LocalizationUIAboutKeys {
-    let svnKr = LocalizationKey("ui.about.svn.kr.ddc63e52")
-}
-
-struct LocalizationUIAddKeys {
-    let aLocalWorkingFolder = LocalizationKey("ui.add.a.local.working.folder.816116ca")
-    let repositoryTemporaryFileCleanupCommit = LocalizationKey("ui.add.repository.temporary.file.cleanup.commit.a19da94a")
-    let svnRepository = LocalizationKey("ui.add.svn.repository.8b9639fa")
-}
-
-struct LocalizationUIAddedKeys {
-    let ignoreRuleCommitTheDirectoryProperty = LocalizationKey("ui.added.ignore.rule.commit.the.directory.property..42754ee1")
-    let label = LocalizationKey("ui.added.0dce7328")
-}
-
-struct LocalizationUIAdditionalKeys {
-    let revisionProperties = LocalizationKey("ui.additional.revision.properties.ab3e5f0b")
-}
-
-struct LocalizationUIAffectedKeys {
-    let label = LocalizationKey("ui.affected.dbd64ef9")
-}
-
-struct LocalizationUIAfterKeys {
-    let reviewingBothBackupsKeepTheContentCu = LocalizationKey("ui.after.reviewing.both.backups.keep.the.content.cu.94842c30")
-    let updateVerifyCandidatesThenReviewAndC = LocalizationKey("ui.after.update.verify.candidates.then.review.and.c.89b37719")
-}
-
-struct LocalizationUIAllKeys {
-    let selectedFilesAlreadyLockedByYou = LocalizationKey("ui.all.selected.files.already.locked.by.you.6a91cd42")
-}
-
-struct LocalizationUIAllowKeys {
-    let certificateFailureForProject = LocalizationKey("ui.allow.certificate.failure.for.project.0d91bc52")
-    let selfSignedAndCertificateNameMismatch = LocalizationKey("ui.allow.self.signed.and.certificate.name.mismatch..0bfb9514")
-    let untrustedSslCertificates = LocalizationKey("ui.allow.untrusted.ssl.certificates.78b94750")
-}
-
-struct LocalizationUIAlreadyKeys {
-    let versionedFilesAreNotHiddenByIgnore = LocalizationKey("ui.already.versioned.files.are.not.hidden.by.ignore.ed1d7db7")
-}
-
-struct LocalizationUIAlwaysKeys {
-    let lockAndOpenDocuments = LocalizationKey("ui.always.lock.and.open.documents.2f9a7c11")
-    let openDocumentsWithoutLocking = LocalizationKey("ui.always.open.documents.without.locking.8b6e42d0")
-}
-
-struct LocalizationUIAnKeys {
-    let updateIsAvailable = LocalizationKey("ui.an.update.is.available.f3c3a4e9")
-}
-
-struct LocalizationUIAndKeys {
-    let moreItemsCount = LocalizationKey("ui.and.more.items.count.a5d20f16")
-}
-
-struct LocalizationUIAppliedKeys {
-    let gitRuleSToSvnIgnorePropertiesComm = LocalizationKey("ui.applied.git.rule.s.to.svn.ignore.properties.comm.2cfe91aa")
-    let label = LocalizationKey("ui.applied.faddeb33")
-}
-
-struct LocalizationUIApplyKeys {
-    let globalIgnoreRules = LocalizationKey("ui.apply.global.ignore.rules.1ece4ab2")
-    let label = LocalizationKey("ui.apply.aa6f48d5")
-    let selectedRules = LocalizationKey("ui.apply.selected.rules.f6bb01fa")
-    let serverProperties = LocalizationKey("ui.apply.server.properties.51ad840e")
-    let serverVersion = LocalizationKey("ui.apply.server.version.61c5a01e")
-}
-
-struct LocalizationUIApplyingKeys {
-    let label = LocalizationKey("ui.applying.8c4d1e05")
-}
-
-struct LocalizationUIAskKeys {
-    let everyTimeBeforeOpeningDocuments = LocalizationKey("ui.ask.every.time.before.opening.documents.31c4d8a2")
+    let needHelp = LocalizationKey("ui.about.needHelp")
+    let pleaseSendQuestions = LocalizationKey("ui.about.pleaseSendQuestions")
+    let questionsSupport = LocalizationKey("ui.about.questionsSupport")
+    let sendEmail = LocalizationKey("ui.about.sendEmail")
+    let svnKr = LocalizationKey("ui.about.svnKr")
+    let version = LocalizationKey("ui.about.version")
 }
 
 struct LocalizationUIAuthenticationKeys {
-    let isRequiredToCommitTheSelecte = LocalizationKey("ui.authentication.is.required.to.commit.the.selecte.4837ef80")
-    let isRequiredToDownloadTheLates = LocalizationKey("ui.authentication.is.required.to.download.the.lates.83127c9a")
-    let isRequiredToLoadTheLatestSe = LocalizationKey("ui.authentication.is.required.to.load.the.latest.se.2b552fac")
-    let usesTheExistingSvnCredential = LocalizationKey("ui.authentication.uses.the.existing.svn.credential..b6c6fe66")
-    let wasCanceledLocalChangesRemain = LocalizationKey("ui.authentication.was.canceled.local.changes.remain.c4984bab")
+    let canceledLocalChangesRemainAvailable = LocalizationKey("ui.authentication.canceledLocalChangesRemainAvailable")
+    let cancelingDoesNotPreventViewingLocalChangesDiffs = LocalizationKey("ui.authentication.cancelingDoesNotPreventViewingLocalChangesDiffs")
+    let changeFolderLocationSvnAccountKeychainPassword = LocalizationKey("ui.authentication.changeFolderLocationSvnAccountKeychainPassword")
+    let checkingAccount = LocalizationKey("ui.authentication.checkingAccount")
+    let checkoutCompletedButPasswordCouldNotSavedKeychain = LocalizationKey("ui.authentication.checkoutCompletedButPasswordCouldNotSavedKeychain")
+    let closeWithoutSavingCredentialChanges = LocalizationKey("ui.authentication.closeWithoutSavingCredentialChanges")
+    let configureSvnAccountKeychainPasswordLocalWorkingFolder = LocalizationKey("ui.authentication.configureSvnAccountKeychainPasswordLocalWorkingFolder")
+    let credentials = LocalizationKey("ui.authentication.credentials")
+    let credentialsSaved = LocalizationKey("ui.authentication.credentialsSaved")
+    let deleteSavedPassword = LocalizationKey("ui.authentication.deleteSavedPassword")
+    let deleteSvnPasswordStoredKeychainLocalWorkingFolder = LocalizationKey("ui.authentication.deleteSvnPasswordStoredKeychainLocalWorkingFolder")
+    let discardChangesClose = LocalizationKey("ui.authentication.discardChangesClose")
+    let enterPassword = LocalizationKey("ui.authentication.enterPassword")
+    let enterValidCredentials = LocalizationKey("ui.authentication.enterValidCredentials")
+    let folderCredentials = LocalizationKey("ui.authentication.folderCredentials")
+    let hidePassword = LocalizationKey("ui.authentication.hidePassword")
+    let keychainAccessDenied = LocalizationKey("ui.authentication.keychainAccessDenied")
+    let keychainAccessDeniedChooseHowAuthenticate = LocalizationKey("ui.authentication.keychainAccessDeniedChooseHowAuthenticate")
+    let keychainOperationFailed = LocalizationKey("ui.authentication.keychainOperationFailed")
+    let leaveBlankKeepCurrentPassword = LocalizationKey("ui.authentication.leaveBlankKeepCurrentPassword")
+    let noPasswordStored = LocalizationKey("ui.authentication.noPasswordStored")
+    let password = LocalizationKey("ui.authentication.password")
+    let passwordFolderStoredMacosKeychain = LocalizationKey("ui.authentication.passwordFolderStoredMacosKeychain")
+    let repositoryAuthenticationFailed = LocalizationKey("ui.authentication.repositoryAuthenticationFailed")
+    let requiredCommitSelectedChanges = LocalizationKey("ui.authentication.requiredCommitSelectedChanges")
+    let requiredDownloadLatestServerChanges = LocalizationKey("ui.authentication.requiredDownloadLatestServerChanges")
+    let requiredLoadLatestServerHistory = LocalizationKey("ui.authentication.requiredLoadLatestServerHistory")
+    let saveKeychainUse = LocalizationKey("ui.authentication.saveKeychainUse")
+    let saveMacosKeychainOptional = LocalizationKey("ui.authentication.saveMacosKeychainOptional")
+    let saveSvnUsernameNewPasswordLocalWorkingFolder = LocalizationKey("ui.authentication.saveSvnUsernameNewPasswordLocalWorkingFolder")
+    let saveWorkingFolderLocationSvnUsernameNewPasswordFolder = LocalizationKey("ui.authentication.saveWorkingFolderLocationSvnUsernameNewPasswordFolder")
+    let savedPasswordDeleted = LocalizationKey("ui.authentication.savedPasswordDeleted")
+    let saving = LocalizationKey("ui.authentication.saving")
+    let secureEntryBlocksKoreanInputMethodRevealPasswordEyeButton = LocalizationKey("ui.authentication.secureEntryBlocksKoreanInputMethodRevealPasswordEyeButton")
+    let showMacosKeychainAccessPromptAgain = LocalizationKey("ui.authentication.showMacosKeychainAccessPromptAgain")
+    let showPassword = LocalizationKey("ui.authentication.showPassword")
+    let svnAccountPasswordNotValid = LocalizationKey("ui.authentication.svnAccountPasswordNotValid")
+    let svnAuthenticationRequired = LocalizationKey("ui.authentication.svnAuthenticationRequired")
+    let svnPassword = LocalizationKey("ui.authentication.svnPassword")
+    let svnServerDeniedReadAccessFileCheckProjectCredentialsServer = LocalizationKey("ui.authentication.svnServerDeniedReadAccessFileCheckProjectCredentialsServer")
+    let svnUsername = LocalizationKey("ui.authentication.svnUsername")
+    let svnUsernameOptional = LocalizationKey("ui.authentication.svnUsernameOptional")
+    let tryKeychainAgain = LocalizationKey("ui.authentication.tryKeychainAgain")
+    let useSessionOnly = LocalizationKey("ui.authentication.useSessionOnly")
+    let username = LocalizationKey("ui.authentication.username")
+    let usesExistingSvnCredentialCacheMacosKeychain = LocalizationKey("ui.authentication.usesExistingSvnCredentialCacheMacosKeychain")
 }
 
-struct LocalizationUIAutomaticKeys {
-    let unicodePathRecovery = LocalizationKey("ui.automatic.unicode.path.recovery.e71b00a0")
-}
-
-struct LocalizationUIAvailableKeys {
-    let label = LocalizationKey("ui.available.cb60f347")
-}
-
-struct LocalizationUIBlueKeys {
-    let dotsAreServerCommitsTheGreenRingIsYBase = LocalizationKey("ui.blue.dots.are.server.commits.the.green.ring.is.y.486b468b")
-    let dotsAreServerCommitsTheGreenRingIsYHighestRevision = LocalizationKey("ui.blue.dots.are.server.commits.the.green.ring.is.y.fb1c8ff5")
-}
-
-struct LocalizationUIBothKeys {
-    let versionsWereCopiedToABackupFolderEdi = LocalizationKey("ui.both.versions.were.copied.to.a.backup.folder.edi.259e47d5")
-}
-
-struct LocalizationUIBrowseKeys {
-    let label = LocalizationKey("ui.browse.5f8b6e21")
-    let repository = LocalizationKey("ui.browse.repository.6f2a9c41")
-    let repositoryBeforeCheckout = LocalizationKey("ui.browse.repository.before.checkout.7c2e1b84")
-    let sampleProject = LocalizationKey("ui.browse.sample.project.9ad211da")
-    let svnRepository = LocalizationKey("ui.browse.svn.repository.4a9d3c10")
-}
-
-struct LocalizationUIBulkKeys {
-    let unlockCompleted = LocalizationKey("ui.bulk.unlock.completed.4b7e0ad3")
-    let unlockConfirmationDetails = LocalizationKey("ui.bulk.unlock.confirmation.details.8c20fd61")
-    let unlockConfirmationTitle = LocalizationKey("ui.bulk.unlock.confirmation.title.a4e70c92")
-    let unlockPartialFailureDetails = LocalizationKey("ui.bulk.unlock.partial.failure.details.71a6c5e8")
-    let unlockPartialFailureTitle = LocalizationKey("ui.bulk.unlock.partial.failure.title.3be91d76")
-}
-
-struct LocalizationUICancelKeys {
-    let addingTheRepositoryAndCloseThisWind = LocalizationKey("ui.cancel.adding.the.repository.and.close.this.wind.113063d1")
-    let deletionAndRestore = LocalizationKey("ui.cancel.deletion.and.restore.ce07fc64")
-    let label = LocalizationKey("ui.cancel.a2ce2c22")
-    let theRepositoryDeletionStateForAndRes = LocalizationKey("ui.cancel.the.repository.deletion.state.for.and.res.fe2dce5e")
-}
-
-struct LocalizationUICanceledKeys {
-    let checkoutFolderEmptied = LocalizationKey("ui.canceled.checkout.folder.emptied.b08f7c21")
-    let checkoutFolderNotEmptied = LocalizationKey("ui.canceled.checkout.folder.not.emptied.9ea1354b")
-}
-
-struct LocalizationUICancelingKeys {
-    let doesNotPreventViewingLocalChanges = LocalizationKey("ui.canceling.does.not.prevent.viewing.local.changes.cf7ece9c")
+struct LocalizationUIBrowserKeys {
+    let actions = LocalizationKey("ui.browser.actions")
+    let browse = LocalizationKey("ui.browser.browse")
+    let browseRepository = LocalizationKey("ui.browser.browseRepository")
+    let browseSvnRepository = LocalizationKey("ui.browser.browseSvnRepository")
+    let checkFoldersFilesBeforeChoosingRepositoryPathCheckOut = LocalizationKey("ui.browser.checkFoldersFilesBeforeChoosingRepositoryPathCheckOut")
+    let chooseHowFilesDisplayed = LocalizationKey("ui.browser.chooseHowFilesDisplayed")
+    let couldNotConnectRepository = LocalizationKey("ui.browser.couldNotConnectRepository")
+    let couldNotLoadRepositoryContents = LocalizationKey("ui.browser.couldNotLoadRepositoryContents")
+    let dateModified = LocalizationKey("ui.browser.dateModified")
+    let directory = LocalizationKey("ui.browser.directory")
+    let directoryEmpty = LocalizationKey("ui.browser.directoryEmpty")
+    let enterRepositoryUrlBrowse = LocalizationKey("ui.browser.enterRepositoryUrlBrowse")
+    let fileAccessibilityLabel = LocalizationKey("ui.browser.fileAccessibilityLabel")
+    let files = LocalizationKey("ui.browser.files")
+    let items = LocalizationKey("ui.browser.items")
+    let kind = LocalizationKey("ui.browser.kind")
+    let loadingFiles = LocalizationKey("ui.browser.loadingFiles")
+    let loadingRepositoryContents = LocalizationKey("ui.browser.loadingRepositoryContents")
+    let name = LocalizationKey("ui.browser.name")
+    let noFiles = LocalizationKey("ui.browser.noFiles")
+    let noSearchResults = LocalizationKey("ui.browser.noSearchResults")
+    let openSelectedDirectory = LocalizationKey("ui.browser.openSelectedDirectory")
+    let parentDirectory = LocalizationKey("ui.browser.parentDirectory")
+    let repositoryReturnedNoFilesSubdirectoriesPath = LocalizationKey("ui.browser.repositoryReturnedNoFilesSubdirectoriesPath")
+    let repositoryUrl = LocalizationKey("ui.browser.repositoryUrl")
+    let revisionOptional = LocalizationKey("ui.browser.revisionOptional")
+    let searchFiles = LocalizationKey("ui.browser.searchFiles")
+    let size = LocalizationKey("ui.browser.size")
+    let splitView = LocalizationKey("ui.browser.splitView")
+    let symbolicLink = LocalizationKey("ui.browser.symbolicLink")
+    let treeView = LocalizationKey("ui.browser.treeView")
+    let useRepositoryPath = LocalizationKey("ui.browser.useRepositoryPath")
+    let workingCopy = LocalizationKey("ui.browser.workingCopy")
 }
 
 struct LocalizationUICertificateKeys {
-    let exceptionNotAllowed = LocalizationKey("ui.certificate.exception.not.allowed.d47c92a1")
-    let exceptionSavedForProject = LocalizationKey("ui.certificate.exception.saved.for.project.16e0ad73")
-    let exceptionSecurityWarning = LocalizationKey("ui.certificate.exception.security.warning.b82d4a16")
-    let expiredGuidance = LocalizationKey("ui.certificate.expired.guidance.a83d5e91")
-    let nameMismatchGuidance = LocalizationKey("ui.certificate.name.mismatch.guidance.74c11a2b")
-    let notYetValidGuidance = LocalizationKey("ui.certificate.not.yet.valid.guidance.5fb1c4d8")
-    let unclassifiedGuidance = LocalizationKey("ui.certificate.unclassified.guidance.c1974a30")
-    let unknownCaGuidance = LocalizationKey("ui.certificate.unknown.ca.guidance.39a72e10")
-}
-
-struct LocalizationUIChangeKeys {
-    let label = LocalizationKey("ui.change.7c3aa7d1")
-    let repositoryLocation = LocalizationKey("ui.change.repository.location.8b21c7e4")
-    let thisFolderSLocationSvnAccountAndK = LocalizationKey("ui.change.this.folder.s.location.svn.account.and.k.5b3e9d20")
-}
-
-struct LocalizationUIChangedKeys {
-    let paths = LocalizationKey("ui.changed.paths.89badc04")
+    let allowProject = LocalizationKey("ui.certificate.allowProject")
+    let allowSelfSignedCertificateNameMismatchErrorsRepository = LocalizationKey("ui.certificate.allowSelfSignedCertificateNameMismatchErrorsRepository")
+    let allowUntrustedSslCertificates = LocalizationKey("ui.certificate.allowUntrustedSslCertificates")
+    let doNotAllow = LocalizationKey("ui.certificate.doNotAllow")
+    let exceptionNotAllowedNoProjectSettingChanged = LocalizationKey("ui.certificate.exceptionNotAllowedNoProjectSettingChanged")
+    let exceptionSecurityWarning = LocalizationKey("ui.certificate.exceptionSecurityWarning")
+    let expiredNotYetValidCertificatesRequireSeparateConsentAfterSvn = LocalizationKey("ui.certificate.expiredNotYetValidCertificatesRequireSeparateConsentAfterSvn")
+    let issuedDifferentHostnameCheckRepositoryUrlCertificateHostnameBeforeAllowing = LocalizationKey("ui.certificate.issuedDifferentHostnameCheckRepositoryUrlCertificateHostnameBeforeAllowing")
+    let issuerNotTrustedConfirmIssuerServerAdministratorAllowingItBypasses = LocalizationKey("ui.certificate.issuerNotTrustedConfirmIssuerServerAdministratorAllowingItBypasses")
+    let notYetValidCheckServerMacClocksCertificateStartDate = LocalizationKey("ui.certificate.notYetValidCheckServerMacClocksCertificateStartDate")
+    let savedCertificateExceptionRetrySvnOperation = LocalizationKey("ui.certificate.savedCertificateExceptionRetrySvnOperation")
+    let serverCertificateExpiredRenewingItSafestAllowingItLetsProject = LocalizationKey("ui.certificate.serverCertificateExpiredRenewingItSafestAllowingItLetsProject")
+    let serverCertificateProblem = LocalizationKey("ui.certificate.serverCertificateProblem")
+    let svnRejectedServerCertificateReviewDetectedProblemBeforeDeciding = LocalizationKey("ui.certificate.svnRejectedServerCertificateReviewDetectedProblemBeforeDeciding")
+    let svnReportedCertificateProblemButDidNotIdentifySupportedReason = LocalizationKey("ui.certificate.svnReportedCertificateProblemButDidNotIdentifySupportedReason")
+    let useOnlyServersSelfSignedCertificatesCertificateNameMismatches = LocalizationKey("ui.certificate.useOnlyServersSelfSignedCertificatesCertificateNameMismatches")
+    let useWhenTargetServerCertificateInvalidButTrustServer = LocalizationKey("ui.certificate.useWhenTargetServerCertificateInvalidButTrustServer")
 }
 
 struct LocalizationUIChangesKeys {
-    let label = LocalizationKey("ui.changes.0e19f519")
-}
-
-struct LocalizationUICheckKeys {
-    let forUpdatesAction = LocalizationKey("ui.check.for.updates.6ba78913")
-    let forUpdatesSecondary = LocalizationKey("ui.check.for.updates.d0ccb7fe")
-    let outANewSvnRepositoryOrRegisterAnEx = LocalizationKey("ui.check.out.a.new.svn.repository.or.register.an.ex.2b1e2b00")
-    let outARepositoryUrlAndAddItToYourLo = LocalizationKey("ui.check.out.a.repository.url.and.add.it.to.your.lo.63f0d7ea")
-    let outAndAdd = LocalizationKey("ui.check.out.and.add.ec5e3d09")
-    let outRepositoryUrl = LocalizationKey("ui.check.out.repository.url.6cbf366d")
-    let outTheSvnRepositoryIntoTheLocalFold = LocalizationKey("ui.check.out.the.svn.repository.into.the.local.fold.4323a8e0")
-    let theAppStoreForTheLatestVersion = LocalizationKey("ui.check.the.app.store.for.the.latest.version.969078c0")
-}
-
-struct LocalizationUICheckingKeys {
-    let forUpdates = LocalizationKey("ui.checking.for.updates.967c32b4")
-    let incomingChanges = LocalizationKey("ui.checking.incoming.changes.a7a217e2")
-    let out = LocalizationKey("ui.checking.out.3944eb2e")
-    let theAccount = LocalizationKey("ui.checking.the.account.c47f1a90")
+    let affected = LocalizationKey("ui.changes.affected")
+    let cancelDeletionRestore = LocalizationKey("ui.changes.cancelDeletionRestore")
+    let deletePendingItems = LocalizationKey("ui.changes.deletePendingItems")
+    let deleteRepository = LocalizationKey("ui.changes.deleteRepository")
+    let filesInsideFolderAddedTogether = LocalizationKey("ui.changes.filesInsideFolderAddedTogether")
+    let includeCommit = LocalizationKey("ui.changes.includeCommit")
+    let includeExcludeFileNextCommit = LocalizationKey("ui.changes.includeExcludeFileNextCommit")
+    let localChangesRefreshed = LocalizationKey("ui.changes.localChangesRefreshed")
+    let multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose = LocalizationKey("ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose")
+    let noChanges = LocalizationKey("ui.changes.noChanges")
+    let pathPointsDifferentRepositoryLocationVerifyCommitDestination = LocalizationKey("ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination")
+    let pendingDeletionStatus = LocalizationKey("ui.changes.pendingDeletionStatus")
+    let propertiesModified = LocalizationKey("ui.changes.propertiesModified")
+    let resolveDuplicateServerPathsManually = LocalizationKey("ui.changes.resolveDuplicateServerPathsManually")
+    let restoreLocalFile = LocalizationKey("ui.changes.restoreLocalFile")
+    let restorePendingDeletions = LocalizationKey("ui.changes.restorePendingDeletions")
+    let revertConflictLocalChanges = LocalizationKey("ui.changes.revertConflictLocalChanges")
+    let selectChangedFileViewItsDiff = LocalizationKey("ui.changes.selectChangedFileViewItsDiff")
+    let showIgnoredFiles = LocalizationKey("ui.changes.showIgnoredFiles")
+    let showsDiffFile = LocalizationKey("ui.changes.showsDiffFile")
+    let switchedPath = LocalizationKey("ui.changes.switchedPath")
+    let temporary = LocalizationKey("ui.changes.temporary")
+    let thereNoLocallyModifiedFiles = LocalizationKey("ui.changes.thereNoLocallyModifiedFiles")
+    let unicodePathConflict = LocalizationKey("ui.changes.unicodePathConflict")
+    let unversionedLocalFileBlockingServerFileSameNameMoveRename = LocalizationKey("ui.changes.unversionedLocalFileBlockingServerFileSameNameMoveRename")
 }
 
 struct LocalizationUICheckoutKeys {
-    let completedButThePasswordCouldNotBe = LocalizationKey("ui.checkout.completed.but.the.password.could.not.be.ed5274e5")
-    let folderWasNotEmptyCannotDelete = LocalizationKey("ui.checkout.folder.was.not.empty.cannot.delete.0e6d49b2")
-    let progressLog = LocalizationKey("ui.checkout.progress.log.ba2c92de")
-    let recoveryValidationFailed = LocalizationKey("ui.checkout.recovery.validation.failed.5fd4218c")
-    let wasInterrupted = LocalizationKey("ui.checkout.was.interrupted.9d8a23c0")
-}
-
-struct LocalizationUIChooseKeys {
-    let aChangedFileAboveToDisplayOnlyThat = LocalizationKey("ui.choose.a.changed.file.above.to.display.only.that.7d44100e")
-    let aLocalFolderForTheCheckout = LocalizationKey("ui.choose.a.local.folder.for.the.checkout.de1fb4ce")
-    let action = LocalizationKey("ui.choose.action.60c39cbd")
-    let anEmptyFolder = LocalizationKey("ui.choose.an.empty.folder.8f9acb6e")
-    let anEmptyRecoveryFolder = LocalizationKey("ui.choose.an.empty.recovery.folder.c2b4a175")
-    let fileBrowserViewMode = LocalizationKey("ui.choose.file.browser.view.mode.2c78a451")
-    let folder = LocalizationKey("ui.choose.folder.54647179")
-    let labelAction = LocalizationKey("ui.choose.71d0de8d")
-    let labelPrimary = LocalizationKey("ui.choose.0a13aec8")
-    let localCheckoutFolder = LocalizationKey("ui.choose.local.checkout.folder.c649aa9f")
-    let svnLocalWorkingFolders = LocalizationKey("ui.choose.svn.local.working.folders.6d104bc9")
-    let theLanguageUsedInTheAppInterface = LocalizationKey("ui.choose.the.language.used.in.the.app.interface.16c2f863")
-    let theLocalFolderForTheCheckout = LocalizationKey("ui.choose.the.local.folder.for.the.checkout.31ee0035")
-    let theTimeZoneUsedForCommitDatesAndT = LocalizationKey("ui.choose.the.time.zone.used.for.commit.dates.and.t.ded46b04")
-    let viewChangesInTheHistoryToDisplayTh = LocalizationKey("ui.choose.view.changes.in.the.history.to.display.th.cc60739e")
-}
-
-struct LocalizationUICleanKeys {
-    let upEquivalentPath = LocalizationKey("ui.clean.up.equivalent.path.11fce14e")
-}
-
-struct LocalizationUICleanedKeys {
-    let repositoryTemporaryFiles = LocalizationKey("ui.cleaned.repository.temporary.files.75d9479a")
-}
-
-struct LocalizationUICleaningKeys {
-    let andCommitting = LocalizationKey("ui.cleaning.and.committing.6578bec9")
-    let andContinuingCheckout = LocalizationKey("ui.cleaning.and.continuing.checkout.18fa2d6b")
-    let workingCopy = LocalizationKey("ui.cleaning.working.copy.2a9ed647")
+    let checkOutAdd = LocalizationKey("ui.checkout.checkOutAdd")
+    let checkOutNewSvnRepositoryRegisterExistingLocalWorkingFolder = LocalizationKey("ui.checkout.checkOutNewSvnRepositoryRegisterExistingLocalWorkingFolder")
+    let checkOutRepositoryUrl = LocalizationKey("ui.checkout.checkOutRepositoryUrl")
+    let checkOutRepositoryUrlAddItLocalWorkingFolders = LocalizationKey("ui.checkout.checkOutRepositoryUrlAddItLocalWorkingFolders")
+    let checkOutSvnRepositoryLocalFolderAddItApp = LocalizationKey("ui.checkout.checkOutSvnRepositoryLocalFolderAddItApp")
+    let checkingOut = LocalizationKey("ui.checkout.checkingOut")
+    let chooseLocalCheckoutFolder = LocalizationKey("ui.checkout.chooseLocalCheckoutFolder")
+    let filesDownloadedAppearHereAfterCheckoutStarts = LocalizationKey("ui.checkout.filesDownloadedAppearHereAfterCheckoutStarts")
+    let keepDownloading = LocalizationKey("ui.checkout.keepDownloading")
+    let localFolderPickerHelp = LocalizationKey("ui.checkout.localFolderPickerHelp")
+    let localFolderRequiredError = LocalizationKey("ui.checkout.localFolderRequiredError")
+    let progressLog = LocalizationKey("ui.checkout.progressLog")
+    let runningSvnCheckoutStoppedAlreadyDownloadedFilesStayLocalFolder = LocalizationKey("ui.checkout.runningSvnCheckoutStoppedAlreadyDownloadedFilesStayLocalFolder")
+    let stopCheckout = LocalizationKey("ui.checkout.stopCheckout")
+    let stopCheckoutProgress = LocalizationKey("ui.checkout.stopCheckoutProgress")
 }
 
 struct LocalizationUICleanupKeys {
-    let commitFailedUpdateSucceeded = LocalizationKey("ui.cleanup.commit.failed.update.succeeded.f59c27fb")
-    let couldNotStartUpdateSucceeded = LocalizationKey("ui.cleanup.could.not.start.update.succeeded.bfae6b76")
-    let interruptedWorkingCopyManually = LocalizationKey("ui.cleanup.interrupted.working.copy.manually.46d93c1e")
-    let needed = LocalizationKey("ui.cleanup.needed.3c5f4e64")
-    let reasonFileMissing = LocalizationKey("ui.cleanup.reason.file.missing.64ae4838")
-    let reasonInvalidAppledoubleSignature = LocalizationKey("ui.cleanup.reason.invalid.appledouble.signature.96cdf550")
-    let reasonInvalidDsStoreSignature = LocalizationKey("ui.cleanup.reason.invalid.ds.store.signature.2832697d")
-    let reasonLockedBy = LocalizationKey("ui.cleanup.reason.locked.by.5ee975b0")
-    let reasonNotRegularFile = LocalizationKey("ui.cleanup.reason.not.regular.file.98aa0f60")
-    let reasonOfficeLockTooLarge = LocalizationKey("ui.cleanup.reason.office.lock.too.large.38b4ef17")
-    let reasonSymbolicLink = LocalizationKey("ui.cleanup.reason.symbolic.link.95821786")
-    let reasonUnreadable = LocalizationKey("ui.cleanup.reason.unreadable.85df36fb")
-    let reasonUnsafePath = LocalizationKey("ui.cleanup.reason.unsafe.path.5dce44a1")
-    let someItemsFailed = LocalizationKey("ui.cleanup.some.items.failed.2bdf30af")
-}
-
-struct LocalizationUIClearKeys {
-    let allSelectedCommitTargets = LocalizationKey("ui.clear.all.selected.commit.targets.605665f6")
-    let label = LocalizationKey("ui.clear.8cfe548b")
-    let selection = LocalizationKey("ui.clear.selection.6520660b")
-}
-
-struct LocalizationUICloseKeys {
-    let label = LocalizationKey("ui.close.3ea43db3")
-    let theSampleProjectAndReturnToNormalMo = LocalizationKey("ui.close.the.sample.project.and.return.to.normal.mo.6d61e364")
-    let withoutSavingCredentialChanges = LocalizationKey("ui.close.without.saving.credential.changes.97c00986")
+    let candidateNotRegularFile = LocalizationKey("ui.cleanup.candidateNotRegularFile")
+    let cleanUpEquivalentPath = LocalizationKey("ui.cleanup.cleanUpEquivalentPath")
+    let cleaningCommitting = LocalizationKey("ui.cleanup.cleaningCommitting")
+    let cleaningWorkingCopy = LocalizationKey("ui.cleanup.cleaningWorkingCopy")
+    let deleteCommitCleanup = LocalizationKey("ui.cleanup.deleteCommitCleanup")
+    let fileContentsCouldNotRead = LocalizationKey("ui.cleanup.fileContentsCouldNotRead")
+    let fileDoesNotAppledoubleMagicBytes = LocalizationKey("ui.cleanup.fileDoesNotAppledoubleMagicBytes")
+    let fileDoesNotDsStoreBud1Signature = LocalizationKey("ui.cleanup.fileDoesNotDsStoreBud1Signature")
+    let fileNotFoundAfterUpdate = LocalizationKey("ui.cleanup.fileNotFoundAfterUpdate")
+    let manuallyCleanUpInterruptedLockedSvnWorkingCopy = LocalizationKey("ui.cleanup.manuallyCleanUpInterruptedLockedSvnWorkingCopy")
+    let needed = LocalizationKey("ui.cleanup.needed")
+    let officeLockFileExceedsByteSafetyLimit = LocalizationKey("ui.cleanup.officeLockFileExceedsByteSafetyLimit")
+    let onlyVerifiedCandidatesSelectedReviewEveryPathBeforeDeletingCommitting = LocalizationKey("ui.cleanup.onlyVerifiedCandidatesSelectedReviewEveryPathBeforeDeletingCommitting")
+    let operationInterruptedLikeCleanUpWorkingCopyTryAgainCleanup = LocalizationKey("ui.cleanup.operationInterruptedLikeCleanUpWorkingCopyTryAgainCleanup")
+    let pathOutsideWorkingCopySafetyBoundary = LocalizationKey("ui.cleanup.pathOutsideWorkingCopySafetyBoundary")
+    let repositoryTemporaryFileCleanup = LocalizationKey("ui.cleanup.repositoryTemporaryFileCleanup")
+    let runCleanup = LocalizationKey("ui.cleanup.runCleanup")
+    let symbolicLinksNeverCleanedAutomatically = LocalizationKey("ui.cleanup.symbolicLinksNeverCleanedAutomatically")
+    let workingCopyCleanup = LocalizationKey("ui.cleanup.workingCopyCleanup")
+    let workingCopyCleanupCompleted = LocalizationKey("ui.cleanup.workingCopyCleanupCompleted")
+    let workingCopyCleanupFailedDoNotRetryCleanupRepeatedlyCopy = LocalizationKey("ui.cleanup.workingCopyCleanupFailedDoNotRetryCleanupRepeatedlyCopy")
 }
 
 struct LocalizationUICommitKeys {
-    let changes = LocalizationKey("ui.commit.changes.79414e6d")
-    let deletionRestorePartial = LocalizationKey("ui.commit.deletion.restore.partial.5a8c2f64")
-    let history = LocalizationKey("ui.commit.history.07e0f8de")
-    let historyTimeZone = LocalizationKey("ui.commit.history.time.zone.9e3260bf")
-    let inputSavedUpdateThenRetry = LocalizationKey("ui.commit.input.saved.update.then.retry.5e2a8d90")
-    let message = LocalizationKey("ui.commit.message.c5139167")
-    let notFound = LocalizationKey("ui.commit.not.found.0f4a8385")
-    let requiresUpdateBeforeRetry = LocalizationKey("ui.commit.requires.update.before.retry.91b7e3c5")
-    let selected = LocalizationKey("ui.commit.selected.29bc2086")
-    let theSelectedFilesToTheSvnServerWith = LocalizationKey("ui.commit.the.selected.files.to.the.svn.server.with.8046c0f8")
-    let timeUnavailable = LocalizationKey("ui.commit.time.unavailable.59140fc5")
-    let withoutAMessage = LocalizationKey("ui.commit.without.a.message.6f0f2d41")
+    let cancelRepositoryDeletionStateRestoreRepositoryVersionLocally = LocalizationKey("ui.commit.cancelRepositoryDeletionStateRestoreRepositoryVersionLocally")
+    let clearAllSelectedCommitTargets = LocalizationKey("ui.commit.clearAllSelectedCommitTargets")
+    let clearSelection = LocalizationKey("ui.commit.clearSelection")
+    let committing = LocalizationKey("ui.commit.committing")
+    let confirm = LocalizationKey("ui.commit.confirm")
+    let diffUnavailableUntilFileAddedSvnItAddedAutomaticallyWhen = LocalizationKey("ui.commit.diffUnavailableUntilFileAddedSvnItAddedAutomaticallyWhen")
+    let includeRestore = LocalizationKey("ui.commit.includeRestore")
+    let item = LocalizationKey("ui.commit.item")
+    let itemDeletedServer = LocalizationKey("ui.commit.itemDeletedServer")
+    let markDeletion = LocalizationKey("ui.commit.markDeletion")
+    let markRepositoryDeletion = LocalizationKey("ui.commit.markRepositoryDeletion")
+    let markedItemDeletionCommitDeleteThemRepository = LocalizationKey("ui.commit.markedItemDeletionCommitDeleteThemRepository")
+    let message = LocalizationKey("ui.commit.message")
+    let messageSavedIncorrectEncodingShownAfterRestorationOtherSvnUsers = LocalizationKey("ui.commit.messageSavedIncorrectEncodingShownAfterRestorationOtherSvnUsers")
+    let no = LocalizationKey("ui.commit.no")
+    let noCommitMessage = LocalizationKey("ui.commit.noCommitMessage")
+    let noFilesDeleted = LocalizationKey("ui.commit.noFilesDeleted")
+    let onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted = LocalizationKey("ui.commit.onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted")
+    let pendingDeletionCount = LocalizationKey("ui.commit.pendingDeletionCount")
+    let recordedEmptyMessage = LocalizationKey("ui.commit.recordedEmptyMessage")
+    let restoreSelectedDeletionFileServer = LocalizationKey("ui.commit.restoreSelectedDeletionFileServer")
+    let restoreSelectedFilesAction = LocalizationKey("ui.commit.restoreSelectedFilesAction")
+    let restoreSelectedFilesConfirmationTitle = LocalizationKey("ui.commit.restoreSelectedFilesConfirmationTitle")
+    let restoreServer = LocalizationKey("ui.commit.restoreServer")
+    let revert = LocalizationKey("ui.commit.revert")
+    let revertLocalChangesAction = LocalizationKey("ui.commit.revertLocalChangesAction")
+    let revertLocalChangesConfirmationTitle = LocalizationKey("ui.commit.revertLocalChangesConfirmationTitle")
+    let reviewCommit = LocalizationKey("ui.commit.reviewCommit")
+    let selectAll = LocalizationKey("ui.commit.selectAll")
+    let selectAllCurrentlyChangedFilesCommit = LocalizationKey("ui.commit.selectAllCurrentlyChangedFilesCommit")
+    let selected = LocalizationKey("ui.commit.selected")
+    let selectedFilesSvnServerEnteredMessage = LocalizationKey("ui.commit.selectedFilesSvnServerEnteredMessage")
+    let someFilesDeletedReviewListBelowConfirmThatTheyShould = LocalizationKey("ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould")
+    let uncommittedChangesDiscardedCannotRestoredSvn = LocalizationKey("ui.commit.uncommittedChangesDiscardedCannotRestoredSvn")
+    let versionedItemsBelowSelectedDirectoryAlsoMarkedDeletion = LocalizationKey("ui.commit.versionedItemsBelowSelectedDirectoryAlsoMarkedDeletion")
+    let withoutMessage = LocalizationKey("ui.commit.withoutMessage")
 }
 
-struct LocalizationUICommittingKeys {
-    let label = LocalizationKey("ui.committing.0e8ec0f4")
-}
-
-struct LocalizationUICompareKeys {
-    let gitRules = LocalizationKey("ui.compare.git.rules.2220d6b1")
-}
-
-struct LocalizationUIConfigureKeys {
-    let theSvnAccountAndKeychainPassword = LocalizationKey("ui.configure.the.svn.account.and.keychain.password..daa54ac3")
-}
-
-struct LocalizationUIConfirmKeys {
-    let commit = LocalizationKey("ui.confirm.commit.7c2e5a90")
-    let currentWorkingCopyState = LocalizationKey("ui.confirm.current.working.copy.state.1c63f80b")
-    let manuallyEditedContent = LocalizationKey("ui.confirm.manually.edited.content.97e30ac4")
-    let repositoryRelocation = LocalizationKey("ui.confirm.repository.relocation.0c9d6e73")
+struct LocalizationUICommonKeys {
+    let cancel = LocalizationKey("ui.common.cancel")
+    let changes = LocalizationKey("ui.common.changes")
+    let close = LocalizationKey("ui.common.close")
+    let copyFullPath = LocalizationKey("ui.common.copyFullPath")
+    let couldNotOpenFile = LocalizationKey("ui.common.couldNotOpenFile")
+    let fileType = LocalizationKey("ui.common.fileType")
+    let folder = LocalizationKey("ui.common.folder")
+    let noTextDiffAvailableMayNewBinaryFile = LocalizationKey("ui.common.noTextDiffAvailableMayNewBinaryFile")
+    let openFile = LocalizationKey("ui.common.openFile")
+    let refresh = LocalizationKey("ui.common.refresh")
+    let refreshed = LocalizationKey("ui.common.refreshed")
+    let remove = LocalizationKey("ui.common.remove")
+    let revealFinder = LocalizationKey("ui.common.revealFinder")
+    let save = LocalizationKey("ui.common.save")
+    let selectedCount = LocalizationKey("ui.common.selectedCount")
+    let unknownAuthor = LocalizationKey("ui.common.unknownAuthor")
+    let yes = LocalizationKey("ui.common.yes")
 }
 
 struct LocalizationUIConflictKeys {
-    let backupsMustBeStoredOutsideTheWork = LocalizationKey("ui.conflict.backups.must.be.stored.outside.the.work.b1ccd27c")
-    let label = LocalizationKey("ui.conflict.37edb628")
+    let afterReviewingBothBackupsKeepContentCurrentlySavedWorkingFile = LocalizationKey("ui.conflict.afterReviewingBothBackupsKeepContentCurrentlySavedWorkingFile")
+    let applyServerProperties = LocalizationKey("ui.conflict.applyServerProperties")
+    let applyServerVersion = LocalizationKey("ui.conflict.applyServerVersion")
+    let bothVersionsCopiedBackupFolderEditingCopiesDoesNotChange = LocalizationKey("ui.conflict.bothVersionsCopiedBackupFolderEditingCopiesDoesNotChange")
+    let confirmCurrentLocalPropertiesResolvedValues = LocalizationKey("ui.conflict.confirmCurrentLocalPropertiesResolvedValues")
+    let confirmCurrentWorkingCopyState = LocalizationKey("ui.conflict.confirmCurrentWorkingCopyState")
+    let confirmManuallyEditedContent = LocalizationKey("ui.conflict.confirmManuallyEditedContent")
+    let conflict = LocalizationKey("ui.conflict.conflict")
+    let conflictedProperties = LocalizationKey("ui.conflict.conflictedProperties")
+    let conflictedPropertyNameCouldNotDetermined = LocalizationKey("ui.conflict.conflictedPropertyNameCouldNotDetermined")
+    let currentWorkingFile = LocalizationKey("ui.conflict.currentWorkingFile")
+    let discardLocalChangeRestoreServerFile = LocalizationKey("ui.conflict.discardLocalChangeRestoreServerFile")
+    let fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame = LocalizationKey("ui.conflict.fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame")
+    let fileCannotCommittedUntilItMarkedResolved = LocalizationKey("ui.conflict.fileCannotCommittedUntilItMarkedResolved")
+    let fileThatNotRepository = LocalizationKey("ui.conflict.fileThatNotRepository")
+    let ifDeletedItLocallyDeletionRemainsCommitDeleteItServer = LocalizationKey("ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer")
+    let incomingServerPropertyValuesDiscardedWorkingCopy = LocalizationKey("ui.conflict.incomingServerPropertyValuesDiscardedWorkingCopy")
+    let keepFileCurrentlySavedWorkingCopyMarkConflictResolvedFile = LocalizationKey("ui.conflict.keepFileCurrentlySavedWorkingCopyMarkConflictResolvedFile")
+    let keepFileLaterCommitReplaceRepositoryFileContent = LocalizationKey("ui.conflict.keepFileLaterCommitReplaceRepositoryFileContent")
+    let keepMyChange = LocalizationKey("ui.conflict.keepMyChange")
+    let keepMyProperties = LocalizationKey("ui.conflict.keepMyProperties")
+    let localPropertyValuesDiscarded = LocalizationKey("ui.conflict.localPropertyValuesDiscarded")
+    let macosUnicodePathMatchedActualSvnManagedPath = LocalizationKey("ui.conflict.macosUnicodePathMatchedActualSvnManagedPath")
+    let modificationDateUnavailable = LocalizationKey("ui.conflict.modificationDateUnavailable")
+    let modified = LocalizationKey("ui.conflict.modified")
+    let more = LocalizationKey("ui.conflict.more")
+    let myFile = LocalizationKey("ui.conflict.myFile")
+    let openBackupFolder = LocalizationKey("ui.conflict.openBackupFolder")
+    let openMyFile = LocalizationKey("ui.conflict.openMyFile")
+    let openResolutionAction = LocalizationKey("ui.conflict.openResolutionAction")
+    let openServerFile = LocalizationKey("ui.conflict.openServerFile")
+    let overwriteMyVersion = LocalizationKey("ui.conflict.overwriteMyVersion")
+    let overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile = LocalizationKey("ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile")
+    let pathCannotCommittedUntilItsPropertyConflictResolved = LocalizationKey("ui.conflict.pathCannotCommittedUntilItsPropertyConflictResolved")
+    let propertyConflict = LocalizationKey("ui.conflict.propertyConflict")
+    let propertyConflictResolvedReviewPropertiesBeforeCommitting = LocalizationKey("ui.conflict.propertyConflictResolvedReviewPropertiesBeforeCommitting")
+    let propertyValuesKeptWell = LocalizationKey("ui.conflict.propertyValuesKeptWell")
+    let replaceLocalPropertiesServerValues = LocalizationKey("ui.conflict.replaceLocalPropertiesServerValues")
+    let replaceServerFileLocalEditsLeaveWorkingCopyButRemain = LocalizationKey("ui.conflict.replaceServerFileLocalEditsLeaveWorkingCopyButRemain")
+    let resolutionHeader = LocalizationKey("ui.conflict.resolutionHeader")
+    let resolveConflictedFilesBeforeCommitting = LocalizationKey("ui.conflict.resolveConflictedFilesBeforeCommitting")
+    let resolvedBackupsRemovedItemCreated = LocalizationKey("ui.conflict.resolvedBackupsRemovedItemCreated")
+    let resolvedReviewFileBeforeCommitting = LocalizationKey("ui.conflict.resolvedReviewFileBeforeCommitting")
+    let resolving = LocalizationKey("ui.conflict.resolving")
+    let restoreFileServerVersion = LocalizationKey("ui.conflict.restoreFileServerVersion")
+    let revertingRemovesItemsBelowWorkingFolderTheyCopiedBackupFolder = LocalizationKey("ui.conflict.revertingRemovesItemsBelowWorkingFolderTheyCopiedBackupFolder")
+    let serverFile = LocalizationKey("ui.conflict.serverFile")
+    let serverPropertyValuesAppliedWell = LocalizationKey("ui.conflict.serverPropertyValuesAppliedWell")
+    let serverRevision = LocalizationKey("ui.conflict.serverRevision")
+    let treeConflict = LocalizationKey("ui.conflict.treeConflict")
+    let treeConflictConcernsPathStateNotFileContentsNotChoice = LocalizationKey("ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice")
+    let uncommittedChange = LocalizationKey("ui.conflict.uncommittedChange")
+    let uncommittedLocalChangesDiscarded = LocalizationKey("ui.conflict.uncommittedLocalChangesDiscarded")
+    let useMineAction = LocalizationKey("ui.conflict.useMineAction")
+    let useMineConfirmationTitle = LocalizationKey("ui.conflict.useMineConfirmationTitle")
+    let useServerAction = LocalizationKey("ui.conflict.useServerAction")
+    let useServerConfirmationTitle = LocalizationKey("ui.conflict.useServerConfirmationTitle")
+    let useWorkingFileAction = LocalizationKey("ui.conflict.useWorkingFileAction")
+    let useWorkingFileConfirmationTitle = LocalizationKey("ui.conflict.useWorkingFileConfirmationTitle")
+    let whenChooseVersionCurrentWorkingFilePreservedSeparatelyHiddenRecovery = LocalizationKey("ui.conflict.whenChooseVersionCurrentWorkingFilePreservedSeparatelyHiddenRecovery")
 }
 
-struct LocalizationUIConflictedKeys {
-    let properties = LocalizationKey("ui.conflicted.properties.849bf370")
-    let propertyNameUnavailable = LocalizationKey("ui.conflicted.property.name.unavailable.0cc5d784")
-}
-
-struct LocalizationUIContentKeys {
-    let andPropertyConflictTogether = LocalizationKey("ui.content.and.property.conflict.together.6f0b83e5")
-    let changed = LocalizationKey("ui.content.changed.cb88d56c")
-}
-
-struct LocalizationUICoordinatedKeys {
-    let universalTimeUtc = LocalizationKey("ui.coordinated.universal.time.utc.0b7fc6d7")
-}
-
-struct LocalizationUICopiedKeys {
-    let label = LocalizationKey("ui.copied.13a93949")
-    let theFilePath = LocalizationKey("ui.copied.the.file.path.5029ec9d")
-}
-
-struct LocalizationUICopyKeys {
-    let allDisplayedErrorDetailsToTheClipboar = LocalizationKey("ui.copy.all.displayed.error.details.to.the.clipboar.717f18da")
-    let currentRepositoryUrl = LocalizationKey("ui.copy.current.repository.url.82c5d1f0")
-    let errorDetails = LocalizationKey("ui.copy.error.details.7de3d319")
-    let fullPath = LocalizationKey("ui.copy.full.path.823e26e7")
-    let withHistory = LocalizationKey("ui.copy.with.history.5f0d3b82")
-}
-
-struct LocalizationUICouldKeys {
-    let notOpenTheFile = LocalizationKey("ui.could.not.open.the.file.263874fa")
-}
-
-struct LocalizationUICredentialsKeys {
-    let label = LocalizationKey("ui.credentials.97a976d9")
-    let savedFor = LocalizationKey("ui.credentials.saved.for.409bff39")
-}
-
-struct LocalizationUICurrentKeys {
-    let repositoryUrl = LocalizationKey("ui.current.repository.url.1a6f43d2")
-    let workingFile = LocalizationKey("ui.current.working.file.669bd1d9")
-}
-
-struct LocalizationUIDeleteKeys {
-    let andCommitCleanup = LocalizationKey("ui.delete.and.commit.cleanup.146a3cd1")
-    let fromRepository = LocalizationKey("ui.delete.from.repository.deb8c2a7")
-    let missingItems = LocalizationKey("ui.delete.missing.items.ab0ea8fc")
-    let savedPassword = LocalizationKey("ui.delete.saved.password.a38fa5cf")
-    let theSvnPasswordStoredInKeychainForT = LocalizationKey("ui.delete.the.svn.password.stored.in.keychain.for.t.e0944666")
-}
-
-struct LocalizationUIDeletedKeys {
-    let label = LocalizationKey("ui.deleted.6826dd28")
-}
-
-struct LocalizationUIDestinationKeys {
-    let alreadyExists = LocalizationKey("ui.destination.already.exists.5c0e71b4")
-    let matchesSource = LocalizationKey("ui.destination.matches.source.2d9a64f1")
-}
-
-struct LocalizationUIDiffKeys {
-    let isUnavailableUntilThisFileIsAddedTo = LocalizationKey("ui.diff.is.unavailable.until.this.file.is.added.to..402fbfa5")
-}
-
-struct LocalizationUIDirectoryKeys {
-    let label = LocalizationKey("ui.directory.9e3f2a70")
-}
-
-struct LocalizationUIDiscardKeys {
-    let changesAndClose = LocalizationKey("ui.discard.changes.and.close.4e12b8a7")
-    let localChangeAndRestoreServerFile = LocalizationKey("ui.discard.local.change.and.restore.server.file.728e0bf1")
-}
-
-struct LocalizationUIDocumentKeys {
-    let openingMethod = LocalizationKey("ui.document.opening.method.9d73be41")
-}
-
-struct LocalizationUIDownloadKeys {
-    let theLatestServerChangesIntoTheCurr = LocalizationKey("ui.download.the.latest.server.changes.into.the.curr.17974067")
-}
-
-struct LocalizationUIEarlierKeys {
-    let history = LocalizationKey("ui.earlier.history.da5e45b0")
-}
-
-struct LocalizationUIEditingKeys {
-    let documentInSvnKr = LocalizationKey("ui.editing.document.in.svn.kr.5e6ac9cc")
-}
-
-struct LocalizationUIEmptyKeys {
-    let canceledCheckoutFolderConfirmation = LocalizationKey("ui.empty.canceled.checkout.folder.confirmation.6e12c9ad")
-    let checkoutFolder = LocalizationKey("ui.empty.checkout.folder.7a1c8e53")
-    let folderDestructive = LocalizationKey("ui.empty.folder.destructive.30d295e8")
-}
-
-struct LocalizationUIEnterKeys {
-    let password = LocalizationKey("ui.enter.password.48ff7123")
-    let repositoryUrlToBrowse = LocalizationKey("ui.enter.repository.url.to.browse.3f6a9d20")
-    let validCredentials = LocalizationKey("ui.enter.valid.credentials.9a70c5b2")
+struct LocalizationUIDemoKeys {
+    let browseSampleProject = LocalizationKey("ui.demo.browseSampleProject")
+    let closeSampleProjectReturnNormalMode = LocalizationKey("ui.demo.closeSampleProjectReturnNormalMode")
+    let exitDemo = LocalizationKey("ui.demo.exitDemo")
+    let exploreMainFeaturesSampleDataNoServerConnectionAccount = LocalizationKey("ui.demo.exploreMainFeaturesSampleDataNoServerConnectionAccount")
 }
 
 struct LocalizationUIErrorKeys {
-    let label = LocalizationKey("ui.error.a08d7e0d")
-}
-
-struct LocalizationUIExitKeys {
-    let demo = LocalizationKey("ui.exit.demo.3a329c52")
-}
-
-struct LocalizationUIExpiredKeys {
-    let andNotYetValidRequireSeparateConsent = LocalizationKey("ui.expired.and.not.yet.valid.require.separate.consent.93ab71e4")
-}
-
-struct LocalizationUIExplicitKeys {
-    let lockCompleted = LocalizationKey("ui.explicit.lock.completed.1c4f8e72")
-}
-
-struct LocalizationUIExploreKeys {
-    let theMainFeaturesWithSampleDataAndN = LocalizationKey("ui.explore.the.main.features.with.sample.data.and.n.fd16edf5")
-}
-
-struct LocalizationUIFailedKeys {
-    let label = LocalizationKey("ui.failed.cb475070")
-    let toRemoveAnIncompleteConflictBackup = LocalizationKey("ui.failed.to.remove.an.incomplete.conflict.backup.65753038")
+    let bundledSvnExecutableCouldNotFoundReinstallApp = LocalizationKey("ui.error.bundledSvnExecutableCouldNotFoundReinstallApp")
+    let commitBasedOlderWorkingCopyStateRunUpdateResolveAny = LocalizationKey("ui.error.commitBasedOlderWorkingCopyStateRunUpdateResolveAny")
+    let commitCompletedButWorkingCopyValidationFailedDoNotRetry = LocalizationKey("ui.error.commitCompletedButWorkingCopyValidationFailedDoNotRetry")
+    let conflictBackupsMustStoredOutsideWorkingCopy = LocalizationKey("ui.error.conflictBackupsMustStoredOutsideWorkingCopy")
+    let conflictFilePathPointsOutsideWorkingCopy = LocalizationKey("ui.error.conflictFilePathPointsOutsideWorkingCopy")
+    let conflictRemainsAfterSvnCommandReviewBackupsTryAgain = LocalizationKey("ui.error.conflictRemainsAfterSvnCommandReviewBackupsTryAgain")
+    let copied = LocalizationKey("ui.error.copied")
+    let copyAllDisplayedErrorDetailsClipboard = LocalizationKey("ui.error.copyAllDisplayedErrorDetailsClipboard")
+    let copyErrorDetails = LocalizationKey("ui.error.copyErrorDetails")
+    let currentWorkingFileCouldNotFound = LocalizationKey("ui.error.currentWorkingFileCouldNotFound")
+    let currentWorkingFileMustRegularFileNotSymbolicLink = LocalizationKey("ui.error.currentWorkingFileMustRegularFileNotSymbolicLink")
+    let error = LocalizationKey("ui.error.error")
+    let failed = LocalizationKey("ui.error.failed")
+    let failedRemoveIncompleteConflictBackup = LocalizationKey("ui.error.failedRemoveIncompleteConflictBackup")
+    let fileRemainsConflictGoChangesChooseResolveConflictsResolveIt = LocalizationKey("ui.error.fileRemainsConflictGoChangesChooseResolveConflictsResolveIt")
+    let fileVersionCouldNotFound = LocalizationKey("ui.error.fileVersionCouldNotFound")
+    let fileVersionMustRegularFileNotSymbolicLink = LocalizationKey("ui.error.fileVersionMustRegularFileNotSymbolicLink")
+    let lockTokenDoesNotBelongCurrentWorkingCopyReviewOwner = LocalizationKey("ui.error.lockTokenDoesNotBelongCurrentWorkingCopyReviewOwner")
+    let recoveryBackupCurrentWorkingFileCouldNotVerified = LocalizationKey("ui.error.recoveryBackupCurrentWorkingFileCouldNotVerified")
+    let recoveryDestinationFolderMustEmpty = LocalizationKey("ui.error.recoveryDestinationFolderMustEmpty")
+    let selectedFolderNotSvnLocalWorkingFolder = LocalizationKey("ui.error.selectedFolderNotSvnLocalWorkingFolder")
+    let selectedVersionFileCouldNotRestoredWorkingFile = LocalizationKey("ui.error.selectedVersionFileCouldNotRestoredWorkingFile")
+    let serverFileVersionCouldNotFound = LocalizationKey("ui.error.serverFileVersionCouldNotFound")
+    let serverFileVersionMustRegularFileNotSymbolicLink = LocalizationKey("ui.error.serverFileVersionMustRegularFileNotSymbolicLink")
+    let svnResponseCouldNotRead = LocalizationKey("ui.error.svnResponseCouldNotRead")
+    let unableLoadChanges = LocalizationKey("ui.error.unableLoadChanges")
+    let unableOpenFile = LocalizationKey("ui.error.unableOpenFile")
+    let unknownError = LocalizationKey("ui.error.unknownError")
+    let unsupportedConflictType = LocalizationKey("ui.error.unsupportedConflictType")
+    let workingCopyOperationInterruptedRunWorkingCopyCleanupTryOperation = LocalizationKey("ui.error.workingCopyOperationInterruptedRunWorkingCopyCleanupTryOperation")
 }
 
 struct LocalizationUIFileKeys {
-    let actionCommitRequired = LocalizationKey("ui.file.action.commit.required.6c2b9e14")
-    let browserActions = LocalizationKey("ui.file.browser.actions.14f5c2a1")
-    let browserItemsCount = LocalizationKey("ui.file.browser.items.count.86dc65fe")
-    let browserKindColumn = LocalizationKey("ui.file.browser.kind.column.b51d25fc")
-    let browserModifiedColumn = LocalizationKey("ui.file.browser.modified.column.84d3d7f2")
-    let browserNameColumn = LocalizationKey("ui.file.browser.name.column.0d7638cb")
-    let browserSizeColumn = LocalizationKey("ui.file.browser.size.column.a6810d75")
-    let browserSplitView = LocalizationKey("ui.file.browser.split.view.6f8e13d2")
-    let browserTreeView = LocalizationKey("ui.file.browser.tree.view.4a29bf3c")
-    let browserWorkingCopyRoot = LocalizationKey("ui.file.browser.working.copy.root.731fa805")
-    let commitHistoryFileCommitHistory = LocalizationKey("ui.file.commit.history.342bfaac")
-    let commitHistoryFileCommitHistory2 = LocalizationKey("ui.file.commit.history.ab024244")
-    let labelFile = LocalizationKey("ui.file.6d4b8c21")
-    let labelFile2 = LocalizationKey("ui.file.811b7680")
-    let remainsInConflictResolveBeforeRetry = LocalizationKey("ui.file.remains.in.conflict.resolve.before.retry.4d17ac82")
-}
-
-struct LocalizationUIFilenameKeys {
-    let warning = LocalizationKey("ui.filename.warning.52af346c")
-}
-
-struct LocalizationUIFilesKeys {
-    let beingDownloadedWillAppearHereAfterCh = LocalizationKey("ui.files.being.downloaded.will.appear.here.after.ch.9dfb3816")
-    let insideThisFolderWillBeAddedTogether = LocalizationKey("ui.files.inside.this.folder.will.be.added.together.637444b8")
-    let label = LocalizationKey("ui.files.6075adef")
-    let notInRepositoryCount = LocalizationKey("ui.files.not.in.repository.count.2b7fa508")
-}
-
-struct LocalizationUIFolderKeys {
-    let credentials = LocalizationKey("ui.folder.credentials.b4bd68eb")
-    let label = LocalizationKey("ui.folder.e6474408")
-    let settings = LocalizationKey("ui.folder.settings.6f2a0d43")
-}
-
-struct LocalizationUIForceKeys {
-    let lockClientUnavailable = LocalizationKey("ui.force.lock.client.unavailable.72be3a10")
-    let lockConfirmationAction = LocalizationKey("ui.force.lock.confirmation.action.9d6a31f0")
-    let lockConfirmationDetails = LocalizationKey("ui.force.lock.confirmation.details.27fb4d91")
-    let lockConfirmationTitle = LocalizationKey("ui.force.lock.confirmation.title.e83c5a14")
-    let releaseLock = LocalizationKey("ui.force.release.lock.a4ef2d91")
-    let releaseRepositoryLock = LocalizationKey("ui.force.release.repository.lock.31d7f2c4")
-    let unlockDetailsOwnerTimeCommentOriginal = LocalizationKey("ui.force.unlock.details.owner.time.comment.original.93c28fb0")
-}
-
-struct LocalizationUIGitignoreKeys {
-    let isNotModifiedImportIsOneWayAnd = LocalizationKey("ui.gitignore.is.not.modified.import.is.one.way.and..544de7a7")
-}
-
-struct LocalizationUIGlobalKeys {
-    let rulesCanAffectManyDirectoriesBelowT = LocalizationKey("ui.global.rules.can.affect.many.directories.below.t.164333fd")
-}
-
-struct LocalizationUIGoKeys {
-    let resolveUpdateConflicts = LocalizationKey("ui.go.resolve.update.conflicts.2d9e4b71")
-}
-
-struct LocalizationUIHideKeys {
-    let macOfficeTemporaryFiles = LocalizationKey("ui.hide.mac.office.temporary.files.875f35d1")
-    let password = LocalizationKey("ui.hide.password.4c8a1f60")
-    let temporaryFilesFromChangesAndCommitTarg = LocalizationKey("ui.hide.temporary.files.from.changes.and.commit.targ.48a925d4")
-}
-
-struct LocalizationUIHighestKeys {
-    let localRevision = LocalizationKey("ui.highest.local.revision.d334c9c1")
+    let copiedFilePath = LocalizationKey("ui.file.copiedFilePath")
+    let noLongerMarkedDeleted = LocalizationKey("ui.file.noLongerMarkedDeleted")
+    let restoredButFailed = LocalizationKey("ui.file.restoredButFailed")
+    let restoredSelectedDeletionFileServer = LocalizationKey("ui.file.restoredSelectedDeletionFileServer")
+    let revertedLocalChanges = LocalizationKey("ui.file.revertedLocalChanges")
 }
 
 struct LocalizationUIHistoryKeys {
-    let refreshed = LocalizationKey("ui.history.refreshed.5c159ee8")
+    let additionalRevisionProperties = LocalizationKey("ui.history.additionalRevisionProperties")
+    let blueDotsServerCommitsGreenRingHighestLocalRevisionOrange = LocalizationKey("ui.history.blueDotsServerCommitsGreenRingHighestLocalRevisionOrange")
+    let blueDotsServerCommitsGreenRingLocalBaseOrangeBranch = LocalizationKey("ui.history.blueDotsServerCommitsGreenRingLocalBaseOrangeBranch")
+    let changedPaths = LocalizationKey("ui.history.changedPaths")
+    let commitHistory = LocalizationKey("ui.history.commitHistory")
+    let commitTimeUnavailable = LocalizationKey("ui.history.commitTimeUnavailable")
+    let contentChanged = LocalizationKey("ui.history.contentChanged")
+    let copyHistory = LocalizationKey("ui.history.copyHistory")
+    let earlierHistory = LocalizationKey("ui.history.earlierHistory")
+    let fileCommitHistory = LocalizationKey("ui.history.fileCommitHistory")
+    let highestLocalRevision = LocalizationKey("ui.history.highestLocalRevision")
+    let includedLocally = LocalizationKey("ui.history.includedLocally")
+    let load50More = LocalizationKey("ui.history.load50More")
+    let loading = LocalizationKey("ui.history.loading")
+    let loadingCommitHistory = LocalizationKey("ui.history.loadingCommitHistory")
+    let localBaseRevision = LocalizationKey("ui.history.localBaseRevision")
+    let localBaseRevisionEarlierThanLatest50ServerRecords = LocalizationKey("ui.history.localBaseRevisionEarlierThanLatest50ServerRecords")
+    let localChanges = LocalizationKey("ui.history.localChanges")
+    let localUpdateBaseFallsBetweenTwoServerCommits = LocalizationKey("ui.history.localUpdateBaseFallsBetweenTwoServerCommits")
+    let mixedRevisions = LocalizationKey("ui.history.mixedRevisions")
+    let myLocalBase = LocalizationKey("ui.history.myLocalBase")
+    let myLocalFolderR = LocalizationKey("ui.history.myLocalFolderR")
+    let noCommitHistory = LocalizationKey("ui.history.noCommitHistory")
+    let noValue = LocalizationKey("ui.history.noValue")
+    let originalMessage = LocalizationKey("ui.history.originalMessage")
+    let propertiesChanged = LocalizationKey("ui.history.propertiesChanged")
+    let refreshed = LocalizationKey("ui.history.refreshed")
+    let reloadLocalChangesLatestServerCommitHistory = LocalizationKey("ui.history.reloadLocalChangesLatestServerCommitHistory")
+    let renameHistory = LocalizationKey("ui.history.renameHistory")
+    let restored = LocalizationKey("ui.history.restored")
+    let serverCommitDetail = LocalizationKey("ui.history.serverCommitDetail")
+    let serverCommitLegend = LocalizationKey("ui.history.serverCommitLegend")
+    let serverLatest = LocalizationKey("ui.history.serverLatest")
+    let serverLatestR = LocalizationKey("ui.history.serverLatestR")
+    let uncommittedChanges = LocalizationKey("ui.history.uncommittedChanges")
+    let uncommittedChangesBranchLocalBaseRevision = LocalizationKey("ui.history.uncommittedChangesBranchLocalBaseRevision")
+    let upDate = LocalizationKey("ui.history.upDate")
+    let viewChangesCommit = LocalizationKey("ui.history.viewChangesCommit")
+    let viewOriginalMessageBeforeRestoration = LocalizationKey("ui.history.viewOriginalMessageBeforeRestoration")
+    let workingCopyContainsMixedRevisionsRMarkerShowsHighestRevision = LocalizationKey("ui.history.workingCopyContainsMixedRevisionsRMarkerShowsHighestRevision")
 }
 
 struct LocalizationUIIgnoreKeys {
-    let thisExtension = LocalizationKey("ui.ignore.this.extension.687c5df7")
-    let thisItem = LocalizationKey("ui.ignore.this.item.67c56906")
-}
-
-struct LocalizationUIIgnoredKeys {
-    let label = LocalizationKey("ui.ignored.b45ee0ef")
-}
-
-struct LocalizationUIIncludeKeys {
-    let inCommit = LocalizationKey("ui.include.in.commit.2aaaa224")
-    let inRestore = LocalizationKey("ui.include.in.restore.4d9c1e72")
-    let orExcludeThisFileFromTheNextCommi = LocalizationKey("ui.include.or.exclude.this.file.from.the.next.commi.273bb38e")
-}
-
-struct LocalizationUIIncludedKeys {
-    let locally = LocalizationKey("ui.included.locally.241cf38b")
-}
-
-struct LocalizationUIIncomingKeys {
-    let changesThatOverlapLocalEditsMayCr = LocalizationKey("ui.incoming.changes.that.overlap.local.edits.may.cr.a2bc4e0e")
-}
-
-struct LocalizationUIIncompleteKeys {
-    let checkoutRecoveryOptions = LocalizationKey("ui.incomplete.checkout.recovery.options.f31ea907")
-    let updateRequired = LocalizationKey("ui.incomplete.update.required.c5e83d20")
-}
-
-struct LocalizationUIInheritedKeys {
-    let from = LocalizationKey("ui.inherited.from.1feb128b")
-    let rulesCanOnlyBeRemovedFromThePar = LocalizationKey("ui.inherited.rules.can.only.be.removed.from.the.par.276c450b")
-}
-
-struct LocalizationUIInvalidKeys {
-    let fileName = LocalizationKey("ui.invalid.file.name.7b2d10e9")
-    let repositoryUrl = LocalizationKey("ui.invalid.repository.url.8e4c1a70")
-}
-
-struct LocalizationUIItemKeys {
-    let s = LocalizationKey("ui.item.s.7cb28e2a")
-}
-
-struct LocalizationUIJapanKeys {
-    let standardTimeJstUtc9 = LocalizationKey("ui.japan.standard.time.jst.utc.9.04744dfc")
-}
-
-struct LocalizationUIKeepKeys {
-    let downloading = LocalizationKey("ui.keep.downloading.3c1de80f")
-    let localPropertiesAsResolvedValues = LocalizationKey("ui.keep.local.properties.as.resolved.values.4a0d2c6f")
-    let myChange = LocalizationKey("ui.keep.my.change.14f3a8c6")
-    let myProperties = LocalizationKey("ui.keep.my.properties.68b12ae4")
-    let theFileCurrentlySavedInTheWorkingCop = LocalizationKey("ui.keep.the.file.currently.saved.in.the.working.cop.aa08fa30")
-    let yourFileALaterCommitWillReplaceTheR = LocalizationKey("ui.keep.your.file.a.later.commit.will.replace.the.r.f576fdeb")
-}
-
-struct LocalizationUIKeychainKeys {
-    let accessWasDenied = LocalizationKey("ui.keychain.access.was.denied.c1358e6f")
-    let accessWasDeniedChooseHowToAuthent = LocalizationKey("ui.keychain.access.was.denied.choose.how.to.authent.0d8d881a")
-    let operationFailed = LocalizationKey("ui.keychain.operation.failed.e456386b")
-}
-
-struct LocalizationUIKoreaKeys {
-    let standardTimeKstUtc9 = LocalizationKey("ui.korea.standard.time.kst.utc.9.74d019be")
-}
-
-struct LocalizationUILanguageKeys {
-    let label = LocalizationKey("ui.language.8e5b78fb")
-}
-
-struct LocalizationUILastKeys {
-    let compared = LocalizationKey("ui.last.compared.cbf0bf20")
-}
-
-struct LocalizationUILaterKeys {
-    let label = LocalizationKey("ui.later.7dd25de4")
-}
-
-struct LocalizationUILeaveKeys {
-    let blankToKeepTheCurrentPassword = LocalizationKey("ui.leave.blank.to.keep.the.current.password.5f89ccfa")
-}
-
-struct LocalizationUILoadKeys {
-    let localization50more = LocalizationKey("ui.load.50.more.043526e4")
-}
-
-struct LocalizationUILoadingKeys {
-    let changes = LocalizationKey("ui.loading.changes.82ffc858")
-    let commitHistory = LocalizationKey("ui.loading.commit.history.c445b02a")
-    let fileHistory = LocalizationKey("ui.loading.file.history.c6c155f3")
-    let files = LocalizationKey("ui.loading.files.a3268fef")
-    let label = LocalizationKey("ui.loading.b0a3fd42")
-    let repositoryContents = LocalizationKey("ui.loading.repository.contents.5e1c7a84")
-    let repositoryLocks = LocalizationKey("ui.loading.repository.locks.3dd2dfdb")
-}
-
-struct LocalizationUILocalKeys {
-    let changes = LocalizationKey("ui.local.changes.60d75f36")
-    let changesArePreserved = LocalizationKey("ui.local.changes.are.preserved.7e12c6a9")
-    let changesRefreshed = LocalizationKey("ui.local.changes.refreshed.617acbc6")
-    let changesWillBeDiscarded = LocalizationKey("ui.local.changes.will.be.discarded.5e8127cf")
-    let deletionWillRemainAndACommitWillDe = LocalizationKey("ui.local.deletion.will.remain.and.a.commit.will.de.837b94a0")
-    let folder = LocalizationKey("ui.local.folder.63f176e1")
-    let propertyValuesWillBeDiscarded = LocalizationKey("ui.local.property.values.will.be.discarded.f98a7c20")
-    let workingFolders = LocalizationKey("ui.local.working.folders.341c44b5")
-}
-
-struct LocalizationUILocalizationcontinueKeys {
-    let checkout = LocalizationKey("ui.continue.checkout.84b37ce1")
-    let incompleteByUpdating = LocalizationKey("ui.continue.incomplete.by.updating.b64e2a19")
-    let update = LocalizationKey("ui.continue.update.2ce71b84")
-}
-
-struct LocalizationUILocalizationdoKeys {
-    let notAllowCertificateException = LocalizationKey("ui.do.not.allow.certificate.exception.f4c01a6e")
-}
-
-struct LocalizationUILocalizationfalseKeys {
-    let aliasesExcluded = LocalizationKey("ui.false.aliases.excluded.85d448dd")
-}
-
-struct LocalizationUILocalizationimportKeys {
-    let gitRules = LocalizationKey("ui.import.git.rules.bbf8aa32")
-}
-
-struct LocalizationUILocalizationopenKeys {
-    let backupFolder = LocalizationKey("ui.open.backup.folder.d8faa2d5")
-    let file = LocalizationKey("ui.open.file.ea89b4b3")
-    let inFinder = LocalizationKey("ui.open.in.finder.35aa9225")
-    let myFile = LocalizationKey("ui.open.my.file.537a87cb")
-    let repositoryRelocation = LocalizationKey("ui.open.repository.relocation.9c5e17a3")
-    let selectedDirectory = LocalizationKey("ui.open.selected.directory.2c7e5a91")
-    let serverFile = LocalizationKey("ui.open.server.file.252d515b")
-    let theAppWideSettingsWindow = LocalizationKey("ui.open.the.app.wide.settings.window.6b0d5a17")
-    let thisSvnLocalWorkingFolderInFinder = LocalizationKey("ui.open.this.svn.local.working.folder.in.finder.9befff0f")
-    let withoutLock = LocalizationKey("ui.open.without.lock.e650efbf")
-    let withoutLockAndDoNotAskAgain = LocalizationKey("ui.open.without.lock.and.do.not.ask.again.4c6f8a20")
-}
-
-struct LocalizationUILocalizationtryKeys {
-    let keychainAgain = LocalizationKey("ui.try.keychain.again.a762f607")
-    let normalUnlockBeforeForceUnlock = LocalizationKey("ui.try.normal.unlock.before.force.unlock.8a21f763")
-}
-
-struct LocalizationUILocallyKeys {
-    let missing = LocalizationKey("ui.locally.missing.c4011027")
-    let missingActionRequired = LocalizationKey("ui.locally.missing.action.required.50c49ccb")
+    let addedIgnoreRuleCommitDirectoryPropertyShareItTeam = LocalizationKey("ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam")
+    let alreadyVersionedFilesNotHiddenIgnoreRules = LocalizationKey("ui.ignore.alreadyVersionedFilesNotHiddenIgnoreRules")
+    let applied = LocalizationKey("ui.ignore.applied")
+    let appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare = LocalizationKey("ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare")
+    let apply = LocalizationKey("ui.ignore.apply")
+    let applyGlobalIgnoreRules = LocalizationKey("ui.ignore.applyGlobalIgnoreRules")
+    let applySelectedRules = LocalizationKey("ui.ignore.applySelectedRules")
+    let applying = LocalizationKey("ui.ignore.applying")
+    let available = LocalizationKey("ui.ignore.available")
+    let clear = LocalizationKey("ui.ignore.clear")
+    let compareGitRules = LocalizationKey("ui.ignore.compareGitRules")
+    let fileExtension = LocalizationKey("ui.ignore.fileExtension")
+    let gitignoreNotModifiedImportOneWaySvnPropertyChangesMust = LocalizationKey("ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust")
+    let globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply = LocalizationKey("ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply")
+    let importGitRules = LocalizationKey("ui.ignore.importGitRules")
+    let inherited = LocalizationKey("ui.ignore.inherited")
+    let inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty = LocalizationKey("ui.ignore.inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty")
+    let item = LocalizationKey("ui.ignore.item")
+    let lastCompared = LocalizationKey("ui.ignore.lastCompared")
+    let manageIgnoreRules = LocalizationKey("ui.ignore.manageIgnoreRules")
+    let noGitignore = LocalizationKey("ui.ignore.noGitignore")
+    let noGitignoreFileFoundWorkingCopy = LocalizationKey("ui.ignore.noGitignoreFileFoundWorkingCopy")
+    let noSvnIgnoreRulesConfigured = LocalizationKey("ui.ignore.noSvnIgnoreRulesConfigured")
+    let removeInheritedRulesParentDirectoryThatOwnsProperty = LocalizationKey("ui.ignore.removeInheritedRulesParentDirectoryThatOwnsProperty")
+    let removeRule = LocalizationKey("ui.ignore.removeRule")
+    let removedIgnoreRule = LocalizationKey("ui.ignore.removedIgnoreRule")
+    let resolveUnicodePathConflictsBeforeComparingGitRulesSoProperty = LocalizationKey("ui.ignore.resolveUnicodePathConflictsBeforeComparingGitRulesSoProperty")
+    let review = LocalizationKey("ui.ignore.review")
+    let selectAll = LocalizationKey("ui.ignore.selectAll")
+    let svnIgnoreRules = LocalizationKey("ui.ignore.svnIgnoreRules")
+    let thereNoGitRulesImport = LocalizationKey("ui.ignore.thereNoGitRulesImport")
+    let unsupported = LocalizationKey("ui.ignore.unsupported")
 }
 
 struct LocalizationUILockKeys {
-    let andOpen = LocalizationKey("ui.lock.and.open.c64beb29")
-    let belongsToAnotherWorkingCopyForceUnlock = LocalizationKey("ui.lock.belongs.to.another.working.copy.force.unlock.27e93bd0")
-    let fileExplicitly = LocalizationKey("ui.lock.file.explicitly.45d18c7b")
-    let informationCouldNotBeCheckedYouCanOp = LocalizationKey("ui.lock.information.could.not.be.checked.you.can.op.b80b917b")
-    let selectedFiles = LocalizationKey("ui.lock.selected.files.7a3e9c21")
-    let thisFileBeforeOpening = LocalizationKey("ui.lock.this.file.before.opening.0d16b072")
-}
-
-struct LocalizationUILockedKeys {
-    let by = LocalizationKey("ui.locked.by.192b78cf")
-    let byYou = LocalizationKey("ui.locked.by.you.f2a7c3f2")
-    let files = LocalizationKey("ui.locked.files.457daf19")
-    let filesBlockOtherUsersUntilCommitOrUnl = LocalizationKey("ui.locked.files.block.other.users.until.commit.or.unl.6a2e91bf")
-}
-
-struct LocalizationUILockingKeys {
-    let preventsConcurrentCommitsByOtherUse = LocalizationKey("ui.locking.prevents.concurrent.commits.by.other.use.0f657e2c")
-}
-
-struct LocalizationUILocksKeys {
-    let labelFormatted = LocalizationKey("ui.locks.46e6922e")
-    let labelSecondary = LocalizationKey("ui.locks.dac8d38d")
-}
-
-struct LocalizationUIMacKeys {
-    let systemTimeZone = LocalizationKey("ui.mac.system.time.zone.df3e6992")
-}
-
-struct LocalizationUIManageKeys {
-    let ignoreRules = LocalizationKey("ui.manage.ignore.rules.7eac76b1")
-}
-
-struct LocalizationUIMarkKeys {
-    let forDeletion = LocalizationKey("ui.mark.for.deletion.ec31cd20")
-    let forRepositoryDeletion = LocalizationKey("ui.mark.for.repository.deletion.3c417fc1")
-}
-
-struct LocalizationUIMarkedKeys {
-    let itemSForDeletionCommitToDeleteThem = LocalizationKey("ui.marked.item.s.for.deletion.commit.to.delete.them.ac2b38ab")
-}
-
-struct LocalizationUIMixedKeys {
-    let revisions = LocalizationKey("ui.mixed.revisions.6faee919")
-}
-
-struct LocalizationUIModificationKeys {
-    let dateUnavailable = LocalizationKey("ui.modification.date.unavailable.7b2ebc97")
-}
-
-struct LocalizationUIModifiedKeys {
-    let labelFormatted = LocalizationKey("ui.modified.98221376")
-    let labelPrimary = LocalizationKey("ui.modified.01365bb2")
-}
-
-struct LocalizationUIMoveKeys {
-    let orRenameTheLocalFileThenUpdate = LocalizationKey("ui.move.or.rename.the.local.file.then.update.1e3c7a90")
-}
-
-struct LocalizationUIMultipleKeys {
-    let canonicallyEquivalentServerPathsExi = LocalizationKey("ui.multiple.canonically.equivalent.server.paths.exi.55798f96")
-}
-
-struct LocalizationUIMyKeys {
-    let file = LocalizationKey("ui.my.file.e70a2b5b")
-    let localBase = LocalizationKey("ui.my.local.base.eff15763")
-    let localFolderR = LocalizationKey("ui.my.local.folder.r.6668e9b0")
-    let propertiesAlsoKept = LocalizationKey("ui.my.properties.also.kept.b81e64af")
-}
-
-struct LocalizationUINeedKeys {
-    let help = LocalizationKey("ui.need.help.bf7256df")
-}
-
-struct LocalizationUINeedsKeys {
-    let lockCommitRequired = LocalizationKey("ui.needs.lock.commit.required.4c6e82a1")
-    let lockDisable = LocalizationKey("ui.needs.lock.disable.3d8a20f6")
-    let lockEnable = LocalizationKey("ui.needs.lock.enable.0b7e4c91")
-    let lockEnabled = LocalizationKey("ui.needs.lock.enabled.9a1f5c37")
-}
-
-struct LocalizationUINewKeys {
-    let fileName = LocalizationKey("ui.new.file.name.8d41e6a0")
-    let label = LocalizationKey("ui.new.479ccc40")
-    let repositoryUrl = LocalizationKey("ui.new.repository.url.5d4b9f02")
-    let workingFolder = LocalizationKey("ui.new.working.folder.5db27c9c")
-}
-
-struct LocalizationUINoKeys {
-    let changedFiles = LocalizationKey("ui.no.changed.files.27bf2bab")
-    let changes = LocalizationKey("ui.no.changes.ea917fd6")
-    let commitHistory = LocalizationKey("ui.no.commit.history.a78ed291")
-    let commitMessage = LocalizationKey("ui.no.commit.message.911ccc29")
-    let fileHistory = LocalizationKey("ui.no.file.history.c4cc1ef1")
-    let files = LocalizationKey("ui.no.files.5245ffcc")
-    let gitignore = LocalizationKey("ui.no.gitignore.44540a9b")
-    let gitignoreFileWasFoundInTheWorkingCopy = LocalizationKey("ui.no.gitignore.file.was.found.in.the.working.copy.ce93a706")
-    let incomingChanges = LocalizationKey("ui.no.incoming.changes.8302e8b6")
-    let itemsInRepositoryDirectory = LocalizationKey("ui.no.items.in.repository.directory.4d8b1f63")
-    let label = LocalizationKey("ui.no.bafd7322")
-    let lockedFiles = LocalizationKey("ui.no.locked.files.7d32eee0")
-    let passwordIsStored = LocalizationKey("ui.no.password.is.stored.44110abb")
-    let searchResults = LocalizationKey("ui.no.search.results.e40b4a06")
-    let serverDeletionsRemaining = LocalizationKey("ui.no.server.deletions.remaining.3e7b9a12")
-    let svnIgnoreRulesAreConfigured = LocalizationKey("ui.no.svn.ignore.rules.are.configured.71e0180f")
-    let textDiffIsAvailableThisMayBeANewOrB = LocalizationKey("ui.no.text.diff.is.available.this.may.be.a.new.or.b.e90ec831")
-    let value = LocalizationKey("ui.no.value.480d48f5")
-}
-
-struct LocalizationUINotKeys {
-    let available = LocalizationKey("ui.not.available.60326cf1")
-}
-
-struct LocalizationUIObstructedKeys {
-    let localFile = LocalizationKey("ui.obstructed.local.file.74a9c2e5")
-}
-
-struct LocalizationUIOnKeys {
-    let successBothTheOriginalAndRecoveredCopie = LocalizationKey("ui.on.success.both.the.original.and.recovered.copie.9a6ba4b9")
-}
-
-struct LocalizationUIOnlyKeys {
-    let verifiedWorkingCopyWillBeDeletedPath = LocalizationKey("ui.only.verified.working.copy.will.be.deleted.path.d8c0a71e")
-}
-
-struct LocalizationUIOpenedKeys {
-    let withoutALockAConcurrentCommitByAno = LocalizationKey("ui.opened.without.a.lock.a.concurrent.commit.by.ano.ff588344")
-}
-
-struct LocalizationUIOpeningKeys {
-    let aFileLockedByYou = LocalizationKey("ui.opening.a.file.locked.by.you.742588ff")
-}
-
-struct LocalizationUIOperationKeys {
-    let wasInterruptedCleanupPrompt = LocalizationKey("ui.operation.was.interrupted.cleanup.prompt.c7f01d92")
-}
-
-struct LocalizationUIOriginalKeys {
-    let message = LocalizationKey("ui.original.message.fbd14889")
-}
-
-struct LocalizationUIOverwriteKeys {
-    let withMine = LocalizationKey("ui.overwrite.with.mine.8d42f39b")
-}
-
-struct LocalizationUIParentKeys {
-    let directory = LocalizationKey("ui.parent.directory.1b7e4a93")
-}
-
-struct LocalizationUIPasswordKeys {
-    let label = LocalizationKey("ui.password.945c94ed")
-}
-
-struct LocalizationUIPathKeys {
-    let recoveryCompletedTheOriginalWorkingFol = LocalizationKey("ui.path.recovery.completed.the.original.working.fol.2fde9c42")
-}
-
-struct LocalizationUIPendingKeys {
-    let deletionFormatted = LocalizationKey("ui.pending.deletion.4b08f65b")
-    let deletionPrimary = LocalizationKey("ui.pending.deletion.1652cca1")
-}
-
-struct LocalizationUIPickKeys {
-    let theNewLocationOfThisSvnWorkingFolder = LocalizationKey("ui.pick.the.new.location.of.this.svn.working.folder.0c58fa9e")
-}
-
-struct LocalizationUIPleaseKeys {
-    let sendQuestionsTo = LocalizationKey("ui.please.send.questions.to.f2d48929")
-}
-
-struct LocalizationUIPressKeys {
-    let oOrUseTheButtonAtTheBottomLeft = LocalizationKey("ui.press.o.or.use.the.button.at.the.bottom.left.42abfdb5")
-}
-
-struct LocalizationUIPreviewKeys {
-    let failedUpdateStillAvailable = LocalizationKey("ui.preview.failed.update.still.available.2c71be90")
-}
-
-struct LocalizationUIPropertiesKeys {
-    let changed = LocalizationKey("ui.properties.changed.b933354d")
-}
-
-struct LocalizationUIPropertyKeys {
-    let conflict = LocalizationKey("ui.property.conflict.2fd61b8a")
-    let conflictBlocksCommitUntilResolved = LocalizationKey("ui.property.conflict.blocks.commit.until.resolved.bf3c8a12")
-    let conflictResolvedReviewBeforeCommit = LocalizationKey("ui.property.conflict.resolved.review.before.commit.7b5e91c4")
-    let modified = LocalizationKey("ui.property.modified.4c9a78e1")
-}
-
-struct LocalizationUIQuestionsKeys {
-    let support = LocalizationKey("ui.questions.support.b20404dc")
-}
-
-struct LocalizationUIRecoverKeys {
-    let toNewWorkingFolder = LocalizationKey("ui.recover.to.new.working.folder.141e043c")
+    let alreadyHoldLocksAllSelectedFiles = LocalizationKey("ui.lock.alreadyHoldLocksAllSelectedFiles")
+    let changedRequiredLockPropertyFileCommitItApplyChangeOther = LocalizationKey("ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther")
+    let countAccessibilityLabel = LocalizationKey("ui.lock.countAccessibilityLabel")
+    let currentSvnClientDoesNotSupportForcedMultiFileLocking = LocalizationKey("ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking")
+    let editingDocumentSvnKr = LocalizationKey("ui.lock.editingDocumentSvnKr")
+    let file = LocalizationKey("ui.lock.file")
+    let fileBeforeOpening = LocalizationKey("ui.lock.fileBeforeOpening")
+    let fileCurrentlyLockedOpeningWithoutLockMayPreventCommittingCause = LocalizationKey("ui.lock.fileCurrentlyLockedOpeningWithoutLockMayPreventCommittingCause")
+    let fileLockedSuccessfulCommitAutomaticallyReleasesLock = LocalizationKey("ui.lock.fileLockedSuccessfulCommitAutomaticallyReleasesLock")
+    let forceLock = LocalizationKey("ui.lock.forceLock")
+    let forceLockingSelectedFileRemovesExistingUsersLocksReviewOwners = LocalizationKey("ui.lock.forceLockingSelectedFileRemovesExistingUsersLocksReviewOwners")
+    let forceReleaseLock = LocalizationKey("ui.lock.forceReleaseLock")
+    let forceReleaseRepositoryLock = LocalizationKey("ui.lock.forceReleaseRepositoryLock")
+    let forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked = LocalizationKey("ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked")
+    let informationCouldNotCheckedCanOpenFileWithoutLockingIt = LocalizationKey("ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt")
+    let loadingRepositoryLocks = LocalizationKey("ui.lock.loadingRepositoryLocks")
+    let lockAndOpenAction = LocalizationKey("ui.lock.lockAndOpenAction")
+    let lockedByCurrentUser = LocalizationKey("ui.lock.lockedByCurrentUser")
+    let lockedByOwner = LocalizationKey("ui.lock.lockedByOwner")
+    let lockedFile = LocalizationKey("ui.lock.lockedFile")
+    let lockedFileMarkedSvnServerPreventAnotherUserCommittingIt = LocalizationKey("ui.lock.lockedFileMarkedSvnServerPreventAnotherUserCommittingIt")
+    let lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful = LocalizationKey("ui.lock.lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful")
+    let noLockedFiles = LocalizationKey("ui.lock.noLockedFiles")
+    let notAvailable = LocalizationKey("ui.lock.notAvailable")
+    let openWithoutLock = LocalizationKey("ui.lock.openWithoutLock")
+    let openWithoutLockingDonTAskAgain = LocalizationKey("ui.lock.openWithoutLockingDonTAskAgain")
+    let openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict = LocalizationKey("ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict")
+    let openingFileLocked = LocalizationKey("ui.lock.openingFileLocked")
+    let releaseAllAction = LocalizationKey("ui.lock.releaseAllAction")
+    let releaseAllConfirmationTitle = LocalizationKey("ui.lock.releaseAllConfirmationTitle")
+    let releaseFromBrowserAction = LocalizationKey("ui.lock.releaseFromBrowserAction")
+    let releaseFromListAction = LocalizationKey("ui.lock.releaseFromListAction")
+    let releaseLocks = LocalizationKey("ui.lock.releaseLocks")
+    let releaseLocksOwnedCurrentUserOtherUsersAbleModifyFiles = LocalizationKey("ui.lock.releaseLocksOwnedCurrentUserOtherUsersAbleModifyFiles")
+    let releaseMyLock = LocalizationKey("ui.lock.releaseMyLock")
+    let released = LocalizationKey("ui.lock.released")
+    let releasedAllLocks = LocalizationKey("ui.lock.releasedAllLocks")
+    let releasedLocksLocksBelowCouldNotReleased = LocalizationKey("ui.lock.releasedLocksLocksBelowCouldNotReleased")
+    let removeRequiredLock = LocalizationKey("ui.lock.removeRequiredLock")
+    let repositoryLockForceReleased = LocalizationKey("ui.lock.repositoryLockForceReleased")
+    let repositoryLocks = LocalizationKey("ui.lock.repositoryLocks")
+    let requireLockBeforeEditing = LocalizationKey("ui.lock.requireLockBeforeEditing")
+    let requiredBeforeEditing = LocalizationKey("ui.lock.requiredBeforeEditing")
+    let reviewForceLock = LocalizationKey("ui.lock.reviewForceLock")
+    let selectedFile = LocalizationKey("ui.lock.selectedFile")
+    let sheetTitle = LocalizationKey("ui.lock.sheetTitle")
+    let someLocksNotReleased = LocalizationKey("ui.lock.someLocksNotReleased")
+    let takeAnotherUserLock = LocalizationKey("ui.lock.takeAnotherUserLock")
+    let tryNormalUnlockFirstIfWorkingCopyNoMatchingLock = LocalizationKey("ui.lock.tryNormalUnlockFirstIfWorkingCopyNoMatchingLock")
+    let viewLockedFilesTheirCountRepository = LocalizationKey("ui.lock.viewLockedFilesTheirCountRepository")
 }
 
 struct LocalizationUIRecoveryKeys {
-    let preview = LocalizationKey("ui.recovery.preview.be45be07")
-}
-
-struct LocalizationUIRefreshKeys {
-    let label = LocalizationKey("ui.refresh.0aca6bd2")
-}
-
-struct LocalizationUIRefreshedKeys {
-    let label = LocalizationKey("ui.refreshed.41ebae4b")
-}
-
-struct LocalizationUIRegisterKeys {
-    let anExistingSvnWorkingFolderInTheA = LocalizationKey("ui.register.an.existing.svn.working.folder.in.the.a.361385a1")
-    let existingLocalFolder = LocalizationKey("ui.register.existing.local.folder.fcf466c4")
-}
-
-struct LocalizationUIReleaseKeys {
-    let allMyLocks = LocalizationKey("ui.release.all.my.locks.5d8c31a7")
-    let lock = LocalizationKey("ui.release.lock.695a2075")
-    let lockNormally = LocalizationKey("ui.release.lock.normally.5e1039ab")
-    let locksCount = LocalizationKey("ui.release.locks.count.1f6b83d4")
-    let myLock = LocalizationKey("ui.release.my.lock.1b0c3150")
-}
-
-struct LocalizationUIReloadKeys {
-    let localChangesAndTheLatestServerCommi = LocalizationKey("ui.reload.local.changes.and.the.latest.server.commi.19e409f3")
-}
-
-struct LocalizationUIRelocateKeys {
-    let repository = LocalizationKey("ui.relocate.repository.6f3c2a98")
-}
-
-struct LocalizationUIRelocatingKeys {
-    let repository = LocalizationKey("ui.relocating.repository.18b5d4e7")
-}
-
-struct LocalizationUIRemoveKeys {
-    let inheritedRulesFromTheParentDirectory = LocalizationKey("ui.remove.inherited.rules.from.the.parent.directory.7c2d3995")
-    let label = LocalizationKey("ui.remove.d4be5a3e")
-    let theSelectedWorkingFolderFromTheApp = LocalizationKey("ui.remove.the.selected.working.folder.from.the.app..ffe092ae")
-    let thisRule = LocalizationKey("ui.remove.this.rule.2908b9d1")
-    let workingFolderFromAppConfirmation = LocalizationKey("ui.remove.working.folder.from.app.confirmation.54d24642")
-}
-
-struct LocalizationUIRemovedKeys {
-    let ignoreRule = LocalizationKey("ui.removed.ignore.rule.bb8aeaf0")
-}
-
-struct LocalizationUIRenameKeys {
-    let withHistory = LocalizationKey("ui.rename.with.history.2a7c91e5")
-}
-
-struct LocalizationUIReplaceKeys {
-    let localPropertiesWithServerValues = LocalizationKey("ui.replace.local.properties.with.server.values.c2804d9a")
-    let withTheServerFileYourLocalEditsLe = LocalizationKey("ui.replace.with.the.server.file.your.local.edits.le.f08dec1d")
-}
-
-struct LocalizationUIReplacedKeys {
-    let label = LocalizationKey("ui.replaced.6da39732")
+    let allContentsVerifiedInterruptedSvnWorkingCopyFolderBelowDeleted = LocalizationKey("ui.recovery.allContentsVerifiedInterruptedSvnWorkingCopyFolderBelowDeleted")
+    let automaticUnicodePathRecovery = LocalizationKey("ui.recovery.automaticUnicodePathRecovery")
+    let checkoutCanceledPartiallyDownloadedFilesMayRemain = LocalizationKey("ui.recovery.checkoutCanceledPartiallyDownloadedFilesMayRemain")
+    let checkoutInterrupted = LocalizationKey("ui.recovery.checkoutInterrupted")
+    let chooseAction = LocalizationKey("ui.recovery.chooseAction")
+    let chooseEmptyFolder = LocalizationKey("ui.recovery.chooseEmptyFolder")
+    let chooseEmptyRecoveryFolder = LocalizationKey("ui.recovery.chooseEmptyRecoveryFolder")
+    let chooseFolder = LocalizationKey("ui.recovery.chooseFolder")
+    let cleanWorkingCopyCheckedOutServerOnlyRealLocalChanges = LocalizationKey("ui.recovery.cleanWorkingCopyCheckedOutServerOnlyRealLocalChanges")
+    let cleaningContinuing = LocalizationKey("ui.recovery.cleaningContinuing")
+    let continueCheckout = LocalizationKey("ui.recovery.continueCheckout")
+    let emptiedInterruptedCheckoutFolder = LocalizationKey("ui.recovery.emptiedInterruptedCheckoutFolder")
+    let emptyFolderConfirmationAction = LocalizationKey("ui.recovery.emptyFolderConfirmationAction")
+    let emptyFolderRequestAction = LocalizationKey("ui.recovery.emptyFolderRequestAction")
+    let emptyInterruptedCheckoutFolder = LocalizationKey("ui.recovery.emptyInterruptedCheckoutFolder")
+    let falseAliasesExcluded = LocalizationKey("ui.recovery.falseAliasesExcluded")
+    let folderAlreadyFilesBeforeCheckoutSoAppNotEmptyIt = LocalizationKey("ui.recovery.folderAlreadyFilesBeforeCheckoutSoAppNotEmptyIt")
+    let folderIncompleteSvnWorkingCopyContinueRegisteringItCleaningIt = LocalizationKey("ui.recovery.folderIncompleteSvnWorkingCopyContinueRegisteringItCleaningIt")
+    let folderNotEmptiedBecauseItCouldNotVerifiedSafelyInterrupted = LocalizationKey("ui.recovery.folderNotEmptiedBecauseItCouldNotVerifiedSafelyInterrupted")
+    let interruptedCheckoutFolderNoLongerValidSvnWorkingCopySo = LocalizationKey("ui.recovery.interruptedCheckoutFolderNoLongerValidSvnWorkingCopySo")
+    let localWorkingFolderAlreadyRegistered = LocalizationKey("ui.recovery.localWorkingFolderAlreadyRegistered")
+    let locallyMissing = LocalizationKey("ui.recovery.locallyMissing")
+    let locallyMissingActionRequired = LocalizationKey("ui.recovery.locallyMissingActionRequired")
+    let new = LocalizationKey("ui.recovery.new")
+    let newWorkingFolder = LocalizationKey("ui.recovery.newWorkingFolder")
+    let pathRecoveryCompletedOriginalWorkingFolderPreserved = LocalizationKey("ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved")
+    let preview = LocalizationKey("ui.recovery.preview")
+    let recoverNewWorkingFolder = LocalizationKey("ui.recovery.recoverNewWorkingFolder")
+    let successBothOriginalRecoveredCopiesRemainSidebar = LocalizationKey("ui.recovery.successBothOriginalRecoveredCopiesRemainSidebar")
 }
 
 struct LocalizationUIRepositoryKeys {
-    let authenticationFailed = LocalizationKey("ui.repository.authentication.failed.6b2e9c14")
-    let connectionFailed = LocalizationKey("ui.repository.connection.failed.1e5a7c93")
-    let contentsFailed = LocalizationKey("ui.repository.contents.failed.3c8f2d61")
-    let directoryEmpty = LocalizationKey("ui.repository.directory.empty.7a2c5e90")
-    let locks = LocalizationKey("ui.repository.locks.dff91f03")
-    let mayHaveMoved = LocalizationKey("ui.repository.may.have.moved.31d0a5f8")
-    let relocated = LocalizationKey("ui.repository.relocated.4e1b8d60")
-    let relocationFailedRecovery = LocalizationKey("ui.repository.relocation.failed.recovery.73a9e2c4")
-    let relocationSummary = LocalizationKey("ui.repository.relocation.summary.4a7e30b1")
-    let temporaryFileCleanup = LocalizationKey("ui.repository.temporary.file.cleanup.4dd78db2")
-    let url = LocalizationKey("ui.repository.url.a29f5816")
-    let urlUnchanged = LocalizationKey("ui.repository.url.unchanged.3a6d92e5")
-}
-
-struct LocalizationUIResolveKeys {
-    let conflictAction = LocalizationKey("ui.resolve.conflict.592b6d3a")
-    let conflictSecondary = LocalizationKey("ui.resolve.conflict.d9c365ea")
-    let conflictedFilesBeforeCommitting = LocalizationKey("ui.resolve.conflicted.files.before.committing.e5cfd21c")
-    let duplicateServerPathsManually = LocalizationKey("ui.resolve.duplicate.server.paths.manually.e8b5d352")
-    let unicodePathConflictsBeforeComparing = LocalizationKey("ui.resolve.unicode.path.conflicts.before.comparing..17151bba")
-}
-
-struct LocalizationUIResolvingKeys {
-    let label = LocalizationKey("ui.resolving.d5e0b71c")
-}
-
-struct LocalizationUIRestoreKeys {
-    let fileFromServerVersion = LocalizationKey("ui.restore.file.from.server.version.4dd51eb7")
-    let localFile = LocalizationKey("ui.restore.local.file.b40bfb4b")
-    let selectedFilesAction = LocalizationKey("ui.restore.selected.files.action.7b3e1d95")
-    let selectedFilesConfirmation = LocalizationKey("ui.restore.selected.files.confirmation.6d81b3e4")
-    let selectedFilesCount = LocalizationKey("ui.restore.selected.files.count.2c9f4a70")
-    let selectedPendingDeletions = LocalizationKey("ui.restore.selected.pending.deletions.9c4f7a13")
-    let selectedServerFiles = LocalizationKey("ui.restore.selected.server.files.4f2a7c91")
-    let serverVersionRemovesTheseItems = LocalizationKey("ui.restore.server.version.removes.these.items.9d41c60b")
-    let targetNotDeleted = LocalizationKey("ui.restore.target.not.deleted.1d6a4b82")
-    let workingFileConfirmation = LocalizationKey("ui.restore.working.file.confirmation.0ab7e3c9")
-    let workingFileToRevision = LocalizationKey("ui.restore.working.file.to.revision.79c4a2e6")
-    let workingFileWarning = LocalizationKey("ui.restore.working.file.warning.62d159af")
-}
-
-struct LocalizationUIRestoredKeys {
-    let label = LocalizationKey("ui.restored.98d96c01")
-    let revisionCommitRequired = LocalizationKey("ui.restored.revision.commit.required.f9346b20")
-    let selectedServerFiles = LocalizationKey("ui.restored.selected.server.files.2e4c7a91")
-}
-
-struct LocalizationUIRestoringKeys {
-    let revision = LocalizationKey("ui.restoring.revision.c840d51f")
-}
-
-struct LocalizationUIRevealKeys {
-    let inFinder = LocalizationKey("ui.reveal.in.finder.52d4a206")
-}
-
-struct LocalizationUIRevertKeys {
-    let conflictDiscardsLocalChangesAndConflict = LocalizationKey("ui.revert.conflict.discards.local.changes.and.conflict.51b3d907")
-    let label = LocalizationKey("ui.revert.f621e9ba")
-    let localChangesAction = LocalizationKey("ui.revert.local.changes.c62907ae")
-    let localChangesQuestion = LocalizationKey("ui.revert.local.changes.0fa51499")
-}
-
-struct LocalizationUIRevertedKeys {
-    let localChanges = LocalizationKey("ui.reverted.local.changes.4b9ba3ac")
-}
-
-struct LocalizationUIReviewKeys {
-    let commit = LocalizationKey("ui.review.commit.8b36485e")
-    let forceLock = LocalizationKey("ui.review.force.lock.6c91f2da")
-    let label = LocalizationKey("ui.review.618262db")
-    let repositoryRelocation = LocalizationKey("ui.review.repository.relocation.2f8a41d0")
-    let updateThenRetryCommit = LocalizationKey("ui.review.update.then.retry.commit.6a1e9c43")
-    let verifiedFilesBeforeDeletingAndCommitt = LocalizationKey("ui.review.verified.files.before.deleting.and.committ.9aac943d")
+    let addLocalWorkingFolder = LocalizationKey("ui.repository.addLocalWorkingFolder")
+    let addSvnRepository = LocalizationKey("ui.repository.addSvnRepository")
+    let cancelAddingRepositoryCloseWindow = LocalizationKey("ui.repository.cancelAddingRepositoryCloseWindow")
+    let change = LocalizationKey("ui.repository.change")
+    let changeRepositoryLocation = LocalizationKey("ui.repository.changeRepositoryLocation")
+    let chooseSvnLocalWorkingFolders = LocalizationKey("ui.repository.chooseSvnLocalWorkingFolders")
+    let commitChangeApplyItServer = LocalizationKey("ui.repository.commitChangeApplyItServer")
+    let copyCurrentRepositoryUrl = LocalizationKey("ui.repository.copyCurrentRepositoryUrl")
+    let currentRepositoryUrl = LocalizationKey("ui.repository.currentRepositoryUrl")
+    let currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges = LocalizationKey("ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges")
+    let destinationNameAlreadyExists = LocalizationKey("ui.repository.destinationNameAlreadyExists")
+    let enterValidFileNameWithoutFolderPath = LocalizationKey("ui.repository.enterValidFileNameWithoutFolderPath")
+    let enterValidRepositoryUrlIncludingItsScheme = LocalizationKey("ui.repository.enterValidRepositoryUrlIncludingItsScheme")
+    let filePanelPrompt = LocalizationKey("ui.repository.filePanelPrompt")
+    let localFolder = LocalizationKey("ui.repository.localFolder")
+    let localFolderPickerAction = LocalizationKey("ui.repository.localFolderPickerAction")
+    let localWorkingFolders = LocalizationKey("ui.repository.localWorkingFolders")
+    let mayMovedRelocateNewUrlRestoreRemoteOperations = LocalizationKey("ui.repository.mayMovedRelocateNewUrlRestoreRemoteOperations")
+    let newFileName = LocalizationKey("ui.repository.newFileName")
+    let newFileNameMatchesCurrentName = LocalizationKey("ui.repository.newFileNameMatchesCurrentName")
+    let newFolderAppliedWhenSave = LocalizationKey("ui.repository.newFolderAppliedWhenSave")
+    let newRepositoryUrl = LocalizationKey("ui.repository.newRepositoryUrl")
+    let newRepositoryUrlMatchesCurrentUrl = LocalizationKey("ui.repository.newRepositoryUrlMatchesCurrentUrl")
+    let notSvnVersionedFile = LocalizationKey("ui.repository.notSvnVersionedFile")
+    let onlyRegularFilesCanRenamedCopiedAssignedRequiredLockProperty = LocalizationKey("ui.repository.onlyRegularFilesCanRenamedCopiedAssignedRequiredLockProperty")
+    let openFinder = LocalizationKey("ui.repository.openFinder")
+    let openRepositoryRelocation = LocalizationKey("ui.repository.openRepositoryRelocation")
+    let openSvnLocalWorkingFolderFinder = LocalizationKey("ui.repository.openSvnLocalWorkingFolderFinder")
+    let pickNewLocationSvnWorkingFolder = LocalizationKey("ui.repository.pickNewLocationSvnWorkingFolder")
+    let pressOUseButtonBottomLeft = LocalizationKey("ui.repository.pressOUseButtonBottomLeft")
+    let registerExistingLocalFolder = LocalizationKey("ui.repository.registerExistingLocalFolder")
+    let registerExistingSvnWorkingFolderApp = LocalizationKey("ui.repository.registerExistingSvnWorkingFolderApp")
+    let relocateAction = LocalizationKey("ui.repository.relocateAction")
+    let relocatedRepositoryConnectionLocalChangesPreserved = LocalizationKey("ui.repository.relocatedRepositoryConnectionLocalChangesPreserved")
+    let relocatingRepository = LocalizationKey("ui.repository.relocatingRepository")
+    let relocationConfirmationTitle = LocalizationKey("ui.repository.relocationConfirmationTitle")
+    let relocationFailedCheckCurrentUrlRelocateCorrectNewUrlIf = LocalizationKey("ui.repository.relocationFailedCheckCurrentUrlRelocateCorrectNewUrlIf")
+    let relocationPreservesAllUncommittedLocalChanges = LocalizationKey("ui.repository.relocationPreservesAllUncommittedLocalChanges")
+    let removeApp = LocalizationKey("ui.repository.removeApp")
+    let removeSelectedWorkingFolderAppLocalFilesNotDeleted = LocalizationKey("ui.repository.removeSelectedWorkingFolderAppLocalFilesNotDeleted")
+    let reviewRelocation = LocalizationKey("ui.repository.reviewRelocation")
+    let workingFolderChanged = LocalizationKey("ui.repository.workingFolderChanged")
+    let workingFolderNoLongerExistsRestoreFolderRemoveItList = LocalizationKey("ui.repository.workingFolderNoLongerExistsRestoreFolderRemoveItList")
 }
 
 struct LocalizationUIRevisionKeys {
-    let historyClientUnavailable = LocalizationKey("ui.revision.history.client.unavailable.5d7a91c2")
-    let optional = LocalizationKey("ui.revision.optional.63ad9f02")
-    let restoreBackupInsideWorkingCopy = LocalizationKey("ui.revision.restore.backup.inside.working.copy.107e9c6a")
-    let restoreBackupVerificationFailed = LocalizationKey("ui.revision.restore.backup.verification.failed.d9152a6c")
-    let restoreMissingWorkingFile = LocalizationKey("ui.revision.restore.missing.working.file.346db8a7")
-    let restorePathOutsideWorkingCopy = LocalizationKey("ui.revision.restore.path.outside.working.copy.87d5e210")
-    let restoreReplacementVerificationFailed = LocalizationKey("ui.revision.restore.replacement.verification.failed.b8714e35")
-    let restoreUnsafeWorkingFile = LocalizationKey("ui.revision.restore.unsafe.working.file.4a960fb3")
-    let saveInvalidDestination = LocalizationKey("ui.revision.save.invalid.destination.5f4d2c81")
-}
-
-struct LocalizationUIRunKeys {
-    let update = LocalizationKey("ui.run.update.e17c8217")
-    let workingCopyCleanup = LocalizationKey("ui.run.working.copy.cleanup.b71c28de")
-}
-
-struct LocalizationUISaveKeys {
-    let inKeychainAndUse = LocalizationKey("ui.save.in.keychain.and.use.9c0fd0d4")
-    let inMacosKeychainOptional = LocalizationKey("ui.save.in.macos.keychain.optional.d544f3fd")
-    let label = LocalizationKey("ui.save.7c93b7e1")
-    let theSvnUsernameAndNewPasswordForThis = LocalizationKey("ui.save.the.svn.username.and.new.password.for.this..72748974")
-    let theWorkingFolderLocationSvnUsernameAn = LocalizationKey("ui.save.the.working.folder.location.svn.username.an.4f0a7c19")
-    let thisRevisionAs = LocalizationKey("ui.save.this.revision.as.3e8d79a1")
-}
-
-struct LocalizationUISavedKeys {
-    let commitSelectionNoLongerAvailable = LocalizationKey("ui.saved.commit.selection.no.longer.available.6f81b3d4")
-    let historicalRevision = LocalizationKey("ui.saved.historical.revision.76ec18b4")
-}
-
-struct LocalizationUISavingKeys {
-    let label = LocalizationKey("ui.saving.6a1b2f0c")
-    let revision = LocalizationKey("ui.saving.revision.4fb2c8d0")
-}
-
-struct LocalizationUISearchKeys {
-    let authorFileMessageOrRevision = LocalizationKey("ui.search.author.file.message.or.revision.6c2b5d76")
-    let files = LocalizationKey("ui.search.files.e3607184")
-}
-
-struct LocalizationUISecureKeys {
-    let entryBlocksTheKoreanInputMethodReve = LocalizationKey("ui.secure.entry.blocks.the.korean.input.method.reve.3f7b0c25")
-}
-
-struct LocalizationUISelectKeys {
-    let aChangedFileToViewItsDiff = LocalizationKey("ui.select.a.changed.file.to.view.its.diff.409b3672")
-    let aCommit = LocalizationKey("ui.select.a.commit.8977b05a")
-    let aFile = LocalizationKey("ui.select.a.file.12b00b2b")
-    let allCurrentlyChangedFilesForCommit = LocalizationKey("ui.select.all.currently.changed.files.for.commit.ccad7410")
-    let allSelectAll = LocalizationKey("ui.select.all.061b129c")
-    let allSelectAll2 = LocalizationKey("ui.select.all.ef1f5eca")
-}
-
-struct LocalizationUISelectedKeys {
-    let label = LocalizationKey("ui.selected.685ae833")
-}
-
-struct LocalizationUISendKeys {
-    let email = LocalizationKey("ui.send.email.f71021b3")
-}
-
-struct LocalizationUIServerKeys {
-    let certificateProblem = LocalizationKey("ui.server.certificate.problem.6c18f2a9")
-    let certificateProblemDetected = LocalizationKey("ui.server.certificate.problem.detected.281e7d4c")
-    let changesInsideAPendingDeletionMayNot = LocalizationKey("ui.server.changes.inside.a.pending.deletion.may.not.475f8db6")
-    let commit = LocalizationKey("ui.server.commit.952e9a4a")
-    let deletionCount = LocalizationKey("ui.server.deletion.count.793b7522")
-    let deletionWarning = LocalizationKey("ui.server.deletion.warning.81e94f35")
-    let file = LocalizationKey("ui.server.file.4c69a88d")
-    let latest = LocalizationKey("ui.server.latest.52ad60d5")
-    let latestR = LocalizationKey("ui.server.latest.r.e1c092b2")
-    let propertiesAlsoApplied = LocalizationKey("ui.server.properties.also.applied.3ac57d92")
-    let propertyValuesWillBeDiscarded = LocalizationKey("ui.server.property.values.will.be.discarded.84d6f2c1")
-    let revision = LocalizationKey("ui.server.revision.c11b62aa")
-    let versionChangesWillBeDiscarded = LocalizationKey("ui.server.version.changes.will.be.discarded.4ab613d2")
+    let chooseChangedFileAboveDisplayOnlyThatFileDiff = LocalizationKey("ui.revision.chooseChangedFileAboveDisplayOnlyThatFileDiff")
+    let chooseViewChangesHistoryDisplayActualDiff = LocalizationKey("ui.revision.chooseViewChangesHistoryDisplayActualDiff")
+    let commitChanges = LocalizationKey("ui.revision.commitChanges")
+    let commitNotFound = LocalizationKey("ui.revision.commitNotFound")
+    let currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult = LocalizationKey("ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult")
+    let currentWorkingFileCouldNotFoundSoRecoveryCopyCould = LocalizationKey("ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould")
+    let currentWorkingFileCouldNotVerifiedRecoveryCopySoIt = LocalizationKey("ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt")
+    let fileCommitHistory = LocalizationKey("ui.revision.fileCommitHistory")
+    let filePathPointsOutsideLocalWorkingFolder = LocalizationKey("ui.revision.filePathPointsOutsideLocalWorkingFolder")
+    let loadingChanges = LocalizationKey("ui.revision.loadingChanges")
+    let loadingFileHistory = LocalizationKey("ui.revision.loadingFileHistory")
+    let noChangedFiles = LocalizationKey("ui.revision.noChangedFiles")
+    let noFileHistory = LocalizationKey("ui.revision.noFileHistory")
+    let projectSvnClientDoesNotSupportReadingHistoricalFileRevisions = LocalizationKey("ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions")
+    let recoveryCopiesMustStoredOutsideLocalWorkingFolder = LocalizationKey("ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder")
+    let restoreWorkingFile = LocalizationKey("ui.revision.restoreWorkingFile")
+    let restoreWorkingFileRevision = LocalizationKey("ui.revision.restoreWorkingFileRevision")
+    let restoredFileDidNotMatchSelectedRevisionByteByteRecovery = LocalizationKey("ui.revision.restoredFileDidNotMatchSelectedRevisionByteByteRecovery")
+    let restoredRNowLocalChangeCommitItUpdateServer = LocalizationKey("ui.revision.restoredRNowLocalChangeCommitItUpdateServer")
+    let restoringRevision = LocalizationKey("ui.revision.restoringRevision")
+    let saveRevision = LocalizationKey("ui.revision.saveRevision")
+    let savedR = LocalizationKey("ui.revision.savedR")
+    let savingRevision = LocalizationKey("ui.revision.savingRevision")
+    let searchAuthorFileMessageRevision = LocalizationKey("ui.revision.searchAuthorFileMessageRevision")
+    let selectCommit = LocalizationKey("ui.revision.selectCommit")
+    let selectFile = LocalizationKey("ui.revision.selectFile")
+    let selectedSaveLocationNotSafeRegularFileDestination = LocalizationKey("ui.revision.selectedSaveLocationNotSafeRegularFileDestination")
+    let workingFileMustRegularFileNotSymbolicLink = LocalizationKey("ui.revision.workingFileMustRegularFileNotSymbolicLink")
 }
 
 struct LocalizationUISettingsKeys {
-    let label = LocalizationKey("ui.settings.2f7c48b3")
+    let alwaysLockOpenWithoutAsking = LocalizationKey("ui.settings.alwaysLockOpenWithoutAsking")
+    let alwaysOpenWithoutLockingAsking = LocalizationKey("ui.settings.alwaysOpenWithoutLockingAsking")
+    let askEveryTime = LocalizationKey("ui.settings.askEveryTime")
+    let chooseLanguageUsedAppInterface = LocalizationKey("ui.settings.chooseLanguageUsedAppInterface")
+    let chooseTimeZoneUsedCommitDatesTimes = LocalizationKey("ui.settings.chooseTimeZoneUsedCommitDatesTimes")
+    let commitDisplayTimeZone = LocalizationKey("ui.settings.commitDisplayTimeZone")
+    let coordinatedUniversalTimeUtc = LocalizationKey("ui.settings.coordinatedUniversalTimeUtc")
+    let defaultKoreaStandardTimeKstDoesNotChangeOriginalCommit = LocalizationKey("ui.settings.defaultKoreaStandardTimeKstDoesNotChangeOriginalCommit")
+    let folderSettings = LocalizationKey("ui.settings.folderSettings")
+    let hideMacOfficeTemporaryFiles = LocalizationKey("ui.settings.hideMacOfficeTemporaryFiles")
+    let hideTemporaryFilesChangesPreventThemCommittedVersionedFilesRemain = LocalizationKey("ui.settings.hideTemporaryFilesChangesPreventThemCommittedVersionedFilesRemain")
+    let japanStandardTime = LocalizationKey("ui.settings.japanStandardTime")
+    let koreaStandardTime = LocalizationKey("ui.settings.koreaStandardTime")
+    let language = LocalizationKey("ui.settings.language")
+    let macSystemTimeZone = LocalizationKey("ui.settings.macSystemTimeZone")
+    let openAppWideSettingsWindow = LocalizationKey("ui.settings.openAppWideSettingsWindow")
+    let otherUsersCannotModifyLockedFileUntilCommitItRelease = LocalizationKey("ui.settings.otherUsersCannotModifyLockedFileUntilCommitItRelease")
+    let settings = LocalizationKey("ui.settings.settings")
+    let ukTime = LocalizationKey("ui.settings.ukTime")
+    let usEasternTime = LocalizationKey("ui.settings.usEasternTime")
+    let usPacificTime = LocalizationKey("ui.settings.usPacificTime")
+    let whenOpeningDocuments = LocalizationKey("ui.settings.whenOpeningDocuments")
 }
 
-struct LocalizationUIShowKeys {
-    let ignoredFiles = LocalizationKey("ui.show.ignored.files.508dbd97")
-    let password = LocalizationKey("ui.show.password.9b3d2e71")
-    let theMacosKeychainAccessPromptAgain = LocalizationKey("ui.show.the.macos.keychain.access.prompt.again.d57d9f96")
-}
-
-struct LocalizationUIShowingKeys {
-    let firstCommitsOfTotal = LocalizationKey("ui.showing.first.commits.of.total.8d6f4a21")
-}
-
-struct LocalizationUIShowsKeys {
-    let theDiffForThisFile = LocalizationKey("ui.shows.the.diff.for.this.file.6f52b16a")
-}
-
-struct LocalizationUISourceKeys {
-    let isNotFile = LocalizationKey("ui.source.is.not.file.6a3f8d20")
-    let isNotVersioned = LocalizationKey("ui.source.is.not.versioned.1e9c4a72")
-}
-
-struct LocalizationUIStopKeys {
-    let checkout = LocalizationKey("ui.stop.checkout.b0f4e2a7")
-    let theCheckoutInProgress = LocalizationKey("ui.stop.the.checkout.in.progress.5d0c9b71")
-}
-
-struct LocalizationUISvnKeys {
-    let authenticationRequired = LocalizationKey("ui.svn.authentication.required.797a2cdb")
-    let ignoreRules = LocalizationKey("ui.svn.ignore.rules.90435aad")
-    let password = LocalizationKey("ui.svn.password.5e0660b7")
-    let username = LocalizationKey("ui.svn.username.90a19d48")
-    let usernameOptional = LocalizationKey("ui.svn.username.optional.fff42bd5")
-}
-
-struct LocalizationUISwitchedKeys {
-    let path = LocalizationKey("ui.switched.path.8f2c4a71")
-    let pathCommitWarning = LocalizationKey("ui.switched.path.commit.warning.3d7b91e6")
-}
-
-struct LocalizationUISymbolicKeys {
-    let link = LocalizationKey("ui.symbolic.link.0dc00212")
-}
-
-struct LocalizationUITemporaryKeys {
-    let label = LocalizationKey("ui.temporary.5738ffab")
-}
-
-struct LocalizationUITheKeys {
-    let bundledSvnExecutableCouldNotBeFoundRe = LocalizationKey("ui.the.bundled.svn.executable.could.not.be.found.re.8656fcae")
-    let checkoutWasCanceledPartiallyDownloadedF = LocalizationKey("ui.the.checkout.was.canceled.partially.downloaded.f.7a1c4d58")
-    let commitCompletedButWorkingCopyValidation = LocalizationKey("ui.the.commit.completed.but.working.copy.validation.e58fd53c")
-    let commitIsBasedOnAnOlderWorkingCopySta = LocalizationKey("ui.the.commit.is.based.on.an.older.working.copy.sta.834c44c4")
-    let commitWillBeRecordedWithAnEmptyMessag = LocalizationKey("ui.the.commit.will.be.recorded.with.an.empty.messag.9c31be05")
-    let conflictRemainsAfterTheSvnCommandRevie = LocalizationKey("ui.the.conflict.remains.after.the.svn.command.revie.2162b675")
-    let conflictWasResolvedReviewTheFileBefore = LocalizationKey("ui.the.conflict.was.resolved.review.the.file.before.7821924b")
-    let currentWorkingFileCouldNotBeFound = LocalizationKey("ui.the.current.working.file.could.not.be.found.60c92e05")
-    let currentWorkingFileMustBeARegularFile = LocalizationKey("ui.the.current.working.file.must.be.a.regular.file..1af7fbcd")
-    let defaultIsKoreaStandardTimeKstThisDoes = LocalizationKey("ui.the.default.is.korea.standard.time.kst.this.does.02bc8ed0")
-    let fileIsLockedASuccessfulCommitAutomatic = LocalizationKey("ui.the.file.is.locked.a.successful.commit.automatic.54dc63dd")
-    let lockWasForceReleased = LocalizationKey("ui.the.lock.was.force.released.16b02da9")
-    let lockWasReleased = LocalizationKey("ui.the.lock.was.released.3aee6b8e")
-    let macosUnicodePathWasMatchedToTheActual = LocalizationKey("ui.the.macos.unicode.path.was.matched.to.the.actual.0575e471")
-    let newFolderIsAppliedWhenYouSave = LocalizationKey("ui.the.new.folder.is.applied.when.you.save.2b70a1cd")
-    let recoveryBackupOfTheCurrentWorkingFile = LocalizationKey("ui.the.recovery.backup.of.the.current.working.file..048b3539")
-    let recoveryDestinationFolderMustBeEmpty = LocalizationKey("ui.the.recovery.destination.folder.must.be.empty.2f9bc173")
-    let runningSvnCheckoutWillBeStoppedAlready = LocalizationKey("ui.the.running.svn.checkout.will.be.stopped.already.4b7d5a19")
-    let savedPasswordWasDeleted = LocalizationKey("ui.the.saved.password.was.deleted.a729310e")
-    let selectedFolderIsNotAnSvnLocalWorking = LocalizationKey("ui.the.selected.folder.is.not.an.svn.local.working..c602474e")
-    let selectedVersionOfYourFileCouldNotBeR = LocalizationKey("ui.the.selected.version.of.your.file.could.not.be.r.70a89d83")
-    let serverFileVersionCouldNotBeFound = LocalizationKey("ui.the.server.file.version.could.not.be.found.3483616c")
-    let serverFileVersionMustBeARegularFileN = LocalizationKey("ui.the.server.file.version.must.be.a.regular.file.n.7eb568b2")
-    let svnAccountOrPasswordIsNotValid = LocalizationKey("ui.the.svn.account.or.password.is.not.valid.6d81e3f4")
-    let svnResponseCouldNotBeRead = LocalizationKey("ui.the.svn.response.could.not.be.read.6a3d5aa8")
-    let svnServerDeniedReadAccessToThisFileC = LocalizationKey("ui.the.svn.server.denied.read.access.to.this.file.c.2ec5cc64")
-    let workingCopyContainsMixedRevisionsRThis = LocalizationKey("ui.the.working.copy.contains.mixed.revisions.r.this.c69e6def")
-    let workingCopyIsUpToDateWithTheServer = LocalizationKey("ui.the.working.copy.is.up.to.date.with.the.server.e31e447e")
-    let workingFolderNoLongerExistsRestoreThe = LocalizationKey("ui.the.working.folder.no.longer.exists.restore.the..4946d37c")
-    let workingFolderWasChangedTo = LocalizationKey("ui.the.working.folder.was.changed.to.9c6f01b2")
-}
-
-struct LocalizationUIThereKeys {
-    let areNoGitRulesToImport = LocalizationKey("ui.there.are.no.git.rules.to.import.03bd12e9")
-    let areNoLocallyModifiedFiles = LocalizationKey("ui.there.are.no.locally.modified.files.8560ad60")
-}
-
-struct LocalizationUIThisKeys {
-    let commitMessageWasSavedWithIncorrectEnc = LocalizationKey("ui.this.commit.message.was.saved.with.incorrect.enc.355e2cb5")
-    let diskStoresKoreanFilenamesInDecomposed = LocalizationKey("ui.this.disk.stores.korean.filenames.in.decomposed..fe399d66")
-    let fileCannotBeCommittedUntilItIsMarked = LocalizationKey("ui.this.file.cannot.be.committed.until.it.is.marked.201bfa2c")
-    let fileIsCurrentlyLockedByOpeningWithout = LocalizationKey("ui.this.file.is.currently.locked.by.opening.without.ca1f8e9a")
-    let isAServerCommit = LocalizationKey("ui.this.is.a.server.commit.4162d83c")
-    let isYourLocalBaseRevision = LocalizationKey("ui.this.is.your.local.base.revision.5912a346")
-    let localWorkingFolderIsAlreadyRegistered = LocalizationKey("ui.this.local.working.folder.is.already.registered.b8836f70")
-    let onlyMarksTheItemsForDeletionTheyAre = LocalizationKey("ui.this.only.marks.the.items.for.deletion.they.are..594bb2c0")
-}
-
-struct LocalizationUITreeKeys {
-    let conflict = LocalizationKey("ui.tree.conflict.2ea1184c")
-    let conflictIsNotAChoiceBetweenTwoFiles = LocalizationKey("ui.tree.conflict.is.not.a.choice.between.two.files.66dcb7a1")
-    let conflictResolvedWithSubtreeBackup = LocalizationKey("ui.tree.conflict.resolved.with.subtree.backup.4c17e9a3")
-}
-
-struct LocalizationUIUkKeys {
-    let time = LocalizationKey("ui.uk.time.46ba8995")
-}
-
-struct LocalizationUIUnableKeys {
-    let toCheckTheAppStoreForUpdates = LocalizationKey("ui.unable.to.check.the.app.store.for.updates.a1a5b5ac")
-    let toLoadChanges = LocalizationKey("ui.unable.to.load.changes.78b04452")
-    let toOpenFile = LocalizationKey("ui.unable.to.open.file.ae08bd77")
-}
-
-struct LocalizationUIUncommittedKeys {
-    let changes = LocalizationKey("ui.uncommitted.changes.35359722")
-    let changesBranchFromYourLocalBase = LocalizationKey("ui.uncommitted.changes.branch.from.your.local.base..d49c86b6")
-    let changesCount = LocalizationKey("ui.uncommitted.changes.count.7e3c19d4")
-    let changesInWillBeDiscardedAndCan = LocalizationKey("ui.uncommitted.changes.in.will.be.discarded.and.can.df7e8671")
-}
-
-struct LocalizationUIUnicodeKeys {
-    let pathConflict = LocalizationKey("ui.unicode.path.conflict.1ea3bdc6")
-}
-
-struct LocalizationUIUnknownKeys {
-    let author = LocalizationKey("ui.unknown.author.511030fa")
-    let error = LocalizationKey("ui.unknown.error.745cd1b7")
-}
-
-struct LocalizationUIUnsupportedKeys {
-    let conflictType = LocalizationKey("ui.unsupported.conflict.type.1a0e94e8")
-    let label = LocalizationKey("ui.unsupported.3d400c13")
-}
-
-struct LocalizationUIUnversionedKeys {
-    let label = LocalizationKey("ui.unversioned.ffbcbcb7")
-}
-
-struct LocalizationUIUpKeys {
-    let toDate = LocalizationKey("ui.up.to.date.cf368157")
+struct LocalizationUIStatusKeys {
+    let added = LocalizationKey("ui.status.added")
+    let deleted = LocalizationKey("ui.status.deleted")
+    let diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames = LocalizationKey("ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames")
+    let filenameWarning = LocalizationKey("ui.status.filenameWarning")
+    let ignored = LocalizationKey("ui.status.ignored")
+    let lockedFiles = LocalizationKey("ui.status.lockedFiles")
+    let modified = LocalizationKey("ui.status.modified")
+    let replaced = LocalizationKey("ui.status.replaced")
+    let unversioned = LocalizationKey("ui.status.unversioned")
 }
 
 struct LocalizationUIUpdateKeys {
-    let andRetryCommit = LocalizationKey("ui.update.and.retry.commit.4c6f1a82")
-    let conflictsBlockedCommitRetry = LocalizationKey("ui.update.conflicts.blocked.commit.retry.8b3d6f20")
-    let createdConflictsCommitNotRetried = LocalizationKey("ui.update.created.conflicts.commit.not.retried.7a4c2e19")
-    let label = LocalizationKey("ui.update.0f38eb76")
-    let preview = LocalizationKey("ui.update.preview.3e2a4411")
-    let requiredBeforeCommitRetry = LocalizationKey("ui.update.required.before.commit.retry.3f8c1d67")
-    let requiredPrimary = LocalizationKey("ui.update.required.9da93c25")
-    let requiredSecondary = LocalizationKey("ui.update.required.f846039b")
-}
-
-struct LocalizationUIUpdatingKeys {
-    let label = LocalizationKey("ui.updating.4d2f9a11")
-}
-
-struct LocalizationUIUsKeys {
-    let easternTime = LocalizationKey("ui.us.eastern.time.9e917cad")
-    let pacificTime = LocalizationKey("ui.us.pacific.time.5c9c3b6f")
-}
-
-struct LocalizationUIUseKeys {
-    let currentWorkingFilePrimary = LocalizationKey("ui.use.current.working.file.275f4c29")
-    let currentWorkingFileQuestion = LocalizationKey("ui.use.current.working.file.40ab0712")
-    let myFilePrimary = LocalizationKey("ui.use.my.file.36631b8e")
-    let myFileQuestion = LocalizationKey("ui.use.my.file.d12a8b2d")
-    let onlyForServersWithSelfSignedCertificat = LocalizationKey("ui.use.only.for.servers.with.self.signed.certificat.cd3b5e55")
-    let repositoryPath = LocalizationKey("ui.use.repository.path.8f1d4b62")
-    let serverFilePrimary = LocalizationKey("ui.use.server.file.30c6c26c")
-    let serverFileQuestion = LocalizationKey("ui.use.server.file.949587dc")
-    let thisSessionOnly = LocalizationKey("ui.use.this.session.only.08dcce43")
-    let thisWhenTheTargetServerSCertificateIs = LocalizationKey("ui.use.this.when.the.target.server.s.certificate.is.2fa0c076")
-}
-
-struct LocalizationUIUsernameKeys {
-    let label = LocalizationKey("ui.username.4e1b650a")
-}
-
-struct LocalizationUIVersionKeys {
-    let isAvailable = LocalizationKey("ui.version.is.available.7e5cfb4e")
-    let label = LocalizationKey("ui.version.6bb2f91c")
-}
-
-struct LocalizationUIVersionedKeys {
-    let itemsBelowTheSelectedDirectoryWil = LocalizationKey("ui.versioned.items.below.the.selected.directory.wil.f7d01b47")
-}
-
-struct LocalizationUIViewKeys {
-    let changesInThisCommit = LocalizationKey("ui.view.changes.in.this.commit.afab8525")
-    let inAppStore = LocalizationKey("ui.view.in.app.store.7c79e972")
-    let theLockedFilesAndTheirCountInThisRe = LocalizationKey("ui.view.the.locked.files.and.their.count.in.this.re.1d4d4a51")
-    let theOriginalMessageBeforeRestoration = LocalizationKey("ui.view.the.original.message.before.restoration.6a5e3b2b")
-}
-
-struct LocalizationUIWhenKeys {
-    let youChooseAVersionTheCurrentWorkingFi = LocalizationKey("ui.when.you.choose.a.version.the.current.working.fi.70533c5a")
-}
-
-struct LocalizationUIWorkingKeys {
-    let copyCleanup = LocalizationKey("ui.working.copy.cleanup.62f3ac11")
-    let copyCleanupCompleted = LocalizationKey("ui.working.copy.cleanup.completed.11c93f4a")
-    let copyCleanupFailedContactSupport = LocalizationKey("ui.working.copy.cleanup.failed.contact.support.81a7d2ce")
-    let copyOperationInterruptedRunCleanup = LocalizationKey("ui.working.copy.operation.interrupted.run.cleanup.0bc374e1")
-}
-
-struct LocalizationUIYesKeys {
-    let label = LocalizationKey("ui.yes.93cba074")
-}
-
-struct LocalizationUIYouKeys {
-    let reUsingTheLatestVersion = LocalizationKey("ui.you.re.using.the.latest.version.18d5624c")
-}
-
-struct LocalizationUIYourKeys {
-    let fileVersionCouldNotBeFound = LocalizationKey("ui.your.file.version.could.not.be.found.576883d5")
-    let fileVersionMustBeARegularFileNotAS = LocalizationKey("ui.your.file.version.must.be.a.regular.file.not.a.s.0ea5ff6f")
-    let localBaseRevisionIsEarlierThanTheLat = LocalizationKey("ui.your.local.base.revision.is.earlier.than.the.lat.e0f7b1d7")
-    let localUpdateBaseFallsBetweenTwoServer = LocalizationKey("ui.your.local.update.base.falls.between.two.server..5815a927")
+    let addRepositoryTemporaryFileCleanupCommitAfterUpdating = LocalizationKey("ui.update.addRepositoryTemporaryFileCleanupCommitAfterUpdating")
+    let afterUpdateCandidateContentsVerifiedReviewFinalListBeforeAny = LocalizationKey("ui.update.afterUpdateCandidateContentsVerifiedReviewFinalListBeforeAny")
+    let beforeRetryingCommit = LocalizationKey("ui.update.beforeRetryingCommit")
+    let checkAppStoreLatestVersion = LocalizationKey("ui.update.checkAppStoreLatestVersion")
+    let checkFromAppMenu = LocalizationKey("ui.update.checkFromAppMenu")
+    let checkNow = LocalizationKey("ui.update.checkNow")
+    let checkingIncomingChanges = LocalizationKey("ui.update.checkingIncomingChanges")
+    let checkingUpdates = LocalizationKey("ui.update.checkingUpdates")
+    let checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating = LocalizationKey("ui.update.checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating")
+    let cleanedRepositoryTemporaryFile = LocalizationKey("ui.update.cleanedRepositoryTemporaryFile")
+    let commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts = LocalizationKey("ui.update.commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts")
+    let completeUpdatePreviewCouldNotLoadedCanStillTryUpdate = LocalizationKey("ui.update.completeUpdatePreviewCouldNotLoadedCanStillTryUpdate")
+    let continueUpdating = LocalizationKey("ui.update.continueUpdating")
+    let createdConflictsSoCommitNotRetried = LocalizationKey("ui.update.createdConflictsSoCommitNotRetried")
+    let createdConflictsSoCommitNotRetriedResolvePathsFirst = LocalizationKey("ui.update.createdConflictsSoCommitNotRetriedResolvePathsFirst")
+    let downloadLatestServerChangesCurrentLocalWorkingFolder = LocalizationKey("ui.update.downloadLatestServerChangesCurrentLocalWorkingFolder")
+    let goConflictResolution = LocalizationKey("ui.update.goConflictResolution")
+    let incomingChangesThatOverlapLocalEditsMayCreateSvnConflict = LocalizationKey("ui.update.incomingChangesThatOverlapLocalEditsMayCreateSvnConflict")
+    let incomplete = LocalizationKey("ui.update.incomplete")
+    let later = LocalizationKey("ui.update.later")
+    let localFileBlockingUpdate = LocalizationKey("ui.update.localFileBlockingUpdate")
+    let lockedRepository = LocalizationKey("ui.update.lockedRepository")
+    let newVersionDialogTitle = LocalizationKey("ui.update.newVersionDialogTitle")
+    let noIncomingChanges = LocalizationKey("ui.update.noIncomingChanges")
+    let preview = LocalizationKey("ui.update.preview")
+    let previewAvailableStatus = LocalizationKey("ui.update.previewAvailableStatus")
+    let reUsingLatestVersion = LocalizationKey("ui.update.reUsingLatestVersion")
+    let requiredBeforeCommit = LocalizationKey("ui.update.requiredBeforeCommit")
+    let retryCommit = LocalizationKey("ui.update.retryCommit")
+    let runUpdate = LocalizationKey("ui.update.runUpdate")
+    let serverChangesInsidePendingDeletionMayNotAppearListRun = LocalizationKey("ui.update.serverChangesInsidePendingDeletionMayNotAppearListRun")
+    let showingFirstCommits = LocalizationKey("ui.update.showingFirstCommits")
+    let sidebarAvailableBadge = LocalizationKey("ui.update.sidebarAvailableBadge")
+    let someSavedCommitSelectionsDisappearedChangeListAfterUpdateReview = LocalizationKey("ui.update.someSavedCommitSelectionsDisappearedChangeListAfterUpdateReview")
+    let someTemporaryFilesNotCleaned = LocalizationKey("ui.update.someTemporaryFilesNotCleaned")
+    let succeededButCleanupCommitFailedScheduledDeletionsRestored = LocalizationKey("ui.update.succeededButCleanupCommitFailedScheduledDeletionsRestored")
+    let succeededButCleanupCouldNotStart = LocalizationKey("ui.update.succeededButCleanupCouldNotStart")
+    let svnRequiresWorkingCopyUpdateConfirmUpdateRetryCommitSaved = LocalizationKey("ui.update.svnRequiresWorkingCopyUpdateConfirmUpdateRetryCommitSaved")
+    let unableCheckAppStoreUpdates = LocalizationKey("ui.update.unableCheckAppStoreUpdates")
+    let update = LocalizationKey("ui.update.update")
+    let updating = LocalizationKey("ui.update.updating")
+    let versionAvailable = LocalizationKey("ui.update.versionAvailable")
+    let viewAppStore = LocalizationKey("ui.update.viewAppStore")
+    let workingCopyUpDateServer = LocalizationKey("ui.update.workingCopyUpDateServer")
 }

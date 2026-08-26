@@ -26,10 +26,10 @@ struct HistoryView: View {
             }
             .overlay {
                 if store.logs.isEmpty, store.isHistoryLoading {
-                    ProgressView(appLanguage.localized(.ui.loading.commitHistory))
+                    ProgressView(appLanguage.localized(.ui.history.loadingCommitHistory))
                 } else if store.logs.isEmpty {
                     ContentUnavailableView(
-                        appLanguage.localized(.ui.no.commitHistory),
+                        appLanguage.localized(.ui.history.noCommitHistory),
                         systemImage: "clock"
                     )
                 }
@@ -46,24 +46,24 @@ struct HistoryView: View {
         if let headRevision = store.logs.first?.revision {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
-                    Label(appLanguage.localized(.ui.server.latestR, headRevision), systemImage: "cloud")
+                    Label(appLanguage.localized(.ui.history.serverLatestR, headRevision), systemImage: "cloud")
                     if let workingCopyRevision = store.workingCopyRevision {
-                        Label(appLanguage.localized(.ui.my.localFolderR, workingCopyRevision.displayValue), systemImage: "macbook")
+                        Label(appLanguage.localized(.ui.history.myLocalFolderR, workingCopyRevision.displayValue), systemImage: "macbook")
                         if workingCopyRevision.isMixed {
-                            historyBadge(appLanguage.localized(.ui.mixed.revisions), color: .gray)
+                            historyBadge(appLanguage.localized(.ui.history.mixedRevisions), color: .gray)
                         }
                         if store.isWorkingCopyOutOfDate == false {
-                            Text(appLanguage.localized(.ui.up.toDate)).foregroundStyle(.green)
+                            Text(appLanguage.localized(.ui.history.upDate)).foregroundStyle(.green)
                         }
                     }
                     Spacer()
                 }
 
                 HStack(spacing: 14) {
-                    historyLegend(color: .blue, label: appLanguage.localized(.ui.server.commit))
+                    historyLegend(color: .blue, label: appLanguage.localized(.ui.history.serverCommitLegend))
                     historyLegend(color: .green, label: localRevisionLegendLabel)
                     if !store.visibleStatuses.isEmpty {
-                        historyLegend(color: .orange, label: appLanguage.localized(.ui.uncommitted.changes, store.visibleStatuses.count))
+                        historyLegend(color: .orange, label: appLanguage.localized(.ui.history.uncommittedChanges, store.visibleStatuses.count))
                     }
                     Spacer()
                 }
@@ -103,8 +103,8 @@ struct HistoryView: View {
                         Task { await store.loadMoreHistory() }
                     } label: {
                         ActionProgressLabel(
-                            title: appLanguage.localized(.ui.load.localization50more),
-                            inProgressTitle: appLanguage.localized(.ui.loading.label),
+                            title: appLanguage.localized(.ui.history.load50More),
+                            inProgressTitle: appLanguage.localized(.ui.history.loading),
                             isInProgress: store.isLoadingMoreHistory
                         )
                     }
@@ -148,7 +148,7 @@ struct HistoryView: View {
                 Button {
                     store.selectHistoryRevision(entry.revision)
                 } label: {
-                    Label(appLanguage.localized(.ui.view.changesInThisCommit), systemImage: "doc.text.magnifyingglass")
+                    Label(appLanguage.localized(.ui.history.viewChangesCommit), systemImage: "doc.text.magnifyingglass")
                 }
                 .buttonStyle(.bordered)
                 .tint(store.selectedHistoryRevision == entry.revision ? .accentColor : nil)
@@ -163,12 +163,12 @@ struct HistoryView: View {
         HStack {
             Text("r\(entry.revision)").font(.headline.monospacedDigit())
             if entry.revision == store.logs.first?.revision {
-                historyBadge(appLanguage.localized(.ui.server.latest), color: .blue)
+                historyBadge(appLanguage.localized(.ui.history.serverLatest), color: .blue)
             }
             if isWorkingCopyEntry {
                 historyBadge(workingCopyEntryBadge(for: entry.revision), color: .green)
                 if !store.visibleStatuses.isEmpty {
-                    historyBadge(appLanguage.localized(.ui.local.changes, store.visibleStatuses.count), color: .orange)
+                    historyBadge(appLanguage.localized(.ui.history.localChanges, store.visibleStatuses.count), color: .orange)
                 }
             }
             Spacer()
@@ -178,7 +178,7 @@ struct HistoryView: View {
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             } else {
-                Text(appLanguage.localized(.ui.commit.timeUnavailable))
+                Text(appLanguage.localized(.ui.history.commitTimeUnavailable))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -187,7 +187,7 @@ struct HistoryView: View {
 
     private func historyAuthor(_ entry: SVNLogEntry) -> some View {
         HStack(spacing: 12) {
-            Label(entry.author.isEmpty ? appLanguage.localized(.ui.unknown.author) : entry.author, systemImage: "person")
+            Label(entry.author.isEmpty ? appLanguage.localized(.ui.common.unknownAuthor) : entry.author, systemImage: "person")
             if let email = entry.email, !email.isEmpty {
                 Label(email, systemImage: "envelope").textSelection(.enabled)
             }
@@ -201,7 +201,7 @@ struct HistoryView: View {
     @ViewBuilder
     private func changedPaths(_ paths: [SVNChangedPath]) -> some View {
         if !paths.isEmpty {
-            DisclosureGroup(appLanguage.localized(.ui.changed.paths, paths.count)) {
+            DisclosureGroup(appLanguage.localized(.ui.history.changedPaths, paths.count)) {
                 VStack(alignment: .leading, spacing: 7) {
                     ForEach(paths) { changedPath in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -222,12 +222,12 @@ struct HistoryView: View {
     @ViewBuilder
     private func revisionProperties(_ properties: [SVNRevisionProperty]) -> some View {
         if !properties.isEmpty {
-            DisclosureGroup(appLanguage.localized(.ui.additional.revisionProperties, properties.count)) {
+            DisclosureGroup(appLanguage.localized(.ui.history.additionalRevisionProperties, properties.count)) {
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(properties) { property in
                         HStack(alignment: .firstTextBaseline) {
                             Text(property.name).font(.caption.monospaced().bold())
-                            Text(property.value.isEmpty ? appLanguage.localized(.ui.no.value) : property.value)
+                            Text(property.value.isEmpty ? appLanguage.localized(.ui.history.noValue) : property.value)
                                 .font(.caption)
                                 .textSelection(.enabled)
                         }
@@ -243,11 +243,11 @@ struct HistoryView: View {
 
     private func workingCopyEntryBadge(for entryRevision: String) -> String {
         if store.workingCopyRevision?.isMixed == true {
-            return appLanguage.localized(.ui.highest.localRevision)
+            return appLanguage.localized(.ui.history.highestLocalRevision)
         }
         return entryRevision == store.workingCopyRevision?.timelineRevision
-            ? appLanguage.localized(.ui.my.localBase)
-            : appLanguage.localized(.ui.included.locally)
+            ? appLanguage.localized(.ui.history.myLocalBase)
+            : appLanguage.localized(.ui.history.includedLocally)
     }
 
     private func workingCopyMarkerRow(revision: String, isBeforeLoadedHistory: Bool) -> some View {
@@ -263,13 +263,13 @@ struct HistoryView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 if isBeforeLoadedHistory {
-                    Text(appLanguage.localized(.ui.earlier.history)).font(.caption).foregroundStyle(.secondary)
+                    Text(appLanguage.localized(.ui.history.earlierHistory)).font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
                     Text("r\(revision)").font(.headline.monospacedDigit())
                     historyBadge(localRevisionMarkerLabel, color: .green)
                     if !store.visibleStatuses.isEmpty {
-                        historyBadge(appLanguage.localized(.ui.local.changes, store.visibleStatuses.count), color: .orange)
+                        historyBadge(appLanguage.localized(.ui.history.localChanges, store.visibleStatuses.count), color: .orange)
                     }
                 }
                 Text(localRevisionMarkerDescription(isBeforeLoadedHistory: isBeforeLoadedHistory))
@@ -284,8 +284,8 @@ struct HistoryView: View {
 
     private var localRevisionLegendLabel: String {
         store.workingCopyRevision?.isMixed == true
-            ? appLanguage.localized(.ui.highest.localRevision)
-            : appLanguage.localized(.ui.my.localBase)
+            ? appLanguage.localized(.ui.history.highestLocalRevision)
+            : appLanguage.localized(.ui.history.myLocalBase)
     }
 
     private var localRevisionMarkerLabel: String {
@@ -294,18 +294,18 @@ struct HistoryView: View {
 
     private var historyGraphHelp: String {
         if store.workingCopyRevision?.isMixed == true {
-            return appLanguage.localized(.ui.blue.dotsAreServerCommitsTheGreenRingIsYHighestRevision)
+            return appLanguage.localized(.ui.history.blueDotsServerCommitsGreenRingHighestLocalRevisionOrange)
         }
-        return appLanguage.localized(.ui.blue.dotsAreServerCommitsTheGreenRingIsYBase)
+        return appLanguage.localized(.ui.history.blueDotsServerCommitsGreenRingLocalBaseOrangeBranch)
     }
 
     private func localRevisionMarkerDescription(isBeforeLoadedHistory: Bool) -> String {
         if let revision = store.workingCopyRevision, revision.isMixed {
-            return appLanguage.localized(.ui.the.workingCopyContainsMixedRevisionsRThis, revision.displayValue)
+            return appLanguage.localized(.ui.history.workingCopyContainsMixedRevisionsRMarkerShowsHighestRevision, revision.displayValue)
         }
         return isBeforeLoadedHistory
-            ? appLanguage.localized(.ui.your.localBaseRevisionIsEarlierThanTheLat)
-            : appLanguage.localized(.ui.your.localUpdateBaseFallsBetweenTwoServer)
+            ? appLanguage.localized(.ui.history.localBaseRevisionEarlierThanLatest50ServerRecords)
+            : appLanguage.localized(.ui.history.localUpdateBaseFallsBetweenTwoServerCommits)
     }
 
     private func historyLegend(color: Color, label: String) -> some View {
@@ -352,20 +352,20 @@ struct HistoryView: View {
         let details = [
             changedPath.kind.map { kind in
                 switch kind {
-                case .directory: appLanguage.localized(.ui.folder.label)
-                case .file: appLanguage.localized(.ui.file.labelFile2)
+                case .directory: appLanguage.localized(.ui.common.folder)
+                case .file: appLanguage.localized(.ui.common.fileType)
                 case let .unknown(value): value
                 }
             },
-            changedPath.textModified == true ? appLanguage.localized(.ui.content.changed) : nil,
-            changedPath.propertiesModified == true ? appLanguage.localized(.ui.properties.changed) : nil,
+            changedPath.textModified == true ? appLanguage.localized(.ui.history.contentChanged) : nil,
+            changedPath.propertiesModified == true ? appLanguage.localized(.ui.history.propertiesChanged) : nil,
         ].compactMap { $0 }
         if !details.isEmpty {
             Text(details.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
         }
         if let copyFromPath = changedPath.copyFromPath {
             Text(appLanguage.localized(
-                .history.copiedFrom,
+                .history.copy.copiedFrom,
                 copyFromPath,
                 changedPath.copyFromRevision.map { "@r\($0)" } ?? ""
             ))
@@ -377,10 +377,10 @@ struct HistoryView: View {
 
     private func changedPathActionLabel(_ action: SVNChangeAction) -> String {
         switch action {
-        case .added: appLanguage.localized(.ui.added.label)
-        case .modified: appLanguage.localized(.ui.modified.labelPrimary)
-        case .deleted: appLanguage.localized(.ui.deleted.label)
-        case .replaced: appLanguage.localized(.ui.replaced.label)
+        case .added: appLanguage.localized(.ui.status.added)
+        case .modified: appLanguage.localized(.ui.status.modified)
+        case .deleted: appLanguage.localized(.ui.status.deleted)
+        case .replaced: appLanguage.localized(.ui.status.replaced)
         case let .unknown(value): value
         }
     }
@@ -425,8 +425,8 @@ private struct SVNHistoryGraphLane: View {
     }
 
     private var accessibilityDescription: String {
-        if hasLocalChanges { return appLanguage.localized(.ui.uncommitted.changesBranchFromYourLocalBase) }
-        if isWorkingCopyRevision { return appLanguage.localized(.ui.this.isYourLocalBaseRevision) }
-        return appLanguage.localized(.ui.this.isAServerCommit)
+        if hasLocalChanges { return appLanguage.localized(.ui.history.uncommittedChangesBranchLocalBaseRevision) }
+        if isWorkingCopyRevision { return appLanguage.localized(.ui.history.localBaseRevision) }
+        return appLanguage.localized(.ui.history.serverCommitDetail)
     }
 }

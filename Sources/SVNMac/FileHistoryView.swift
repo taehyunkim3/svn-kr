@@ -11,11 +11,11 @@ struct FileHistoryView: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(appLanguage.localized(.ui.file.commitHistoryFileCommitHistory2)).font(.title2.bold())
+                    Text(appLanguage.localized(.ui.revision.fileCommitHistory)).font(.title2.bold())
                     if let path = store.fileHistoryPath { Text(path).font(.caption.monospaced()).foregroundStyle(.secondary) }
                 }
                 Spacer()
-                Button(appLanguage.localized(.ui.close.label)) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized(.ui.common.close)) { dismiss() }.keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
@@ -40,9 +40,9 @@ struct FileHistoryView: View {
             }
             .overlay {
                 if store.fileHistory.isEmpty, store.isLoadingSelectedFileHistory {
-                    ProgressView(appLanguage.localized(.ui.loading.fileHistory))
+                    ProgressView(appLanguage.localized(.ui.revision.loadingFileHistory))
                 } else if store.fileHistory.isEmpty {
-                    ContentUnavailableView(appLanguage.localized(.ui.no.fileHistory), systemImage: "clock")
+                    ContentUnavailableView(appLanguage.localized(.ui.revision.noFileHistory), systemImage: "clock")
                 }
             }
         }
@@ -65,8 +65,8 @@ struct HistoryRevisionActions: View {
                 saveRevision()
             } label: {
                 ActionProgressLabel(
-                    title: appLanguage.localized(.ui.save.thisRevisionAs),
-                    inProgressTitle: appLanguage.localized(.ui.saving.revision),
+                    title: appLanguage.localized(.ui.revision.saveRevision),
+                    inProgressTitle: appLanguage.localized(.ui.revision.savingRevision),
                     isInProgress: store.isSavingHistoryRevision(revision)
                 )
             }
@@ -77,8 +77,8 @@ struct HistoryRevisionActions: View {
                 store.requestHistoryRevisionRestore(revision: revision)
             } label: {
                 ActionProgressLabel(
-                    title: appLanguage.localized(.ui.restore.workingFileToRevision),
-                    inProgressTitle: appLanguage.localized(.ui.restoring.revision),
+                    title: appLanguage.localized(.ui.revision.restoreWorkingFileRevision),
+                    inProgressTitle: appLanguage.localized(.ui.revision.restoringRevision),
                     isInProgress: store.isRestoringHistoryRevision(revision)
                 )
             }
@@ -94,8 +94,8 @@ struct HistoryRevisionActions: View {
         guard store.fileHistoryRequest?.id == fileHistoryRequest.id else { return }
         let relativePath = fileHistoryRequest.relativePath
         let panel = NSSavePanel()
-        panel.title = appLanguage.localized(.ui.save.thisRevisionAs)
-        panel.prompt = appLanguage.localized(.ui.save.thisRevisionAs)
+        panel.title = appLanguage.localized(.ui.revision.saveRevision)
+        panel.prompt = appLanguage.localized(.ui.revision.saveRevision)
         panel.nameFieldStringValue = defaultSaveName(for: relativePath, revision: revision)
         guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
         let request = HistoryRevisionSaveRequest(
@@ -125,7 +125,7 @@ private struct HistoryRevisionRestoreConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var store = store
         content.confirmationDialog(
-            appLanguage.localized(.ui.restore.workingFileConfirmation),
+            appLanguage.localized(.ui.revision.restoreWorkingFile),
             isPresented: Binding(
                 get: { store.recoveryState.historyRevisionRestoreRequest != nil },
                 set: { isPresented in
@@ -138,16 +138,16 @@ private struct HistoryRevisionRestoreConfirmationModifier: ViewModifier {
             presenting: store.recoveryState.historyRevisionRestoreRequest
         ) { request in
             Button(
-                appLanguage.localized(.ui.restore.workingFileToRevision),
+                appLanguage.localized(.ui.revision.restoreWorkingFileRevision),
                 role: .destructive
             ) {
                 Task { await store.confirmHistoryRevisionRestore(request) }
             }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {}
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {}
         } message: { request in
             Text(
                 appLanguage.localized(
-                    .ui.restore.workingFileWarning,
+                    .ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult,
                     request.relativePath,
                     request.revision
                 )

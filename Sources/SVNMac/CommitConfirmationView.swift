@@ -36,15 +36,15 @@ struct CommitConfirmationView: View {
     var body: some View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 16) {
-            Text(appLanguage.localized(.ui.review.commit))
+            Text(appLanguage.localized(.ui.commit.reviewCommit))
                 .font(.title2.bold())
 
             if !serverDeletionEntries.isEmpty {
-                Text(appLanguage.localized(.ui.server.deletionWarning))
+                Text(appLanguage.localized(.ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould))
 
                 Label(
                     appLanguage.localized(
-                        .ui.server.deletionCount,
+                        .ui.commit.itemDeletedServer,
                         serverDeletionEntries.count
                     ),
                     systemImage: "exclamationmark.triangle.fill"
@@ -65,7 +65,7 @@ struct CommitConfirmationView: View {
                         ))
                         .labelsHidden()
                         .accessibilityLabel(appLanguage.localized(
-                            .ui.include.inRestore,
+                            .ui.commit.includeRestore,
                             entry.path
                         ))
                         Image(systemName: entry.nodeKind == .directory ? "folder" : "doc")
@@ -77,14 +77,14 @@ struct CommitConfirmationView: View {
             .overlay {
                 if serverDeletionEntries.isEmpty {
                     ContentUnavailableView(
-                        appLanguage.localized(.ui.no.serverDeletionsRemaining),
+                        appLanguage.localized(.ui.commit.noFilesDeleted),
                         systemImage: "checkmark.circle"
                     )
                 }
             }
 
             HStack {
-                Button(appLanguage.localized(.ui.restore.selectedServerFiles)) {
+                Button(appLanguage.localized(.ui.commit.restoreSelectedFilesAction)) {
                     store.requestCommitDeletionRestore()
                 }
                 .disabled(
@@ -93,7 +93,7 @@ struct CommitConfirmationView: View {
                 )
                 Spacer()
                 Text(appLanguage.localized(
-                    .ui.selected.label,
+                    .ui.common.selectedCount,
                     store.selectedCommitDeletionRestorePaths.count
                 ))
                 .foregroundStyle(.secondary)
@@ -107,21 +107,21 @@ struct CommitConfirmationView: View {
 
             if request.message.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(appLanguage.localized(.ui.commit.withoutAMessage))
+                    Text(appLanguage.localized(.ui.commit.withoutMessage))
                         .font(.headline)
-                    Text(appLanguage.localized(.ui.the.commitWillBeRecordedWithAnEmptyMessag))
+                    Text(appLanguage.localized(.ui.commit.recordedEmptyMessage))
                         .foregroundStyle(.secondary)
                 }
             }
 
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.no.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.commit.no), role: .cancel) {
                     store.cancelCommitConfirmation()
                 }
                 // 서버 삭제가 있으면 Return은 취소. 빈 메시지 확인만 Return으로 커밋한다.
                 .keyboardShortcut(serverDeletionEntries.isEmpty ? .cancelAction : .defaultAction)
-                Button(appLanguage.localized(.ui.confirm.commit)) {
+                Button(appLanguage.localized(.ui.commit.confirm)) {
                     guard let currentRequest = store.commitConfirmationRequest else { return }
                     Task { _ = await store.confirmCommit(currentRequest) }
                 }

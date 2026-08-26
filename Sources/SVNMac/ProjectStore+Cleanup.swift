@@ -73,7 +73,7 @@ extension ProjectStore {
             workingCopyCleanupRequest = nil
             clearAutomaticRefreshBlock(for: project.id)
             notice = AppLanguage.current.localized(
-                .ui.working.copyCleanupCompleted,
+                .ui.cleanup.workingCopyCleanupCompleted,
                 result
             )
             return true
@@ -84,7 +84,7 @@ extension ProjectStore {
             }
             workingCopyCleanupRequest = nil
             errorMessage = AppLanguage.current.localized(
-                .ui.working.copyCleanupFailedContactSupport,
+                .ui.cleanup.workingCopyCleanupFailedDoNotRetryCleanupRepeatedlyCopy,
                 SVNErrorLocalization.diagnosticDetails(for: error)
             )
             return false
@@ -143,7 +143,7 @@ extension ProjectStore {
             )
         } catch {
             errorMessage = AppLanguage.current.localized(
-                .ui.checkout.recoveryValidationFailed,
+                .ui.recovery.interruptedCheckoutFolderNoLongerValidSvnWorkingCopySo,
                 SVNErrorLocalization.diagnosticDetails(for: error)
             )
             return false
@@ -166,7 +166,7 @@ extension ProjectStore {
                 try credentialStore.setPassword(password, for: project.id)
             } catch {
                 notice = AppLanguage.current.localized(
-                    .ui.checkout.completedButThePasswordCouldNotBe,
+                    .ui.authentication.checkoutCompletedButPasswordCouldNotSavedKeychain,
                     localizedError(error)
                 )
             }
@@ -196,12 +196,12 @@ extension ProjectStore {
             projectAccessManager.endAccessing(projectID: request.id)
             canceledCheckoutRecoveryRequest = nil
             notice = AppLanguage.current.localized(
-                .ui.canceled.checkoutFolderEmptied,
+                .ui.recovery.emptiedInterruptedCheckoutFolder,
                 request.destinationPath
             )
         } catch {
             errorMessage = AppLanguage.current.localized(
-                .ui.canceled.checkoutFolderNotEmptied,
+                .ui.recovery.folderNotEmptiedBecauseItCouldNotVerifiedSafelyInterrupted,
                 request.destinationPath,
                 SVNErrorLocalization.diagnosticDetails(for: error)
             )
@@ -214,7 +214,7 @@ extension ProjectStore {
         projectAccessManager.endAccessing(projectID: request.id)
         canceledCheckoutRecoveryRequest = nil
         notice = AppLanguage.current.localized(
-            .ui.the.checkoutWasCanceledPartiallyDownloadedF,
+            .ui.recovery.checkoutCanceledPartiallyDownloadedFilesMayRemain,
             request.destinationPath
         )
     }

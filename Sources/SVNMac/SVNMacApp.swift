@@ -50,22 +50,22 @@ struct SVNMacApp: App {
                     demoStore.hideTemporaryFiles = value
                 }
                 .alert(
-                    appLanguage.localized(.ui.an.updateIsAvailable),
+                    appLanguage.localized(.ui.update.newVersionDialogTitle),
                     isPresented: Binding(
                         get: { updateChecker.automaticUpdate != nil },
                         set: { if !$0 { updateChecker.dismissAutomaticUpdate() } }
                     ),
                     presenting: updateChecker.automaticUpdate
                 ) { release in
-                    Button(appLanguage.localized(.ui.view.inAppStore)) {
+                    Button(appLanguage.localized(.ui.update.viewAppStore)) {
                         updateChecker.openStore(for: release)
                         updateChecker.dismissAutomaticUpdate()
                     }
-                    Button(appLanguage.localized(.ui.later.label), role: .cancel) {
+                    Button(appLanguage.localized(.ui.update.later), role: .cancel) {
                         updateChecker.dismissAutomaticUpdate()
                     }
                 } message: { release in
-                    Text(appLanguage.localized(.ui.version.isAvailable, release.version))
+                    Text(appLanguage.localized(.ui.update.versionAvailable, release.version))
                 }
                 .alert(
                     AppContactSupport.alertTitle(for: appLanguage),
@@ -88,7 +88,7 @@ struct SVNMacApp: App {
         .commands {
             SVNMacCommands(updateChecker: updateChecker, appLanguage: appLanguage)
             CommandGroup(after: .newItem) {
-                Button(appLanguage.localized(.ui.check.outRepositoryUrl)) {
+                Button(appLanguage.localized(.ui.checkout.checkOutRepositoryUrl)) {
                     (isDemoMode ? demoStore : liveStore).isShowingAddRepository = true
                 }
                     .keyboardShortcut("o", modifiers: [.command])

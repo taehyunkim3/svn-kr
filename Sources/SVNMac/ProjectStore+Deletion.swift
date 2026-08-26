@@ -102,10 +102,10 @@ extension ProjectStore {
             let deletedPaths = Set(statuses.lazy.filter { $0.item == .deleted }.map(\.path))
             selectedPaths.formUnion(result.scheduledPaths.filter(deletedPaths.contains))
             if result.failedPaths.isEmpty {
-                notice = AppLanguage.current.localized(.ui.marked.itemSForDeletionCommitToDeleteThem, result.scheduledPaths.count)
+                notice = AppLanguage.current.localized(.ui.commit.markedItemDeletionCommitDeleteThemRepository, result.scheduledPaths.count)
             } else {
                 errorMessage = AppLanguage.current.localized(
-                    .error.deletionPartial,
+                    .error.deletion.partial,
                     result.scheduledPaths.count,
                     result.failedPaths.count,
                     result.failedPaths.joined(separator: ", ")
@@ -153,7 +153,7 @@ extension ProjectStore {
             selectedPaths.formUnion(verifiedPaths)
             guard failedPaths.isEmpty else {
                 errorMessage = AppLanguage.current.localized(
-                    .error.deletionPartial,
+                    .error.deletion.partial,
                     verifiedPaths.count,
                     failedPaths.count,
                     failedPaths.joined(separator: ", ")

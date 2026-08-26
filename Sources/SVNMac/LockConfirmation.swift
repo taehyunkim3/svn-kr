@@ -13,19 +13,19 @@ private struct ExplicitLockConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var store = store
         content.alert(
-            appLanguage.localized(.ui.force.lockConfirmationTitle),
+            appLanguage.localized(.ui.lock.takeAnotherUserLock),
             isPresented: .isPresenting($store.recoveryState.explicitLockRequest),
             presenting: store.recoveryState.explicitLockRequest
         ) { request in
-            Button(appLanguage.localized(.ui.force.lockConfirmationAction), role: .destructive) {
+            Button(appLanguage.localized(.ui.lock.forceLock), role: .destructive) {
                 Task { await store.forceExplicitLock(request) }
             }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                 store.recoveryState.explicitLockRequest = nil
             }
         } message: { request in
             Text(appLanguage.localized(
-                .ui.force.lockConfirmationDetails,
+                .ui.lock.forceLockingSelectedFileRemovesExistingUsersLocksReviewOwners,
                 request.paths.count,
                 request.conflictingLocks.map { "\($0.path) — \($0.owner)" }.joined(separator: "\n")
             ))

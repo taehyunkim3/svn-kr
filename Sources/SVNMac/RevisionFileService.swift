@@ -14,21 +14,21 @@ enum RevisionFileError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .historyClientUnavailable:
-            AppLanguage.current.localized(.ui.revision.historyClientUnavailable)
+            AppLanguage.current.localized(.ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions)
         case .missingWorkingFile:
-            AppLanguage.current.localized(.ui.revision.restoreMissingWorkingFile)
+            AppLanguage.current.localized(.ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould)
         case .unsafeWorkingFile:
-            AppLanguage.current.localized(.ui.revision.restoreUnsafeWorkingFile)
+            AppLanguage.current.localized(.ui.revision.workingFileMustRegularFileNotSymbolicLink)
         case .pathOutsideWorkingCopy:
-            AppLanguage.current.localized(.ui.revision.restorePathOutsideWorkingCopy)
+            AppLanguage.current.localized(.ui.revision.filePathPointsOutsideLocalWorkingFolder)
         case .backupRootInsideWorkingCopy:
-            AppLanguage.current.localized(.ui.revision.restoreBackupInsideWorkingCopy)
+            AppLanguage.current.localized(.ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder)
         case .backupVerificationFailed:
-            AppLanguage.current.localized(.ui.revision.restoreBackupVerificationFailed)
+            AppLanguage.current.localized(.ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt)
         case .replacementVerificationFailed:
-            AppLanguage.current.localized(.ui.revision.restoreReplacementVerificationFailed)
+            AppLanguage.current.localized(.ui.revision.restoredFileDidNotMatchSelectedRevisionByteByteRecovery)
         case .invalidDestination:
-            AppLanguage.current.localized(.ui.revision.saveInvalidDestination)
+            AppLanguage.current.localized(.ui.revision.selectedSaveLocationNotSafeRegularFileDestination)
         }
     }
 }

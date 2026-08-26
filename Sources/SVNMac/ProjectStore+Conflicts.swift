@@ -175,7 +175,7 @@ extension ProjectStore {
             recoveryState.propertyConflictSession = nil
             await refresh()
             guard canApplyCompletedPropertyConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized(.ui.property.conflictResolvedReviewBeforeCommit)
+            notice = AppLanguage.current.localized(.ui.conflict.propertyConflictResolvedReviewPropertiesBeforeCommitting)
         } catch {
             guard canApplyPropertyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)
@@ -250,12 +250,12 @@ extension ProjectStore {
             guard canApplyCompletedTreeConflictResolution(sessionID, projectID: projectID) else { return }
             if let subtreeBackup {
                 notice = AppLanguage.current.localized(
-                    .ui.tree.conflictResolvedWithSubtreeBackup,
+                    .ui.conflict.resolvedBackupsRemovedItemCreated,
                     String(subtreeBackup.fileCount),
                     subtreeBackup.directoryURL.path
                 )
             } else {
-                notice = AppLanguage.current.localized(.ui.the.conflictWasResolvedReviewTheFileBefore)
+                notice = AppLanguage.current.localized(.ui.conflict.resolvedReviewFileBeforeCommitting)
             }
         } catch {
             guard canApplyTreeConflictResolution(sessionID, projectID: projectID) else { return }
@@ -338,7 +338,7 @@ extension ProjectStore {
             activeConflictSession = nil
             await refresh()
             guard canApplyCompletedConflictResolution(sessionID, projectID: projectID) else { return }
-            notice = AppLanguage.current.localized(.ui.the.conflictWasResolvedReviewTheFileBefore)
+            notice = AppLanguage.current.localized(.ui.conflict.resolvedReviewFileBeforeCommitting)
         } catch {
             guard canApplyConflictResolution(sessionID, projectID: projectID) else { return }
             errorMessage = localizedError(error)

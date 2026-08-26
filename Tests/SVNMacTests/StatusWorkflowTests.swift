@@ -20,8 +20,8 @@ import SVNCore
 }
 
 @Test func statusWarningsHaveKoreanAndEnglishLabels() {
-    #expect(AppLanguage.korean.localized(.ui.incomplete.updateRequired) == "업데이트 미완료")
-    #expect(AppLanguage.english.localized(.ui.incomplete.updateRequired) == "Update Incomplete")
-    #expect(AppLanguage.korean.localized(.ui.switched.path) == "전환 경로")
-    #expect(AppLanguage.english.localized(.ui.switched.path) == "Switched Path")
+    #expect(AppLanguage.korean.localized(.ui.update.incomplete) == "업데이트 미완료")
+    #expect(AppLanguage.english.localized(.ui.update.incomplete) == "Update Incomplete")
+    #expect(AppLanguage.korean.localized(.ui.changes.switchedPath) == "전환 경로")
+    #expect(AppLanguage.english.localized(.ui.changes.switchedPath) == "Switched Path")
 }

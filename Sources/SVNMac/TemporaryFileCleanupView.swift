@@ -10,16 +10,16 @@ struct TemporaryFileCleanupView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             HStack {
-                Text(appLanguage.localized(.ui.repository.temporaryFileCleanup))
+                Text(appLanguage.localized(.ui.cleanup.repositoryTemporaryFileCleanup))
                     .font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized(.ui.close.label)) { dismiss() }
+                Button(appLanguage.localized(.ui.common.close)) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
             Divider()
 
-            Text(appLanguage.localized(.ui.review.verifiedFilesBeforeDeletingAndCommitt))
+            Text(appLanguage.localized(.ui.cleanup.onlyVerifiedCandidatesSelectedReviewEveryPathBeforeDeletingCommitting))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,7 +50,7 @@ struct TemporaryFileCleanupView: View {
             Divider()
             HStack {
                 Text(appLanguage.localized(
-                    .ui.selected.label,
+                    .ui.common.selectedCount,
                     store.selectedTemporaryFileCleanupPaths.count
                 ))
                 .foregroundStyle(.secondary)
@@ -59,8 +59,8 @@ struct TemporaryFileCleanupView: View {
                     Task { await store.confirmRepositoryTemporaryFileCleanup() }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized(.ui.delete.andCommitCleanup),
-                        inProgressTitle: appLanguage.localized(.ui.cleaning.andCommitting),
+                        title: appLanguage.localized(.ui.cleanup.deleteCommitCleanup),
+                        inProgressTitle: appLanguage.localized(.ui.cleanup.cleaningCommitting),
                         isInProgress: store.isCleaningSelectedProjectTemporaryFiles
                     )
                 }

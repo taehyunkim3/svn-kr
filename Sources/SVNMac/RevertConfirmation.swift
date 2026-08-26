@@ -7,17 +7,17 @@ private struct RevertConfirmationModifier: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var store = store
         content.alert(
-            appLanguage.localized(.ui.revert.localChangesQuestion),
+            appLanguage.localized(.ui.commit.revertLocalChangesConfirmationTitle),
             isPresented: .isPresenting($store.revertRequest),
             presenting: store.revertRequest
         ) { request in
-            Button(appLanguage.localized(.ui.revert.label), role: .destructive) { Task { await store.confirmRevert(request) } }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) { store.revertRequest = nil }
+            Button(appLanguage.localized(.ui.commit.revert), role: .destructive) { Task { await store.confirmRevert(request) } }
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) { store.revertRequest = nil }
         } message: { request in
             if request.entry.item == .missing || request.entry.item == .deleted {
-                Text(appLanguage.localized(.ui.cancel.theRepositoryDeletionStateForAndRes, request.entry.path))
+                Text(appLanguage.localized(.ui.commit.cancelRepositoryDeletionStateRestoreRepositoryVersionLocally, request.entry.path))
             } else {
-                Text(appLanguage.localized(.ui.uncommitted.changesInWillBeDiscardedAndCan, request.entry.path))
+                Text(appLanguage.localized(.ui.commit.uncommittedChangesDiscardedCannotRestoredSvn, request.entry.path))
             }
         }
     }

@@ -16,7 +16,7 @@ import Testing
 
     #expect(conflictResolution.contains("@State private var isWorkingFileExpanded = false"))
     #expect(conflictResolution.contains("DisclosureGroup(isExpanded: $isWorkingFileExpanded)"))
-    #expect(conflictResolution.contains(".ui.confirm.manuallyEditedContent"))
+    #expect(conflictResolution.contains(".ui.conflict.confirmManuallyEditedContent"))
 }
 
 @Test func contentConflictShowsLossWarningsInsideSideBySidePrimaryChoices() throws {
@@ -28,7 +28,7 @@ import Testing
     #expect(conflictResolution.contains("choice: .mineFull"))
     #expect(conflictResolution.contains("systemImage: \"exclamationmark.triangle.fill\""))
     #expect(conflictResolution.contains(".foregroundStyle(.orange)"))
-    #expect(conflictResolution.contains(".ui.server.versionChangesWillBeDiscarded"))
+    #expect(conflictResolution.contains(".ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile"))
 }
 
 @Test func treeConflictOffersTwoDestructivelyConfirmedChoices() throws {
@@ -39,9 +39,9 @@ import Testing
     #expect(treeConflictResolution.contains("choice: .restoreServerVersion"))
     #expect(treeConflictResolution.contains("Button(confirmationActionTitle, role: .destructive)"))
     #expect(treeConflictResolution.contains("Task { await store.resolveActiveTreeConflict(using: choice) }"))
-    #expect(treeConflictResolution.contains(".ui.tree.conflictIsNotAChoiceBetweenTwoFiles"))
-    #expect(treeConflictResolution.contains(".ui.local.deletionWillRemainAndACommitWillDe"))
-    #expect(treeConflictResolution.contains(".ui.local.changesWillBeDiscarded"))
+    #expect(treeConflictResolution.contains(".ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice"))
+    #expect(treeConflictResolution.contains(".ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer"))
+    #expect(treeConflictResolution.contains(".ui.conflict.uncommittedLocalChangesDiscarded"))
     #expect(treeConflictResolution.contains("systemImage: \"exclamationmark.triangle.fill\""))
     #expect(treeConflictResolution.contains(".foregroundStyle(.orange)"))
     #expect(treeConflictResolution.contains("ActionProgressLabel("))
@@ -80,10 +80,10 @@ import Testing
     #expect(changes.contains("PropertyConflictResolutionView()"))
     #expect(changes.contains("entry.propertyState == .conflicted"))
     #expect(!changes.contains("entry.item != .conflicted && entry.item != .missing"))
-    #expect(changes.contains(".ui.property.modified"))
-    #expect(changes.contains(".ui.property.conflict"))
-    #expect(changes.contains(".ui.obstructed.localFile"))
-    #expect(changes.contains(".ui.move.orRenameTheLocalFileThenUpdate"))
+    #expect(changes.contains(".ui.changes.propertiesModified"))
+    #expect(changes.contains(".ui.conflict.propertyConflict"))
+    #expect(changes.contains(".ui.update.localFileBlockingUpdate"))
+    #expect(changes.contains(".ui.changes.unversionedLocalFileBlockingServerFileSameNameMoveRename"))
     #expect(changes.contains("store.revealInFinder(entry.path)"))
 }
 
@@ -105,20 +105,20 @@ import Testing
     #expect(view.contains("impact.unversionedPaths"))
     #expect(view.contains("impact.uncommittedPaths"))
     #expect(view.contains("AppLayout.treeConflictRestoreListedPathLimit"))
-    #expect(view.contains(".ui.restore.serverVersionRemovesTheseItems"))
-    #expect(view.contains(".ui.files.notInRepositoryCount"))
-    #expect(view.contains(".ui.uncommitted.changesCount"))
-    #expect(view.contains(".ui.and.moreItemsCount"))
+    #expect(view.contains(".ui.conflict.revertingRemovesItemsBelowWorkingFolderTheyCopiedBackupFolder"))
+    #expect(view.contains(".ui.conflict.fileThatNotRepository"))
+    #expect(view.contains(".ui.conflict.uncommittedChange"))
+    #expect(view.contains(".ui.conflict.more"))
 }
 
 @Test func contentConflictViewAnnouncesTheAccompanyingPropertyConflict() throws {
     let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
 
     #expect(view.contains("if session.hasPropertyConflict"))
-    #expect(view.contains(".ui.content.andPropertyConflictTogether"))
-    #expect(view.contains(".ui.conflicted.properties"))
-    #expect(view.contains(".ui.server.propertiesAlsoApplied"))
-    #expect(view.contains(".ui.my.propertiesAlsoKept"))
+    #expect(view.contains(".ui.conflict.fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame"))
+    #expect(view.contains(".ui.conflict.conflictedProperties"))
+    #expect(view.contains(".ui.conflict.serverPropertyValuesAppliedWell"))
+    #expect(view.contains(".ui.conflict.propertyValuesKeptWell"))
 }
 
 @Test func propertyConflictResolutionPreservesTheWorkingFileBeforeResolving() throws {
@@ -134,17 +134,17 @@ import Testing
 
 @Test func propertyConflictStringsExistInEveryLocalizationResource() throws {
     let keys = [
-        "ui.apply.server.properties.51ad840e",
-        "ui.conflicted.properties.849bf370",
-        "ui.conflicted.property.name.unavailable.0cc5d784",
-        "ui.keep.my.properties.68b12ae4",
-        "ui.local.property.values.will.be.discarded.f98a7c20",
-        "ui.move.or.rename.the.local.file.then.update.1e3c7a90",
-        "ui.obstructed.local.file.74a9c2e5",
-        "ui.property.conflict.2fd61b8a",
-        "ui.property.modified.4c9a78e1",
-        "ui.revert.conflict.discards.local.changes.and.conflict.51b3d907",
-        "ui.server.property.values.will.be.discarded.84d6f2c1",
+        "ui.conflict.applyServerProperties",
+        "ui.conflict.conflictedProperties",
+        "ui.conflict.conflictedPropertyNameCouldNotDetermined",
+        "ui.conflict.keepMyProperties",
+        "ui.conflict.localPropertyValuesDiscarded",
+        "ui.changes.unversionedLocalFileBlockingServerFileSameNameMoveRename",
+        "ui.update.localFileBlockingUpdate",
+        "ui.conflict.propertyConflict",
+        "ui.changes.propertiesModified",
+        "ui.changes.revertConflictLocalChanges",
+        "ui.conflict.incomingServerPropertyValuesDiscardedWorkingCopy",
     ]
     let resources = try svnMacSources().appendingPathComponent("Resources", isDirectory: true)
     let localizationFiles = [
@@ -163,18 +163,18 @@ import Testing
 
 @Test func conflictResolutionStringsExistInEveryLocalizationResource() throws {
     let keys = [
-        "ui.apply.server.version.61c5a01e",
-        "ui.confirm.current.working.copy.state.1c63f80b",
-        "ui.confirm.manually.edited.content.97e30ac4",
-        "ui.discard.local.change.and.restore.server.file.728e0bf1",
-        "ui.keep.my.change.14f3a8c6",
-        "ui.local.changes.will.be.discarded.5e8127cf",
-        "ui.local.deletion.will.remain.and.a.commit.will.de.837b94a0",
-        "ui.overwrite.with.mine.8d42f39b",
-        "ui.restore.file.from.server.version.4dd51eb7",
-        "ui.server.version.changes.will.be.discarded.4ab613d2",
-        "ui.tree.conflict.2ea1184c",
-        "ui.tree.conflict.is.not.a.choice.between.two.files.66dcb7a1",
+        "ui.conflict.applyServerVersion",
+        "ui.conflict.confirmCurrentWorkingCopyState",
+        "ui.conflict.confirmManuallyEditedContent",
+        "ui.conflict.discardLocalChangeRestoreServerFile",
+        "ui.conflict.keepMyChange",
+        "ui.conflict.uncommittedLocalChangesDiscarded",
+        "ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer",
+        "ui.conflict.overwriteMyVersion",
+        "ui.conflict.restoreFileServerVersion",
+        "ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile",
+        "ui.conflict.treeConflict",
+        "ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice",
     ]
     let resources = try svnMacSources().appendingPathComponent("Resources", isDirectory: true)
     let localizationFiles = [
@@ -191,10 +191,10 @@ import Testing
     }
 
     #expect(
-        AppLanguage.english.localized(.ui.keep.myChange) == "Keep My Change"
+        AppLanguage.english.localized(.ui.conflict.keepMyChange) == "Keep My Change"
     )
     #expect(
-        AppLanguage.korean.localized(.ui.keep.myChange) == "내 변경 유지"
+        AppLanguage.korean.localized(.ui.conflict.keepMyChange) == "내 변경 유지"
     )
 }
 

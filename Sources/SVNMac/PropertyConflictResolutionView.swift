@@ -30,7 +30,7 @@ struct PropertyConflictResolutionView: View {
                 pendingChoice = nil
                 Task { await store.resolveActivePropertyConflict(using: choice) }
             }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                 pendingChoice = nil
             }
         } message: {
@@ -44,7 +44,7 @@ struct PropertyConflictResolutionView: View {
     private var header: some View {
         HStack {
             Label(
-                appLanguage.localized(.ui.property.conflict),
+                appLanguage.localized(.ui.conflict.propertyConflict),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.title2.bold())
@@ -57,7 +57,7 @@ struct PropertyConflictResolutionView: View {
         VStack(alignment: .leading, spacing: 14) {
             if session.wasCanonicallyResolved {
                 Label(
-                    appLanguage.localized(.ui.the.macosUnicodePathWasMatchedToTheActual),
+                    appLanguage.localized(.ui.conflict.macosUnicodePathMatchedActualSvnManagedPath),
                     systemImage: "checkmark.circle"
                 )
                 .font(.caption)
@@ -73,16 +73,16 @@ struct PropertyConflictResolutionView: View {
 
             HStack(alignment: .top, spacing: 14) {
                 choiceCard(
-                    title: appLanguage.localized(.ui.apply.serverProperties),
-                    description: appLanguage.localized(.ui.replace.localPropertiesWithServerValues),
-                    warning: appLanguage.localized(.ui.local.propertyValuesWillBeDiscarded),
+                    title: appLanguage.localized(.ui.conflict.applyServerProperties),
+                    description: appLanguage.localized(.ui.conflict.replaceLocalPropertiesServerValues),
+                    warning: appLanguage.localized(.ui.conflict.localPropertyValuesDiscarded),
                     choice: .applyServerProperties
                 )
 
                 choiceCard(
-                    title: appLanguage.localized(.ui.keep.myProperties),
-                    description: appLanguage.localized(.ui.keep.localPropertiesAsResolvedValues),
-                    warning: appLanguage.localized(.ui.server.propertyValuesWillBeDiscarded),
+                    title: appLanguage.localized(.ui.conflict.keepMyProperties),
+                    description: appLanguage.localized(.ui.conflict.confirmCurrentLocalPropertiesResolvedValues),
+                    warning: appLanguage.localized(.ui.conflict.incomingServerPropertyValuesDiscardedWorkingCopy),
                     choice: .keepMyProperties
                 )
             }
@@ -91,9 +91,9 @@ struct PropertyConflictResolutionView: View {
 
     private func propertyNamesDescription(_ propertyNames: [String]) -> String {
         guard !propertyNames.isEmpty else {
-            return appLanguage.localized(.ui.conflicted.propertyNameUnavailable)
+            return appLanguage.localized(.ui.conflict.conflictedPropertyNameCouldNotDetermined)
         }
-        return appLanguage.localized(.ui.conflicted.properties, propertyNames.joined(separator: ", "))
+        return appLanguage.localized(.ui.conflict.conflictedProperties, propertyNames.joined(separator: ", "))
     }
 
     private func choiceCard(
@@ -116,7 +116,7 @@ struct PropertyConflictResolutionView: View {
                     } label: {
                         ActionProgressLabel(
                             title: title,
-                            inProgressTitle: appLanguage.localized(.ui.resolving.label),
+                            inProgressTitle: appLanguage.localized(.ui.conflict.resolving),
                             isInProgress: store.isResolvingConflict
                         )
                     }
@@ -142,28 +142,28 @@ struct PropertyConflictResolutionView: View {
     private func title(for choice: PropertyConflictResolutionChoice) -> String {
         switch choice {
         case .applyServerProperties:
-            appLanguage.localized(.ui.apply.serverProperties)
+            appLanguage.localized(.ui.conflict.applyServerProperties)
         case .keepMyProperties:
-            appLanguage.localized(.ui.keep.myProperties)
+            appLanguage.localized(.ui.conflict.keepMyProperties)
         }
     }
 
     private func warningMessage(for choice: PropertyConflictResolutionChoice) -> String {
         switch choice {
         case .applyServerProperties:
-            appLanguage.localized(.ui.local.propertyValuesWillBeDiscarded)
+            appLanguage.localized(.ui.conflict.localPropertyValuesDiscarded)
         case .keepMyProperties:
-            appLanguage.localized(.ui.server.propertyValuesWillBeDiscarded)
+            appLanguage.localized(.ui.conflict.incomingServerPropertyValuesDiscardedWorkingCopy)
         }
     }
 
     private var footer: some View {
         HStack {
-            Text(appLanguage.localized(.ui.property.conflictBlocksCommitUntilResolved))
+            Text(appLanguage.localized(.ui.conflict.pathCannotCommittedUntilItsPropertyConflictResolved))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(appLanguage.localized(.ui.cancel.label)) { dismiss() }
+            Button(appLanguage.localized(.ui.common.cancel)) { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .disabled(store.isResolvingConflict)
         }

@@ -32,12 +32,12 @@ struct RepositoryPathNormalizationView: View {
     private var header: some View {
         HStack {
             Label(
-                appLanguage.localized(.repository.pathNormalizationTitle),
+                appLanguage.localized(.repository.pathNormalization.title),
                 systemImage: "character.book.closed"
             )
             .font(.title2.bold())
             Spacer()
-            Button(appLanguage.localized(.ui.close.label), role: .cancel) {
+            Button(appLanguage.localized(.ui.common.close), role: .cancel) {
                 store.isShowingRepositoryPathNormalization = false
             }
             .keyboardShortcut(.cancelAction)
@@ -49,15 +49,15 @@ struct RepositoryPathNormalizationView: View {
     private var guidance: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(
-                appLanguage.localized(.repository.pathNormalizationWindowsNote),
+                appLanguage.localized(.repository.pathNormalization.windowsNote),
                 systemImage: "desktopcomputer"
             )
             Label(
-                appLanguage.localized(.repository.pathNormalizationSameAppearanceNote),
+                appLanguage.localized(.repository.pathNormalization.sameAppearanceNote),
                 systemImage: "info.circle"
             )
             Label(
-                appLanguage.localized(.repository.pathNormalizationDirectoryNote),
+                appLanguage.localized(.repository.pathNormalization.directoryNote),
                 systemImage: "folder.badge.gearshape"
             )
         }
@@ -71,7 +71,7 @@ struct RepositoryPathNormalizationView: View {
         HStack {
             Text(
                 appLanguage.localized(
-                    .ui.selected.label,
+                    .ui.common.selectedCount,
                     store.selectedRepositoryPathNormalizationTargets.count
                 )
             )
@@ -79,8 +79,8 @@ struct RepositoryPathNormalizationView: View {
             Spacer()
             Button(
                 store.allRepositoryPathNormalizationTargetsAreSelected
-                    ? appLanguage.localized(.repository.pathNormalizationDeselectAll)
-                    : appLanguage.localized(.ui.select.allSelectAll2)
+                    ? appLanguage.localized(.repository.pathNormalization.deselectAll)
+                    : appLanguage.localized(.ui.commit.selectAll)
             ) {
                 store.setAllRepositoryPathNormalizationTargetsSelected(
                     !store.allRepositoryPathNormalizationTargetsAreSelected
@@ -105,7 +105,7 @@ struct RepositoryPathNormalizationView: View {
                 resultSections(result)
             }
             if !store.repositoryPathNormalizationTargets.isEmpty {
-                Section(appLanguage.localized(.repository.pathNormalizationTargets)) {
+                Section(appLanguage.localized(.repository.pathNormalization.targets)) {
                     ForEach(store.repositoryPathNormalizationTargets) { target in
                         targetRow(target)
                     }
@@ -115,12 +115,12 @@ struct RepositoryPathNormalizationView: View {
         .overlay {
             if store.isScanningRepositoryPaths {
                 ProgressView(
-                    appLanguage.localized(.repository.pathNormalizationScanningDetail)
+                    appLanguage.localized(.repository.pathNormalization.scanningDetail)
                 )
             } else if store.repositoryPathNormalizationTargets.isEmpty,
                       store.repositoryPathNormalizationIssue == nil {
                 ContentUnavailableView(
-                    appLanguage.localized(.repository.pathNormalizationWaiting),
+                    appLanguage.localized(.repository.pathNormalization.waiting),
                     systemImage: "character.book.closed"
                 )
             }
@@ -144,19 +144,19 @@ struct RepositoryPathNormalizationView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label(
                     target.isDirectory
-                        ? appLanguage.localized(.ui.folder.label)
-                        : appLanguage.localized(.ui.file.labelFile2),
+                        ? appLanguage.localized(.ui.common.folder)
+                        : appLanguage.localized(.ui.common.fileType),
                     systemImage: target.isDirectory ? "folder.fill" : "doc.fill"
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                     pathRow(
-                        appLanguage.localized(.repository.pathNormalizationBefore),
+                        appLanguage.localized(.repository.pathNormalization.before),
                         path: target.repositoryPath
                     )
                     pathRow(
-                        appLanguage.localized(.repository.pathNormalizationAfter),
+                        appLanguage.localized(.repository.pathNormalization.after),
                         path: target.normalizedPath
                     )
                 }
@@ -205,19 +205,19 @@ struct RepositoryPathNormalizationView: View {
     ) -> some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
             GridRow {
-                Text(appLanguage.localized(.repository.pathNormalizationDifferentComponent))
+                Text(appLanguage.localized(.repository.pathNormalization.differentComponent))
                     .foregroundStyle(.secondary)
                 Text(difference.normalizedDifference)
                     .font(.body.monospaced())
                     .textSelection(.enabled)
             }
             codePointRow(
-                appLanguage.localized(.repository.pathNormalizationBefore),
+                appLanguage.localized(.repository.pathNormalization.before),
                 component: difference.repositoryDifference,
                 summary: difference.repositoryCodePoints
             )
             codePointRow(
-                appLanguage.localized(.repository.pathNormalizationAfter),
+                appLanguage.localized(.repository.pathNormalization.after),
                 component: difference.normalizedDifference,
                 summary: difference.normalizedCodePoints
             )
@@ -238,7 +238,7 @@ struct RepositoryPathNormalizationView: View {
                     .textSelection(.enabled)
                 Text(
                     appLanguage.localized(
-                        .repository.pathNormalizationCodepointsDetail,
+                        .repository.pathNormalization.codepointsDetail,
                         normalizationFormLabel(repositoryPathNormalizationForm(of: component)),
                         summary.scalarCount
                     )
@@ -254,9 +254,9 @@ struct RepositoryPathNormalizationView: View {
     ) -> String {
         switch form {
         case .decomposed:
-            appLanguage.localized(.repository.pathNormalizationFormDecomposed)
+            appLanguage.localized(.repository.pathNormalization.formDecomposed)
         case .composed:
-            appLanguage.localized(.repository.pathNormalizationFormComposed)
+            appLanguage.localized(.repository.pathNormalization.formComposed)
         }
     }
 
@@ -274,7 +274,7 @@ struct RepositoryPathNormalizationView: View {
             }
         } header: {
             Label(
-                appLanguage.localized(.repository.pathNormalizationProblem),
+                appLanguage.localized(.repository.pathNormalization.problem),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.red)
@@ -293,7 +293,7 @@ struct RepositoryPathNormalizationView: View {
         Section {
             Label(
                 appLanguage.localized(
-                    .repository.pathNormalizationResultSummary,
+                    .repository.pathNormalization.resultSummary,
                     result.renamedTargets.count,
                     result.committedRevisions.count
                 ),
@@ -303,19 +303,19 @@ struct RepositoryPathNormalizationView: View {
             if !result.committedRevisions.isEmpty {
                 Text(
                     appLanguage.localized(
-                        .repository.pathNormalizationResultRevisions,
+                        .repository.pathNormalization.resultRevisions,
                         result.committedRevisions.joined(separator: ", ")
                     )
                 )
                 .textSelection(.enabled)
             }
         } header: {
-            Text(appLanguage.localized(.repository.pathNormalizationResult))
+            Text(appLanguage.localized(.repository.pathNormalization.result))
         }
 
         if !result.skippedTargets.isEmpty {
             Section {
-                Text(appLanguage.localized(.repository.pathNormalizationSkippedReason))
+                Text(appLanguage.localized(.repository.pathNormalization.skippedReason))
                     .foregroundStyle(.secondary)
                 ForEach(result.skippedTargets) { target in
                     Text(target.repositoryPath)
@@ -325,7 +325,7 @@ struct RepositoryPathNormalizationView: View {
             } header: {
                 Text(
                     appLanguage.localized(
-                        .repository.pathNormalizationSkipped,
+                        .repository.pathNormalization.skipped,
                         result.skippedTargets.count
                     )
                 )
@@ -356,23 +356,23 @@ struct RepositoryPathNormalizationView: View {
         HStack {
             if store.isNormalizingRepositoryPaths {
                 ProgressView(
-                    appLanguage.localized(.repository.pathNormalizationRunning)
+                    appLanguage.localized(.repository.pathNormalization.running)
                 )
                 .controlSize(.small)
             }
             Spacer()
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                 store.isShowingRepositoryPathNormalization = false
             }
             .disabled(store.isRepositoryPathNormalizationRunning)
             if shouldOfferRescan {
-                Button(appLanguage.localized(.repository.pathNormalizationScanAgain)) {
+                Button(appLanguage.localized(.repository.pathNormalization.scanAgain)) {
                     Task { await store.beginRepositoryPathNormalization() }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(store.isRepositoryPathNormalizationRunning)
             } else {
-                Button(appLanguage.localized(.repository.pathNormalizationReviewAction)) {
+                Button(appLanguage.localized(.repository.pathNormalization.reviewAction)) {
                     store.requestRepositoryPathNormalizationConfirmation()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -401,7 +401,7 @@ private struct RepositoryPathNormalizationConfirmationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.localized(.repository.pathNormalizationConfirmationTitle),
+                appLanguage.localized(.repository.pathNormalization.confirmationTitle),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.title2.bold())
@@ -409,26 +409,26 @@ private struct RepositoryPathNormalizationConfirmationView: View {
 
             warning(
                 appLanguage.localized(
-                    .repository.pathNormalizationConfirmationCommits,
+                    .repository.pathNormalization.confirmationCommits,
                     selectedCount
                 ),
                 systemImage: "shippingbox.and.arrow.backward"
             )
             warning(
                 appLanguage.localized(
-                    .repository.pathNormalizationConfirmationDeleteAdd
+                    .repository.pathNormalization.confirmationDeleteAdd
                 ),
                 systemImage: "arrow.left.arrow.right"
             )
             warning(
                 appLanguage.localized(
-                    .repository.pathNormalizationConfirmationDirectory
+                    .repository.pathNormalization.confirmationDirectory
                 ),
                 systemImage: "folder.badge.gearshape"
             )
             warning(
                 appLanguage.localized(
-                    .repository.pathNormalizationConfirmationTeam
+                    .repository.pathNormalization.confirmationTeam
                 ),
                 systemImage: "person.3"
             )
@@ -444,7 +444,7 @@ private struct RepositoryPathNormalizationConfirmationView: View {
 
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.isConfirmingRepositoryPathNormalization = false
                 }
                 // 경로마다 삭제+추가 커밋이 올라간다. Return은 취소만 실행한다.
@@ -454,11 +454,11 @@ private struct RepositoryPathNormalizationConfirmationView: View {
                 } label: {
                     ActionProgressLabel(
                         title: appLanguage.localized(
-                            .repository.pathNormalizationConfirmationRun,
+                            .repository.pathNormalization.confirmationRun,
                             selectedCount
                         ),
                         inProgressTitle: appLanguage.localized(
-                            .repository.pathNormalizationRunning
+                            .repository.pathNormalization.running
                         ),
                         systemImage: "checkmark",
                         isInProgress: store.isNormalizingRepositoryPaths

@@ -46,13 +46,13 @@ enum AppSettings {
 
     static func historyTimeZones(for language: AppLanguage) -> [(identifier: String, label: String)] {
         [
-            ("Asia/Seoul", language.localized(.ui.korea.standardTimeKstUtc9)),
-            (systemHistoryTimeZone, language.localized(.ui.mac.systemTimeZone, TimeZone.current.identifier)),
-            ("UTC", language.localized(.ui.coordinated.universalTimeUtc)),
-            ("Asia/Tokyo", language.localized(.ui.japan.standardTimeJstUtc9)),
-            ("America/Los_Angeles", language.localized(.ui.us.pacificTime)),
-            ("America/New_York", language.localized(.ui.us.easternTime)),
-            ("Europe/London", language.localized(.ui.uk.time)),
+            ("Asia/Seoul", language.localized(.ui.settings.koreaStandardTime)),
+            (systemHistoryTimeZone, language.localized(.ui.settings.macSystemTimeZone, TimeZone.current.identifier)),
+            ("UTC", language.localized(.ui.settings.coordinatedUniversalTimeUtc)),
+            ("Asia/Tokyo", language.localized(.ui.settings.japanStandardTime)),
+            ("America/Los_Angeles", language.localized(.ui.settings.usPacificTime)),
+            ("America/New_York", language.localized(.ui.settings.usEasternTime)),
+            ("Europe/London", language.localized(.ui.settings.ukTime)),
         ].reduce(into: []) { result, item in
             if !result.contains(where: { $0.identifier == item.0 }) {
                 result.append((identifier: item.0, label: item.1))
@@ -154,43 +154,43 @@ struct AppSettingsView: View {
 
     var body: some View {
         Form {
-            Picker(appLanguage.localized(.ui.language.label), selection: $languageIdentifier) {
+            Picker(appLanguage.localized(.ui.settings.language), selection: $languageIdentifier) {
                 Text("한국어").tag(AppLanguage.korean.rawValue)
                 Text("English").tag(AppLanguage.english.rawValue)
             }
-            .help(appLanguage.localized(.ui.choose.theLanguageUsedInTheAppInterface))
+            .help(appLanguage.localized(.ui.settings.chooseLanguageUsedAppInterface))
 
-            Picker(appLanguage.localized(.ui.commit.historyTimeZone), selection: $historyTimeZoneIdentifier) {
+            Picker(appLanguage.localized(.ui.settings.commitDisplayTimeZone), selection: $historyTimeZoneIdentifier) {
                 ForEach(AppSettings.historyTimeZones(for: appLanguage), id: \.identifier) { timeZone in
                     Text(timeZone.label).tag(timeZone.identifier)
                 }
             }
-            .help(appLanguage.localized(.ui.choose.theTimeZoneUsedForCommitDatesAndT))
+            .help(appLanguage.localized(.ui.settings.chooseTimeZoneUsedCommitDatesTimes))
 
-            Text(appLanguage.localized(.ui.the.defaultIsKoreaStandardTimeKstThisDoes))
+            Text(appLanguage.localized(.ui.settings.defaultKoreaStandardTimeKstDoesNotChangeOriginalCommit))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Toggle(
-                appLanguage.localized(.ui.hide.macOfficeTemporaryFiles),
+                appLanguage.localized(.ui.settings.hideMacOfficeTemporaryFiles),
                 isOn: $hideTemporaryFiles
             )
-            .help(appLanguage.localized(.ui.hide.temporaryFilesFromChangesAndCommitTarg))
+            .help(appLanguage.localized(.ui.settings.hideTemporaryFilesChangesPreventThemCommittedVersionedFilesRemain))
 
             Picker(
-                appLanguage.localized(.ui.document.openingMethod),
+                appLanguage.localized(.ui.settings.whenOpeningDocuments),
                 selection: $documentOpenLockPolicyIdentifier
             ) {
                 Text(
-                    appLanguage.localized(.ui.ask.everyTimeBeforeOpeningDocuments)
+                    appLanguage.localized(.ui.settings.askEveryTime)
                 )
                     .tag(DocumentOpenLockPolicy.askEveryTime.rawValue)
                 Text(
-                    appLanguage.localized(.ui.always.openDocumentsWithoutLocking)
+                    appLanguage.localized(.ui.settings.alwaysOpenWithoutLockingAsking)
                 )
                     .tag(DocumentOpenLockPolicy.alwaysOpenWithoutLock.rawValue)
                 Text(
-                    appLanguage.localized(.ui.always.lockAndOpenDocuments)
+                    appLanguage.localized(.ui.settings.alwaysLockOpenWithoutAsking)
                 )
                     .tag(DocumentOpenLockPolicy.alwaysLockAndOpen.rawValue)
             }
@@ -198,7 +198,7 @@ struct AppSettingsView: View {
             if documentOpenLockPolicy == .alwaysLockAndOpen {
                 Label(
                     appLanguage.localized(
-                        .ui.locked.filesBlockOtherUsersUntilCommitOrUnl
+                        .ui.settings.otherUsersCannotModifyLockedFileUntilCommitItRelease
                     ),
                     systemImage: "exclamationmark.triangle.fill"
                 )

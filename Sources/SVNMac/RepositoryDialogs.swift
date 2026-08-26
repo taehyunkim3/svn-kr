@@ -30,7 +30,7 @@ struct AuthenticationRequiredView: View {
         @Bindable var store = store
         return VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.localized(.ui.svn.authenticationRequired))
+                Text(appLanguage.localized(.ui.authentication.svnAuthenticationRequired))
                     .font(.title2.bold())
                 Text(reasonText)
                     .foregroundStyle(.secondary)
@@ -39,17 +39,17 @@ struct AuthenticationRequiredView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $password,
-                usernamePlaceholder: appLanguage.localized(.ui.svn.username),
-                passwordPlaceholder: appLanguage.localized(.ui.svn.password)
+                usernamePlaceholder: appLanguage.localized(.ui.authentication.svnUsername),
+                passwordPlaceholder: appLanguage.localized(.ui.authentication.svnPassword)
             )
 
-            Text(appLanguage.localized(.ui.canceling.doesNotPreventViewingLocalChanges))
+            Text(appLanguage.localized(.ui.authentication.cancelingDoesNotPreventViewingLocalChangesDiffs))
             .font(.caption)
             .foregroundStyle(.secondary)
 
             Divider()
             HStack {
-                Button(appLanguage.localized(.ui.localizationTry.keychainAgain)) {
+                Button(appLanguage.localized(.ui.authentication.tryKeychainAgain)) {
                     isSubmitting = true
                     Task {
                         await store.retryKeychainAccess(for: request)
@@ -57,17 +57,17 @@ struct AuthenticationRequiredView: View {
                     }
                 }
                 .disabled(isSubmitting)
-                .help(appLanguage.localized(.ui.show.theMacosKeychainAccessPromptAgain))
+                .help(appLanguage.localized(.ui.authentication.showMacosKeychainAccessPromptAgain))
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.cancelAuthentication(for: request)
                 }
                 .keyboardShortcut(.cancelAction)
-                Button(appLanguage.localized(.ui.use.thisSessionOnly)) {
+                Button(appLanguage.localized(.ui.authentication.useSessionOnly)) {
                     submit(saveInKeychain: false)
                 }
                 .disabled(!canSubmit)
-                Button(appLanguage.localized(.ui.save.inKeychainAndUse)) {
+                Button(appLanguage.localized(.ui.authentication.saveKeychainUse)) {
                     submit(saveInKeychain: true)
                 }
                 .buttonStyle(.borderedProminent)
@@ -92,13 +92,13 @@ struct AuthenticationRequiredView: View {
     private var reasonText: String {
         switch request.action {
         case .refreshHistory:
-            appLanguage.localized(.ui.authentication.isRequiredToLoadTheLatestSe)
+            appLanguage.localized(.ui.authentication.requiredLoadLatestServerHistory)
         case .update:
-            appLanguage.localized(.ui.authentication.isRequiredToDownloadTheLates)
+            appLanguage.localized(.ui.authentication.requiredDownloadLatestServerChanges)
         case .commit:
-            appLanguage.localized(.ui.authentication.isRequiredToCommitTheSelecte)
+            appLanguage.localized(.ui.authentication.requiredCommitSelectedChanges)
         case .retryManually:
-            appLanguage.localized(.ui.authentication.isRequiredToLoadTheLatestSe)
+            appLanguage.localized(.ui.authentication.requiredLoadLatestServerHistory)
         }
     }
 
@@ -126,12 +126,12 @@ private struct ServerCertificateTrustView: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
                 Label(
-                    appLanguage.localized(.ui.server.certificateProblem),
+                    appLanguage.localized(.ui.certificate.serverCertificateProblem),
                     systemImage: "exclamationmark.shield.fill"
                 )
                 .font(.title2.bold())
                 .foregroundStyle(.orange)
-                Text(appLanguage.localized(.ui.server.certificateProblemDetected))
+                Text(appLanguage.localized(.ui.certificate.svnRejectedServerCertificateReviewDetectedProblemBeforeDeciding))
                     .foregroundStyle(.secondary)
             }
 
@@ -154,13 +154,13 @@ private struct ServerCertificateTrustView: View {
             Divider()
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.localizationDo.notAllowCertificateException), role: .cancel) {
+                Button(appLanguage.localized(.ui.certificate.doNotAllow), role: .cancel) {
                     store.cancelAuthentication(for: request)
                 }
                 .keyboardShortcut(.cancelAction)
                 if trust.canAllow {
                     Button(
-                        appLanguage.localized(.ui.allow.certificateFailureForProject),
+                        appLanguage.localized(.ui.certificate.allowProject),
                         role: .destructive
                     ) {
                         store.allowServerCertificateFailure(for: request)
@@ -204,8 +204,8 @@ struct AddRepositoryView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(appLanguage.localized(.ui.add.svnRepository)).font(.title2.bold())
-                    Text(appLanguage.localized(.ui.check.outARepositoryUrlAndAddItToYourLo))
+                    Text(appLanguage.localized(.ui.repository.addSvnRepository)).font(.title2.bold())
+                    Text(appLanguage.localized(.ui.checkout.checkOutRepositoryUrlAddItLocalWorkingFolders))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -222,20 +222,20 @@ struct AddRepositoryView: View {
                         }
                     }
                 } label: {
-                    Label(appLanguage.localized(.ui.language.label), systemImage: "globe")
+                    Label(appLanguage.localized(.ui.settings.language), systemImage: "globe")
                 }
                 .fixedSize()
-                .help(appLanguage.localized(.ui.choose.theLanguageUsedInTheAppInterface))
+                .help(appLanguage.localized(.ui.settings.chooseLanguageUsedAppInterface))
             }
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
-                    Text(appLanguage.localized(.ui.repository.url))
+                    Text(appLanguage.localized(.ui.browser.repositoryUrl))
                     HStack {
                         TextField("https://server/svn/project/trunk", text: $repositoryURL)
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
-                        Button(appLanguage.localized(.ui.browse.repository)) {
+                        Button(appLanguage.localized(.ui.browser.browseRepository)) {
                             store.recoveryState.repositoryBrowseSelectedURL = nil
                             isShowingRepositoryBrowser = true
                         }
@@ -243,7 +243,7 @@ struct AddRepositoryView: View {
                     }
                 }
                 GridRow {
-                    Text(appLanguage.localized(.ui.local.folder))
+                    Text(appLanguage.localized(.ui.repository.localFolder))
                     HStack {
                         TextField(
                             "/Users/name/Documents/project",
@@ -254,8 +254,8 @@ struct AddRepositoryView: View {
                         )
                             .textFieldStyle(.roundedBorder)
                             .disabled(true)
-                        Button(appLanguage.localized(.ui.choose.labelAction)) { chooseDestination() }
-                            .help(appLanguage.localized(.ui.choose.theLocalFolderForTheCheckout))
+                        Button(appLanguage.localized(.ui.repository.localFolderPickerAction)) { chooseDestination() }
+                            .help(appLanguage.localized(.ui.checkout.localFolderPickerHelp))
                     }
                 }
             }
@@ -263,17 +263,17 @@ struct AddRepositoryView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $password,
-                usernamePlaceholder: appLanguage.localized(.ui.svn.usernameOptional),
-                passwordPlaceholder: appLanguage.localized(.ui.save.inMacosKeychainOptional)
+                usernamePlaceholder: appLanguage.localized(.ui.authentication.svnUsernameOptional),
+                passwordPlaceholder: appLanguage.localized(.ui.authentication.saveMacosKeychainOptional)
             )
 
-            Text(appLanguage.localized(.ui.authentication.usesTheExistingSvnCredential))
+            Text(appLanguage.localized(.ui.authentication.usesExistingSvnCredentialCacheMacosKeychain))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             UntrustedCertificateToggle(
                 isAllowed: $allowsUntrustedServerCertificate,
-                help: appLanguage.localized(.ui.use.onlyForServersWithSelfSignedCertificat)
+                help: appLanguage.localized(.ui.certificate.useOnlyServersSelfSignedCertificatesCertificateNameMismatches)
             )
 
             VStack(alignment: .leading, spacing: 8) {
@@ -282,7 +282,7 @@ struct AddRepositoryView: View {
                         ProgressView().controlSize(.small)
                     }
                     Text(store.isCheckingOut
-                        ? appLanguage.localized(.ui.checking.out)
+                        ? appLanguage.localized(.ui.checkout.checkingOut)
                         : appLanguage.localized(.ui.checkout.progressLog))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -296,7 +296,7 @@ struct AddRepositoryView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(store.checkoutLog.isEmpty
-                                ? appLanguage.localized(.ui.files.beingDownloadedWillAppearHereAfterCh)
+                                ? appLanguage.localized(.ui.checkout.filesDownloadedAppearHereAfterCheckoutStarts)
                                 : store.checkoutLog)
                                 .foregroundStyle(store.checkoutLog.isEmpty ? .secondary : .primary)
 
@@ -329,22 +329,22 @@ struct AddRepositoryView: View {
 
             Divider()
             HStack {
-                Button(appLanguage.localized(.ui.register.existingLocalFolder)) {
+                Button(appLanguage.localized(.ui.repository.registerExistingLocalFolder)) {
                     dismiss()
                     store.showFolderPicker()
                 }
                 .disabled(store.isCheckingOut)
-                .help(appLanguage.localized(.ui.register.anExistingSvnWorkingFolderInTheA))
+                .help(appLanguage.localized(.ui.repository.registerExistingSvnWorkingFolderApp))
                 Spacer()
-                Button(appLanguage.localized(.ui.browse.sampleProject)) {
+                Button(appLanguage.localized(.ui.demo.browseSampleProject)) {
                     dismiss()
                     onBrowseDemo()
                 }
                 .disabled(store.isCheckingOut)
-                .help(appLanguage.localized(.ui.explore.theMainFeaturesWithSampleDataAndN))
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) { requestCancellation() }
+                .help(appLanguage.localized(.ui.demo.exploreMainFeaturesSampleDataNoServerConnectionAccount))
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) { requestCancellation() }
                     .keyboardShortcut(.cancelAction)
-                    .help(appLanguage.localized(.ui.cancel.addingTheRepositoryAndCloseThisWind))
+                    .help(appLanguage.localized(.ui.repository.cancelAddingRepositoryCloseWindow))
                 Button {
                     Task {
                         if await store.startCheckout(
@@ -359,15 +359,15 @@ struct AddRepositoryView: View {
                     }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized(.ui.check.outAndAdd),
-                        inProgressTitle: appLanguage.localized(.ui.checking.out),
+                        title: appLanguage.localized(.ui.checkout.checkOutAdd),
+                        inProgressTitle: appLanguage.localized(.ui.checkout.checkingOut),
                         isInProgress: store.isCheckingOut
                     )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || destinationURL == nil || store.isWorking)
-                .help(appLanguage.localized(.ui.check.outTheSvnRepositoryIntoTheLocalFold))
+                .help(appLanguage.localized(.ui.checkout.checkOutSvnRepositoryLocalFolderAddItApp))
             }
         }
         .padding(24)
@@ -376,15 +376,15 @@ struct AddRepositoryView: View {
         // 닫는 경로를 취소 확인 한곳으로 모읍니다.
         .interactiveDismissDisabled(store.isCheckingOut)
         .alert(
-            appLanguage.localized(.ui.stop.theCheckoutInProgress),
+            appLanguage.localized(.ui.checkout.stopCheckoutProgress),
             isPresented: $isConfirmingCheckoutCancellation
         ) {
-            Button(appLanguage.localized(.ui.stop.checkout), role: .destructive) {
+            Button(appLanguage.localized(.ui.checkout.stopCheckout), role: .destructive) {
                 store.cancelCheckout()
             }
-            Button(appLanguage.localized(.ui.keep.downloading), role: .cancel) {}
+            Button(appLanguage.localized(.ui.checkout.keepDownloading), role: .cancel) {}
         } message: {
-            Text(appLanguage.localized(.ui.the.runningSvnCheckoutWillBeStoppedAlready))
+            Text(appLanguage.localized(.ui.checkout.runningSvnCheckoutStoppedAlreadyDownloadedFilesStayLocalFolder))
         }
         .sheet(item: $store.canceledCheckoutRecoveryRequest) { request in
             CanceledCheckoutRecoveryView(request: request)
@@ -423,8 +423,8 @@ struct AddRepositoryView: View {
 
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = appLanguage.localized(.ui.choose.localCheckoutFolder)
-        panel.prompt = appLanguage.localized(.ui.choose.labelPrimary)
+        panel.title = appLanguage.localized(.ui.checkout.chooseLocalCheckoutFolder)
+        panel.prompt = appLanguage.localized(.ui.repository.filePanelPrompt)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
@@ -459,13 +459,13 @@ struct CredentialsView: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(appLanguage.localized(.ui.folder.settings)).font(.title2.bold())
+                Text(appLanguage.localized(.ui.settings.folderSettings)).font(.title2.bold())
                 Text(project.name).foregroundStyle(.secondary)
             }
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
-                    Text(appLanguage.localized(.ui.local.folder))
+                    Text(appLanguage.localized(.ui.repository.localFolder))
                     HStack {
                         TextField(
                             "",
@@ -476,13 +476,13 @@ struct CredentialsView: View {
                         )
                             .textFieldStyle(.roundedBorder)
                             .disabled(true)
-                        Button(appLanguage.localized(.ui.change.label)) { chooseWorkingFolder() }
+                        Button(appLanguage.localized(.ui.repository.change)) { chooseWorkingFolder() }
                             .disabled(store.isRelocatingProject)
-                            .help(appLanguage.localized(.ui.pick.theNewLocationOfThisSvnWorkingFolder))
+                            .help(appLanguage.localized(.ui.repository.pickNewLocationSvnWorkingFolder))
                     }
                 }
                 GridRow {
-                    Text(appLanguage.localized(.ui.current.repositoryUrl))
+                    Text(appLanguage.localized(.ui.repository.currentRepositoryUrl))
                     HStack {
                         Text(store.recoveryState.repositoryURL ?? "")
                             .textSelection(.enabled)
@@ -490,7 +490,7 @@ struct CredentialsView: View {
                             .truncationMode(.middle)
                             .help(store.recoveryState.repositoryURL ?? "")
                         Spacer(minLength: 0)
-                        Button(appLanguage.localized(.ui.change.repositoryLocation)) {
+                        Button(appLanguage.localized(.ui.repository.changeRepositoryLocation)) {
                             Task { await store.requestRepositoryRelocation() }
                         }
                         .disabled(store.isWorking)
@@ -500,7 +500,7 @@ struct CredentialsView: View {
 
             if pendingPath != project.path {
                 Label(
-                    appLanguage.localized(.ui.the.newFolderIsAppliedWhenYouSave),
+                    appLanguage.localized(.ui.repository.newFolderAppliedWhenSave),
                     systemImage: "arrow.triangle.swap"
                 )
                 .font(.caption)
@@ -512,16 +512,16 @@ struct CredentialsView: View {
             CredentialFieldsGrid(
                 username: $username,
                 password: $newPassword,
-                usernamePlaceholder: appLanguage.localized(.ui.svn.username),
+                usernamePlaceholder: appLanguage.localized(.ui.authentication.svnUsername),
                 passwordPlaceholder: hasSavedPassword
-                    ? appLanguage.localized(.ui.leave.blankToKeepTheCurrentPassword)
-                    : appLanguage.localized(.ui.enter.password)
+                    ? appLanguage.localized(.ui.authentication.leaveBlankKeepCurrentPassword)
+                    : appLanguage.localized(.ui.authentication.enterPassword)
             )
 
             Label(
                 hasSavedPassword
-                    ? appLanguage.localized(.ui.a.passwordForThisFolderIsStoredInMacosKe)
-                    : appLanguage.localized(.ui.no.passwordIsStored),
+                    ? appLanguage.localized(.ui.authentication.passwordFolderStoredMacosKeychain)
+                    : appLanguage.localized(.ui.authentication.noPasswordStored),
                 systemImage: hasSavedPassword ? "checkmark.shield" : "shield"
             )
             .font(.caption)
@@ -529,7 +529,7 @@ struct CredentialsView: View {
 
             UntrustedCertificateToggle(
                 isAllowed: $allowsUntrustedServerCertificate,
-                help: appLanguage.localized(.ui.allow.selfSignedAndCertificateNameMismatch)
+                help: appLanguage.localized(.ui.certificate.allowSelfSignedCertificateNameMismatchErrorsRepository)
             )
 
             Divider()
@@ -538,41 +538,41 @@ struct CredentialsView: View {
                     store.requestSelectedWorkingCopyCleanup()
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized(.ui.working.copyCleanup),
-                        inProgressTitle: appLanguage.localized(.ui.cleaning.workingCopy),
+                        title: appLanguage.localized(.ui.cleanup.workingCopyCleanup),
+                        inProgressTitle: appLanguage.localized(.ui.cleanup.cleaningWorkingCopy),
                         systemImage: "wrench.and.screwdriver",
                         isInProgress: store.isCleaningSelectedWorkingCopy
                     )
                 }
                 .disabled(isSaving || store.isCleaningSelectedWorkingCopy)
-                .help(appLanguage.localized(.ui.cleanup.interruptedWorkingCopyManually))
+                .help(appLanguage.localized(.ui.cleanup.manuallyCleanUpInterruptedLockedSvnWorkingCopy))
                 if hasSavedPassword {
-                    Button(appLanguage.localized(.ui.delete.savedPassword), role: .destructive) {
+                    Button(appLanguage.localized(.ui.authentication.deleteSavedPassword), role: .destructive) {
                         if store.deleteSavedPassword(for: project.id) {
                             hasSavedPassword = false
                             newPassword = ""
                         }
                     }
-                    .help(appLanguage.localized(.ui.delete.theSvnPasswordStoredInKeychainForT))
+                    .help(appLanguage.localized(.ui.authentication.deleteSvnPasswordStoredKeychainLocalWorkingFolder))
                 }
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) { dismiss() }
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
-                    .help(appLanguage.localized(.ui.close.withoutSavingCredentialChanges))
+                    .help(appLanguage.localized(.ui.authentication.closeWithoutSavingCredentialChanges))
                 Button(action: save) {
                     ActionProgressLabel(
-                        title: appLanguage.localized(.ui.save.label),
+                        title: appLanguage.localized(.ui.common.save),
                         inProgressTitle: store.isVerifyingCredentials
-                            ? appLanguage.localized(.ui.checking.theAccount)
-                            : appLanguage.localized(.ui.saving.label),
+                            ? appLanguage.localized(.ui.authentication.checkingAccount)
+                            : appLanguage.localized(.ui.authentication.saving),
                         isInProgress: isSaving
                     )
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(isSaving)
-                .help(appLanguage.localized(.ui.save.theWorkingFolderLocationSvnUsernameAn))
+                .help(appLanguage.localized(.ui.authentication.saveWorkingFolderLocationSvnUsernameNewPasswordFolder))
             }
         }
         .padding(24)
@@ -592,14 +592,14 @@ struct CredentialsView: View {
                 .environment(store)
         }
         .alert(
-            appLanguage.localized(.ui.the.svnAccountOrPasswordIsNotValid),
+            appLanguage.localized(.ui.authentication.svnAccountPasswordNotValid),
             isPresented: .isPresenting($credentialFailureMessage),
             presenting: credentialFailureMessage
         ) { _ in
-            Button(appLanguage.localized(.ui.enter.validCredentials)) {
+            Button(appLanguage.localized(.ui.authentication.enterValidCredentials)) {
                 credentialFailureMessage = nil
             }
-            Button(appLanguage.localized(.ui.discard.changesAndClose), role: .cancel) {
+            Button(appLanguage.localized(.ui.authentication.discardChangesClose), role: .cancel) {
                 credentialFailureMessage = nil
                 discardChanges()
             }
@@ -619,8 +619,8 @@ struct CredentialsView: View {
 
     private func chooseWorkingFolder() {
         let panel = NSOpenPanel()
-        panel.title = appLanguage.localized(.ui.choose.svnLocalWorkingFolders)
-        panel.prompt = appLanguage.localized(.ui.choose.labelPrimary)
+        panel.title = appLanguage.localized(.ui.repository.chooseSvnLocalWorkingFolders)
+        panel.prompt = appLanguage.localized(.ui.repository.filePanelPrompt)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
@@ -688,14 +688,14 @@ struct RepositoryRelocationView: View {
         @Bindable var store = store
         VStack(alignment: .leading, spacing: 18) {
             Label(
-                appLanguage.localized(.ui.change.repositoryLocation),
+                appLanguage.localized(.ui.repository.changeRepositoryLocation),
                 systemImage: "arrow.triangle.swap"
             )
             .font(.title2.bold())
 
             if let connectionErrorMessage = request.connectionErrorMessage {
                 Label(
-                    appLanguage.localized(.ui.repository.mayHaveMoved),
+                    appLanguage.localized(.ui.repository.mayMovedRelocateNewUrlRestoreRemoteOperations),
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .foregroundStyle(.orange)
@@ -704,12 +704,12 @@ struct RepositoryRelocationView: View {
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
-                    Text(appLanguage.localized(.ui.current.repositoryUrl))
+                    Text(appLanguage.localized(.ui.repository.currentRepositoryUrl))
                     Text(request.currentURL)
                         .textSelection(.enabled)
                 }
                 GridRow {
-                    Text(appLanguage.localized(.ui.new.repositoryUrl))
+                    Text(appLanguage.localized(.ui.repository.newRepositoryUrl))
                     TextField("https://server/svn/project/trunk", text: $newRepositoryURL)
                         .textFieldStyle(.roundedBorder)
                         .frame(minWidth: AppLayout.repositoryURLFieldMinimumWidth)
@@ -717,7 +717,7 @@ struct RepositoryRelocationView: View {
             }
 
             Label(
-                appLanguage.localized(.ui.local.changesArePreserved),
+                appLanguage.localized(.ui.repository.relocationPreservesAllUncommittedLocalChanges),
                 systemImage: "checkmark.shield"
             )
             .font(.callout)
@@ -729,12 +729,12 @@ struct RepositoryRelocationView: View {
             Divider()
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.recoveryState.repositoryRelocationRequest = nil
                     store.recoveryState.repositoryRelocationFailureMessage = nil
                 }
                 .disabled(store.isWorking)
-                Button(appLanguage.localized(.ui.review.repositoryRelocation)) {
+                Button(appLanguage.localized(.ui.repository.reviewRelocation)) {
                     isConfirming = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -745,16 +745,16 @@ struct RepositoryRelocationView: View {
         .frame(width: AppLayout.credentialsSheetWidth)
         .interactiveDismissDisabled(store.isWorking)
         .alert(
-            appLanguage.localized(.ui.confirm.repositoryRelocation),
+            appLanguage.localized(.ui.repository.relocationConfirmationTitle),
             isPresented: $isConfirming
         ) {
-            Button(appLanguage.localized(.ui.relocate.repository)) {
+            Button(appLanguage.localized(.ui.repository.relocateAction)) {
                 Task { _ = await store.relocateSelectedRepository(to: newRepositoryURL) }
             }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {}
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {}
         } message: {
             Text(appLanguage.localized(
-                .ui.repository.relocationSummary,
+                .ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges,
                 request.currentURL,
                 newRepositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
             ))
@@ -784,14 +784,14 @@ struct VersionedFileActionView: View {
 
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
                 GridRow {
-                    Text(appLanguage.localized(.ui.new.fileName))
+                    Text(appLanguage.localized(.ui.repository.newFileName))
                     TextField("", text: $destinationName)
                         .textFieldStyle(.roundedBorder)
                 }
             }
 
             Label(
-                appLanguage.localized(.ui.file.actionCommitRequired, destinationName),
+                appLanguage.localized(.ui.repository.commitChangeApplyItServer, destinationName),
                 systemImage: "info.circle"
             )
             .font(.callout)
@@ -803,7 +803,7 @@ struct VersionedFileActionView: View {
             Divider()
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.recoveryState.versionedFileActionRequest = nil
                     store.recoveryState.versionedFileActionFailureMessage = nil
                 }
@@ -828,8 +828,8 @@ struct VersionedFileActionView: View {
     private var title: String {
         appLanguage.localized(
             request.kind == .move
-                ? .ui.rename.withHistory
-                : .ui.copy.withHistory
+                ? .ui.history.renameHistory
+                : .ui.history.copyHistory
         )
     }
 }
@@ -845,13 +845,13 @@ private struct CredentialFieldsGrid: View {
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 14) {
             GridRow {
-                Text(appLanguage.localized(.ui.username.label))
+                Text(appLanguage.localized(.ui.authentication.username))
                 TextField(usernamePlaceholder, text: $username)
                     .textFieldStyle(.roundedBorder)
                     .frame(minWidth: AppLayout.credentialFieldMinimumWidth)
             }
             GridRow {
-                Text(appLanguage.localized(.ui.password.label))
+                Text(appLanguage.localized(.ui.authentication.password))
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         // macOS의 보안 입력 필드는 입력기를 막기 때문에 가려진 상태로는
@@ -872,14 +872,14 @@ private struct CredentialFieldsGrid: View {
                         }
                         .buttonStyle(.bordered)
                         .help(isPasswordRevealed
-                            ? appLanguage.localized(.ui.hide.password)
-                            : appLanguage.localized(.ui.show.password))
+                            ? appLanguage.localized(.ui.authentication.hidePassword)
+                            : appLanguage.localized(.ui.authentication.showPassword))
                         .accessibilityLabel(isPasswordRevealed
-                            ? appLanguage.localized(.ui.hide.password)
-                            : appLanguage.localized(.ui.show.password))
+                            ? appLanguage.localized(.ui.authentication.hidePassword)
+                            : appLanguage.localized(.ui.authentication.showPassword))
                     }
                     if !isPasswordRevealed {
-                        Text(appLanguage.localized(.ui.secure.entryBlocksTheKoreanInputMethodReve))
+                        Text(appLanguage.localized(.ui.authentication.secureEntryBlocksKoreanInputMethodRevealPasswordEyeButton))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -897,17 +897,17 @@ private struct UntrustedCertificateToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(
-                appLanguage.localized(.ui.allow.untrustedSslCertificates),
+                appLanguage.localized(.ui.certificate.allowUntrustedSslCertificates),
                 isOn: $isAllowed
             )
             .toggleStyle(.checkbox)
             .help(help)
 
-            Text(appLanguage.localized(.ui.use.thisWhenTheTargetServerSCertificateIs))
+            Text(appLanguage.localized(.ui.certificate.useWhenTargetServerCertificateInvalidButTrustServer))
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Text(appLanguage.localized(.ui.expired.andNotYetValidRequireSeparateConsent))
+            Text(appLanguage.localized(.ui.certificate.expiredNotYetValidCertificatesRequireSeparateConsentAfterSvn))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

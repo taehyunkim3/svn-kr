@@ -5,22 +5,22 @@ enum AppContactSupport {
     static let mailURL = URL(string: "mailto:\(email)")!
 
     static func menuTitle(for language: AppLanguage) -> String {
-        language.localized(.ui.questions.support)
+        language.localized(.ui.about.questionsSupport)
     }
 
     static func alertTitle(for language: AppLanguage) -> String {
-        language.localized(.ui.need.help)
+        language.localized(.ui.about.needHelp)
     }
 
     static func message(for language: AppLanguage) -> String {
-        language.localized(.ui.please.sendQuestionsTo, email)
+        language.localized(.ui.about.pleaseSendQuestions, email)
     }
 
     static func mailButtonTitle(for language: AppLanguage) -> String {
-        language.localized(.ui.send.email)
+        language.localized(.ui.about.sendEmail)
     }
 
     static func closeButtonTitle(for language: AppLanguage) -> String {
-        language.localized(.ui.close.label)
+        language.localized(.ui.common.close)
     }
 }

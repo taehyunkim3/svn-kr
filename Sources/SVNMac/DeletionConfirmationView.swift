@@ -8,16 +8,16 @@ struct DeletionConfirmationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.localized(.ui.mark.forRepositoryDeletion),
+                appLanguage.localized(.ui.commit.markRepositoryDeletion),
                 systemImage: "trash"
             )
             .font(.title2.bold())
 
-            Text(appLanguage.localized(.ui.this.onlyMarksTheItemsForDeletionTheyAre))
+            Text(appLanguage.localized(.ui.commit.onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted))
 
             if request.containsDirectory {
                 Label(
-                    appLanguage.localized(.ui.versioned.itemsBelowTheSelectedDirectoryWil),
+                    appLanguage.localized(.ui.commit.versionedItemsBelowSelectedDirectoryAlsoMarkedDeletion),
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .foregroundStyle(.orange)
@@ -32,10 +32,10 @@ struct DeletionConfirmationView: View {
             }
 
             HStack {
-                Text(appLanguage.localized(.ui.item.s, request.entries.count))
+                Text(appLanguage.localized(.ui.commit.item, request.entries.count))
                 .foregroundStyle(.secondary)
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.cancelDeletion()
                 }
                 // 저장소 삭제 예약은 Return으로 확정하지 않는다. Escape는 취소 역할이 맡는다.
@@ -44,7 +44,7 @@ struct DeletionConfirmationView: View {
                     Task { await store.confirmDeletion(request) }
                 } label: {
                     ActionProgressLabel(
-                        title: appLanguage.localized(.ui.mark.forDeletion),
+                        title: appLanguage.localized(.ui.commit.markDeletion),
                         isInProgress: store.isDeletingSelectedProject
                     )
                 }

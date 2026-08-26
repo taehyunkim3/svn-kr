@@ -6,32 +6,16 @@ private struct StringCatalog: Decodable {
     let strings: [String: CatalogEntry]
 }
 
-private struct CatalogEntry: Decodable {
-    let localizations: [String: CatalogLocalization]?
-}
-
-private struct CatalogLocalization: Decodable {
-    let stringUnit: CatalogStringUnit?
-}
-
-private struct CatalogStringUnit: Decodable {
-    let value: String
-}
+private struct CatalogEntry: Decodable {}
 
 private struct KeyDefinition {
     let rawValue: String
     let topLevelName: String
-    let groupName: String?
-    let baseMemberName: String
-    let englishValue: String
-    var memberName: String
+    let groupName: String
+    let memberName: String
 
     var expression: String {
-        if let groupName {
-            ".\(topLevelName).\(groupName).\(memberName)"
-        } else {
-            ".\(topLevelName).\(memberName)"
-        }
+        ".\(topLevelName).\(groupName).\(memberName)"
     }
 }
 
@@ -62,11 +46,10 @@ mappingURL = CommandLine.arguments.count == 4
     : nil
 
 private let catalog = try JSONDecoder().decode(StringCatalog.self, from: Data(contentsOf: catalogURL))
-private var definitions = try catalog.strings.map { key, entry in
-    try makeDefinition(key: key, entry: entry)
+private let definitions = try catalog.strings.keys.map { key in
+    try makeDefinition(key: key)
 }.sorted { $0.rawValue < $1.rawValue }
 
-resolveMemberNameCollisions(in: &definitions)
 try validateUniqueExpressions(definitions)
 
 let source = renderSource(definitions)
@@ -78,120 +61,34 @@ if let mappingURL {
     try data.write(to: mappingURL, options: .atomic)
 }
 
-private func makeDefinition(key: String, entry: CatalogEntry) throws -> KeyDefinition {
-    var components = key.split(separator: ".").map(String.init)
-    if let last = components.last,
-       last.count == 8,
-       last.allSatisfy({ $0.isHexDigit }) {
-        components.removeLast()
-    }
-    guard let topLevel = components.first else {
+private func makeDefinition(key: String) throws -> KeyDefinition {
+    let components = key.split(separator: ".").map(String.init)
+    guard components.count == 3 else {
         throw GenerationError.invalidKey(key)
     }
-
-    let topLevelName = identifier(from: [topLevel])
-    let remaining = Array(components.dropFirst())
-    let groupName: String?
-    let memberComponents: [String]
-    if topLevel == "ui", let first = remaining.first {
-        groupName = identifier(from: [first])
-        memberComponents = Array(remaining.dropFirst())
-    } else {
-        groupName = nil
-        memberComponents = remaining
-    }
-    let baseMemberName = memberComponents.isEmpty ? "label" : identifier(from: memberComponents)
-    let englishValue = entry.localizations?["en"]?.stringUnit?.value ?? ""
+    let identifiers = try components.map { try identifier(from: $0, key: key) }
     return KeyDefinition(
         rawValue: key,
-        topLevelName: topLevelName,
-        groupName: groupName,
-        baseMemberName: baseMemberName,
-        englishValue: englishValue,
-        memberName: baseMemberName
+        topLevelName: identifiers[0],
+        groupName: identifiers[1],
+        memberName: identifiers[2]
     )
 }
 
-private func resolveMemberNameCollisions(in definitions: inout [KeyDefinition]) {
-    let groupedIndices = Dictionary(grouping: definitions.indices) { index in
-        let definition = definitions[index]
-        return [
-            definition.topLevelName,
-            definition.groupName ?? "",
-            definition.baseMemberName,
-        ].joined(separator: "\u{0}")
+private func identifier(from component: String, key: String) throws -> String {
+    guard let first = component.first,
+          first.isLetter || first == "_",
+          component.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }),
+          !swiftKeywords.contains(component) else {
+        throw GenerationError.invalidKey(key)
     }
-
-    for indices in groupedIndices.values where indices.count > 1 {
-        let sortedIndices = indices.sorted { definitions[$0].rawValue < definitions[$1].rawValue }
-        let englishValues = sortedIndices.map { definitions[$0].englishValue }
-        var usedNames: Set<String> = []
-        for (offset, index) in sortedIndices.enumerated() {
-            let suffix = collisionSuffix(
-                for: definitions[index].englishValue,
-                comparedWith: englishValues,
-                fallbackIndex: offset
-            )
-            var memberName = definitions[index].baseMemberName + suffix
-            var duplicateIndex = 2
-            while usedNames.contains(memberName) {
-                memberName = definitions[index].baseMemberName + suffix + String(duplicateIndex)
-                duplicateIndex += 1
-            }
-            definitions[index].memberName = memberName
-            usedNames.insert(memberName)
-        }
-    }
+    return component
 }
 
-private func collisionSuffix(
-    for value: String,
-    comparedWith values: [String],
-    fallbackIndex: Int
-) -> String {
-    if value.hasSuffix("?") {
-        return "Question"
-    }
-    if value.hasSuffix("…") || value.hasSuffix("...") {
-        return "Action"
-    }
-    if value.contains("%") {
-        return "Formatted"
-    }
-
-    let words = identifierWords(in: value)
-    let otherWords = Set(values.filter { $0 != value }.flatMap(identifierWords))
-    let uniqueWords = words.filter { !otherWords.contains($0) }
-    if !uniqueWords.isEmpty {
-        return upperCamelCase(Array(uniqueWords.prefix(4)))
-    }
-    return fallbackIndex == 0 ? "Primary" : "Secondary"
-}
-
-private func identifierWords(in value: String) -> [String] {
-    value.lowercased()
-        .split { !$0.isLetter && !$0.isNumber }
-        .map(String.init)
-        .filter { !["a", "an", "and", "are", "is", "the", "to", "your"].contains($0) }
-}
-
-private func identifier(from components: [String]) -> String {
-    let words = components.flatMap { component in
-        component.split { !$0.isLetter && !$0.isNumber }.map(String.init)
-    }
-    guard let first = words.first else { return "label" }
-    let value = first.lowercased() + upperCamelCase(Array(words.dropFirst()))
-    if swiftKeywords.contains(value) || value.first?.isNumber == true {
-        return "localization" + upperCamelCase([value])
-    }
-    return value
-}
-
-private func upperCamelCase(_ words: [String]) -> String {
-    words.map { word in
-        guard let first = word.first else { return "" }
-        return first.uppercased() + word.dropFirst().lowercased()
-    }.joined()
+private func upperCamelCase(_ identifier: String) -> String {
+    if identifier == "ui" { return "UI" }
+    guard let first = identifier.first else { return "" }
+    return first.uppercased() + identifier.dropFirst()
 }
 
 private func validateUniqueExpressions(_ definitions: [KeyDefinition]) throws {
@@ -215,41 +112,35 @@ private func renderSource(_ definitions: [KeyDefinition]) -> String {
     ]
 
     for topLevel in topLevels.keys.sorted() {
-        lines.append("    static let \(topLevel) = Localization\(upperCamelCase([topLevel]))Keys()")
+        lines.append("    static let \(topLevel) = Localization\(upperCamelCase(topLevel))Keys()")
     }
     lines.append("")
-    lines.append("    static let allCases: [LocalizationKey] = [")
+    lines.append("    static let allCases: [LocalizationKey] = \"\"\"")
     for definition in definitions {
-        lines.append("        \(definition.expression),")
+        lines.append("        \(definition.rawValue)")
     }
-    lines.append("    ]")
+    lines.append("        \"\"\"")
+    lines.append("        .split(separator: \"\\n\")")
+    lines.append("        .map { LocalizationKey(String($0)) }")
     lines.append("}")
 
     for topLevel in topLevels.keys.sorted() {
         let topLevelDefinitions = topLevels[topLevel, default: []]
         lines.append("")
-        lines.append("struct Localization\(upperCamelCase([topLevel]))Keys {")
-        if topLevel == "ui" {
-            let groups = Dictionary(grouping: topLevelDefinitions) { $0.groupName ?? "label" }
-            for group in groups.keys.sorted() {
-                lines.append(
-                    "    let \(group) = LocalizationUI\(upperCamelCase([group]))Keys()"
-                )
-            }
-        } else {
-            for definition in topLevelDefinitions.sorted(by: { $0.memberName < $1.memberName }) {
-                lines.append(
-                    "    let \(definition.memberName) = LocalizationKey(\"\(definition.rawValue)\")"
-                )
-            }
+        lines.append("struct Localization\(upperCamelCase(topLevel))Keys {")
+        let groups = Dictionary(grouping: topLevelDefinitions, by: \.groupName)
+        for group in groups.keys.sorted() {
+            lines.append(
+                "    let \(group) = Localization\(upperCamelCase(topLevel))\(upperCamelCase(group))Keys()"
+            )
         }
         lines.append("}")
 
-        guard topLevel == "ui" else { continue }
-        let groups = Dictionary(grouping: topLevelDefinitions) { $0.groupName ?? "label" }
         for group in groups.keys.sorted() {
             lines.append("")
-            lines.append("struct LocalizationUI\(upperCamelCase([group]))Keys {")
+            lines.append(
+                "struct Localization\(upperCamelCase(topLevel))\(upperCamelCase(group))Keys {"
+            )
             for definition in groups[group, default: []].sorted(by: { $0.memberName < $1.memberName }) {
                 lines.append(
                     "    let \(definition.memberName) = LocalizationKey(\"\(definition.rawValue)\")"

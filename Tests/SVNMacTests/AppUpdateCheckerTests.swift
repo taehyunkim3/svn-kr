@@ -40,8 +40,8 @@ struct AppUpdateCheckerTests {
         #expect(source.contains("checkAutomaticallyIfNeeded()"))
         #expect(source.contains("Window(appLanguage.localized(.ui.about.svnKr"))
         #expect(about.contains("CommandGroup(replacing: .appInfo)"))
-        #expect(about.contains(".ui.check.forUpdatesSecondary"))
-        #expect(about.contains(".ui.view.inAppStore"))
+        #expect(about.contains(".ui.update.checkNow"))
+        #expect(about.contains(".ui.update.viewAppStore"))
     }
 
     private func repositoryRoot() -> URL {

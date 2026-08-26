@@ -13,14 +13,14 @@ enum TemporaryFileCleanupValidationFailure: Hashable {
 
     var localizationKey: LocalizationKey {
         switch self {
-        case .unsafePath: .ui.cleanup.reasonUnsafePath
-        case .missing: .ui.cleanup.reasonFileMissing
-        case .symbolicLink: .ui.cleanup.reasonSymbolicLink
-        case .notRegularFile: .ui.cleanup.reasonNotRegularFile
-        case .unreadable: .ui.cleanup.reasonUnreadable
-        case .invalidDSStoreSignature: .ui.cleanup.reasonInvalidDsStoreSignature
-        case .invalidAppleDoubleSignature: .ui.cleanup.reasonInvalidAppledoubleSignature
-        case .officeLockFileTooLarge: .ui.cleanup.reasonOfficeLockTooLarge
+        case .unsafePath: .ui.cleanup.pathOutsideWorkingCopySafetyBoundary
+        case .missing: .ui.cleanup.fileNotFoundAfterUpdate
+        case .symbolicLink: .ui.cleanup.symbolicLinksNeverCleanedAutomatically
+        case .notRegularFile: .ui.cleanup.candidateNotRegularFile
+        case .unreadable: .ui.cleanup.fileContentsCouldNotRead
+        case .invalidDSStoreSignature: .ui.cleanup.fileDoesNotDsStoreBud1Signature
+        case .invalidAppleDoubleSignature: .ui.cleanup.fileDoesNotAppledoubleMagicBytes
+        case .officeLockFileTooLarge: .ui.cleanup.officeLockFileExceedsByteSafetyLimit
         }
     }
 }

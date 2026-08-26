@@ -46,25 +46,25 @@ import Testing
 }
 
 @Test func stringCatalogHonorsExplicitAppLanguageAndFormatArguments() {
-    #expect(AppLanguage.korean.localized(.ui.close.label) == "닫기")
-    #expect(AppLanguage.english.localized(.ui.close.label) == "Close")
+    #expect(AppLanguage.korean.localized(.ui.common.close) == "닫기")
+    #expect(AppLanguage.english.localized(.ui.common.close) == "Close")
     #expect(
-        AppLanguage.korean.localized(.error.chooseMissingItems, "문서/누락.txt")
+        AppLanguage.korean.localized(.error.deletion.chooseMissingItems, "문서/누락.txt")
             == "먼저 로컬 누락 항목의 처리 방법을 선택하세요: 문서/누락.txt"
     )
     #expect(
-        AppLanguage.english.localized(.error.chooseMissingItems, "Docs/missing.txt")
+        AppLanguage.english.localized(.error.deletion.chooseMissingItems, "Docs/missing.txt")
             == "Choose how to handle locally missing items first: Docs/missing.txt"
     )
     #expect(
         AppLanguage.korean.localized(
-            .ui.remove.workingFolderFromAppConfirmation,
+            .ui.repository.removeApp,
             "Atlas Mobile"
         ) == "'Atlas Mobile' 등록을 해제할까요?"
     )
     #expect(
         AppLanguage.english.localized(
-            .ui.remove.workingFolderFromAppConfirmation,
+            .ui.repository.removeApp,
             "Atlas Mobile"
         ) == "Remove 'Atlas Mobile' from the app?"
     )
