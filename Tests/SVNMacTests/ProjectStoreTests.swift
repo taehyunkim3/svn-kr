@@ -3808,6 +3808,30 @@ import Testing
 }
 
 @MainActor
+@Test func partialGitIgnoreApplicationRefreshesAppliedAndPendingRules() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-gitignore-partial-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Data("/build/\n/cache/\n".utf8)
+        .write(to: directory.appendingPathComponent(".gitignore"))
+
+    let project = SVNProject(name: "프로젝트", path: directory.path)
+    let client = StubSVNClient(addIgnoreRuleFailureAtRequest: 2)
+    let store = makeStore(projects: [project], client: client)
+    await store.compareGitIgnore()
+    store.selectedGitIgnoreImportIDs = store.selectableGitIgnoreImportIDs
+
+    await store.applySelectedGitIgnoreRules()
+
+    #expect(await client.requestedAddedIgnoreRules().count == 1)
+    #expect(store.gitIgnoreImportItems.count == 2)
+    #expect(store.gitIgnoreImportItems.filter(\.isSelectable).count == 1)
+    #expect(store.selectedGitIgnoreImportIDs.count == 1)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
 @Test func deletionRequestWaitsForConfirmationAndSelectsOnlyVerifiedDeletedPaths() async throws {
     let project = SVNProject(name: "프로젝트", path: "/tmp/delete-flow")
     let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10", nodeKind: .file)
@@ -4188,6 +4212,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let resolveGate: AsyncTestGate?
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
+    let addIgnoreRuleFailureAtRequest: Int?
     let commitError: SVNError?
     private var commitErrors: [SVNError]
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
@@ -4282,6 +4307,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         resolveGate: AsyncTestGate? = nil,
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
         ignoreRules: [SVNIgnoreRule] = [],
+        addIgnoreRuleFailureAtRequest: Int? = nil,
         commitError: SVNError? = nil,
         commitErrors: [SVNError] = [],
         updateErrors: [KeychainStoreError] = [],
@@ -4356,6 +4382,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.updatePreviewGatesByRequest = updatePreviewGatesByRequest
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
+        self.addIgnoreRuleFailureAtRequest = addIgnoreRuleFailureAtRequest
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -4482,8 +4509,13 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func repositoryPathNormalizationRequestCount() -> Int { repositoryPathNormalizationRequests }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
-    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { ignoreRulesValue }
+    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] {
+        ignoreRulesValue + addedIgnoreRules
+    }
     func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {
+        if addedIgnoreRules.count + 1 == addIgnoreRuleFailureAtRequest {
+            throw TestError.credentialWriteFailed
+        }
         addedIgnoreRules.append(SVNIgnoreRule(directory: directory, pattern: pattern, propertyKind: propertyKind))
     }
     func requestedAddedIgnoreRules() -> [SVNIgnoreRule] { addedIgnoreRules }
