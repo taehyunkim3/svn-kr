@@ -134,14 +134,45 @@ enum SVNWorkingCopyRecovery {
             .lowercased()
     }
 
-    static func requireEmptyDestination(_ destination: URL, fileManager: FileManager = .default) throws {
+    /// 복구가 만든 대상 폴더를 어디까지 되돌릴 수 있는지 기록합니다.
+    enum DestinationPreparation: Sendable {
+        /// 앱이 폴더 자체를 만들었으므로 실패하면 폴더째 지울 수 있습니다.
+        case created
+        /// 비어 있던 기존 폴더를 썼으므로 실패하면 안에 만든 것만 지웁니다.
+        case adopted
+    }
+
+    static func prepareEmptyDestination(
+        _ destination: URL,
+        fileManager: FileManager = .default
+    ) throws -> DestinationPreparation {
         var isDirectory: ObjCBool = false
         if fileManager.fileExists(atPath: destination.path, isDirectory: &isDirectory) {
             guard isDirectory.boolValue else { throw SVNError.recoveryDestinationNotEmpty }
             let contents = try fileManager.contentsOfDirectory(atPath: destination.path)
             guard contents.isEmpty else { throw SVNError.recoveryDestinationNotEmpty }
-        } else {
-            try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+            return .adopted
+        }
+        try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+        return .created
+    }
+
+    /// 복구가 중간에 실패하면 체크아웃한 `.svn`과 복사한 파일이 남아 같은 폴더로 다시 시도할 수
+    /// 없습니다. 시작 시점에 비어 있던 것이 확인된 폴더이므로 안에 있는 것은 모두 앱이 만든
+    /// 것입니다. 되돌리기가 실패해도 원래 오류를 덮지 않도록 결과는 무시합니다.
+    static func rollbackDestination(
+        _ preparation: DestinationPreparation,
+        at destination: URL,
+        fileManager: FileManager = .default
+    ) {
+        switch preparation {
+        case .created:
+            try? fileManager.removeItem(at: destination)
+        case .adopted:
+            let contents = (try? fileManager.contentsOfDirectory(atPath: destination.path)) ?? []
+            for name in contents {
+                try? fileManager.removeItem(at: destination.appendingPathComponent(name))
+            }
         }
     }
 

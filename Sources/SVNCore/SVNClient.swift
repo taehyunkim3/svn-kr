@@ -670,43 +670,49 @@ public actor SVNClient {
         let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
         try SVNWorkingCopyRecovery.requireSeparateDestination(source: source, destination: destination)
-        try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
+        let preparation = try SVNWorkingCopyRecovery.prepareEmptyDestination(destination)
 
-        let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
-        let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
-        guard preview.blockingPaths.isEmpty else {
-            throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
-        }
-        let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
-        // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
-        // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
-        // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
-        _ = try await checkout(
-            repositoryURL: repositoryURL,
-            destinationPath: destination.path,
-            revision: sourceSnapshot.revision.minimum,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-        try await pinRecoveryBaseRevisions(
-            of: sourceSnapshot,
-            at: destination.path,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-        try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
+        do {
+            let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
+            let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
+            guard preview.blockingPaths.isEmpty else {
+                throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
+            }
+            let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
+            // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
+            // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
+            // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
+            _ = try await checkout(
+                repositoryURL: repositoryURL,
+                destinationPath: destination.path,
+                revision: sourceSnapshot.revision.minimum,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            try await pinRecoveryBaseRevisions(
+                of: sourceSnapshot,
+                at: destination.path,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
 
-        let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
-        guard !recoveredSnapshot.hasPathCollisions else {
-            throw SVNError.recoveryValidationFailed(paths: recoveredSnapshot.collisions.map(\.displayPath))
+            let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
+            guard !recoveredSnapshot.hasPathCollisions else {
+                throw SVNError.recoveryValidationFailed(paths: recoveredSnapshot.collisions.map(\.displayPath))
+            }
+            return SVNRecoveryResult(
+                destinationPath: destination.path,
+                snapshot: recoveredSnapshot,
+                migratedPaths: preview.mappings.map(\.destinationPath)
+            )
+        } catch {
+            // 부분 체크아웃이 남으면 같은 폴더로 다시 시도할 때 "비어 있어야 합니다"로만 막힙니다.
+            SVNWorkingCopyRecovery.rollbackDestination(preparation, at: destination)
+            throw error
         }
-        return SVNRecoveryResult(
-            destinationPath: destination.path,
-            snapshot: recoveredSnapshot,
-            migratedPaths: preview.mappings.map(\.destinationPath)
-        )
     }
 
     /// 혼합 리비전 작업 복사본은 경로마다 BASE가 다릅니다. 가장 낮은 리비전으로 체크아웃한
