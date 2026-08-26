@@ -28,8 +28,8 @@ import Testing
         encoding: .utf8
     )
 
-    #expect(historyStore.contains("destinationURL.startAccessingSecurityScopedResource()"))
-    #expect(historyStore.contains("destinationURL.stopAccessingSecurityScopedResource()"))
+    #expect(historyStore.contains("request.destinationURL.startAccessingSecurityScopedResource()"))
+    #expect(historyStore.contains("request.destinationURL.stopAccessingSecurityScopedResource()"))
 }
 
 @Test func revisionHistoryUsesOnlyTheClientInjectedIntoProjectStore() throws {

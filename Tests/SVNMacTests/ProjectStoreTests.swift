@@ -460,7 +460,7 @@ import Testing
     let store = makeStore(projects: [project], client: client)
     store.statuses = [entry]
     store.selectedPaths = [entry.path]
-    let request = RevertRequest(entry: entry)
+    let request = RevertRequest(projectID: project.id, entry: entry)
     store.revertRequest = nil
 
     await store.confirmRevert(request)
@@ -481,7 +481,9 @@ import Testing
     let store = makeStore(projects: [first, second], client: client)
     store.selectedPaths = [entry.path]
 
-    let task = Task { await store.confirmRevert(RevertRequest(entry: entry)) }
+    let task = Task {
+        await store.confirmRevert(RevertRequest(projectID: first.id, entry: entry))
+    }
     try? await Task.sleep(for: .milliseconds(10))
     store.selectedProjectID = second.id
     store.notice = "둘째 프로젝트 알림"
@@ -489,6 +491,49 @@ import Testing
 
     #expect(store.selectedProjectID == second.id)
     #expect(store.notice == "둘째 프로젝트 알림")
+}
+
+@MainActor
+@Test func staleRevertRequestDoesNotRunAgainstNewProject() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/revert-request-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/revert-request-second")
+    let entry = SVNStatusEntry(path: "보고서.hwp", item: .modified)
+    let client = StubSVNClient()
+    let store = makeStore(projects: [first, second], client: client)
+    store.requestRevert(entry)
+    let request = try #require(store.revertRequest)
+
+    store.selectedProjectID = second.id
+    await store.confirmRevert(request)
+
+    #expect(await client.requestedReverts().isEmpty)
+    #expect(store.revertRequest == nil)
+    #expect(store.notice == nil)
+    #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func olderRevertCompletionCannotOverwriteNewerRequestInSameProject() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/revert-request-order")
+    let firstEntry = SVNStatusEntry(path: "느린-보고서.hwp", item: .modified)
+    let secondEntry = SVNStatusEntry(path: "최신-보고서.hwp", item: .modified)
+    let firstGate = AsyncTestGate()
+    let client = StubSVNClient(
+        revertGatesByRequest: [firstGate],
+        revertErrorsByRequest: [nil, TestError.resolveConflictFailed]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    let first = Task {
+        await store.confirmRevert(RevertRequest(projectID: project.id, entry: firstEntry))
+    }
+    await firstGate.waitUntilEntered()
+    await store.confirmRevert(RevertRequest(projectID: project.id, entry: secondEntry))
+    await firstGate.release()
+    await first.value
+
+    #expect(store.notice == nil)
+    #expect(store.errorMessage == store.localizedError(TestError.resolveConflictFailed))
 }
 
 @MainActor
@@ -567,6 +612,31 @@ import Testing
     #expect(store.fileHistory.isEmpty)
     #expect(store.fileHistoryPath == nil)
     #expect(!store.isShowingFileHistory)
+}
+
+@MainActor
+@Test func olderFileHistoryRequestCannotOverwriteNewerFileInSameProject() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/history-request-order")
+    let firstGate = AsyncTestGate()
+    let client = StubSVNClient(
+        fileLogsByRequest: [
+            [makeLog(revision: "1")],
+            [makeLog(revision: "2")],
+        ],
+        fileLogGatesByRequest: [firstGate]
+    )
+    let store = makeStore(projects: [project], client: client)
+
+    let first = Task { await store.loadFileHistory(for: "느린-보고서.hwp") }
+    await firstGate.waitUntilEntered()
+    await store.loadFileHistory(for: "최신-보고서.hwp")
+    await firstGate.release()
+    await first.value
+
+    #expect(store.fileHistoryPath == "최신-보고서.hwp")
+    #expect(store.fileHistory.map(\.revision) == ["2"])
+    #expect(store.fileHistoryRequest?.projectID == project.id)
+    #expect(store.fileHistoryRequest?.relativePath == "최신-보고서.hwp")
 }
 
 @MainActor
@@ -3791,6 +3861,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var updateBadgeFailuresRemaining: Int
     let remoteChangesByPath: [String: [SVNStatusEntry]]
     let fileLogsByPath: [String: [SVNLogEntry]]
+    private var fileLogsByRequest: [[SVNLogEntry]]
+    private var fileLogGatesByRequest: [AsyncTestGate]
     let checkoutResult: String
     let checkoutProgress: [String]
     let checkoutRunsUntilCancelled: Bool
@@ -3833,6 +3905,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let cleanupGate: AsyncTestGate?
     let unlockErrorWhenNotForced: Error?
     let forcedUnlockGate: AsyncTestGate?
+    private var revertGatesByRequest: [AsyncTestGate]
+    private var revertErrorsByRequest: [TestError?]
     let commitGate: AsyncTestGate?
     let recoveryGate: AsyncTestGate?
     let multiplePathLockGate: AsyncTestGate?
@@ -3850,10 +3924,12 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var repositoryLocksRequests = 0
     private var logRequests = 0
     private var outOfDateRequests = 0
+    private var fileLogRequests = 0
     private var conflictChoices: [SVNConflictChoice] = []
     private var conflictOperations: [String] = []
     private var conflictDetailsRequestCounts: [String: Int] = [:]
     private var revertCalls: [RevertCall] = []
+    private var revertRequests = 0
     private var conflictDetailsRequestRawPaths: [Data] = []
     private var resolvedPaths: [String] = []
     private var addedIgnoreRules: [SVNIgnoreRule] = []
@@ -3881,6 +3957,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         updateBadgeFailuresRemaining: Int = 0,
         remoteChangesByPath: [String: [SVNStatusEntry]] = [:],
         fileLogsByPath: [String: [SVNLogEntry]] = [:],
+        fileLogsByRequest: [[SVNLogEntry]] = [],
+        fileLogGatesByRequest: [AsyncTestGate] = [],
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
         checkoutRunsUntilCancelled: Bool = false,
@@ -3922,6 +4000,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         cleanupGate: AsyncTestGate? = nil,
         unlockErrorWhenNotForced: Error? = nil,
         forcedUnlockGate: AsyncTestGate? = nil,
+        revertGatesByRequest: [AsyncTestGate] = [],
+        revertErrorsByRequest: [TestError?] = [],
         commitGate: AsyncTestGate? = nil,
         recoveryGate: AsyncTestGate? = nil,
         multiplePathLockGate: AsyncTestGate? = nil,
@@ -3936,6 +4016,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.updateBadgeFailuresRemaining = updateBadgeFailuresRemaining
         self.remoteChangesByPath = remoteChangesByPath
         self.fileLogsByPath = fileLogsByPath
+        self.fileLogsByRequest = fileLogsByRequest
+        self.fileLogGatesByRequest = fileLogGatesByRequest
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
         self.checkoutRunsUntilCancelled = checkoutRunsUntilCancelled
@@ -3971,6 +4053,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.cleanupGate = cleanupGate
         self.unlockErrorWhenNotForced = unlockErrorWhenNotForced
         self.forcedUnlockGate = forcedUnlockGate
+        self.revertGatesByRequest = revertGatesByRequest
+        self.revertErrorsByRequest = revertErrorsByRequest
         self.commitGate = commitGate
         self.recoveryGate = recoveryGate
         self.multiplePathLockGate = multiplePathLockGate
@@ -4249,17 +4333,36 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     }
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String { "diff" }
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String {
+        let requestIndex = revertRequests
+        revertRequests += 1
+        let requestGate = revertGatesByRequest.indices.contains(requestIndex)
+            ? revertGatesByRequest[requestIndex]
+            : nil
+        let requestError = revertErrorsByRequest.indices.contains(requestIndex)
+            ? revertErrorsByRequest[requestIndex]
+            : nil
         conflictOperations.append("revert")
         revertCredentialUsernames.append(credentials?.username)
+        await requestGate?.wait()
         await delay(for: path)
         revertCalls.append(RevertCall(workingCopyPath: path, relativePath: relativePath))
+        if let requestError { throw requestError }
         return "reverted"
     }
     func requestedReverts() -> [RevertCall] { revertCalls }
     func lastRevertCredentialUsername() -> String? { revertCredentialUsernames.last ?? nil }
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] {
+        let requestIndex = fileLogRequests
+        fileLogRequests += 1
+        let requestLogs = fileLogsByRequest.indices.contains(requestIndex)
+            ? fileLogsByRequest[requestIndex]
+            : nil
+        let requestGate = fileLogGatesByRequest.indices.contains(requestIndex)
+            ? fileLogGatesByRequest[requestIndex]
+            : nil
         await delay(for: path)
-        return fileLogsByPath[path] ?? []
+        await requestGate?.wait()
+        return requestLogs ?? fileLogsByPath[path] ?? []
     }
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
         commitRequests.append(CommitRequest(paths: paths, message: message))

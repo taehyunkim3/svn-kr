@@ -9,6 +9,7 @@ struct ProjectStatusSummary: Equatable {
 }
 
 struct RevertRequest: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let projectID: SVNProject.ID
     let entry: SVNStatusEntry
-    var id: String { entry.path }
 }

@@ -1,8 +1,24 @@
 import Foundation
 import SVNCore
 
+struct FileHistoryRequest: Identifiable, Equatable {
+    let id = UUID()
+    let projectID: SVNProject.ID
+    let relativePath: String
+}
+
+struct HistoryRevisionSaveRequest: Identifiable, Equatable {
+    let id = UUID()
+    let fileHistoryRequestID: FileHistoryRequest.ID
+    let projectID: SVNProject.ID
+    let relativePath: String
+    let revision: String
+    let destinationURL: URL
+}
+
 struct HistoryRevisionRestoreRequest: Identifiable, Equatable {
     let id = UUID()
+    let fileHistoryRequestID: FileHistoryRequest.ID
     let projectID: SVNProject.ID
     let relativePath: String
     let revision: String
@@ -108,35 +124,35 @@ extension ProjectStore {
             && operation.kind == .restore
     }
 
-    func requestHistoryRevisionRestore(revision: String, relativePath: String) {
-        guard let project = selectedProject,
+    func requestHistoryRevisionRestore(revision: String) {
+        guard let fileHistoryRequest,
+              selectedProjectID == fileHistoryRequest.projectID,
               recoveryState.historyRevisionOperation == nil else { return }
         recoveryState.historyRevisionRestoreRequest = HistoryRevisionRestoreRequest(
-            projectID: project.id,
-            relativePath: relativePath,
+            fileHistoryRequestID: fileHistoryRequest.id,
+            projectID: fileHistoryRequest.projectID,
+            relativePath: fileHistoryRequest.relativePath,
             revision: revision
         )
     }
 
-    func saveHistoryRevision(
-        revision: String,
-        relativePath: String,
-        to destinationURL: URL
-    ) async -> Bool {
+    func saveHistoryRevision(_ request: HistoryRevisionSaveRequest) async -> Bool {
         guard let project = selectedProject,
+              project.id == request.projectID,
+              fileHistoryRequest?.id == request.fileHistoryRequestID,
               recoveryState.historyRevisionOperation == nil else { return false }
         let operation = HistoryRevisionOperation(
             projectID: project.id,
-            relativePath: relativePath,
-            revision: revision,
+            relativePath: request.relativePath,
+            revision: request.revision,
             kind: .save
         )
         recoveryState.historyRevisionOperation = operation
         let operationID = beginOperation(.fileHistory(project.id))
-        let accessesSecurityScope = destinationURL.startAccessingSecurityScopedResource()
+        let accessesSecurityScope = request.destinationURL.startAccessingSecurityScopedResource()
         defer {
             if accessesSecurityScope {
-                destinationURL.stopAccessingSecurityScopedResource()
+                request.destinationURL.stopAccessingSecurityScopedResource()
             }
             endOperation(operationID)
             if recoveryState.historyRevisionOperation?.id == operation.id {
@@ -148,9 +164,9 @@ extension ProjectStore {
             try await RevisionFileService().saveRevision(
                 using: client,
                 workingCopyPath: project.path,
-                relativePath: relativePath,
-                revision: revision,
-                destinationURL: destinationURL,
+                relativePath: request.relativePath,
+                revision: request.revision,
+                destinationURL: request.destinationURL,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
@@ -158,8 +174,8 @@ extension ProjectStore {
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
                 .ui.saved.historicalRevision,
-                revision,
-                destinationURL.path
+                request.revision,
+                request.destinationURL.path
             )
             return true
         } catch {
@@ -170,10 +186,14 @@ extension ProjectStore {
     }
 
     func confirmHistoryRevisionRestore(_ request: HistoryRevisionRestoreRequest) async -> Bool {
-        guard recoveryState.historyRevisionRestoreRequest == request,
-              let project = selectedProject,
+        guard recoveryState.historyRevisionRestoreRequest == request else { return false }
+        guard let project = selectedProject,
               project.id == request.projectID,
-              recoveryState.historyRevisionOperation == nil else { return false }
+              fileHistoryRequest?.id == request.fileHistoryRequestID,
+              recoveryState.historyRevisionOperation == nil else {
+            recoveryState.historyRevisionRestoreRequest = nil
+            return false
+        }
         recoveryState.historyRevisionRestoreRequest = nil
         let operation = HistoryRevisionOperation(
             projectID: project.id,

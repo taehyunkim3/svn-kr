@@ -46,7 +46,10 @@ extension ProjectStore {
         set { recoveryState.commitDeletionRestoreFailureMessage = newValue }
     }
 
-    func requestRevert(_ entry: SVNStatusEntry) { revertRequest = RevertRequest(entry: entry) }
+    func requestRevert(_ entry: SVNStatusEntry) {
+        guard let project = selectedProject else { return }
+        revertRequest = RevertRequest(projectID: project.id, entry: entry)
+    }
 
     func requestCommitDeletionRestore() {
         guard let project = selectedProject,
@@ -158,24 +161,44 @@ extension ProjectStore {
     }
 
     func confirmRevert(_ request: RevertRequest) async {
-        guard let project = selectedProject else { return }
+        guard let project = selectedProject, project.id == request.projectID else {
+            if revertRequest == request { revertRequest = nil }
+            return
+        }
+        guard revertRequest == nil || revertRequest == request else { return }
         revertRequest = nil
+        let requestID = beginRequest(.revert)
+        defer { finishRequest(requestID, kind: .revert) }
         let operationID = beginOperation(.revert(project.id))
         defer { endOperation(operationID) }
         do {
             _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(
+                requestID,
+                kind: .revert,
+                projectID: request.projectID
+            ) else { return }
             selectedPaths.remove(request.entry.path)
             notice = AppLanguage.current.localized(.ui.reverted.localChanges, request.entry.path)
             await refresh()
         } catch {
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(
+                requestID,
+                kind: .revert,
+                projectID: request.projectID
+            ) else { return }
             errorMessage = localizedError(error)
         }
     }
 
     func loadFileHistory(for relativePath: String) async {
         guard let project = selectedProject else { return }
+        let request = FileHistoryRequest(
+            projectID: project.id,
+            relativePath: relativePath
+        )
+        let requestID = beginRequest(.fileHistory)
+        defer { finishRequest(requestID, kind: .fileHistory) }
         let operationID = beginOperation(.fileHistory(project.id))
         defer { endOperation(operationID) }
         do {
@@ -187,12 +210,22 @@ extension ProjectStore {
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
             )
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(
+                requestID,
+                kind: .fileHistory,
+                projectID: request.projectID
+            ) else { return }
+            fileHistoryRequest = request
             fileHistory = history
             fileHistoryPath = relativePath
+            recoveryState.historyRevisionRestoreRequest = nil
             isShowingFileHistory = true
         } catch {
-            guard selectedProjectID == project.id else { return }
+            guard canApplyRequest(
+                requestID,
+                kind: .fileHistory,
+                projectID: request.projectID
+            ) else { return }
             errorMessage = localizedError(error)
         }
     }
