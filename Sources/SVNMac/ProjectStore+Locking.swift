@@ -226,7 +226,7 @@ extension ProjectStore {
             if request.existingLock == nil {
                 await lockAndOpen(request)
             } else {
-                openWithoutLock(request)
+                documentOpenRequest = request
             }
         }
     }

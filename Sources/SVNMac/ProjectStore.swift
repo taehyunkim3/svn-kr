@@ -1918,7 +1918,9 @@ final class ProjectStore {
         )
         var summary = projectSummaries[projectID] ?? ProjectStatusSummary()
         summary.localChangeCount = visibleStatuses.count
-        summary.conflictCount = visibleStatuses.filter { $0.item == .conflicted }.count
+        summary.conflictCount = visibleStatuses.filter {
+            $0.item == .conflicted || $0.propertyState == .conflicted
+        }.count
         projectSummaries[projectID] = summary
     }
 
