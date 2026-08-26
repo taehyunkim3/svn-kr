@@ -542,7 +542,7 @@ final class ProjectStore {
     }
 
     var isCommitInteractionLocked: Bool {
-        isCommittingSelectedProject
+        isSelectedProjectActionBlocked || isCommittingSelectedProject
     }
 
     var isLoadingSelectedProjectLocks: Bool {

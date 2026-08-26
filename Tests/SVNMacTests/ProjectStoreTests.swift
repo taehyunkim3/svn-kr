@@ -2919,7 +2919,7 @@ import Testing
 }
 
 @MainActor
-@Test func commitInteractionsLockOnlyDuringSelectedProjectCommit() {
+@Test func commitInteractionsPreserveExistingBlocksAndLockDuringCommit() {
     let selected = SVNProject(name: "선택", path: "/tmp/selected")
     let other = SVNProject(name: "다른", path: "/tmp/other")
     let store = makeStore(projects: [selected, other])
@@ -2928,7 +2928,7 @@ import Testing
 
     let refreshID = store.beginOperation(.refresh(selected.id))
     #expect(store.isWorking)
-    #expect(!store.isCommitInteractionLocked)
+    #expect(store.isCommitInteractionLocked)
     store.endOperation(refreshID)
 
     let otherCommitID = store.beginOperation(.commit(other.id))
