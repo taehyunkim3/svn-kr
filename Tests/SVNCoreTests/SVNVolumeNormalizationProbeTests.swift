@@ -79,7 +79,7 @@ import Testing
         return
     }
     defer {
-        _ = run(hdiutil, ["detach", mount.path, "-quiet"])
+        detachDiskImage(hdiutil, mountPath: mount.path)
         try? fileManager.removeItem(at: base)
         try? fileManager.removeItem(at: image)
     }
@@ -90,6 +90,46 @@ import Testing
     // 볼륨 루트의 `.TemporaryItems`는 macOS가 만드는 폴더라 대상에서 제외합니다.
     let remaining = (try? fileManager.contentsOfDirectory(atPath: mount.path)) ?? []
     #expect(!remaining.contains { $0.hasPrefix(".svn-mac-normalization-probe-") })
+}
+
+@Test func normalizationProbeDiskImageDetachRetriesBeforeWarning() {
+    var attempts = 0
+    var waits: [TimeInterval] = []
+    var warnings: [String] = []
+
+    detachDiskImage(
+        "/usr/bin/hdiutil",
+        mountPath: "/tmp/normalization-probe-mount",
+        execute: { _, _ in
+            attempts += 1
+            return false
+        },
+        wait: { waits.append($0) },
+        warning: { warnings.append($0) }
+    )
+
+    #expect(attempts == 3)
+    #expect(waits == [0.5, 0.5])
+    #expect(warnings.count == 1)
+}
+
+private let diskImageDetachAttemptCount = 3
+private let diskImageDetachRetryInterval: TimeInterval = 0.5
+
+private func detachDiskImage(
+    _ executablePath: String,
+    mountPath: String,
+    execute: (String, [String]) -> Bool = run,
+    wait: (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
+    warning: (String) -> Void = { print("warning: \($0)") }
+) {
+    for attempt in 1 ... diskImageDetachAttemptCount {
+        if execute(executablePath, ["detach", mountPath, "-quiet"]) { return }
+        if attempt < diskImageDetachAttemptCount {
+            wait(diskImageDetachRetryInterval)
+        }
+    }
+    warning("hdiutil detach failed after \(diskImageDetachAttemptCount) attempts: \(mountPath)")
 }
 
 private func run(_ executable: String, _ arguments: [String]) -> Bool {
