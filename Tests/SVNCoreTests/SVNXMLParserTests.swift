@@ -210,6 +210,32 @@ import Testing
     ])
 }
 
+@Test func parsesAbsoluteIgnoreRuleTargetsRelativeToWorkingCopy() throws {
+    let xml = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <properties>
+      <target path="/private/tmp/svncore-accuracy-propget/working-copy">
+        <property name="svn:ignore">ignore.log
+    </property>
+      </target>
+      <target path="/private/tmp/svncore-accuracy-propget/working-copy/Documents">
+        <property name="svn:ignore">temporary.file
+    </property>
+      </target>
+    </properties>
+    """
+
+    let rules = try SVNXMLParser.ignoreRules(
+        from: Data(xml.utf8),
+        relativeToWorkingCopyAt: "/private/tmp/svncore-accuracy-propget/working-copy"
+    )
+
+    #expect(rules == [
+        SVNIgnoreRule(directory: ".", pattern: "ignore.log"),
+        SVNIgnoreRule(directory: "Documents", pattern: "temporary.file"),
+    ])
+}
+
 @Test func parsesLocalGlobalAndInheritedIgnoreRules() throws {
     let xml = """
     <?xml version="1.0" encoding="UTF-8"?>

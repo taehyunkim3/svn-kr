@@ -1102,7 +1102,10 @@ public actor SVNClient {
             guard result.exitCode == 0 else {
                 throw SVNError.commandFailed(command: "svn propget \(kind.propertyName)", message: result.error)
             }
-            rules += try SVNXMLParser.ignoreRules(from: Data(result.output.utf8))
+            rules += try SVNXMLParser.ignoreRules(
+                from: Data(result.output.utf8),
+                relativeToWorkingCopyAt: path
+            )
         }
         return rules.sorted {
             ($0.directory, $0.propertyKind.rawValue, $0.pattern)

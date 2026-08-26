@@ -98,7 +98,21 @@ public enum SVNXMLParser {
     }
 
     public static func ignoreRules(from data: Data) throws -> [SVNIgnoreRule] {
-        let delegate = IgnoreRulesDelegate()
+        try ignoreRules(from: data, relativeToWorkingCopyAt: nil)
+    }
+
+    static func ignoreRules(
+        from data: Data,
+        relativeToWorkingCopyAt workingCopyPath: String
+    ) throws -> [SVNIgnoreRule] {
+        try ignoreRules(from: data, relativeToWorkingCopyAt: Optional(workingCopyPath))
+    }
+
+    private static func ignoreRules(
+        from data: Data,
+        relativeToWorkingCopyAt workingCopyPath: String?
+    ) throws -> [SVNIgnoreRule] {
+        let delegate = IgnoreRulesDelegate(workingCopyPath: workingCopyPath)
         let parser = XMLParser(data: data)
         parser.delegate = delegate
         guard parser.parse() else { throw SVNError.malformedResponse }
@@ -443,10 +457,17 @@ private final class LockBuilder {
 /// SVN ignore 속성의 `propget --xml` 결과를 디렉터리별 패턴으로 펼칩니다.
 private final class IgnoreRulesDelegate: NSObject, XMLParserDelegate {
     var rules: [SVNIgnoreRule] = []
+    private let workingCopyPath: String?
     private var targetPath: String?
     private var propertyKind: SVNIgnorePropertyKind?
     private var isInheritedProperty = false
     private var text = ""
+
+    init(workingCopyPath: String?) {
+        self.workingCopyPath = workingCopyPath.map {
+            URL(fileURLWithPath: $0).resolvingSymlinksInPath().path
+        }
+    }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         text = ""
@@ -469,7 +490,7 @@ private final class IgnoreRulesDelegate: NSObject, XMLParserDelegate {
            let targetPath {
             rules += text.split(whereSeparator: \.isNewline).map {
                 SVNIgnoreRule(
-                    directory: isInheritedProperty ? "." : targetPath,
+                    directory: isInheritedProperty ? "." : relativeDirectory(for: targetPath),
                     pattern: String($0),
                     propertyKind: propertyKind,
                     inheritedFrom: isInheritedProperty ? targetPath : nil
@@ -481,6 +502,14 @@ private final class IgnoreRulesDelegate: NSObject, XMLParserDelegate {
             targetPath = nil
         }
         text = ""
+    }
+
+    private func relativeDirectory(for targetPath: String) -> String {
+        guard let workingCopyPath else { return targetPath }
+        if targetPath == workingCopyPath { return "." }
+        let prefix = workingCopyPath + "/"
+        guard targetPath.hasPrefix(prefix) else { return targetPath }
+        return String(targetPath.dropFirst(prefix.count))
     }
 }
 
