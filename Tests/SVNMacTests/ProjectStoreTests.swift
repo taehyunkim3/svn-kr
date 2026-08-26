@@ -3904,6 +3904,31 @@ import Testing
 }
 
 @MainActor
+@Test func deletionCompletionAfterRefreshDoesNotPublishIntoAnotherProject() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/delete-race-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/delete-race-second")
+    let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10")
+    let refreshGate = AsyncTestGate()
+    let client = StubSVNClient(snapshotGate: refreshGate)
+    let store = makeStore(projects: [first, second], client: client)
+    store.statuses = [missing]
+    store.requestDeletion(missing)
+    let request = try #require(store.deletionRequest)
+
+    let deletion = Task { await store.confirmDeletion(request) }
+    await refreshGate.waitUntilEntered()
+    store.selectedProjectID = second.id
+    let secondStatus = SVNStatusEntry(path: "second.txt", item: .modified, revision: "20")
+    store.statuses = [secondStatus]
+    await refreshGate.release()
+    await deletion.value
+
+    #expect(store.statuses == [secondStatus])
+    #expect(store.selectedPaths.isEmpty)
+    #expect(store.notice == nil)
+}
+
+@MainActor
 @Test func restoredProjectsExposeOnlyConfirmedFilenameNormalizationWarnings() async {
     let warningProject = SVNProject(name: "HFS 프로젝트", path: "/Volumes/HFS/project")
     let unknownProject = SVNProject(name: "알 수 없는 프로젝트", path: "/Volumes/Unknown/project")
@@ -4214,6 +4239,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
     let snapshotError: Error?
+    let snapshotGate: AsyncTestGate?
     let workingCopyEntriesError: Error?
     let repositoryLocksByPath: [String: [SVNLockInfo]]
     let repositoryLocksErrorsByPath: [String: Error]
@@ -4307,6 +4333,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
         snapshotError: Error? = nil,
+        snapshotGate: AsyncTestGate? = nil,
         workingCopyEntriesError: Error? = nil,
         repositoryLocksByPath: [String: [SVNLockInfo]] = [:],
         repositoryLocksErrorsByPath: [String: Error] = [:],
@@ -4367,6 +4394,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
         self.snapshotError = snapshotError
+        self.snapshotGate = snapshotGate
         self.workingCopyEntriesError = workingCopyEntriesError
         self.repositoryLocksByPath = repositoryLocksByPath
         self.repositoryLocksErrorsByPath = repositoryLocksErrorsByPath
@@ -4474,6 +4502,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
+        await snapshotGate?.wait()
         await delay(for: path)
         if let snapshotError { throw snapshotError }
         if !conflictOperations.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
