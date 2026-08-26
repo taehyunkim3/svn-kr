@@ -523,3 +523,131 @@ import Testing
     #expect(changedPath.action == .unknown("X"))
     #expect(changedPath.kind == .unknown("future-kind"))
 }
+
+// MARK: - 한 경로에 충돌이 여러 개인 경우
+
+/// 실측 XML 입니다. SVN 1.14.5 가 내용·속성 동시 충돌에서 실제로 내보낸 출력을 줄여 옮겼습니다.
+/// 같은 충돌을 두 번씩 내보내는 것까지 그대로입니다.
+private let combinedConflictInfoXML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<info>
+<entry kind="file" path="budget.txt" revision="2">
+<conflict operation="update" type="text">
+<version side="source-left" kind="file" revision="1"/>
+<version side="source-right" kind="file" revision="2"/>
+<prev-base-file>/tmp/wcB/budget.txt.r1</prev-base-file>
+<prev-wc-file>/tmp/wcB/budget.txt.mine</prev-wc-file>
+<cur-base-file>/tmp/wcB/budget.txt.r2</cur-base-file>
+</conflict>
+<conflict operation="update" type="property">
+<version side="source-left" kind="file" revision="1"/>
+<version side="source-right" kind="file" revision="2"/>
+<prop-file>/tmp/wcB/budget.txt.prej</prop-file>
+</conflict>
+<conflict operation="update" type="text">
+<version side="source-left" kind="file" revision="1"/>
+<version side="source-right" kind="file" revision="2"/>
+<prev-base-file>/tmp/wcB/budget.txt.r1</prev-base-file>
+<prev-wc-file>/tmp/wcB/budget.txt.mine</prev-wc-file>
+<cur-base-file>/tmp/wcB/budget.txt.r2</cur-base-file>
+</conflict>
+<conflict operation="update" type="property">
+<version side="source-left" kind="file" revision="1"/>
+<version side="source-right" kind="file" revision="2"/>
+<prop-file>/tmp/wcB/budget.txt.prej</prop-file>
+</conflict>
+</entry>
+</info>
+"""
+
+@Test func keepsEveryConflictElementForCombinedTextAndPropertyConflict() throws {
+    let details = try #require(
+        try SVNXMLParser.conflictDetails(fromInfo: Data(combinedConflictInfoXML.utf8))
+    )
+
+    // 마지막 요소가 property 라도 대표 유형은 내용 충돌이어야 합니다.
+    // 속성 화면으로 가면 백업 없이 작업 파일이 서버 버전으로 덮어써집니다.
+    #expect(details.type == "text")
+    #expect(details.conflictTypes == ["text", "property"])
+    #expect(details.hasTextConflict)
+    #expect(details.hasPropertyConflict)
+    #expect(!details.hasTreeConflict)
+    #expect(details.myFile == "/tmp/wcB/budget.txt.mine")
+    #expect(details.serverFile == "/tmp/wcB/budget.txt.r2")
+    #expect(details.previousBaseFile == "/tmp/wcB/budget.txt.r1")
+    #expect(details.previousRevision == "1")
+    #expect(details.serverRevision == "2")
+}
+
+@Test func doesNotLeakContentArtifactsIntoPropertyConflictRecord() throws {
+    let details = try #require(
+        try SVNXMLParser.conflictDetails(fromInfo: Data(combinedConflictInfoXML.utf8))
+    )
+
+    let propertyConflict = try #require(details.conflicts.first { $0.type == "property" })
+    #expect(propertyConflict.myFile == nil)
+    #expect(propertyConflict.serverFile == nil)
+    #expect(propertyConflict.previousBaseFile == nil)
+    #expect(propertyConflict.previousRevision == "1")
+    #expect(propertyConflict.serverRevision == "2")
+
+    let textConflict = try #require(details.conflicts.first { $0.type == "text" })
+    #expect(textConflict.myFile == "/tmp/wcB/budget.txt.mine")
+}
+
+@Test func keepsTreeConflictAsPrimaryWhenPropertyConflictSharesPath() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="dir" path="문서" revision="4">
+      <conflict operation="update" type="property">
+        <version kind="dir" revision="3" side="source-left"/>
+        <version kind="dir" revision="4" side="source-right"/>
+      </conflict>
+      <conflict operation="update" type="tree">
+        <tree-conflict kind="dir" reason="edit" victim="문서" action="delete">
+          <version kind="dir" revision="3" side="source-left"/>
+          <version kind="none" revision="4" side="source-right"/>
+        </tree-conflict>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try #require(try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8)))
+
+    #expect(details.type == "tree")
+    #expect(details.conflictTypes == ["tree", "property"])
+    #expect(details.treeConflictAction == "delete")
+    #expect(details.treeConflictReason == "edit")
+    #expect(details.treeConflictKind == "dir")
+    #expect(details.hasPropertyConflict)
+}
+
+@Test func reportsSingleConflictAsOneRecord() throws {
+    let infoXML = """
+    <?xml version="1.0"?><info><entry kind="file" path="sample.txt" revision="3">
+      <conflict operation="update" type="property">
+        <version kind="file" revision="2" side="source-left"/>
+        <version kind="file" revision="3" side="source-right"/>
+      </conflict>
+    </entry></info>
+    """
+
+    let details = try #require(try SVNXMLParser.conflictDetails(fromInfo: Data(infoXML.utf8)))
+
+    #expect(details.type == "property")
+    #expect(details.conflictTypes == ["property"])
+    #expect(!details.hasTextConflict)
+}
+
+@Test func fillsConflictListForCallersThatOnlyKnowFlatFields() throws {
+    let details = SVNConflictDetails(
+        path: "sample.txt",
+        type: "text",
+        operation: "update",
+        myFile: "sample.txt.mine",
+        serverFile: "sample.txt.r3"
+    )
+
+    #expect(details.conflictTypes == ["text"])
+    #expect(details.hasTextConflict)
+    #expect(!details.hasPropertyConflict)
+}
