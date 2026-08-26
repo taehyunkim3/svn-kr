@@ -1446,14 +1446,15 @@ final class ProjectStore {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return false }
         do {
             let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
-            projects[index].username = username.isEmpty ? nil : username
-            projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            var updatedProject = projects[index]
+            updatedProject.username = username.isEmpty ? nil : username
+            updatedProject.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
             if allowsUntrustedServerCertificate {
-                projects[index].allowedServerCertificateFailures.formUnion(
+                updatedProject.allowedServerCertificateFailures.formUnion(
                     SVNProject.legacyAllowedServerCertificateFailures
                 )
             } else {
-                projects[index].allowedServerCertificateFailures.subtract(
+                updatedProject.allowedServerCertificateFailures.subtract(
                     SVNProject.legacyAllowedServerCertificateFailures
                 )
             }
@@ -1461,7 +1462,8 @@ final class ProjectStore {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.localized(.ui.authentication.credentialsSaved, projects[index].name)
+            projects[index] = updatedProject
+            notice = AppLanguage.current.localized(.ui.authentication.credentialsSaved, updatedProject.name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1500,10 +1502,10 @@ final class ProjectStore {
         guard !username.isEmpty, !password.isEmpty else { return false }
 
         do {
-            projects[index].username = username
             if saveInKeychain {
                 try credentialStore.setPassword(password, for: request.projectID)
             }
+            projects[index].username = username
             sessionPasswords[request.projectID] = password
             authenticationRequest = nil
             await resume(request)

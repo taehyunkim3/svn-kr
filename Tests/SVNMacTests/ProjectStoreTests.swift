@@ -3110,6 +3110,60 @@ import Testing
 }
 
 @MainActor
+@Test func credentialWriteFailureKeepsStoredProjectAuthenticationSettings() {
+    let project = SVNProject(
+        name: "프로젝트",
+        path: "/tmp/project",
+        username: "old-user",
+        allowsUntrustedServerCertificate: false,
+        allowedServerCertificateFailures: [.expired]
+    )
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let persistence = MemoryProjectPersistence(projects: [project])
+    let store = ProjectStore(
+        credentialStore: credentials,
+        persistence: persistence,
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    #expect(!store.saveCredentials(
+        for: project.id,
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    ))
+
+    #expect(store.projects == [project])
+    #expect(persistence.savedProjects == [project])
+}
+
+@MainActor
+@Test func authenticationRetryKeychainFailureKeepsStoredUsername() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "old-user")
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let store = ProjectStore(
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+    let request = SVNAuthenticationRequest(projectID: project.id, action: .retryManually)
+    store.authenticationRequest = request
+
+    let succeeded = await store.useCredentials(
+        for: request,
+        username: "new-user",
+        password: "new-secret",
+        saveInKeychain: true
+    )
+
+    #expect(!succeeded)
+    #expect(store.projects == [project])
+    #expect(store.authenticationRequest == request)
+}
+
+@MainActor
 @Test func relocatingToAFolderRegisteredByAnotherProjectIsRejected() async {
     let first = SVNProject(name: "첫 폴더", path: "/tmp/first-location")
     let second = SVNProject(name: "둘째 폴더", path: "/tmp/second-location")
