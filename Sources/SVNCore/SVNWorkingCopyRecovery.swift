@@ -74,7 +74,12 @@ enum SVNWorkingCopyRecovery {
                 return nil
             }
 
-            if entry.item == .conflicted {
+            // 복구는 파일 내용만 옮깁니다. svn 속성 변경과 switched 상태는 복사로 재현할 수
+            // 없고, 아래 switch가 다루지 않는 상태는 복사 대상도 아닙니다. 매핑에 남기면
+            // 미리보기 숫자에도 안 세고 복사도 안 하면서 migratedPaths에만 들어갑니다.
+            guard isReproducibleByCopy(entry.item),
+                  entry.propertyState == .none,
+                  !entry.isSwitched else {
                 blockers.append(destination)
                 return nil
             }
@@ -136,6 +141,7 @@ enum SVNWorkingCopyRecovery {
                 try mergeCopy(from: sourceURL, to: targetURL, fileManager: fileManager)
             case .ignored, .conflicted, .unknown, .obstructed, .incomplete:
                 // 방해 상태와 미완료 상태는 원본이 신뢰할 수 없으므로 복구에서 제외합니다.
+                // `preview`가 이미 차단 목록으로 보내므로 여기에는 도달하지 않습니다.
                 break
             }
         }
@@ -186,6 +192,16 @@ enum SVNWorkingCopyRecovery {
             throw SVNError.recoveryBlocked(paths: [relativePath])
         }
         return candidate
+    }
+
+    /// `apply`가 실제로 복사하거나 지우는 상태입니다. 이 목록과 `apply`의 switch는 함께 바뀝니다.
+    private static func isReproducibleByCopy(_ status: SVNStatusKind) -> Bool {
+        switch status {
+        case .modified, .replaced, .added, .unversioned, .deleted, .missing:
+            return true
+        case .ignored, .conflicted, .obstructed, .incomplete, .unknown:
+            return false
+        }
     }
 
     private static func isSafeRelativePath(_ path: String) -> Bool {
