@@ -1962,3 +1962,107 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
         Issue.record("예상하지 못한 오류: \(error)")
     }
 }
+
+@Test func preservesPrecomposedUsernameBytesInProcessArguments() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-username-normalization-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    next=
+    for argument in "$@"; do
+      if [ "$next" = 1 ]; then
+        printf '%s' "$argument" | od -An -v -tx1 | tr -d ' \\n'
+        printf '\\n'
+        exit 0
+      fi
+      if [ "$argument" = "--username" ]; then next=1; fi
+    done
+    exit 0
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let username = "홍길동".precomposedStringWithCanonicalMapping
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.checkout(
+        repositoryURL: "https://example.test/svn/project",
+        destinationPath: directory.appendingPathComponent("checkout").path,
+        credentials: SVNCredentials(username: username, password: nil)
+    )
+
+    let precomposedBytes = Data(username.utf8).map { String(format: "%02x", $0) }.joined()
+    let decomposedBytes = Data(username.decomposedStringWithCanonicalMapping.utf8)
+        .map { String(format: "%02x", $0) }.joined()
+    #expect(result.contains(precomposedBytes))
+    #expect(!result.contains(decomposedBytes))
+}
+
+@Test func preservesPrecomposedUsernameBytesAlongsideRawPathArguments() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-username-with-path-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    for argument in "$@"; do
+      printf '%s' "$argument" | od -An -v -tx1 | tr -d ' \\n'
+      printf '\\n'
+    done
+    exit 0
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let username = "홍길동".precomposedStringWithCanonicalMapping
+    let repositoryURL = "https://example.test/svn/프로젝트".precomposedStringWithCanonicalMapping
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let result = try await client.checkout(
+        repositoryURL: repositoryURL,
+        destinationPath: directory.appendingPathComponent("checkout").path,
+        credentials: SVNCredentials(username: username, password: nil)
+    )
+
+    let precomposedBytes = Data(username.utf8).map { String(format: "%02x", $0) }.joined()
+    let decomposedBytes = Data(username.decomposedStringWithCanonicalMapping.utf8)
+        .map { String(format: "%02x", $0) }.joined()
+    #expect(result.contains(precomposedBytes))
+    #expect(!result.contains(decomposedBytes))
+    // URL은 퍼센트 인코딩되므로 경로 인자 운반이 함께 동작하는지도 확인합니다.
+    #expect(result.contains(Data("%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8".utf8)
+        .map { String(format: "%02x", $0) }.joined()))
+}
+
+@Test func rejectsUsernameWithLineBreakOrNul() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-username-reject-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    try Data("#!/bin/sh\nexit 0\n".utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    await #expect(throws: SVNClientArgumentError.unsupportedUsername) {
+        _ = try await client.checkout(
+            repositoryURL: "https://example.test/svn/project",
+            destinationPath: directory.appendingPathComponent("checkout").path,
+            credentials: SVNCredentials(username: "홍길동\n--config-dir", password: nil)
+        )
+    }
+}

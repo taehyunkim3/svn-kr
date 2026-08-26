@@ -1055,14 +1055,45 @@ public actor SVNClient {
             propertyKind: propertyKind,
             credentials: credentials
         )
-        guard !existing.contains(pattern) else { return }
+        let alignedPattern = Self.ignorePatternMatchingWorkingCopyEntry(
+            pattern,
+            inProjectRelativeDirectory: directory,
+            at: path
+        )
+        guard !existing.contains(alignedPattern) else { return }
         try await setIgnorePatterns(
-            existing + [pattern],
+            existing + [alignedPattern],
             at: path,
             directory: directory,
             propertyKind: propertyKind,
             credentials: credentials
         )
+    }
+
+    /// svn의 무시 판정은 이름 바이트 비교입니다. `.gitignore`처럼 외부 파일에서 온
+    /// NFC 패턴은 디스크가 NFD로 들고 있는 한글 이름과 매칭되지 않아 아무것도 무시하지
+    /// 못합니다. 같은 NFC 키를 가진 실제 항목이 있으면 그 항목의 원문 바이트로 맞춥니다.
+    /// glob 패턴과 아직 존재하지 않는 이름은 맞출 대상이 없으므로 원문 그대로 둡니다.
+    static func ignorePatternMatchingWorkingCopyEntry(
+        _ pattern: String,
+        inProjectRelativeDirectory directory: String,
+        at localProjectPath: String
+    ) -> String {
+        guard pattern.unicodeScalars.contains(where: { !$0.isASCII }) else { return pattern }
+        let projectRoot = URL(fileURLWithPath: localProjectPath, isDirectory: true)
+        let directoryURL = directory.isEmpty || directory == "."
+            ? projectRoot
+            : projectRoot.appendingPathComponent(directory, isDirectory: true)
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: directoryURL.path) else {
+            return pattern
+        }
+        let patternBytes = Data(pattern.utf8)
+        let canonicalPattern = pattern.precomposedStringWithCanonicalMapping
+        let alias = names.first {
+            Data($0.utf8) != patternBytes
+                && $0.precomposedStringWithCanonicalMapping == canonicalPattern
+        }
+        return alias ?? pattern
     }
 
     public func removeIgnoreRule(
@@ -2579,40 +2610,67 @@ public actor SVNClient {
             globalArguments.append("--trust-server-cert-failures=\(values)")
         }
         var password: String?
+        var rawUsername: String?
         if let credentials, !credentials.username.isEmpty {
-            globalArguments += ["--username", credentials.username]
+            guard !credentials.username.unicodeScalars.contains(where: {
+                $0.value == 0 || $0.value == 10 || $0.value == 13
+            }) else {
+                throw SVNClientArgumentError.unsupportedUsername
+            }
+            if credentials.username.allSatisfy(\.isASCII) {
+                globalArguments += ["--username", credentials.username]
+            } else {
+                // 사용자명도 경로와 같은 이유로 원문 UTF-8 파일 운반이 필요합니다.
+                rawUsername = credentials.username
+            }
             if let storedPassword = credentials.password, !storedPassword.isEmpty {
                 globalArguments += ["--password-from-stdin", "--no-auth-cache"]
                 password = storedPassword
             }
         }
-        var svnPathArgumentDirectory: URL?
-        if let svnPathArguments {
-            precondition(!svnPathArguments.isEmpty)
-            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
+
+        // `Process.arguments`에 한글 값을 직접 넣으면 Foundation이 NFD로 바꿀 수 있습니다.
+        // 원문 UTF-8을 파일에 쓰고 POSIX shell이 읽어 argv로 넘기면 그 변환을 피할 수 있습니다.
+        if let svnPathArguments { precondition(!svnPathArguments.isEmpty) }
+        let rawPathArguments = svnPathArguments ?? svnPathArgument.map { [$0] } ?? []
+        var rawTransportDirectory: URL?
+        defer {
+            if let rawTransportDirectory {
+                try? FileManager.default.removeItem(at: rawTransportDirectory)
+            }
+        }
+
+        if rawUsername == nil, rawPathArguments.isEmpty {
+            process.executableURL = svnExecutable
+            process.arguments = globalArguments + arguments
+        } else {
+            let transportDirectory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("svn-mac-raw-arguments-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
-            svnPathArgumentDirectory = svnPathTransportDirectory
-            let argumentURLs = try svnPathArguments.enumerated().map { index, argument in
-                let argumentURL = svnPathTransportDirectory
-                    .appendingPathComponent("argument-\(index + 1)")
-                try (Data(argument.utf8) + Data([0x0A])).write(to: argumentURL)
-                return argumentURL
+            try FileManager.default.createDirectory(at: transportDirectory, withIntermediateDirectories: true)
+            rawTransportDirectory = transportDirectory
+
+            let rawValues = (rawUsername.map { [(name: "username", value: $0)] } ?? [])
+                + rawPathArguments.enumerated().map { (name: "argument_\($0.offset + 1)", value: $0.element) }
+            let valueURLs = try rawValues.enumerated().map { index, rawValue in
+                let valueURL = transportDirectory.appendingPathComponent("value-\(index + 1)")
+                try (Data(rawValue.value.utf8) + Data([0x0A])).write(to: valueURL)
+                return valueURL
             }
-            let fileAssignments = argumentURLs.indices.map {
-                "argument_file_\($0 + 1)=$\($0 + 1)"
+            let fileAssignments = rawValues.indices.map { "\(rawValues[$0].name)_file=$\($0 + 1)" }
+            let svnExecutableIndex = rawValues.count + 1
+            let valueReads = rawValues.indices.map {
+                "IFS= read -r \(rawValues[$0].name) < \"$\(rawValues[$0].name)_file\""
             }
-            let svnExecutableIndex = argumentURLs.count + 1
-            let valueReads = argumentURLs.indices.map {
-                "IFS= read -r argument_\($0 + 1) < \"$argument_file_\($0 + 1)\""
-            }
-            let argumentReferences = argumentURLs.indices.map { "\"$argument_\($0 + 1)\"" }
+            let usernameOption = rawUsername == nil ? "" : "--username \"$username\" "
+            let pathReferences = rawPathArguments.indices
+                .map { "\"$argument_\($0 + 1)\"" }
                 .joined(separator: " ")
+            let pathSuffix = rawPathArguments.isEmpty ? "" : " -- \(pathReferences)"
             let shellCommand = (
                 fileAssignments
                 + ["svn_executable=$\(svnExecutableIndex)", "shift \(svnExecutableIndex)"]
                 + valueReads
-                + ["exec \"$svn_executable\" \"$@\" -- \(argumentReferences)"]
+                + ["exec \"$svn_executable\" \(usernameOption)\"$@\"\(pathSuffix)"]
             ).joined(separator: "; ")
 
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -2620,34 +2678,7 @@ public actor SVNClient {
                 "-c",
                 shellCommand,
                 "svn-mac-raw-arguments",
-            ] + argumentURLs.map(\.path) + [svnExecutable.path] + globalArguments + arguments
-        } else if let svnPathArgument {
-            // `Process.arguments`에 SVN 경로를 직접 넣으면 Foundation이 한글을
-            // NFD로 바꿀 수 있습니다. 원문 UTF-8을 파일에 쓰고 POSIX shell이
-            // 읽어 argv로 넘기면 Swift 문자열의 자동 파일 경로 변환을 피할 수 있습니다.
-            let svnPathTransportDirectory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("svn-mac-raw-argument-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: svnPathTransportDirectory, withIntermediateDirectories: true)
-            svnPathArgumentDirectory = svnPathTransportDirectory
-            let svnPathArgumentURL = svnPathTransportDirectory.appendingPathComponent("argument", isDirectory: false)
-            try (Data(svnPathArgument.utf8) + Data([0x0A])).write(to: svnPathArgumentURL)
-
-            process.executableURL = URL(fileURLWithPath: "/bin/sh")
-            process.arguments = [
-                "-c",
-                "svn_path_file=$1; svn_executable=$2; shift 2; IFS= read -r svn_path < \"$svn_path_file\"; exec \"$svn_executable\" \"$@\" -- \"$svn_path\"",
-                "svn-mac-raw-argument",
-                svnPathArgumentURL.path,
-                svnExecutable.path,
-            ] + globalArguments + arguments
-        } else {
-            process.executableURL = svnExecutable
-            process.arguments = globalArguments + arguments
-        }
-        defer {
-            if let svnPathArgumentDirectory {
-                try? FileManager.default.removeItem(at: svnPathArgumentDirectory)
-            }
+            ] + valueURLs.map(\.path) + [svnExecutable.path] + globalArguments + arguments
         }
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectoryPath)
 

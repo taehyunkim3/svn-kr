@@ -128,6 +128,37 @@ import Testing
     #expect(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 }
 
+/// `.gitignore`의 NFC 한글 패턴을 그대로 기록하면 svn은 NFD 이름을 무시하지 못합니다.
+@Test func realSVNIgnoreRuleMatchesDecomposedDirectoryNameOnDisk() async throws {
+    let fixture = try UnicodeCommitFixture()
+    defer { fixture.remove() }
+
+    let decomposedName = "임시".decomposedStringWithCanonicalMapping
+    let precomposedName = "임시".precomposedStringWithCanonicalMapping
+    try createUnicodeIntegrationDirectory(
+        atPath: fixture.workingCopy.path + "/" + decomposedName
+    )
+
+    let before = try await fixture.client.status(at: fixture.workingCopy.path)
+    #expect(before.contains { $0.item == .unversioned })
+
+    // 편집기가 NFC로 저장한 `.gitignore` 패턴을 그대로 넘깁니다.
+    try await fixture.client.addIgnoreRule(
+        at: fixture.workingCopy.path,
+        directory: ".",
+        pattern: precomposedName
+    )
+
+    let storedPattern = try runUnicodeIntegrationCommand(
+        fixture.svnPath,
+        ["propget", "svn:ignore", fixture.workingCopy.path]
+    ).trimmingCharacters(in: .whitespacesAndNewlines)
+    #expect(Data(storedPattern.utf8) == Data(decomposedName.utf8))
+
+    let after = try await fixture.client.status(at: fixture.workingCopy.path)
+    #expect(!after.contains { $0.item == .unversioned })
+}
+
 private struct UnicodeCommitFixture {
     let root: URL
     let repository: URL
