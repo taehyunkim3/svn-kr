@@ -1,6 +1,12 @@
 import SwiftUI
 import SVNCore
 
+enum BulkUnlockResultPresentation {
+    static func failureList(_ result: BulkUnlockResult) -> String {
+        result.failures.map(\.path).joined(separator: "\n")
+    }
+}
+
 /// 현재 작업 복사본 범위에서 서버가 보고한 잠금과 소유자를 표시합니다.
 struct RepositoryLocksView: View {
     @Environment(ProjectStore.self) private var store
@@ -146,14 +152,11 @@ struct RepositoryLocksView: View {
     }
 
     private func bulkUnlockResultDetails(_ result: BulkUnlockResult) -> String {
-        let failures = result.failures
-            .map { "\($0.path)\n\($0.message)" }
-            .joined(separator: "\n\n")
         return appLanguage.localized(
             .ui.lock.releasedLocksLocksBelowCouldNotReleased,
             result.releasedPaths.count,
             result.requestedCount,
-            failures
+            BulkUnlockResultPresentation.failureList(result)
         )
     }
 }
