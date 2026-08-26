@@ -109,6 +109,65 @@ struct SVNWorkingCopyRecoveryTests {
         #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("command-log").path))
         #expect(try String(contentsOf: destination.appendingPathComponent("existing.txt"), encoding: .utf8) == "keep")
     }
+
+    /// 복구 대상 폴더가 원본 작업 폴더 안이면 새 체크아웃이 원본의 미등록 항목으로 잡혀
+    /// 저장소 전체가 자기 안으로 한 번 더 복사됩니다. svn을 부르기 전에 막아야 합니다.
+    @Test func rejectsRecoveryDestinationInsideSourceWorkingCopy() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-nested-test-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let destination = source.appendingPathComponent("복구", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let commandLog = root.appendingPathComponent("command-log")
+        let client = SVNClient(executablePath: try makeLoggingFakeSVN(at: root, log: commandLog).path)
+
+        do {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+            Issue.record("원본 하위 폴더가 거부되어야 합니다.")
+        } catch SVNError.recoveryBlocked {
+            // expected
+        } catch {
+            Issue.record("예상하지 못한 오류: \(error)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: commandLog.path))
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    @Test func rejectsRecoveryDestinationThatContainsSourceWorkingCopy() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-parent-test-\(UUID().uuidString)", isDirectory: true)
+        let destination = root.appendingPathComponent("작업", isDirectory: true)
+        let source = destination.appendingPathComponent("source", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let commandLog = root.appendingPathComponent("command-log")
+        let client = SVNClient(executablePath: try makeLoggingFakeSVN(at: root, log: commandLog).path)
+
+        do {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+            Issue.record("원본을 품는 폴더가 거부되어야 합니다.")
+        } catch SVNError.recoveryBlocked {
+            // expected
+        } catch {
+            Issue.record("예상하지 못한 오류: \(error)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: commandLog.path))
+    }
+}
+
+private func makeLoggingFakeSVN(at root: URL, log: URL) throws -> URL {
+    let executable = root.appendingPathComponent("fake-svn-\(UUID().uuidString)")
+    let script = """
+    #!/bin/sh
+    printf '%s\\n' "$*" >> '\(log.path)'
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    return executable
 }
 
 private func directoryFileDigest(at root: URL) throws -> [String: Data] {

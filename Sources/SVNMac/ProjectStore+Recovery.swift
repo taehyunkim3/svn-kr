@@ -47,6 +47,14 @@ extension ProjectStore {
             errorMessage = AppLanguage.current.localized(.ui.recovery.localWorkingFolderAlreadyRegistered)
             return false
         }
+        // 폴더 선택 창은 현재 작업 폴더에서 열리므로 그 안에 새 폴더를 만들기 쉽습니다.
+        // 그대로 두면 새 체크아웃이 원본의 미등록 항목으로 잡혀 저장소 전체가 중첩 복사됩니다.
+        guard Self.recoveryDestinationIsOutside(sourcePath: sourceProject.path, destination: destination) else {
+            errorMessage = AppLanguage.current.localized(
+                .ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder
+            )
+            return false
+        }
 
         errorMessage = nil
         let operationID = beginOperation(.recover(sourceID))
@@ -95,5 +103,22 @@ extension ProjectStore {
             errorMessage = localizedError(error)
             return false
         }
+    }
+
+    /// APFS는 대소문자와 유니코드 정규화를 무시하므로 포함 관계 판정도 같은 기준으로 접습니다.
+    static func recoveryDestinationIsOutside(sourcePath: String, destination: URL) -> Bool {
+        let source = comparableRecoveryPath(URL(fileURLWithPath: sourcePath, isDirectory: true))
+        let target = comparableRecoveryPath(destination)
+        return source != target
+            && !target.hasPrefix(source + "/")
+            && !source.hasPrefix(target + "/")
+    }
+
+    private static func comparableRecoveryPath(_ url: URL) -> String {
+        url.standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
     }
 }

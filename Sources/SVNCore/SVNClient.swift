@@ -669,6 +669,7 @@ public actor SVNClient {
     ) async throws -> SVNRecoveryResult {
         let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
+        try SVNWorkingCopyRecovery.requireSeparateDestination(source: source, destination: destination)
         try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
 
         let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)

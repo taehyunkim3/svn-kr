@@ -33,6 +33,7 @@ import Testing
         "ui.recovery.emptyFolderConfirmationAction",
         "ui.recovery.allContentsVerifiedInterruptedSvnWorkingCopyFolderBelowDeleted",
         "ui.recovery.folderAlreadyFilesBeforeCheckoutSoAppNotEmptyIt",
+        "ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder",
     ]
     let resources = try svnMacSources().appendingPathComponent("Resources", isDirectory: true)
     let files = [

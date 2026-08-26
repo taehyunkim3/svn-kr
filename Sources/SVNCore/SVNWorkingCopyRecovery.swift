@@ -112,6 +112,28 @@ enum SVNWorkingCopyRecovery {
         )
     }
 
+    /// 복구 대상 폴더가 원본 작업 폴더 안이면 새 체크아웃이 원본의 미등록 항목으로 잡혀
+    /// 저장소 전체가 자기 안으로 한 번 더 복사됩니다. 반대로 원본을 품는 위치도 원본을
+    /// 지우거나 덮어쓸 수 있으므로 함께 막습니다.
+    static func requireSeparateDestination(source: URL, destination: URL) throws {
+        let sourcePath = comparableFileSystemPath(source)
+        let destinationPath = comparableFileSystemPath(destination)
+        guard sourcePath != destinationPath,
+              !destinationPath.hasPrefix(sourcePath + "/"),
+              !sourcePath.hasPrefix(destinationPath + "/") else {
+            throw SVNError.recoveryBlocked(paths: [destination.standardizedFileURL.path])
+        }
+    }
+
+    /// APFS는 대소문자와 유니코드 정규화를 무시하므로 포함 관계 판정도 같은 기준으로 접습니다.
+    private static func comparableFileSystemPath(_ url: URL) -> String {
+        url.standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
+    }
+
     static func requireEmptyDestination(_ destination: URL, fileManager: FileManager = .default) throws {
         var isDirectory: ObjCBool = false
         if fileManager.fileExists(atPath: destination.path, isDirectory: &isDirectory) {
