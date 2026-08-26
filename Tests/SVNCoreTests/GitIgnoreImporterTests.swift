@@ -22,12 +22,18 @@ import Testing
         propertyKind: .global
     ))
     #expect(preview[0].warning != nil)
-    if case .unsupported = preview[1].disposition {} else {
-        Issue.record("Directory-only rule must not become a file-matching SVN rule")
-    }
-    if case .unsupported = preview[2].disposition {} else {
-        Issue.record("Nested directory-only rule must remain unsupported")
-    }
+    #expect(preview[1].proposal == SVNIgnoreRule(
+        directory: ".",
+        pattern: "build",
+        propertyKind: .local
+    ))
+    #expect(preview[1].warning?.contains("같은 이름의 파일") == true)
+    #expect(preview[2].proposal == SVNIgnoreRule(
+        directory: "nested",
+        pattern: "cache",
+        propertyKind: .local
+    ))
+    #expect(preview[2].warning?.contains("같은 이름의 파일") == true)
     if case .unsupported = preview[3].disposition {} else {
         Issue.record("Negated rule must remain unsupported")
     }
@@ -65,8 +71,8 @@ import Testing
 
     #expect(preview[0].proposal == SVNIgnoreRule(directory: ".", pattern: "*.log", propertyKind: .global))
     #expect(preview[1].proposal == SVNIgnoreRule(directory: "lib", pattern: "local.txt", propertyKind: .local))
-    if case .unsupported = preview[2].disposition {} else {
-        Issue.record("Directory-only rule must remain unsupported")
-    }
+    #expect(preview[2].proposal == SVNIgnoreRule(directory: "lib", pattern: "build", propertyKind: .global))
+    #expect(preview[2].warning?.contains("같은 이름의 파일") == true)
+    #expect(preview[2].warning?.contains("이미 추적 중인 1개") == true)
     #expect(preview[3].proposal == SVNIgnoreRule(directory: "lib/cache", pattern: "tmp", propertyKind: .local))
 }

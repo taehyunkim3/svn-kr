@@ -57,15 +57,6 @@ public enum GitIgnoreImporter {
         if rule.pattern.contains("**") {
             return IgnoreImportItem(rule: rule, disposition: .unsupported(reason: "재귀 패턴(**)은 SVN 무시 속성과 의미가 다릅니다."))
         }
-        if rule.isDirectoryOnly {
-            return IgnoreImportItem(
-                rule: rule,
-                disposition: .unsupported(
-                    reason: "디렉터리 전용 규칙은 SVN 무시 속성으로 안전하게 변환할 수 없습니다."
-                )
-            )
-        }
-
         let components = rule.pattern.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard !components.isEmpty else {
             return IgnoreImportItem(rule: rule, disposition: .unsupported(reason: "빈 패턴입니다."))
@@ -102,13 +93,18 @@ public enum GitIgnoreImporter {
         }
 
         let trackedMatches = trackedPaths.filter { matches(path: $0, rule: rule) }
-        let warning = trackedMatches.isEmpty
-            ? nil
-            : "이미 추적 중인 \(trackedMatches.count)개 항목에는 무시 규칙이 적용되지 않습니다."
+        let warnings = [
+            rule.isDirectoryOnly
+                ? "SVN 무시 속성은 디렉터리 전용을 구분하지 않아 같은 이름의 파일도 무시합니다."
+                : nil,
+            trackedMatches.isEmpty
+                ? nil
+                : "이미 추적 중인 \(trackedMatches.count)개 항목에는 무시 규칙이 적용되지 않습니다.",
+        ].compactMap { $0 }
         return IgnoreImportItem(
             rule: rule,
             disposition: .proposal(proposal, requiresConfirmation: isGlobal),
-            warning: warning
+            warning: warnings.isEmpty ? nil : warnings.joined(separator: " ")
         )
     }
 
