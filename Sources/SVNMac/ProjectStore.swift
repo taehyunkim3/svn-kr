@@ -228,7 +228,13 @@ final class ProjectStore {
     var isShowingUpdatePreview = false
     var isShowingTemporaryFileCleanup = false
     var isShowingFileHistory = false
-    var isShowingPathRecovery = false
+    var isShowingPathRecovery = false {
+        didSet {
+            if !isShowingPathRecovery, isPathRecoveryRunning {
+                isShowingPathRecovery = true
+            }
+        }
+    }
     var pathRecoveryPreview: SVNRecoveryPreview?
     var isShowingRepositoryPathNormalization = false
     var isConfirmingRepositoryPathNormalization = false
@@ -629,6 +635,7 @@ final class ProjectStore {
             || isShowingRepositoryPathNormalization
             || activeConflictSession != nil
             || activeTreeConflictSession != nil
+            || recoveryState.propertyConflictSession != nil
             || deletionRequest != nil
             || revertRequest != nil
             || documentOpenRequest != nil
@@ -1521,6 +1528,7 @@ final class ProjectStore {
             return
         }
         if isKeychainAccessDenied(error) {
+            isShowingUpdatePreview = false
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
         } else {
@@ -1651,6 +1659,7 @@ final class ProjectStore {
             allowedServerCertificateFailures(for: project)
         )
         guard !failuresNeedingConsent.isEmpty else { return false }
+        isShowingUpdatePreview = false
         authenticationRequest = SVNAuthenticationRequest(
             projectID: project.id,
             action: action,
@@ -1731,9 +1740,9 @@ final class ProjectStore {
         browserState = ProjectBrowserStore()
         historyState = ProjectHistoryStore()
         updateState = ProjectUpdateStore()
-        isShowingPathRecovery = false
         pathRecoveryPreview = nil
         pathRecoverySourceProjectID = nil
+        isShowingPathRecovery = false
         isShowingUpdatePreview = false
         isShowingTemporaryFileCleanup = false
         isShowingFileHistory = false

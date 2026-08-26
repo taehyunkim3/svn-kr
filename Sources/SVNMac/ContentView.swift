@@ -220,6 +220,7 @@ struct ContentView: View {
         .sheet(isPresented: $store.isShowingTemporaryFileCleanup) {
             TemporaryFileCleanupView()
                 .environment(store)
+                .interactiveDismissDisabled(store.isCleaningSelectedProjectTemporaryFiles)
         }
         .sheet(isPresented: $store.isShowingLocks) {
             RepositoryLocksView()
@@ -229,7 +230,7 @@ struct ContentView: View {
             RepositoryPathNormalizationView()
                 .environment(store)
         }
-        .sheet(item: $store.authenticationRequest) { request in
+        .sheet(item: rootAuthenticationRequest) { request in
             AuthenticationRequiredView(request: request)
                 .environment(store)
         }
@@ -241,6 +242,15 @@ struct ContentView: View {
 
     private var isUpdateInProgress: Bool {
         store.isPreviewingSelectedProjectUpdate || store.isUpdatingSelectedProject
+    }
+
+    private var rootAuthenticationRequest: Binding<SVNAuthenticationRequest?> {
+        Binding(
+            get: { store.isShowingCredentials ? nil : store.authenticationRequest },
+            set: { request in
+                if request == nil { store.authenticationRequest = nil }
+            }
+        )
     }
 
     // MARK: - 선택 프로젝트 화면

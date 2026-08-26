@@ -88,13 +88,6 @@ struct WorkingCopyBrowserView: View {
         .onKeyPress(.return) {
             handleKey(.activate)
         }
-        .sheet(isPresented: $store.isShowingFileHistory) {
-            FileHistoryView().environment(store)
-        }
-        .sheet(item: $store.recoveryState.versionedFileActionRequest) { request in
-            VersionedFileActionView(request: request)
-                .environment(store)
-        }
         .task(id: searchRequest) {
             await updateSearchResults()
         }
@@ -105,8 +98,6 @@ struct WorkingCopyBrowserView: View {
             guard let message, SVNClient.isRepositoryConnectionError(message) else { return }
             Task { await store.captureRepositoryConnectionError(message) }
         }
-        .documentOpenConfirmation()
-        .explicitLockConfirmation()
     }
 
     private func fileNameCell(_ node: WorkingCopyFileNode) -> some View {

@@ -63,13 +63,6 @@ struct WorkingCopySplitBrowserView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(isPresented: $store.isShowingFileHistory) {
-            FileHistoryView().environment(store)
-        }
-        .sheet(item: $store.recoveryState.versionedFileActionRequest) { request in
-            VersionedFileActionView(request: request)
-                .environment(store)
-        }
         .task(id: store.selectedProjectID) {
             await prepareForSelectedProject()
         }
@@ -85,8 +78,6 @@ struct WorkingCopySplitBrowserView: View {
             guard let message, SVNClient.isRepositoryConnectionError(message) else { return }
             Task { await store.captureRepositoryConnectionError(message) }
         }
-        .documentOpenConfirmation()
-        .explicitLockConfirmation()
     }
 
     private var folderPanel: some View {

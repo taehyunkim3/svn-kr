@@ -47,7 +47,6 @@ struct FileHistoryView: View {
             }
         }
         .appSheetFrame(minimumSize: AppLayout.fileHistorySheetMinimumSize)
-        .historyRevisionRestoreConfirmation()
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 }

@@ -2718,6 +2718,7 @@ import Testing
     await store.update()
     let request = try #require(store.authenticationRequest)
     #expect(request.action == .commit(message: "무시 규칙 추가"))
+    #expect(!store.isShowingUpdatePreview)
 
     await store.retryKeychainAccess(for: request)
 
