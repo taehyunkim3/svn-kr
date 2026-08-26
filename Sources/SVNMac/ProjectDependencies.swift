@@ -22,6 +22,7 @@ protocol SVNClientServing: Sendable {
     func repositoryEntries(at repositoryURL: String, revision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry]
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
+    func untrackedChildren(at path: String, directory: String, credentials: SVNCredentials?) async throws -> [SVNUntrackedChild]
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule]
     func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws
     func removeIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws

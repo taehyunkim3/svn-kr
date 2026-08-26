@@ -15,8 +15,22 @@ final class ProjectChangesStore {
     var gitIgnoreLastComparedAt: Date?
     var showsIgnoredFiles = false
     var selectedPaths: Set<String> = []
+    var expandedUntrackedDirectoryPaths: Set<String> = []
+    var untrackedChildrenByDirectory: [String: [SVNUntrackedChild]] = [:]
+    var loadingUntrackedDirectoryPaths: Set<String> = []
+    var untrackedChildrenErrorsByDirectory: [String: String] = [:]
+    var selectedUntrackedChildPaths: Set<String> = []
+    var untrackedChildrenRefreshGeneration = 0
     var selectedStatusPath: String?
     var diffContent: DiffContent = .placeholder
+}
+
+struct VisibleUntrackedChild: Identifiable, Hashable {
+    let child: SVNUntrackedChild
+    let parentDirectory: String
+    let depth: Int
+
+    var id: SVNPathIdentity { child.id }
 }
 
 @Observable

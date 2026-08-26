@@ -2944,6 +2944,124 @@ import Testing
 }
 
 @MainActor
+@Test func untrackedDirectoryAndChildSelectionsAreMutuallyExclusive() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = SVNStatusEntry(path: "새 폴더", item: .unversioned, nodeKind: .directory)
+    let child = SVNUntrackedChild(path: "새 폴더/문서.txt", isDirectory: false, isIgnored: false)
+    let client = StubSVNClient(untrackedChildrenByDirectory: [directory.path: [child]])
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [directory]
+
+    await store.setUntrackedDirectoryExpanded(directory.path, expanded: true)
+    store.setUntrackedDirectorySelected(directory.path, selected: true)
+    store.setUntrackedChildSelected(child.path, parentDirectory: directory.path, selected: true)
+
+    #expect(!store.selectedPaths.contains(directory.path))
+    #expect(store.selectedUntrackedChildPaths == [child.path])
+
+    store.setUntrackedDirectorySelected(directory.path, selected: true)
+
+    #expect(store.selectedPaths == [directory.path])
+    #expect(store.selectedUntrackedChildPaths.isEmpty)
+}
+
+@MainActor
+@Test func selectedUntrackedChildrenAreTheOnlyCommitTargetsForTheirFolder() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = SVNStatusEntry(path: "새 폴더", item: .unversioned, nodeKind: .directory)
+    let first = SVNUntrackedChild(path: "새 폴더/첫째.txt", isDirectory: false, isIgnored: false)
+    let second = SVNUntrackedChild(path: "새 폴더/둘째.txt", isDirectory: false, isIgnored: false)
+    let client = StubSVNClient(untrackedChildrenByDirectory: [directory.path: [first, second]])
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [directory]
+
+    await store.setUntrackedDirectoryExpanded(directory.path, expanded: true)
+    store.setUntrackedChildSelected(second.path, parentDirectory: directory.path, selected: true)
+
+    #expect(store.selectedCommitPaths() == [second.path])
+}
+
+@MainActor
+@Test func selectedUntrackedDirectoryIsTheOnlyCommitTargetForItsTree() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = SVNStatusEntry(path: "새 폴더", item: .unversioned, nodeKind: .directory)
+    let child = SVNUntrackedChild(path: "새 폴더/문서.txt", isDirectory: false, isIgnored: false)
+    let client = StubSVNClient(untrackedChildrenByDirectory: [directory.path: [child]])
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [directory]
+
+    await store.setUntrackedDirectoryExpanded(directory.path, expanded: true)
+    store.setUntrackedChildSelected(child.path, parentDirectory: directory.path, selected: true)
+    store.setUntrackedDirectorySelected(directory.path, selected: true)
+
+    #expect(store.selectedCommitPaths() == [directory.path])
+}
+
+@MainActor
+@Test func expandingUntrackedDirectoryLoadsOnceAndReusesCache() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = "새 폴더"
+    let client = StubSVNClient(untrackedChildrenByDirectory: [
+        directory: [SVNUntrackedChild(path: "새 폴더/문서.txt", isDirectory: false, isIgnored: false)],
+    ])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.setUntrackedDirectoryExpanded(directory, expanded: true)
+    await store.setUntrackedDirectoryExpanded(directory, expanded: false)
+    await store.setUntrackedDirectoryExpanded(directory, expanded: true)
+
+    #expect(await client.untrackedChildrenRequestCount(for: directory) == 1)
+    #expect(store.untrackedChildrenByDirectory[directory]?.count == 1)
+}
+
+@MainActor
+@Test func refreshingWorkingCopyDiscardsUntrackedChildrenCacheAndSelection() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = SVNStatusEntry(path: "새 폴더", item: .unversioned, nodeKind: .directory)
+    let child = SVNUntrackedChild(path: "새 폴더/문서.txt", isDirectory: false, isIgnored: false)
+    let snapshot = SVNWorkingCopySnapshot(
+        statuses: [directory],
+        revision: SVNWorkingCopyRevision(minimum: "1", maximum: "1"),
+        collisions: [],
+        versionedPathsByCanonicalKey: [:]
+    )
+    let client = StubSVNClient(
+        snapshotsByPath: [project.path: snapshot],
+        untrackedChildrenByDirectory: [directory.path: [child]]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [directory]
+
+    await store.setUntrackedDirectoryExpanded(directory.path, expanded: true)
+    store.setUntrackedChildSelected(child.path, parentDirectory: directory.path, selected: true)
+    await store.refreshLocalWorkingCopy()
+
+    #expect(store.expandedUntrackedDirectoryPaths.isEmpty)
+    #expect(store.untrackedChildrenByDirectory.isEmpty)
+    #expect(store.selectedUntrackedChildPaths.isEmpty)
+}
+
+@MainActor
+@Test func ignoredUntrackedChildrenFollowVisibilityAndAreNotSelectedByDefault() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = "새 폴더"
+    let visible = SVNUntrackedChild(path: "새 폴더/문서.txt", isDirectory: false, isIgnored: false)
+    let ignored = SVNUntrackedChild(path: "새 폴더/캐시.log", isDirectory: false, isIgnored: true)
+    let client = StubSVNClient(untrackedChildrenByDirectory: [directory: [visible, ignored]])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.setUntrackedDirectoryExpanded(directory, expanded: true)
+
+    #expect(store.visibleUntrackedChildren(in: directory).map(\.path) == [visible.path])
+    #expect(store.selectedUntrackedChildPaths.isEmpty)
+
+    store.showsIgnoredFiles = true
+
+    #expect(store.visibleUntrackedChildren(in: directory).map(\.path) == [visible.path, ignored.path])
+    #expect(store.selectedUntrackedChildPaths.isEmpty)
+}
+
+@MainActor
 @Test func selectedProjectActionsIgnoreUnrelatedReadOperations() {
     let selected = SVNProject(name: "선택", path: "/tmp/selected")
     let other = SVNProject(name: "다른", path: "/tmp/other")
@@ -4522,6 +4640,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var cleanupRequests = 0
     private var unlockForces: [Bool] = []
     private var multiplePathLockRequests = 0
+    let untrackedChildrenByDirectory: [String: [SVNUntrackedChild]]
+    private var untrackedChildrenRequestsByDirectory: [String: Int] = [:]
 
     init(
         statusesByPath: [String: [SVNStatusEntry]] = [:],
@@ -4583,6 +4703,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         commitGate: AsyncTestGate? = nil,
         recoveryGate: AsyncTestGate? = nil,
         multiplePathLockGate: AsyncTestGate? = nil,
+        untrackedChildrenByDirectory: [String: [SVNUntrackedChild]] = [:],
         updatePreviewCommitsByRequest: [[SVNLogEntry]] = [],
         updatePreviewGatesByRequest: [AsyncTestGate] = []
     ) {
@@ -4638,6 +4759,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.commitGate = commitGate
         self.recoveryGate = recoveryGate
         self.multiplePathLockGate = multiplePathLockGate
+        self.untrackedChildrenByDirectory = untrackedChildrenByDirectory
         self.updatePreviewCommitsByRequest = updatePreviewCommitsByRequest
         self.updatePreviewGatesByRequest = updatePreviewGatesByRequest
         workingCopyEntriesValue = workingCopyEntries
@@ -4770,6 +4892,13 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func repositoryPathNormalizationRequestCount() -> Int { repositoryPathNormalizationRequests }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
+    func untrackedChildren(at path: String, directory: String, credentials: SVNCredentials?) async throws -> [SVNUntrackedChild] {
+        untrackedChildrenRequestsByDirectory[directory, default: 0] += 1
+        return untrackedChildrenByDirectory[directory] ?? []
+    }
+    func untrackedChildrenRequestCount(for directory: String) -> Int {
+        untrackedChildrenRequestsByDirectory[directory, default: 0]
+    }
     func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] {
         ignoreRulesValue + addedIgnoreRules
     }

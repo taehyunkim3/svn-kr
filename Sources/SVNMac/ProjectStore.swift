@@ -322,7 +322,34 @@ final class ProjectStore {
     }
     var selectedPaths: Set<String> {
         get { changesState.selectedPaths }
-        set { changesState.selectedPaths = newValue }
+        set {
+            changesState.selectedPaths = newValue
+            removeUntrackedChildSelectionsCovered(by: newValue)
+        }
+    }
+    var expandedUntrackedDirectoryPaths: Set<String> {
+        get { changesState.expandedUntrackedDirectoryPaths }
+        set { changesState.expandedUntrackedDirectoryPaths = newValue }
+    }
+    var untrackedChildrenByDirectory: [String: [SVNUntrackedChild]] {
+        get { changesState.untrackedChildrenByDirectory }
+        set { changesState.untrackedChildrenByDirectory = newValue }
+    }
+    var loadingUntrackedDirectoryPaths: Set<String> {
+        get { changesState.loadingUntrackedDirectoryPaths }
+        set { changesState.loadingUntrackedDirectoryPaths = newValue }
+    }
+    var untrackedChildrenErrorsByDirectory: [String: String] {
+        get { changesState.untrackedChildrenErrorsByDirectory }
+        set { changesState.untrackedChildrenErrorsByDirectory = newValue }
+    }
+    var selectedUntrackedChildPaths: Set<String> {
+        get { changesState.selectedUntrackedChildPaths }
+        set { changesState.selectedUntrackedChildPaths = newValue }
+    }
+    var untrackedChildrenRefreshGeneration: Int {
+        get { changesState.untrackedChildrenRefreshGeneration }
+        set { changesState.untrackedChildrenRefreshGeneration = newValue }
     }
     var selectedStatusPath: String? {
         get { changesState.selectedStatusPath }
@@ -749,9 +776,12 @@ final class ProjectStore {
     }
 
     var canCommitSelectedPaths: Bool {
-        !hasUnrepairablePathCollisions
-            && !selectedPaths.isEmpty
+        let commitPaths = selectedCommitPaths()
+        let knownChildPaths = Set(untrackedChildrenByDirectory.values.joined().map(\.path))
+        return !hasUnrepairablePathCollisions
+            && !commitPaths.isEmpty
             && selectedPaths.isSubset(of: selectableStatusPaths)
+            && selectedUntrackedChildPaths.isSubset(of: knownChildPaths)
     }
 
     init(
@@ -1279,7 +1309,8 @@ final class ProjectStore {
     }
 
     private func registerRefreshRequest() -> UUID {
-        beginRequest(.refresh)
+        discardUntrackedChildrenState()
+        return beginRequest(.refresh)
     }
 
     @discardableResult
@@ -1360,7 +1391,10 @@ final class ProjectStore {
         guard let project = selectedProject else { return }
         let requestID = beginRequest(.diff)
         selectedStatusPath = path
-        if statuses.first(where: { $0.path == path })?.item == .unversioned {
+        let isUntrackedChild = untrackedChildrenByDirectory.values.joined().contains {
+            $0.path == path
+        }
+        if statuses.first(where: { $0.path == path })?.item == .unversioned || isUntrackedChild {
             diffContent = .unavailableForUnversioned
             return
         }
@@ -1380,9 +1414,10 @@ final class ProjectStore {
 
     func commit(message: String) async -> Bool {
         guard let project = selectedProject, canCommitSelectedPaths else { return false }
-        let paths = selectedPaths.sorted()
+        let selectedCommitPaths = selectedCommitPaths()
+        let paths = selectedCommitPaths.sorted()
         let missingPaths = statuses.lazy
-            .filter { $0.item == .missing && self.selectedPaths.contains($0.path) }
+            .filter { $0.item == .missing && selectedCommitPaths.contains($0.path) }
             .map(\.path)
         guard missingPaths.isEmpty else {
             errorMessage = AppLanguage.current.localized(
@@ -1391,7 +1426,7 @@ final class ProjectStore {
             )
             return false
         }
-        guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
+        guard !Self.containsSelectedConflict(selectedPaths: selectedCommitPaths, statuses: statuses) else {
             errorMessage = AppLanguage.current.localized(.ui.conflict.resolveConflictedFilesBeforeCommitting)
             return false
         }
@@ -1431,6 +1466,7 @@ final class ProjectStore {
             guard selectedProjectID == project.id else { return true }
             notice = result
             selectedPaths.subtract(paths)
+            selectedUntrackedChildPaths.subtract(paths)
             lastCompletedCommitMessage = message
             recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
@@ -1438,6 +1474,7 @@ final class ProjectStore {
         } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
             guard selectedProjectID == project.id else { return true }
             selectedPaths.subtract(paths)
+            selectedUntrackedChildPaths.subtract(paths)
             lastCompletedCommitMessage = message
             recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
