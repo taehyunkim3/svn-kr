@@ -3226,6 +3226,55 @@ import Testing
     ))
 }
 
+@MainActor
+@Test func commitHistoryPreparesExistingRevisionActionsForWorkingCopyFile() throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    let deletedPath = SVNChangedPath(
+        path: "/project/trunk/docs/%E1%84%87%E1%85%A9%E1%84%80%E1%85%A9%E1%84%89%E1%85%A5.xlsx",
+        action: .deleted,
+        kind: .file
+    )
+    store.workingCopyRepositoryPath = "/project/trunk"
+
+    store.prepareHistoryRevisionActions(revision: "42", changedPath: deletedPath)
+
+    let context = try #require(store.recoveryState.historyRevisionActionContext)
+    #expect(context.selectedRevision == "42")
+    #expect(context.contentRevision == "41")
+    #expect(context.repositoryPath == deletedPath.path)
+    #expect(context.fileHistoryRequest.projectID == project.id)
+    #expect(context.fileHistoryRequest.relativePath == "docs/보고서.xlsx")
+    #expect(store.fileHistoryRequest == context.fileHistoryRequest)
+
+    store.requestHistoryRevisionRestore(revision: context.contentRevision)
+
+    let restoreRequest = try #require(store.recoveryState.historyRevisionRestoreRequest)
+    #expect(restoreRequest.fileHistoryRequestID == context.fileHistoryRequest.id)
+    #expect(restoreRequest.projectID == project.id)
+    #expect(restoreRequest.relativePath == "docs/보고서.xlsx")
+    #expect(restoreRequest.revision == "41")
+}
+
+@MainActor
+@Test func commitHistoryDoesNotOfferRevisionActionsOutsideWorkingCopyRoot() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.workingCopyRepositoryPath = "/project/trunk"
+
+    store.prepareHistoryRevisionActions(
+        revision: "42",
+        changedPath: SVNChangedPath(
+            path: "/project/branches/other/report.xlsx",
+            action: .modified,
+            kind: .file
+        )
+    )
+
+    #expect(store.recoveryState.historyRevisionActionContext == nil)
+    #expect(store.fileHistoryRequest == nil)
+}
+
 @Test func recognizesTemporaryFileNamesButOnlyHidesKnownUnversionedFiles() {
     let temporaryPaths = [
         "문서/~$보고서.xlsx",

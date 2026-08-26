@@ -37,11 +37,39 @@ struct HistoryRevisionOperation: Identifiable, Equatable {
     let kind: Kind
 }
 
+struct HistoryRevisionActionContext: Equatable {
+    let selectedRevision: String
+    let repositoryPath: String
+    let contentRevision: String
+    let fileHistoryRequest: FileHistoryRequest
+}
+
 extension ProjectStore {
     func selectHistoryRevision(_ revision: String) {
         selectedHistoryRevision = revision
         selectedHistoryPath = nil
         historyDiffContent = .placeholder
+        recoveryState.historyRevisionActionContext = nil
+    }
+
+    func prepareHistoryRevisionActions(revision: String, changedPath: SVNChangedPath) {
+        guard let project = selectedProject,
+              let relativePath = workingCopyRelativePath(for: changedPath.path) else {
+            fileHistoryRequest = nil
+            recoveryState.historyRevisionActionContext = nil
+            return
+        }
+        let request = FileHistoryRequest(
+            projectID: project.id,
+            relativePath: relativePath
+        )
+        fileHistoryRequest = request
+        recoveryState.historyRevisionActionContext = HistoryRevisionActionContext(
+            selectedRevision: revision,
+            repositoryPath: changedPath.path,
+            contentRevision: pegRevision(for: changedPath, revision: revision),
+            fileHistoryRequest: request
+        )
     }
 
     func loadHistoryDiff(for revision: String, changedPath: SVNChangedPath) async {
@@ -79,6 +107,25 @@ extension ProjectStore {
         guard changedPath.action == .deleted,
               let revisionNumber = Int(revision), revisionNumber > 0 else { return revision }
         return String(revisionNumber - 1)
+    }
+
+    private func workingCopyRelativePath(for repositoryPath: String) -> String? {
+        guard let workingCopyRepositoryPath else { return nil }
+        let repositoryComponents = decodedPathComponents(repositoryPath)
+        let rootComponents = decodedPathComponents(workingCopyRepositoryPath)
+        guard repositoryComponents.starts(with: rootComponents),
+              repositoryComponents.count > rootComponents.count else { return nil }
+        return repositoryComponents
+            .dropFirst(rootComponents.count)
+            .joined(separator: "/")
+            .precomposedStringWithCanonicalMapping
+    }
+
+    private func decodedPathComponents(_ path: String) -> [String] {
+        (path.removingPercentEncoding ?? path)
+            .precomposedStringWithCanonicalMapping
+            .split(separator: "/", omittingEmptySubsequences: true)
+            .map(String.init)
     }
 
     func loadMoreHistory() async {
