@@ -138,6 +138,7 @@ struct CommitConfirmationView: View {
                 || store.isRevertingSelectedProject
         )
         .commitDeletionRestoreConfirmation()
+        .environment(\.commitDeletionRestorePresentationOwner, .commitConfirmation)
     }
 
     private var serverDeletionEntries: [SVNStatusEntry] {

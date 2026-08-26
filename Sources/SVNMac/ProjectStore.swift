@@ -226,9 +226,21 @@ final class ProjectStore {
     var isShowingIgnoreRules = false
     var isShowingLocks = false
     var isShowingUpdatePreview = false
-    var isShowingTemporaryFileCleanup = false
+    var isShowingTemporaryFileCleanup = false {
+        didSet {
+            if !isShowingTemporaryFileCleanup, isCleaningSelectedProjectTemporaryFiles {
+                isShowingTemporaryFileCleanup = true
+            }
+        }
+    }
     var isShowingFileHistory = false
-    var isShowingPathRecovery = false
+    var isShowingPathRecovery = false {
+        didSet {
+            if !isShowingPathRecovery, isPathRecoveryRunning {
+                isShowingPathRecovery = true
+            }
+        }
+    }
     var pathRecoveryPreview: SVNRecoveryPreview?
     var isShowingRepositoryPathNormalization = false
     var isConfirmingRepositoryPathNormalization = false
@@ -398,8 +410,54 @@ final class ProjectStore {
         set { historyState.fileHistoryPath = newValue }
     }
     var fileHistoryRequest: FileHistoryRequest? {
-        get { recoveryState.fileHistoryRequest }
-        set { recoveryState.fileHistoryRequest = newValue }
+        get {
+            if let request = recoveryState.commitHistoryRevisionOperationRequest {
+                return request
+            }
+            if let restoreRequest = recoveryState.historyRevisionRestoreRequest,
+               let context = recoveryState.historyRevisionActionContext,
+               restoreRequest.fileHistoryRequestID == context.fileHistoryRequest.id {
+                return context.fileHistoryRequest
+            }
+            return recoveryState.fileHistoryRequest
+        }
+        set {
+            if recoveryState.routesNextFileHistoryRequestToCommitHistory {
+                recoveryState.routesNextFileHistoryRequestToCommitHistory = false
+            } else {
+                recoveryState.fileHistoryRequest = newValue
+            }
+        }
+    }
+
+    func routeNextFileHistoryRequestToCommitHistory() {
+        recoveryState.routesNextFileHistoryRequestToCommitHistory = true
+    }
+
+    func requestCommitHistoryRevisionRestore(
+        fileHistoryRequest: FileHistoryRequest,
+        revision: String
+    ) {
+        guard recoveryState.historyRevisionActionContext?.fileHistoryRequest == fileHistoryRequest
+        else { return }
+        recoveryState.commitHistoryRevisionOperationRequest = fileHistoryRequest
+        defer { recoveryState.commitHistoryRevisionOperationRequest = nil }
+        requestHistoryRevisionRestore(revision: revision)
+    }
+
+    func saveCommitHistoryRevision(
+        _ request: HistoryRevisionSaveRequest,
+        fileHistoryRequest: FileHistoryRequest
+    ) async -> Bool {
+        guard recoveryState.historyRevisionActionContext?.fileHistoryRequest == fileHistoryRequest
+        else { return false }
+        recoveryState.commitHistoryRevisionOperationRequest = fileHistoryRequest
+        defer {
+            if recoveryState.commitHistoryRevisionOperationRequest?.id == fileHistoryRequest.id {
+                recoveryState.commitHistoryRevisionOperationRequest = nil
+            }
+        }
+        return await saveHistoryRevision(request)
     }
     var remoteChanges: [SVNStatusEntry] {
         get { updateState.remoteChanges }
@@ -629,6 +687,7 @@ final class ProjectStore {
             || isShowingRepositoryPathNormalization
             || activeConflictSession != nil
             || activeTreeConflictSession != nil
+            || recoveryState.propertyConflictSession != nil
             || deletionRequest != nil
             || revertRequest != nil
             || documentOpenRequest != nil
@@ -1521,6 +1580,7 @@ final class ProjectStore {
             return
         }
         if isKeychainAccessDenied(error) {
+            isShowingUpdatePreview = false
             authenticationRequest = SVNAuthenticationRequest(projectID: project.id, action: action)
             notice = authenticationNotice
         } else {
@@ -1651,6 +1711,7 @@ final class ProjectStore {
             allowedServerCertificateFailures(for: project)
         )
         guard !failuresNeedingConsent.isEmpty else { return false }
+        isShowingUpdatePreview = false
         authenticationRequest = SVNAuthenticationRequest(
             projectID: project.id,
             action: action,
@@ -1731,9 +1792,9 @@ final class ProjectStore {
         browserState = ProjectBrowserStore()
         historyState = ProjectHistoryStore()
         updateState = ProjectUpdateStore()
-        isShowingPathRecovery = false
         pathRecoveryPreview = nil
         pathRecoverySourceProjectID = nil
+        isShowingPathRecovery = false
         isShowingUpdatePreview = false
         isShowingTemporaryFileCleanup = false
         isShowingFileHistory = false

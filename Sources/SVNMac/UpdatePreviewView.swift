@@ -18,7 +18,9 @@ struct UpdatePreviewView: View {
             HStack {
                 Text(sheetTitle(commitRecovery)).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized(.ui.common.close)) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(appLanguage.localized(.ui.common.close)) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(store.isUpdatingSelectedProject)
             }
             .padding()
             Divider()
@@ -109,6 +111,7 @@ struct UpdatePreviewView: View {
             .padding()
         }
         .appSheetFrame(minimumSize: AppLayout.updatePreviewSheetMinimumSize)
+        .interactiveDismissDisabled(store.isUpdatingSelectedProject)
         .detailedErrorPresenter(errorMessage: $store.errorMessage)
     }
 

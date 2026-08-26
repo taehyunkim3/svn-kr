@@ -41,7 +41,8 @@ struct HistoryRevisionDiffView: View {
             if let context = selectedRevisionActionContext {
                 HistoryRevisionActions(
                     fileHistoryRequest: context.fileHistoryRequest,
-                    revision: context.contentRevision
+                    revision: context.contentRevision,
+                    source: .commitHistory
                 )
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -82,6 +83,7 @@ struct HistoryRevisionDiffView: View {
                 )
                 Button {
                     guard let revision = store.selectedHistoryRevision else { return }
+                    store.routeNextFileHistoryRequestToCommitHistory()
                     store.prepareHistoryRevisionActions(
                         revision: revision,
                         changedPath: changedPath

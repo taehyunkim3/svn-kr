@@ -2718,6 +2718,7 @@ import Testing
     await store.update()
     let request = try #require(store.authenticationRequest)
     #expect(request.action == .commit(message: "무시 규칙 추가"))
+    #expect(!store.isShowingUpdatePreview)
 
     await store.retryKeychainAccess(for: request)
 
@@ -3198,6 +3199,41 @@ import Testing
 }
 
 @MainActor
+@Test func pathRecoverySheetCannotCloseWhileRecoveryIsRunning() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.pathRecoverySourceProjectID = project.id
+    store.isShowingPathRecovery = true
+    let operationID = store.beginOperation(.recover(project.id))
+
+    store.isShowingPathRecovery = false
+
+    #expect(store.isShowingPathRecovery)
+
+    store.endOperation(operationID)
+    store.isShowingPathRecovery = false
+
+    #expect(!store.isShowingPathRecovery)
+}
+
+@MainActor
+@Test func temporaryFileCleanupSheetCannotCloseWhileCleanupIsRunning() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.isShowingTemporaryFileCleanup = true
+    let operationID = store.beginOperation(.cleanupTemporaryFiles(project.id))
+
+    store.isShowingTemporaryFileCleanup = false
+
+    #expect(store.isShowingTemporaryFileCleanup)
+
+    store.endOperation(operationID)
+    store.isShowingTemporaryFileCleanup = false
+
+    #expect(!store.isShowingTemporaryFileCleanup)
+}
+
+@MainActor
 @Test func historyDiffLoadsOnlySelectedFileAndUsesPreviousPegForDeletion() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient()
@@ -3256,6 +3292,41 @@ import Testing
     #expect(restoreRequest.projectID == project.id)
     #expect(restoreRequest.relativePath == "docs/보고서.xlsx")
     #expect(restoreRequest.revision == "41")
+}
+
+@MainActor
+@Test func commitHistoryPreparationPreservesTheOpenFileHistoryRequest() throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    let fileHistoryRequest = FileHistoryRequest(
+        projectID: project.id,
+        relativePath: "docs/현재-기록.xlsx"
+    )
+    store.fileHistoryRequest = fileHistoryRequest
+    store.workingCopyRepositoryPath = "/project/trunk"
+    store.routeNextFileHistoryRequestToCommitHistory()
+
+    store.prepareHistoryRevisionActions(
+        revision: "42",
+        changedPath: SVNChangedPath(
+            path: "/project/trunk/docs/과거-기록.xlsx",
+            action: .modified,
+            kind: .file
+        )
+    )
+
+    let context = try #require(store.recoveryState.historyRevisionActionContext)
+    #expect(store.fileHistoryRequest == fileHistoryRequest)
+    #expect(context.fileHistoryRequest != fileHistoryRequest)
+
+    store.requestCommitHistoryRevisionRestore(
+        fileHistoryRequest: context.fileHistoryRequest,
+        revision: context.contentRevision
+    )
+    #expect(
+        store.recoveryState.historyRevisionRestoreRequest?.fileHistoryRequestID
+            == context.fileHistoryRequest.id
+    )
 }
 
 @MainActor

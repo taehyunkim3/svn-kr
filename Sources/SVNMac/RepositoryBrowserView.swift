@@ -86,7 +86,6 @@ struct RepositoryBrowserView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(
                     state.repositoryURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || state.isLoading
                 )
             }
             GridRow {
@@ -109,7 +108,7 @@ struct RepositoryBrowserView: View {
                     systemImage: "arrow.up"
                 )
             }
-            .disabled(!state.canNavigateUp || state.isLoading)
+            .disabled(!state.canNavigateUp)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(appLanguage.localized(.ui.repository.currentRepositoryUrl))
@@ -219,12 +218,12 @@ struct RepositoryBrowserView: View {
                     isInProgress: state.isLoading
                 )
             }
-            .disabled(state.currentURL.isEmpty || state.isLoading)
+            .disabled(state.currentURL.isEmpty)
             Spacer()
             Button(appLanguage.localized(.ui.browser.openSelectedDirectory)) {
                 state.beginEnterSelectedDirectory()
             }
-            .disabled(state.selectedEntry?.kind != .directory || state.isLoading)
+            .disabled(state.selectedEntry?.kind != .directory)
             Button(appLanguage.localized(.ui.browser.useRepositoryPath)) {
                 store.recoveryState.repositoryBrowseSelectedURL = state.checkoutURL
                 dismiss()
