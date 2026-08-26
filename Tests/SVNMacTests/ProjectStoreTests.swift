@@ -2778,9 +2778,11 @@ import Testing
     let second = Task { await store.refresh() }
     try? await Task.sleep(for: .milliseconds(10))
 
+    // 새로고침 하나가 refresh, browseFiles, lock 작업을 함께 띄운다.
+    // 개수를 고정하면 새로고침 구성이 바뀔 때마다 깨지므로, 겹친 두 호출이
+    // 모두 같은 프로젝트의 refresh 작업을 등록했는지와 바쁨 상태 유지만 확인한다.
     #expect(store.isWorking)
-    #expect(store.activeOperations.count == 2)
-    #expect(store.activeOperations.allSatisfy { $0.kind == .refresh(project.id) })
+    #expect(store.activeOperations.filter { $0.kind == .refresh(project.id) }.count == 2)
 
     await first.value
     await second.value
