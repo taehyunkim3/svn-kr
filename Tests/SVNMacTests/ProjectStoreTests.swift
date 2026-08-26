@@ -3197,6 +3197,24 @@ import Testing
 }
 
 @MainActor
+@Test func pathRecoverySheetCannotCloseWhileRecoveryIsRunning() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.pathRecoverySourceProjectID = project.id
+    store.isShowingPathRecovery = true
+    let operationID = store.beginOperation(.recover(project.id))
+
+    store.isShowingPathRecovery = false
+
+    #expect(store.isShowingPathRecovery)
+
+    store.endOperation(operationID)
+    store.isShowingPathRecovery = false
+
+    #expect(!store.isShowingPathRecovery)
+}
+
+@MainActor
 @Test func historyDiffLoadsOnlySelectedFileAndUsesPreviousPegForDeletion() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient()
