@@ -163,7 +163,7 @@ private struct ServerCertificateTrustView: View {
                         appLanguage.localized(.ui.certificate.allowProject),
                         role: .destructive
                     ) {
-                        store.allowServerCertificateFailure(for: request)
+                        Task { await store.allowServerCertificateFailure(for: request) }
                     }
                     .buttonStyle(.borderedProminent)
                 }

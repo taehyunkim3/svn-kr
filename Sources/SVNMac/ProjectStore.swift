@@ -1653,7 +1653,7 @@ final class ProjectStore {
         return failures
     }
 
-    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) {
+    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) async {
         guard authenticationRequest?.id == request.id,
               let trust = request.serverCertificateTrust,
               trust.canAllow,
@@ -1665,6 +1665,7 @@ final class ProjectStore {
             .ui.certificate.savedCertificateExceptionRetrySvnOperation,
             projects[index].name
         )
+        await resume(request)
     }
 
     func handleRemoteError(

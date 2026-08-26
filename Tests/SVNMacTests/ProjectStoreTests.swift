@@ -3251,6 +3251,25 @@ import Testing
 }
 
 @MainActor
+@Test func allowingCertificateFailureResumesTheFailedUpdate() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+    let certificateError = SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E230001: Server SSL certificate verification failed: certificate has expired"
+    )
+    store.handleRemoteError(certificateError, project: project, action: .update)
+    let request = try #require(store.authenticationRequest)
+
+    await store.allowServerCertificateFailure(for: request)
+
+    #expect(await client.updateRequestCount() == 1)
+    #expect(store.authenticationRequest == nil)
+    #expect(store.allowedServerCertificateFailures(for: store.projects[0]).contains(.expired))
+}
+
+@MainActor
 @Test func relocatingToAFolderRegisteredByAnotherProjectIsRejected() async {
     let first = SVNProject(name: "첫 폴더", path: "/tmp/first-location")
     let second = SVNProject(name: "둘째 폴더", path: "/tmp/second-location")
