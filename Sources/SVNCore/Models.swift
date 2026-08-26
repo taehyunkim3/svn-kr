@@ -347,10 +347,16 @@ public extension SVNStatusEntry {
         item == .missing && !isMissingScheduledAddition
     }
 
+    /// 커밋 대상으로 고를 수 있는 항목입니다.
+    /// `incomplete`와 `obstructed`는 작업 복사본이 깨진 상태입니다.
+    /// 실제로 `svn commit`에 넘겨도 새 리비전 없이 종료 코드 0으로 끝나므로
+    /// 커밋한 것처럼 보이기만 합니다. 업데이트나 정리가 먼저 필요합니다.
     var isSelectableForCommit: Bool {
         item != .missing
             && item != .ignored
             && item != .conflicted
+            && item != .incomplete
+            && item != .obstructed
             && propertyState != .conflicted
     }
 }
