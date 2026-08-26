@@ -113,8 +113,9 @@ public struct SVNLockInfo: Identifiable, Hashable, Sendable {
     }
 }
 
-public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
-    public let path: String
+/// `svn info --xml` 이 한 경로에 대해 내보내는 `<conflict>` 요소 하나입니다.
+/// 같은 파일에 내용 충돌과 속성 충돌이 동시에 나면 요소가 여러 개 옵니다.
+public struct SVNConflictRecord: Hashable, Sendable {
     public let type: String
     public let operation: String
     public let previousBaseFile: String?
@@ -126,7 +127,64 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
     public let treeConflictReason: String?
     public let treeConflictKind: String?
 
+    public init(
+        type: String,
+        operation: String,
+        previousBaseFile: String? = nil,
+        myFile: String? = nil,
+        serverFile: String? = nil,
+        previousRevision: String? = nil,
+        serverRevision: String? = nil,
+        treeConflictAction: String? = nil,
+        treeConflictReason: String? = nil,
+        treeConflictKind: String? = nil
+    ) {
+        self.type = type
+        self.operation = operation
+        self.previousBaseFile = previousBaseFile
+        self.myFile = myFile
+        self.serverFile = serverFile
+        self.previousRevision = previousRevision
+        self.serverRevision = serverRevision
+        self.treeConflictAction = treeConflictAction
+        self.treeConflictReason = treeConflictReason
+        self.treeConflictKind = treeConflictKind
+    }
+
+    /// 해결 화면을 고르는 우선순위입니다. 트리 충돌은 전용 화면이 필요하고,
+    /// 내용 충돌은 작업 파일을 덮어쓸 수 있어 속성 충돌보다 먼저 다뤄야 합니다.
+    var resolutionPriority: Int {
+        switch type {
+        case "tree": 0
+        case "text": 1
+        case "property": 2
+        default: 3
+        }
+    }
+}
+
+public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
+    public let path: String
+    /// 화면 분기에 쓰는 대표 충돌 유형입니다. `conflicts` 중 우선순위가 가장 높은 것입니다.
+    public let type: String
+    public let operation: String
+    public let previousBaseFile: String?
+    public let myFile: String?
+    public let serverFile: String?
+    public let previousRevision: String?
+    public let serverRevision: String?
+    public let treeConflictAction: String?
+    public let treeConflictReason: String?
+    public let treeConflictKind: String?
+    /// 같은 경로에 동시에 존재하는 충돌 전부입니다. 대표 유형이 맨 앞입니다.
+    public let conflicts: [SVNConflictRecord]
+
     public var id: String { path }
+
+    public var conflictTypes: [String] { conflicts.map(\.type) }
+    public var hasTextConflict: Bool { conflicts.contains { $0.type == "text" } }
+    public var hasPropertyConflict: Bool { conflicts.contains { $0.type == "property" } }
+    public var hasTreeConflict: Bool { conflicts.contains { $0.type == "tree" } }
 
     public init(
         path: String,
@@ -139,7 +197,8 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         serverRevision: String? = nil,
         treeConflictAction: String? = nil,
         treeConflictReason: String? = nil,
-        treeConflictKind: String? = nil
+        treeConflictKind: String? = nil,
+        conflicts: [SVNConflictRecord] = []
     ) {
         self.path = path
         self.type = type
@@ -152,6 +211,52 @@ public struct SVNConflictDetails: Identifiable, Hashable, Sendable {
         self.treeConflictAction = treeConflictAction
         self.treeConflictReason = treeConflictReason
         self.treeConflictKind = treeConflictKind
+        // 목록을 넘기지 않은 호출부는 단일 충돌로 취급합니다.
+        // 평면 필드만 아는 경로(예: 경로 접두사 재구성)에서도 목록이 비지 않게 합니다.
+        self.conflicts = conflicts.isEmpty
+            ? [SVNConflictRecord(
+                type: type,
+                operation: operation,
+                previousBaseFile: previousBaseFile,
+                myFile: myFile,
+                serverFile: serverFile,
+                previousRevision: previousRevision,
+                serverRevision: serverRevision,
+                treeConflictAction: treeConflictAction,
+                treeConflictReason: treeConflictReason,
+                treeConflictKind: treeConflictKind
+            )]
+            : conflicts
+    }
+
+    /// 파서가 모은 `<conflict>` 요소 목록에서 대표 유형과 평면 필드를 정합니다.
+    /// 평면 필드는 대표 충돌 값을 쓰고, 대표에 없는 보조 파일·리비전만 다른 충돌에서 채웁니다.
+    public init?(path: String, conflicts: [SVNConflictRecord]) {
+        let ordered = conflicts.enumerated().sorted { left, right in
+            left.element.resolutionPriority == right.element.resolutionPriority
+                ? left.offset < right.offset
+                : left.element.resolutionPriority < right.element.resolutionPriority
+        }.map(\.element)
+        guard let primary = ordered.first else { return nil }
+
+        func firstValue(_ field: (SVNConflictRecord) -> String?) -> String? {
+            field(primary) ?? ordered.lazy.compactMap(field).first
+        }
+
+        self.init(
+            path: path,
+            type: primary.type,
+            operation: primary.operation,
+            previousBaseFile: firstValue(\.previousBaseFile),
+            myFile: firstValue(\.myFile),
+            serverFile: firstValue(\.serverFile),
+            previousRevision: firstValue(\.previousRevision),
+            serverRevision: firstValue(\.serverRevision),
+            treeConflictAction: primary.treeConflictAction,
+            treeConflictReason: primary.treeConflictReason,
+            treeConflictKind: primary.treeConflictKind,
+            conflicts: ordered
+        )
     }
 }
 

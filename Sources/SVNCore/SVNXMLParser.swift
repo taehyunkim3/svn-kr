@@ -272,8 +272,9 @@ private final class RepositoryListDelegate: NSObject, XMLParserDelegate {
 }
 
 private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
-    var details: SVNConflictDetails?
+    var details: SVNConflictDetails? { SVNConflictDetails(path: entryPath, conflicts: conflicts) }
     private var entryPath = ""
+    private var conflicts: [SVNConflictRecord] = []
     private var type = "unknown"
     private var operation = "unknown"
     private var previousBaseFile: String?
@@ -295,6 +296,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
             if !inConflict {
                 inConflict = true
                 conflictRootElementName = elementName
+                resetConflictFields()
                 type = elementName == "tree-conflict" ? "tree" : (attributeDict["type"] ?? "unknown")
                 operation = attributeDict["operation"] ?? "unknown"
             } else if elementName == "tree-conflict" {
@@ -321,8 +323,7 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
         case "prev-wc-file": myFile = text
         case "cur-base-file": serverFile = text
         case conflictRootElementName:
-            details = SVNConflictDetails(
-                path: entryPath,
+            let record = SVNConflictRecord(
                 type: type,
                 operation: operation,
                 previousBaseFile: previousBaseFile,
@@ -334,11 +335,26 @@ private final class ConflictInfoDelegate: NSObject, XMLParserDelegate {
                 treeConflictReason: type == "tree" ? treeConflictReason : nil,
                 treeConflictKind: type == "tree" ? treeConflictKind : nil
             )
+            // SVN 1.14 는 같은 충돌을 두 번 내보냅니다. 같은 내용은 한 번만 담습니다.
+            if !conflicts.contains(record) { conflicts.append(record) }
             inConflict = false
             conflictRootElementName = ""
         default: break
         }
         text = ""
+    }
+
+    /// 충돌마다 보조 파일과 리비전을 새로 읽습니다.
+    /// 초기화하지 않으면 앞 충돌의 값이 뒤 충돌 기록으로 새어 나갑니다.
+    private func resetConflictFields() {
+        previousBaseFile = nil
+        myFile = nil
+        serverFile = nil
+        previousRevision = nil
+        serverRevision = nil
+        treeConflictAction = nil
+        treeConflictReason = nil
+        treeConflictKind = nil
     }
 }
 
