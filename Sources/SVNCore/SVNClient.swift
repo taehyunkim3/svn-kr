@@ -1113,6 +1113,107 @@ public actor SVNClient {
         }
     }
 
+    public func untrackedChildren(
+        at path: String,
+        directory: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> [SVNUntrackedChild] {
+        let root = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        let directoryURL = directory.isEmpty || directory == "."
+            ? root
+            : root.appendingPathComponent(directory, isDirectory: true).standardizedFileURL
+        guard SVNFileSystem.isAtOrBelow(directoryURL, root: root) else {
+            throw SVNError.unsupportedTargetPath(paths: [directory])
+        }
+
+        let names = try FileManager.default.contentsOfDirectory(atPath: directoryURL.path)
+        let rules = try await ignoreRules(at: path, credentials: credentials)
+        return try names.map { name in
+            let relativePath = try Self.childPath(directory: directory, name: name)
+            return SVNUntrackedChild(
+                path: relativePath,
+                isDirectory: Self.nodeKind(at: directoryURL.appendingPathComponent(name)) == .directory,
+                isIgnored: Self.isIgnored(
+                    name: name,
+                    in: directory,
+                    workingCopyPath: path,
+                    rules: rules
+                )
+            )
+        }
+        .sorted {
+            Data($0.path.utf8).lexicographicallyPrecedes(Data($1.path.utf8))
+        }
+    }
+
+    private static func childPath(directory: String, name: String) throws -> String {
+        let parentBytes = directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        let pathBytes = parentBytes.isEmpty
+            ? Data(name.utf8)
+            : parentBytes + Data([0x2F]) + Data(name.utf8)
+        guard let path = String(data: pathBytes, encoding: .utf8) else {
+            throw SVNError.malformedResponse
+        }
+        return path
+    }
+
+    private static func isIgnored(
+        name: String,
+        in directory: String,
+        workingCopyPath: String,
+        rules: [SVNIgnoreRule]
+    ) -> Bool {
+        rules.contains { rule in
+            guard ignoreRule(rule, appliesTo: directory, workingCopyPath: workingCopyPath) else {
+                return false
+            }
+            return rule.pattern.withCString { pattern in
+                name.withCString { fnmatch(pattern, $0, 0) == 0 }
+            }
+        }
+    }
+
+    private static func ignoreRule(
+        _ rule: SVNIgnoreRule,
+        appliesTo directory: String,
+        workingCopyPath: String
+    ) -> Bool {
+        let ruleDirectory = relativeIgnoreDirectory(rule.directory, workingCopyPath: workingCopyPath)
+        let directoryBytes = directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        if rule.propertyKind == .local { return ruleDirectory == directoryBytes }
+        return ruleDirectory.isEmpty
+            || ruleDirectory == directoryBytes
+            || directoryBytes.starts(with: ruleDirectory + Data([0x2F]))
+    }
+
+    private static func relativeIgnoreDirectory(_ directory: String, workingCopyPath: String) -> Data {
+        guard directory.hasPrefix("/") else {
+            return directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        }
+        let roots = [
+            workingCopyPath,
+            physicalPath(workingCopyPath),
+        ].compactMap { $0 }
+        let directoryBytes = Data(directory.utf8)
+        for root in roots {
+            let rootBytes = Data(root.utf8)
+            if directoryBytes == rootBytes { return Data() }
+            let prefix = rootBytes + Data([0x2F])
+            if directoryBytes.starts(with: prefix) {
+                return Data(directoryBytes.dropFirst(prefix.count))
+            }
+        }
+        return directoryBytes
+    }
+
+    private static func physicalPath(_ path: String) -> String? {
+        path.withCString { fileSystemPath in
+            guard let resolved = Darwin.realpath(fileSystemPath, nil) else { return nil }
+            defer { free(resolved) }
+            return String(validatingCString: resolved)
+        }
+    }
+
     public func addIgnoreRule(
         at path: String,
         directory: String,
@@ -1959,14 +2060,20 @@ public actor SVNClient {
             throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
         }
         var additions = Self.normalizedCommitPaths(resolvedPaths.filter {
-            statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
+            Self.isUnversionedPath($0, statuses: currentStatuses)
         })
 
         if !additions.isEmpty {
+            let protectedPathsByCanonicalKey = snapshot.versionedPathsByCanonicalKey.merging(
+                Dictionary(grouping: snapshot.scheduledAdditionPaths) {
+                    SVNPathIdentity(rawPath: $0).canonicalKey
+                },
+                uniquingKeysWith: { versioned, scheduled in versioned + scheduled }
+            )
             let pathNormalization = SVNPathNormalization.normalizeNewPaths(
                 rootPath: path,
                 relativePaths: additions,
-                versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+                versionedPathsByCanonicalKey: protectedPathsByCanonicalKey
             )
             // HFS+처럼 rename 뒤에도 NFD로 되돌리는 볼륨에서는 원문 경로로 add를 계속합니다.
             // NFC 문자열만 넘기면 E155010(추가 예약 경로 누락)이 발생하므로 실패를 삼켜
@@ -2015,12 +2122,25 @@ public actor SVNClient {
                 guard unresolvedMissingPaths.isEmpty else {
                     throw SVNError.unresolvedMissingPaths(paths: unresolvedMissingPaths)
                 }
-                additions = Self.normalizedCommitPaths(resolvedPaths.filter {
-                    statusByPath[SVNPathIdentity(rawPath: $0)] == .unversioned
-                })
+                additions = Self.normalizedCommitPaths(normalizedAdditions)
             }
         }
 
+        let selectedDirectoryPaths = resolvedPaths.filter { relativePath in
+            Self.nodeKind(
+                at: URL(fileURLWithPath: path, isDirectory: true)
+                    .appendingPathComponent(relativePath, isDirectory: true)
+            ) == .directory
+        }
+        let additionCommitRoots = Self.additionRollbackRoots(
+            additions,
+            versionedPathsByCanonicalKey: snapshot.versionedPathsByCanonicalKey
+        )
+        let requiredAdditionParentPaths = additionCommitRoots.filter { root in
+            !selectedDirectoryPaths.contains { selectedDirectory in
+                Self.isRawPath(root, atOrBelow: selectedDirectory)
+            }
+        }
         var scheduledByThisCommit: [String] = []
         let commitOutput: String
         do {
@@ -2038,9 +2158,30 @@ public actor SVNClient {
                     progress: progress
                 )
             }
+            var commitArguments = ["commit", "--file", messageFile.path, "--force-log"]
+            var commitPaths = normalizedPaths
+            if !requiredAdditionParentPaths.isEmpty {
+                commitArguments.insert(contentsOf: ["--depth", "empty"], at: 1)
+                var explicitPaths = resolvedPaths + requiredAdditionParentPaths
+                if !selectedDirectoryPaths.isEmpty {
+                    let afterAdd = try await workingCopySnapshot(at: path, credentials: credentials)
+                    explicitPaths += afterAdd.statuses.compactMap { status in
+                        guard status.item != .unversioned,
+                              status.item != .ignored,
+                              status.item != .missing,
+                              selectedDirectoryPaths.contains(where: {
+                                  Self.isRawPath(status.path, atOrBelow: $0)
+                              }) else {
+                            return nil
+                        }
+                        return status.path
+                    }
+                }
+                commitPaths = Self.distinctCommitPaths(explicitPaths)
+            }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--file", messageFile.path, "--force-log"],
-                projectRelativePaths: normalizedPaths,
+                commitArguments,
+                projectRelativePaths: commitPaths,
                 at: path,
                 credentials: credentials,
                 allowUntrustedServerCertificate: allowUntrustedServerCertificate,
@@ -2232,6 +2373,24 @@ public actor SVNClient {
             return path
         }
         return normalizedCommitPaths(roots)
+    }
+
+    private static func isUnversionedPath(_ path: String, statuses: [SVNStatusEntry]) -> Bool {
+        statuses.contains {
+            $0.item == .unversioned && isRawPath(path, atOrBelow: $0.path)
+        }
+    }
+
+    private static func isRawPath(_ path: String, atOrBelow root: String) -> Bool {
+        let pathBytes = Data(path.utf8)
+        let rootBytes = Data(root.utf8)
+        return pathBytes == rootBytes || pathBytes.starts(with: rootBytes + Data([0x2F]))
+    }
+
+    private static func distinctCommitPaths(_ paths: [String]) -> [String] {
+        var seen: Set<SVNPathIdentity> = []
+        return paths.filter { seen.insert(SVNPathIdentity(rawPath: $0)).inserted }
+            .sorted { Data($0.utf8).lexicographicallyPrecedes(Data($1.utf8)) }
     }
 
     /// SVN 경로 공간은 원문 UTF-8 바이트입니다. Swift String의 동등성은 NFC와 NFD를

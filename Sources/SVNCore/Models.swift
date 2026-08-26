@@ -338,6 +338,20 @@ public struct SVNStatusEntry: Identifiable, Hashable, Sendable {
     }
 }
 
+public struct SVNUntrackedChild: Identifiable, Hashable, Sendable {
+    public let path: String
+    public let isDirectory: Bool
+    public let isIgnored: Bool
+
+    public var id: SVNPathIdentity { SVNPathIdentity(rawPath: path) }
+
+    public init(path: String, isDirectory: Bool, isIgnored: Bool) {
+        self.path = path
+        self.isDirectory = isDirectory
+        self.isIgnored = isIgnored
+    }
+}
+
 public extension SVNStatusEntry {
     var isMissingScheduledAddition: Bool {
         item == .missing && (revision == nil || revision == "-1")
