@@ -14,8 +14,8 @@ import Testing
     let fixture = try CombinedConflictFixture()
     defer { fixture.remove() }
 
-    // `svn info --xml` 은 충돌마다 `<conflict>` 요소를 내보내고 파서는 마지막 요소만 남깁니다.
-    // 그래서 내용 충돌이 있는데도 분류가 "property" 로 도착합니다. 이 사실이 사고의 출발점입니다.
+    // `svn info --xml` 은 충돌마다 `<conflict>` 요소를 내보내고 마지막 요소는 property 입니다.
+    // 파서가 마지막 요소만 남기던 때는 분류가 "property" 로 도착해 사고가 났습니다.
     // 디스크가 한글 이름을 자모 분리로 저장할 수 있으므로 앱과 같은 방식으로 경로를 맞춥니다.
     let snapshot = try await fixture.client.workingCopySnapshot(at: fixture.workingCopy.path)
     let versionedPath = try #require(snapshot.resolvedPath(for: fixture.conflictPath))
@@ -23,7 +23,9 @@ import Testing
         at: fixture.workingCopy.path,
         relativePath: versionedPath
     ))
-    #expect(details.type == "property")
+    #expect(details.type == "text")
+    #expect(details.conflictTypes == ["text", "property"])
+    #expect(details.hasPropertyConflict)
 
     let pathIdentity = SVNPathIdentity(rawPath: versionedPath)
     let entry = try #require(snapshot.statuses.first {
@@ -107,7 +109,7 @@ import Testing
 
 // MARK: - 순수 로직
 
-@Test func classifyRoutesCombinedConflictToContentPathAndKeepsPureCases() {
+@Test func classifyRoutesCombinedConflictToContentPathAndKeepsPureCases() throws {
     let propertyTyped = SVNConflictDetails(
         path: "예산.xlsx",
         type: "property",
@@ -155,6 +157,44 @@ import Testing
             statusItem: .modified,
             propertyState: .none
         ) == .unsupported("unknown")
+    )
+
+    // 파서가 충돌을 전부 담으면 `svn status` 교차 판정 없이도 내용 충돌로 가야 합니다.
+    let parsedBoth = SVNConflictDetails(
+        path: "예산.xlsx",
+        conflicts: [
+            SVNConflictRecord(
+                type: "text",
+                operation: "update",
+                myFile: "예산.xlsx.mine",
+                serverFile: "예산.xlsx.r2"
+            ),
+            SVNConflictRecord(type: "property", operation: "update"),
+        ]
+    )
+    let parsedBothDetails = try #require(parsedBoth)
+    #expect(parsedBothDetails.type == "text")
+    #expect(
+        ConflictClassification.classify(
+            details: parsedBothDetails,
+            statusItem: nil,
+            propertyState: .none
+        ) == .text(hasPropertyConflict: true)
+    )
+    // 트리 충돌은 속성 충돌이 같은 경로에 있어도 트리 화면으로 가야 합니다.
+    let parsedTreeAndProperty = try #require(SVNConflictDetails(
+        path: "문서",
+        conflicts: [
+            SVNConflictRecord(type: "property", operation: "update"),
+            SVNConflictRecord(type: "tree", operation: "update", treeConflictAction: "delete"),
+        ]
+    ))
+    #expect(
+        ConflictClassification.classify(
+            details: parsedTreeAndProperty,
+            statusItem: .conflicted,
+            propertyState: .conflicted
+        ) == .tree
     )
 
     let normalized = ConflictClassification.textConflictDetails(from: propertyTyped)

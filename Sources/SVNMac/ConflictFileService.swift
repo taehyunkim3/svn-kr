@@ -42,22 +42,28 @@ enum ConflictClassification: Hashable {
     case property
     case unsupported(String)
 
+    /// 판정은 `svn info --xml` 이 내보낸 충돌 목록을 먼저 봅니다.
+    /// `svn status` 교차 판정은 아래 두 경우 때문에 남겨 둡니다.
+    /// - 등록 프로젝트가 작업 복사본 하위 폴더면 `SVNClient` 가 경로 접두사를 떼며
+    ///   `SVNConflictDetails` 를 평면 필드로 다시 만들어, 충돌 목록이 대표 유형 하나로 줄어듭니다.
+    /// - `svn info` 가 충돌 요소를 내보내지 않는데 `svn status` 는 충돌로 보고하는 상태가 있습니다.
+    /// 둘 다 내용 충돌을 속성 충돌로 오분류해 작업 파일을 백업 없이 덮어쓰게 만드는 입력입니다.
     static func classify(
         details: SVNConflictDetails,
         statusItem: SVNStatusKind?,
         propertyState: SVNPropertyState
     ) -> ConflictClassification {
-        if details.type == "tree" { return .tree }
-        let hasPropertyConflict = propertyState == .conflicted || details.type == "property"
-        if statusItem == .conflicted || details.type == "text" {
+        if details.hasTreeConflict { return .tree }
+        let hasPropertyConflict = details.hasPropertyConflict || propertyState == .conflicted
+        if details.hasTextConflict || statusItem == .conflicted {
             return .text(hasPropertyConflict: hasPropertyConflict)
         }
         if hasPropertyConflict { return .property }
         return .unsupported(details.type)
     }
 
-    /// 내용 충돌 보호 경로로 보내기 위해 마지막 `<conflict>` 요소가 남긴 분류만 바로잡습니다.
-    /// 보조 파일 경로(`myFile`/`serverFile`)는 파서가 요소 사이에서 유지하므로 그대로 씁니다.
+    /// `svn status` 만 내용 충돌을 알려준 경우 내용 충돌 보호 경로로 보내기 위해 유형을 바로잡습니다.
+    /// 보조 파일 경로(`myFile`/`serverFile`)는 파서가 채운 값을 그대로 씁니다.
     static func textConflictDetails(from details: SVNConflictDetails) -> SVNConflictDetails {
         guard details.type != "text" else { return details }
         return SVNConflictDetails(
