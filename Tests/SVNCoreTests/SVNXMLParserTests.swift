@@ -651,3 +651,19 @@ private let combinedConflictInfoXML = """
     #expect(details.hasTextConflict)
     #expect(!details.hasPropertyConflict)
 }
+
+@Test func decodesBase64EncodedRevisionProperties() throws {
+    // svn은 제어문자가 든 리비전 속성을 base64로 내보낸다.
+    let encoded = Data("사내검토\u{01}완료".utf8).base64EncodedString()
+    let xml = """
+    <?xml version="1.0"?><log><logentry revision="7">
+      <author>thkim</author><date>2026-07-15T01:02:03.123456Z</date><msg>본문</msg>
+      <revprops><property encoding="base64" name="myteam:note">\(encoded)</property></revprops>
+    </logentry></log>
+    """
+    let entries = try SVNXMLParser.logs(from: Data(xml.utf8))
+    let property = try #require(entries.first?.revisionProperties.first)
+    #expect(property.name == "myteam:note")
+    #expect(property.value == "사내검토\u{01}완료")
+    #expect(property.value != encoded)
+}

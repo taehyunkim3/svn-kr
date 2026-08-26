@@ -708,6 +708,54 @@ private final class AsyncTestEvent: @unchecked Sendable {
     })
 }
 
+@Test func workingCopySnapshotShowsAliasAsModifiedWhenBaseComparisonFails() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-file-replacement-base-failure-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let composed = "주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    try writeCredentialTestRawFile(
+        Data([0xFF, 0x00, 0x41]),
+        atPath: directory.path + "/" + decomposed
+    )
+    let executable = directory.appendingPathComponent("fake-svn")
+    // pristine 손상이나 권한 오류로 `svn cat --revision BASE`가 실패하는 상황입니다.
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"status --verbose --no-ignore --xml"*)
+        printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="7"/></entry><entry path="\(composed)"><wc-status item="missing" revision="7"/></entry><entry path="\(decomposed)"><wc-status item="unversioned"/></entry></target></status>'
+        ;;
+      *"cat --revision BASE -- "*) printf 'svn: E200009: pristine text not found\\n' >&2; exit 1 ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: directory.path)
+
+    // 디스크에 파일이 있으므로 "누락"으로 표시하면 안 됩니다.
+    #expect(snapshot.statuses == [
+        SVNStatusEntry(path: composed, item: .modified, revision: "7", nodeKind: .file),
+    ])
+
+    let browserEntries = try await client.workingCopyEntries(at: directory.path)
+    let browserEntry = try #require(browserEntries.first {
+        Data($0.path.utf8) == Data(decomposed.utf8)
+    })
+    #expect(browserEntry.status == "modified")
+    #expect(!browserEntries.contains {
+        Data($0.path.utf8) == Data(composed.utf8) && $0.status == "missing"
+    })
+}
+
 @Test func workingCopySnapshotAnnotatesUnversionedNodeKinds() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-unversioned-node-kind-test-\(UUID().uuidString)", isDirectory: true)

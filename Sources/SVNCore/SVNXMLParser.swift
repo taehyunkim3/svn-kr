@@ -581,6 +581,7 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
     private var revisionProperties: [SVNRevisionProperty] = []
     private var pathAttributes: [String: String]?
     private var propertyName: String?
+    private var propertyEncoding: String?
     private var text = ""
     private let fractionalDateFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
@@ -603,6 +604,7 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
             pathAttributes = attributeDict
         } else if elementName == "property" {
             propertyName = attributeDict["name"]
+            propertyEncoding = attributeDict["encoding"]
         }
     }
 
@@ -630,14 +632,21 @@ private final class LogDelegate: NSObject, XMLParserDelegate {
             pathAttributes = nil
         case "property":
             if let propertyName {
+                // svn은 제어문자가 든 리비전 속성을 base64로 내보냅니다. 그대로 두면
+                // 화면에 base64 원문이 값으로 뜹니다.
+                let value = propertyEncoding == "base64"
+                    ? (Data(base64Encoded: text, options: .ignoreUnknownCharacters)
+                        .map { String(decoding: $0, as: UTF8.self) } ?? text)
+                    : text
                 switch propertyName {
-                case "svn:author": author = text
-                case "svn:date": date = parseDate(text)
-                case "svn:log": setMessage(text)
-                default: revisionProperties.append(SVNRevisionProperty(name: propertyName, value: text))
+                case "svn:author": author = value
+                case "svn:date": date = parseDate(value)
+                case "svn:log": setMessage(value)
+                default: revisionProperties.append(SVNRevisionProperty(name: propertyName, value: value))
                 }
             }
             propertyName = nil
+            propertyEncoding = nil
         case "logentry":
             let email = revisionProperties.first { property in
                 let name = property.name.lowercased()

@@ -476,15 +476,8 @@ public actor SVNClient {
                 committedRevisions: []
             )
         }
-        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
-            throw SVNClientArgumentError.unsupportedLogMessage
-        }
-        let messageDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: messageDirectory) }
-        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
-        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
 
         let invalidTargets = targets.filter { target in
             !SVNRepositoryPathNormalization.isValidTarget(target)
@@ -577,7 +570,7 @@ public actor SVNClient {
             let result: SVNCommandResult
             do {
                 result = try await run(
-                    ["move", "--file", messageFileURL.path, "--force-log"],
+                    ["move", "--file", messageFile.path, "--force-log"],
                     svnPathArguments: [
                         Self.svnPathEscapingPegSyntax(sourceURL),
                         destinationURL,
@@ -929,7 +922,10 @@ public actor SVNClient {
                     resolution.modified.insert(versionedIdentity)
                 }
             } catch {
-                continue
+                // BASE를 읽지 못하면 내용이 같은지 알 수 없습니다. 여기서 물러나면
+                // 디스크에 있는 파일이 "누락"으로 남아 사용자가 되돌리기로 편집을
+                // 지울 수 있으므로, 보수적으로 수정된 것으로 표시합니다.
+                resolution.modified.insert(SVNPathIdentity(rawPath: replacement.versionedPath))
             }
         }
 
@@ -1831,15 +1827,8 @@ public actor SVNClient {
         guard !paths.isEmpty else {
             throw SVNClientArgumentError.emptyTargets(command: "commit")
         }
-        guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
-            throw SVNClientArgumentError.unsupportedLogMessage
-        }
-        let messageDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: messageDirectory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: messageDirectory) }
-        let messageFileURL = messageDirectory.appendingPathComponent("message", isDirectory: false)
-        try Data(message.utf8).write(to: messageFileURL, options: .atomic)
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
 
         // 화면을 새로 고친 뒤 파일명이 바뀔 수 있으므로, 변경 명령 직전에 원문 경로를
         // 다시 읽습니다. 기존 SVN 경로의 정확한 바이트 표현을 유지해 macOS의 NFD 경로가
@@ -1968,7 +1957,7 @@ public actor SVNClient {
                 )
             }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
-                ["commit", "--file", messageFileURL.path, "--force-log"],
+                ["commit", "--file", messageFile.path, "--force-log"],
                 projectRelativePaths: normalizedPaths,
                 at: path,
                 credentials: credentials,
@@ -2214,20 +2203,28 @@ public actor SVNClient {
         }
     }
 
-    private func withSVNLogMessageFile<Result>(
-        _ message: String,
-        operation: (String) async throws -> Result
-    ) async throws -> Result {
+    /// 로그 메시지를 임시 파일에 씁니다. NUL 검사와 atomic 쓰기가 한곳에만 있도록
+    /// 로그 메시지를 쓰는 모든 명령이 이 함수를 통과합니다. 반환한 폴더는 호출부가
+    /// `defer`로 지웁니다.
+    private static func makeSVNLogMessageFile(_ message: String) throws -> (directory: URL, path: String) {
         guard !message.unicodeScalars.contains(where: { $0.value == 0 }) else {
             throw SVNClientArgumentError.unsupportedLogMessage
         }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("svn-mac-log-message-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
         let fileURL = directory.appendingPathComponent("message", isDirectory: false)
         try Data(message.utf8).write(to: fileURL, options: .atomic)
-        return try await operation(fileURL.path)
+        return (directory, fileURL.path)
+    }
+
+    private func withSVNLogMessageFile<Result>(
+        _ message: String,
+        operation: (String) async throws -> Result
+    ) async throws -> Result {
+        let messageFile = try Self.makeSVNLogMessageFile(message)
+        defer { try? FileManager.default.removeItem(at: messageFile.directory) }
+        return try await operation(messageFile.path)
     }
 
     // MARK: - 공통 명령 실행
