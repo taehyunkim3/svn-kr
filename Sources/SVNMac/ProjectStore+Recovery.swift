@@ -78,7 +78,10 @@ extension ProjectStore {
                 path: recoveredURL.path,
                 username: sourceProject.username,
                 bookmarkData: bookmarkData,
-                allowsUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true
+                allowsUntrustedServerCertificate: sourceProject.allowsUntrustedServerCertificate == true,
+                // 세부 허용값까지 옮기지 않으면 복구 직후 새로고침부터 같은 인증서를
+                // 다시 거부하거나 승인 화면을 또 띄웁니다.
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: sourceProject)
             )
             let recoveryIsStillCurrent = selectedProjectID == sourceID
                 && pathRecoverySourceProjectID == sourceID
