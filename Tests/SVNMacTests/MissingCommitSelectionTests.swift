@@ -19,6 +19,30 @@ struct MissingCommitSelectionTests {
         #expect(selected.map(\.path) == ["edited.txt", "removed.txt"])
     }
 
+    /// 중단된 체크아웃·업데이트가 남긴 상태입니다.
+    /// 실제 `svn commit`은 새 리비전 없이 종료 코드 0으로 끝나므로
+    /// 선택을 허용하면 커밋한 것처럼 보이기만 합니다.
+    @Test func brokenWorkingCopyStatesAreNotCommitSelectable() {
+        let incomplete = SVNStatusEntry(path: "partial", item: .incomplete, revision: "2")
+        let obstructed = SVNStatusEntry(path: "blocked", item: .obstructed, revision: "3")
+        let modified = SVNStatusEntry(path: "edited.txt", item: .modified, revision: "3")
+
+        #expect(!incomplete.isSelectableForCommit)
+        #expect(!obstructed.isSelectableForCommit)
+        #expect(!incomplete.canScheduleRepositoryDeletion)
+        #expect(!obstructed.canScheduleRepositoryDeletion)
+        #expect(
+            TemporaryFilePolicy.automaticallySelectedEntries([incomplete, obstructed, modified])
+                .map(\.path) == ["edited.txt"]
+        )
+        #expect(
+            TemporaryFilePolicy.commitEligibleEntries(
+                [incomplete, obstructed, modified],
+                hideTemporaryFiles: false
+            ).map(\.path) == ["edited.txt"]
+        )
+    }
+
     @Test func missingRepositoryItemsAreCommitEligible() {
         let missing = SVNStatusEntry(path: "removed.txt", item: .missing, revision: "10")
         let missingAddition = SVNStatusEntry(path: "never-added.txt", item: .missing, revision: nil)

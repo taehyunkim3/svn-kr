@@ -84,7 +84,7 @@ import Testing
         "ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult",
         "ui.revision.restoredRNowLocalChangeCommitItUpdateServer",
         "ui.revision.savedR",
-        "ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould",
+        "ui.revision.folderForRestoredFileNotDirectory",
         "ui.revision.workingFileMustRegularFileNotSymbolicLink",
         "ui.revision.filePathPointsOutsideLocalWorkingFolder",
         "ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder",

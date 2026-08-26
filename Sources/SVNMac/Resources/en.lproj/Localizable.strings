@@ -570,7 +570,7 @@
 "ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult" = "The current contents of %1$@ will be discarded and replaced with r%2$@. A recovery copy is saved first. The result is a local change and must be committed to update the server.";
 "ui.revision.restoredRNowLocalChangeCommitItUpdateServer" = "Restored %1$@ to r%2$@. This is now a local change. Commit it to update the server.";
 "ui.revision.savedR" = "Saved r%1$@ to %2$@.";
-"ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould" = "The current working file could not be found, so a recovery copy could not be created.";
+"ui.revision.folderForRestoredFileNotDirectory" = "The location for the restored file is not a folder, so the file was not written.";
 "ui.revision.workingFileMustRegularFileNotSymbolicLink" = "The working file must be a regular file, not a symbolic link.";
 "ui.revision.filePathPointsOutsideLocalWorkingFolder" = "The file path points outside the local working folder.";
 "ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder" = "Revision recovery copies must be stored outside the local working folder.";

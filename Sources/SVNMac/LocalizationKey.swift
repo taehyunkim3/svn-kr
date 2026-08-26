@@ -577,10 +577,10 @@ struct LocalizationKey: Hashable, Sendable {
         ui.revision.commitChanges
         ui.revision.commitNotFound
         ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult
-        ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould
         ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt
         ui.revision.fileCommitHistory
         ui.revision.filePathPointsOutsideLocalWorkingFolder
+        ui.revision.folderForRestoredFileNotDirectory
         ui.revision.loadingChanges
         ui.revision.loadingFileHistory
         ui.revision.noChangedFiles
@@ -1361,10 +1361,10 @@ struct LocalizationUIRevisionKeys {
     let commitChanges = LocalizationKey("ui.revision.commitChanges")
     let commitNotFound = LocalizationKey("ui.revision.commitNotFound")
     let currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult = LocalizationKey("ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult")
-    let currentWorkingFileCouldNotFoundSoRecoveryCopyCould = LocalizationKey("ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould")
     let currentWorkingFileCouldNotVerifiedRecoveryCopySoIt = LocalizationKey("ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt")
     let fileCommitHistory = LocalizationKey("ui.revision.fileCommitHistory")
     let filePathPointsOutsideLocalWorkingFolder = LocalizationKey("ui.revision.filePathPointsOutsideLocalWorkingFolder")
+    let folderForRestoredFileNotDirectory = LocalizationKey("ui.revision.folderForRestoredFileNotDirectory")
     let loadingChanges = LocalizationKey("ui.revision.loadingChanges")
     let loadingFileHistory = LocalizationKey("ui.revision.loadingFileHistory")
     let noChangedFiles = LocalizationKey("ui.revision.noChangedFiles")

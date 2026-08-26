@@ -56,7 +56,40 @@ import Testing
     let workingFile = fixture.workingCopy.appendingPathComponent("document.xlsx")
     #expect(try Data(contentsOf: workingFile) == original)
     #expect(try fixture.status().contains("M       document.xlsx"))
-    #expect(try Data(contentsOf: result.recoveryURL) == current)
+    #expect(try Data(contentsOf: #require(result.recoveryURL)) == current)
+}
+
+@Test func realSVNRevisionRestoreBringsBackLocallyDeletedVersionedFile() async throws {
+    let fixture = try RevisionSVNFixture()
+    defer { fixture.remove() }
+    let original = Data([0x50, 0x4B, 0x03, 0x04, 0xFF, 0x0A])
+    let current = Data([0x48, 0x57, 0x50, 0x00, 0xFE])
+    try fixture.write(original, relativePath: "forms/report.xlsx")
+    try fixture.addAndCommit(message: "original")
+    try fixture.write(current, relativePath: "forms/report.xlsx")
+    try fixture.commit(message: "changed")
+    let workingFile = fixture.workingCopy.appendingPathComponent("forms/report.xlsx")
+    // 파인더에서 파일을 지운 상태입니다. `svn status`가 `!`로 보고합니다.
+    try FileManager.default.removeItem(at: workingFile)
+    #expect(try fixture.status().contains("!       forms/report.xlsx"))
+    let backupRoot = fixture.root.appendingPathComponent("revision-backups", isDirectory: true)
+    let historical = try await fixture.client.fileContents(
+        at: fixture.workingCopy.path,
+        relativePath: "forms/report.xlsx",
+        revision: "2"
+    )
+
+    let result = try await RevisionFileService(backupRootURL: backupRoot).restoreWorkingFile(
+        contents: historical,
+        workingCopyPath: fixture.workingCopy.path,
+        relativePath: "forms/report.xlsx",
+        projectID: UUID(),
+        revision: "2"
+    )
+
+    #expect(result.recoveryURL == nil)
+    #expect(try Data(contentsOf: workingFile) == original)
+    #expect(try fixture.status().contains("M       forms/report.xlsx"))
 }
 
 @Test func revisionRestorePreservesRecoveryCopyAndAtomicallyReplacesWorkingFile() async throws {
@@ -98,7 +131,7 @@ import Testing
     )
 
     #expect(replacementObservation.observedOriginalDestination)
-    #expect(try Data(contentsOf: result.recoveryURL) == current)
+    #expect(try Data(contentsOf: #require(result.recoveryURL)) == current)
     #expect(try Data(contentsOf: workingFile) == historical)
     let siblings = try FileManager.default.contentsOfDirectory(
         at: workingFile.deletingLastPathComponent(),
@@ -338,6 +371,87 @@ import Testing
     #expect(store.errorMessage == nil)
 }
 
+@Test func revisionRestoreRecreatesDeletedWorkingFileWithoutRecoveryCopy() async throws {
+    let fixtureRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent("revision-restore-deleted-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: fixtureRoot) }
+    let workingCopy = fixtureRoot.appendingPathComponent("working-copy", isDirectory: true)
+    let backupRoot = fixtureRoot.appendingPathComponent("backups", isDirectory: true)
+    let workingFile = workingCopy.appendingPathComponent("forms/report.hwp")
+    let historical = Data([0x48, 0x57, 0x50, 0x00, 0x02, 0x80])
+    try FileManager.default.createDirectory(
+        at: workingFile.deletingLastPathComponent(),
+        withIntermediateDirectories: true
+    )
+    let service = RevisionFileService(
+        backupRootURL: backupRoot,
+        replaceItem: { _, _ in
+            Issue.record("없는 파일을 교체하려 했습니다")
+        }
+    )
+
+    let result = try await service.restoreWorkingFile(
+        contents: historical,
+        workingCopyPath: workingCopy.path,
+        relativePath: "forms/report.hwp",
+        projectID: UUID(),
+        revision: "17"
+    )
+
+    #expect(result.recoveryURL == nil)
+    #expect(try Data(contentsOf: workingFile) == historical)
+    let siblings = try FileManager.default.contentsOfDirectory(
+        at: workingFile.deletingLastPathComponent(),
+        includingPropertiesForKeys: nil
+    )
+    #expect(!siblings.contains { $0.lastPathComponent.hasPrefix(".svn-mac-revision-restore-") })
+}
+
+@Test func revisionRestoreRecreatesParentFolderDeletedWithTheFile() async throws {
+    let fixtureRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent("revision-restore-deleted-parent-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: fixtureRoot) }
+    let workingCopy = fixtureRoot.appendingPathComponent("working-copy", isDirectory: true)
+    let backupRoot = fixtureRoot.appendingPathComponent("backups", isDirectory: true)
+    try FileManager.default.createDirectory(at: workingCopy, withIntermediateDirectories: true)
+    let historical = Data("지난주 양식".utf8)
+
+    let result = try await RevisionFileService(backupRootURL: backupRoot).restoreWorkingFile(
+        contents: historical,
+        workingCopyPath: workingCopy.path,
+        relativePath: "공유/양식/report.hwp",
+        projectID: UUID(),
+        revision: "4"
+    )
+
+    #expect(result.recoveryURL == nil)
+    #expect(
+        try Data(contentsOf: workingCopy.appendingPathComponent("공유/양식/report.hwp")) == historical
+    )
+}
+
+@Test func revisionRestoreRejectsPathWhoseParentIsRegularFile() async throws {
+    let fixtureRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent("revision-restore-file-parent-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: fixtureRoot) }
+    let workingCopy = fixtureRoot.appendingPathComponent("working-copy", isDirectory: true)
+    let backupRoot = fixtureRoot.appendingPathComponent("backups", isDirectory: true)
+    try FileManager.default.createDirectory(at: workingCopy, withIntermediateDirectories: true)
+    let blocker = workingCopy.appendingPathComponent("forms")
+    try Data("not a folder".utf8).write(to: blocker)
+
+    await #expect(throws: RevisionFileError.unsafeWorkingFileParent) {
+        try await RevisionFileService(backupRootURL: backupRoot).restoreWorkingFile(
+            contents: Data("historical".utf8),
+            workingCopyPath: workingCopy.path,
+            relativePath: "forms/report.hwp",
+            projectID: UUID(),
+            revision: "4"
+        )
+    }
+    #expect(try Data(contentsOf: blocker) == Data("not a folder".utf8))
+}
+
 private final class ReplacementObservation: @unchecked Sendable {
     private let lock = NSLock()
     private var value = false
@@ -568,6 +682,14 @@ private final class RevisionSVNFixture {
 
     func commit(message: String) throws {
         _ = try Self.run(svnPath, ["commit", "-m", message], currentDirectory: workingCopy)
+    }
+
+    func delete(relativePath: String) throws {
+        _ = try Self.run(svnPath, ["delete", relativePath], currentDirectory: workingCopy)
+    }
+
+    func update() throws {
+        _ = try Self.run(svnPath, ["update"], currentDirectory: workingCopy)
     }
 
     func status() throws -> String {

@@ -3,8 +3,8 @@ import SVNCore
 
 enum RevisionFileError: LocalizedError {
     case historyClientUnavailable
-    case missingWorkingFile
     case unsafeWorkingFile
+    case unsafeWorkingFileParent
     case pathOutsideWorkingCopy
     case backupRootInsideWorkingCopy
     case backupVerificationFailed
@@ -15,10 +15,10 @@ enum RevisionFileError: LocalizedError {
         switch self {
         case .historyClientUnavailable:
             AppLanguage.current.localized(.ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions)
-        case .missingWorkingFile:
-            AppLanguage.current.localized(.ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould)
         case .unsafeWorkingFile:
             AppLanguage.current.localized(.ui.revision.workingFileMustRegularFileNotSymbolicLink)
+        case .unsafeWorkingFileParent:
+            AppLanguage.current.localized(.ui.revision.folderForRestoredFileNotDirectory)
         case .pathOutsideWorkingCopy:
             AppLanguage.current.localized(.ui.revision.filePathPointsOutsideLocalWorkingFolder)
         case .backupRootInsideWorkingCopy:
@@ -34,7 +34,9 @@ enum RevisionFileError: LocalizedError {
 }
 
 struct RevisionRestoreResult: Equatable {
-    let recoveryURL: URL
+    /// 되돌리기 직전의 작업 파일 복구본입니다.
+    /// 작업 복사본에 파일이 없어 보존할 것이 없었으면 nil입니다.
+    let recoveryURL: URL?
 }
 
 actor RevisionFileService {
@@ -110,6 +112,10 @@ actor RevisionFileService {
         }
     }
 
+    /// 선택한 리비전의 내용을 작업 파일에 씁니다.
+    /// 작업 복사본에 파일이 있으면 복구본을 남기고 원자적으로 교체합니다.
+    /// 파일이 지워져 있으면 보존할 바이트가 없으므로 백업 없이 새로 씁니다.
+    /// 이력에서 삭제된 파일을 되살리는 경로가 이 경우입니다.
     func restoreWorkingFile(
         contents: Data,
         workingCopyPath: String,
@@ -118,10 +124,53 @@ actor RevisionFileService {
         revision: String
     ) throws -> RevisionRestoreResult {
         let workingCopy = resolvedURL(URL(fileURLWithPath: workingCopyPath, isDirectory: true))
-        let workingFile = try regularWorkingFile(
-            workingCopy: workingCopy,
-            relativePath: relativePath
-        )
+        let target = try workingFileTarget(workingCopy: workingCopy, relativePath: relativePath)
+        let workingFile = target.url
+        let recoveryURL = target.exists
+            ? try preserveWorkingFile(
+                workingFile,
+                workingCopy: workingCopy,
+                projectID: projectID,
+                revision: revision
+            )
+            : nil
+
+        // 파일과 함께 부모 폴더까지 지워졌을 수 있으므로 쓰기 전에 확인합니다.
+        let parent = workingFile.deletingLastPathComponent()
+        try prepareParentDirectory(parent)
+
+        let stagedRevision = parent
+            .appendingPathComponent(".svn-mac-revision-restore-\(UUID().uuidString)")
+        var stagedRevisionExists = false
+        defer {
+            if stagedRevisionExists {
+                try? fileManager.removeItem(at: stagedRevision)
+            }
+        }
+        try contents.write(to: stagedRevision, options: .atomic)
+        stagedRevisionExists = true
+        guard try Data(contentsOf: stagedRevision) == contents else {
+            throw RevisionFileError.replacementVerificationFailed
+        }
+        if target.exists {
+            try replaceItem(workingFile, stagedRevision)
+        } else {
+            try fileManager.moveItem(at: stagedRevision, to: workingFile)
+        }
+        stagedRevisionExists = false
+        guard try Data(contentsOf: workingFile) == contents else {
+            throw RevisionFileError.replacementVerificationFailed
+        }
+        return RevisionRestoreResult(recoveryURL: recoveryURL)
+    }
+
+    /// 덮어쓰기 직전 바이트를 작업 복사본 밖에 복구본으로 남깁니다.
+    private func preserveWorkingFile(
+        _ workingFile: URL,
+        workingCopy: URL,
+        projectID: UUID,
+        revision: String
+    ) throws -> URL {
         let backupRootSource = try backupRootURL
             ?? SVNApplicationSupport.rootDirectory(fileManager: fileManager)
                 .appendingPathComponent("Revision Restore Backups", isDirectory: true)
@@ -158,30 +207,21 @@ actor RevisionFileService {
         )
         try fileManager.moveItem(at: stagingDirectory, to: finalDirectory)
         stagingDirectoryExists = false
-        let recoveryURL = finalDirectory.appendingPathComponent(recoveryName)
-
-        let stagedRevision = workingFile.deletingLastPathComponent()
-            .appendingPathComponent(".svn-mac-revision-restore-\(UUID().uuidString)")
-        var stagedRevisionExists = false
-        defer {
-            if stagedRevisionExists {
-                try? fileManager.removeItem(at: stagedRevision)
-            }
-        }
-        try contents.write(to: stagedRevision, options: .atomic)
-        stagedRevisionExists = true
-        guard try Data(contentsOf: stagedRevision) == contents else {
-            throw RevisionFileError.replacementVerificationFailed
-        }
-        try replaceItem(workingFile, stagedRevision)
-        stagedRevisionExists = false
-        guard try Data(contentsOf: workingFile) == contents else {
-            throw RevisionFileError.replacementVerificationFailed
-        }
-        return RevisionRestoreResult(recoveryURL: recoveryURL)
+        return finalDirectory.appendingPathComponent(recoveryName)
     }
 
-    private func regularWorkingFile(workingCopy: URL, relativePath: String) throws -> URL {
+    /// 복원 대상이 될 수 있는 경로와 그 존재 여부입니다.
+    private struct WorkingFileTarget {
+        let url: URL
+        let exists: Bool
+    }
+
+    /// 복원 대상을 작업 복사본 안의 경로로 한정합니다.
+    /// 파일이 없는 것은 실패가 아니라 새로 써야 하는 상태입니다.
+    private func workingFileTarget(
+        workingCopy: URL,
+        relativePath: String
+    ) throws -> WorkingFileTarget {
         guard !(relativePath as NSString).isAbsolutePath, !relativePath.isEmpty else {
             throw RevisionFileError.pathOutsideWorkingCopy
         }
@@ -190,16 +230,25 @@ actor RevisionFileService {
         guard SVNFileSystem.isAtOrBelow(resolved, root: workingCopy), resolved != workingCopy else {
             throw RevisionFileError.pathOutsideWorkingCopy
         }
-        let values: URLResourceValues
-        do {
-            values = try candidate.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
-        } catch {
-            throw RevisionFileError.missingWorkingFile
+        // attributesOfItem은 링크를 따라가지 않으므로 끊어진 심볼릭 링크도 걸러집니다.
+        guard let attributes = try? fileManager.attributesOfItem(atPath: candidate.path) else {
+            return WorkingFileTarget(url: resolved, exists: false)
         }
-        guard values.isRegularFile == true, values.isSymbolicLink != true else {
+        guard attributes[.type] as? FileAttributeType == .typeRegular else {
             throw RevisionFileError.unsafeWorkingFile
         }
-        return resolved
+        return WorkingFileTarget(url: resolved, exists: true)
+    }
+
+    /// 복원 대상의 부모 폴더를 확보합니다. 폴더가 아니면 쓰지 않고 멈춥니다.
+    private func prepareParentDirectory(_ parent: URL) throws {
+        guard let attributes = try? fileManager.attributesOfItem(atPath: parent.path) else {
+            try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
+            return
+        }
+        guard attributes[.type] as? FileAttributeType == .typeDirectory else {
+            throw RevisionFileError.unsafeWorkingFileParent
+        }
     }
 
     private func resolvedURL(_ url: URL) -> URL {

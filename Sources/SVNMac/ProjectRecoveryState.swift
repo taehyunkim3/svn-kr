@@ -14,6 +14,7 @@ struct ProjectRecoveryState {
     var repositoryURL: String?
     var repositoryRelocationRequest: RepositoryRelocationRequest?
     var repositoryRelocationFailureMessage: String?
+    var revertImpactContext: RevertImpactContext?
     var versionedFileActionRequest: VersionedFileActionRequest?
     var versionedFileActionFailureMessage: String?
     var needsLockPaths: Set<String> = []
