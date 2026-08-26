@@ -11,6 +11,7 @@ struct CommitMessageConfirmationTests {
         (.ui.commit.reviewCommit, ".ui.commit.reviewCommit"),
         (.ui.commit.itemDeletedServer, ".ui.commit.itemDeletedServer"),
         (.ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould, ".ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould"),
+        (.ui.commit.restoreSelectionHelp, ".ui.commit.restoreSelectionHelp"),
         (.ui.commit.restoreSelectedFilesAction, ".ui.commit.restoreSelectedFilesAction"),
         (.ui.commit.restoreSelectedFilesConfirmationTitle, ".ui.commit.restoreSelectedFilesConfirmationTitle"),
         (.ui.commit.restoreSelectedDeletionFileServer, ".ui.commit.restoreSelectedDeletionFileServer"),
@@ -115,7 +116,7 @@ struct CommitMessageConfirmationTests {
         let korean = try source(at: "Sources/SVNMac/Resources/ko.lproj/Localizable.strings")
 
         #expect(korean.contains(
-            "삭제하는 파일이 있습니다. 정말 삭제하는게 맞는지 아래 목록에서 확인해주세요."
+            "커밋하면 아래 항목이 서버에서 삭제됩니다. 되돌리기 어려우므로 계속하기 전에 목록을 확인하세요."
         ))
     }
 

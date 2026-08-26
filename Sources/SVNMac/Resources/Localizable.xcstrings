@@ -3305,13 +3305,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Confirm"
+            "value": "Commit"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "확인"
+            "value": "커밋 진행"
           }
         }
       }
@@ -6331,13 +6331,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No"
+            "value": "Cancel"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아니오"
+            "value": "취소"
           }
         }
       }
@@ -9102,13 +9102,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Some files will be deleted. Review the list below and confirm that they should be deleted."
+            "value": "Committing will delete the items below from the server. This is difficult to undo, so review the list before continuing."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "삭제하는 파일이 있습니다. 정말 삭제하는게 맞는지 아래 목록에서 확인해주세요."
+            "value": "커밋하면 아래 항목이 서버에서 삭제됩니다. 되돌리기 어려우므로 계속하기 전에 목록을 확인하세요."
+          }
+        }
+      }
+    },
+    "ui.commit.restoreSelectionHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check only the items you want to restore from the server instead of deleting. Then click “Restore Selected Files from Server…” below. Checkboxes do not affect which items are committed."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제하지 않고 서버 파일로 되돌릴 항목만 체크하세요. 그런 다음 아래 ‘선택 파일 서버 파일로 복원…’ 버튼을 누르세요. 체크 여부는 커밋 대상과 무관합니다."
           }
         }
       }

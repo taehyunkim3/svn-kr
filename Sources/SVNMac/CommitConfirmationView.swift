@@ -51,6 +51,13 @@ struct CommitConfirmationView: View {
                 )
                 .font(.headline)
                 .foregroundStyle(.orange)
+
+                Label(
+                    appLanguage.localized(.ui.commit.restoreSelectionHelp),
+                    systemImage: "info.circle"
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
             }
 
             List {
@@ -119,8 +126,8 @@ struct CommitConfirmationView: View {
                 Button(appLanguage.localized(.ui.commit.no), role: .cancel) {
                     store.cancelCommitConfirmation()
                 }
-                // 서버 삭제가 있으면 Return은 취소. 빈 메시지 확인만 Return으로 커밋한다.
-                .keyboardShortcut(serverDeletionEntries.isEmpty ? .cancelAction : .defaultAction)
+                // Escape는 항상 취소. 서버 삭제가 없을 때만 Return으로 커밋한다.
+                .keyboardShortcut(.cancelAction)
                 Button(appLanguage.localized(.ui.commit.confirm)) {
                     guard let currentRequest = store.commitConfirmationRequest else { return }
                     Task { _ = await store.confirmCommit(currentRequest) }
