@@ -643,6 +643,12 @@ struct WorkingCopySplitBrowserView: View {
             preservingCachedPaths: pathsAddedDuringRefresh
         )
         browserState = refreshedState
+        let versionedFilePaths = Set(refreshedContentsByPath.values.flatMap { contents in
+            contents
+                .filter { $0.isRegularFile && $0.isVersioned }
+                .map(\.relativePath)
+        }).sorted()
+        await store.loadNeedsLockState(for: versionedFilePaths)
         for directory in directoriesToReload {
             if loadingDirectoryGenerations[directory] == requestedGeneration {
                 loadingDirectoryGenerations[directory] = nil

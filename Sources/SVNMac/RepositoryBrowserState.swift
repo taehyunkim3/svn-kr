@@ -66,6 +66,7 @@ final class RepositoryBrowserState {
     @ObservationIgnored private let allowUntrustedServerCertificate: Bool
     @ObservationIgnored private let allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
     @ObservationIgnored private var loadTask: Task<Void, Never>?
+    @ObservationIgnored private var activeLoadID: UUID?
 
     convenience init(
         repositoryListing: any SVNClientServing,
@@ -128,8 +129,10 @@ final class RepositoryBrowserState {
     var checkoutURL: String? {
         guard phase == .loaded else { return nil }
         guard let selectedEntry else { return currentURL.isEmpty ? nil : currentURL }
-        guard selectedEntry.kind == .directory else { return nil }
-        return Self.appending(selectedEntry.name, to: currentURL)
+        if selectedEntry.kind == .directory {
+            return Self.appending(selectedEntry.name, to: currentURL)
+        }
+        return currentURL.isEmpty ? nil : currentURL
     }
 
     @discardableResult
@@ -155,15 +158,23 @@ final class RepositoryBrowserState {
     func cancelLoading() {
         loadTask?.cancel()
         loadTask = nil
+        activeLoadID = nil
+        phase = .idle
     }
 
     private func startLoading(
         _ operation: @escaping @MainActor (RepositoryBrowserState) async -> Void
     ) -> Task<Void, Never> {
         loadTask?.cancel()
+        let loadID = UUID()
+        activeLoadID = loadID
+        phase = .idle
         let task = Task { [weak self] in
             guard let self else { return }
             await operation(self)
+            if self.activeLoadID == loadID {
+                self.loadTask = nil
+            }
         }
         loadTask = task
         return task
@@ -212,22 +223,27 @@ final class RepositoryBrowserState {
 
     private func loadCurrentDirectory() async {
         guard !isLoading, !currentURL.isEmpty else { return }
+        let loadID = activeLoadID
         phase = .loading
         entries = []
         selectedEntryID = nil
         do {
             let revision = revisionInput.trimmingCharacters(in: .whitespacesAndNewlines)
-            entries = try await loadRepositoryEntries(
+            let loadedEntries = try await loadRepositoryEntries(
                 currentURL,
                 revision.isEmpty ? nil : revision,
                 credentials,
                 allowUntrustedServerCertificate,
                 allowedServerCertificateFailures
-            ).sorted(by: Self.sortEntries)
+            )
+            guard loadID == activeLoadID else { return }
+            entries = loadedEntries.sorted(by: Self.sortEntries)
             phase = .loaded
         } catch is CancellationError {
+            guard loadID == activeLoadID else { return }
             phase = .idle
         } catch {
+            guard loadID == activeLoadID else { return }
             phase = .failed(Self.failure(for: error))
         }
     }

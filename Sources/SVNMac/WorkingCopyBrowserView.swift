@@ -243,9 +243,15 @@ struct WorkingCopyBrowserView: View {
             return
         }
 
+        let request = searchRequest
         isSearching = true
-        guard let tree = await store.searchWorkingCopyFiles(query: normalizedSearchText),
-              !Task.isCancelled else { return }
+        guard let tree = await store.searchWorkingCopyFiles(query: normalizedSearchText) else {
+            if request == searchRequest {
+                isSearching = false
+            }
+            return
+        }
+        guard !Task.isCancelled, request == searchRequest else { return }
         searchTreeState = WorkingCopyBrowserTreeState(recursiveTree: tree, expanded: true)
         isSearching = false
     }
