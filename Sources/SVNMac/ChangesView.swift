@@ -17,6 +17,10 @@ struct ChangesView: View {
                 changesToolbar
                 Divider()
                 changedFileList
+                if store.isCommitInteractionLocked || !store.commitLog.isEmpty {
+                    Divider()
+                    commitProgressLog
+                }
                 Divider()
                 CommitControlsView()
             }
@@ -98,6 +102,47 @@ struct ChangesView: View {
                 )
             }
         }
+    }
+
+    private var commitProgressLog: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                if store.isCommitInteractionLocked {
+                    ProgressView().controlSize(.small)
+                }
+                Text(store.isCommitInteractionLocked
+                    ? appLanguage.localized(.ui.commit.committing)
+                    : appLanguage.localized(.ui.commit.progressLog))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(store.commitLog.isEmpty
+                        ? appLanguage.localized(.ui.commit.outputAppearsHereAfterCommitStarts)
+                        : store.commitLog)
+                        .foregroundStyle(store.commitLog.isEmpty ? .secondary : .primary)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                        .id("commit-log-bottom")
+                }
+                .onChange(of: store.commitLog) { _, _ in
+                    proxy.scrollTo("commit-log-bottom", anchor: .bottom)
+                }
+            }
+            .frame(height: AppLayout.commitLogHeight)
+            .padding(10)
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.2))
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     private func changedFileRow(_ entry: SVNStatusEntry) -> some View {

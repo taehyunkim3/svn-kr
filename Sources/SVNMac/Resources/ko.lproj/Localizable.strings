@@ -667,3 +667,5 @@
 "ui.conflict.fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame" = "이 파일에는 속성 충돌도 함께 있습니다. 아래에서 버전을 고르면 속성도 같은 쪽으로 함께 해결됩니다.";
 "ui.conflict.serverPropertyValuesAppliedWell" = "서버 속성 값도 함께 적용됩니다.";
 "ui.conflict.propertyValuesKeptWell" = "내 속성 값이 그대로 유지됩니다.";
+"ui.commit.outputAppearsHereAfterCommitStarts" = "커밋을 시작하면 SVN 출력이 여기에 표시됩니다.";
+"ui.commit.progressLog" = "커밋 로그";

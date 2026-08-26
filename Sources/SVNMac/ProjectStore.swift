@@ -271,6 +271,7 @@ final class ProjectStore {
     var notice: String?
     var errorMessage: String?
     private(set) var checkoutLog = ""
+    private(set) var commitLog = ""
     var selectedProjectID: SVNProject.ID? {
         didSet {
             guard selectedProjectID != oldValue else { return }
@@ -513,6 +514,7 @@ final class ProjectStore {
     private var filenameNormalizationProbeTasks: [SVNProject.ID: Task<Void, Never>] = [:]
     private let updateBadgePoller = UpdateBadgePoller()
     private var checkoutLogSessionID = UUID()
+    private var commitLogSessionID = UUID()
     /// 실행 중인 체크아웃을 취소하려면 화면이 만든 Task를 계속 붙잡고 있어야 합니다.
     /// 시트만 닫으면 Task가 살아남아 svn 프로세스가 백그라운드에서 계속 돌기 때문입니다.
     private var checkoutTask: Task<Bool, Never>?
@@ -1393,8 +1395,19 @@ final class ProjectStore {
             errorMessage = AppLanguage.current.localized(.ui.conflict.resolveConflictedFilesBeforeCommitting)
             return false
         }
+        let commitLogSessionID = UUID()
+        self.commitLogSessionID = commitLogSessionID
+        commitLog = ""
+        let progressBuffer = CheckoutProgressBuffer()
         let operationID = beginOperation(.commit(project.id))
-        defer { endOperation(operationID) }
+        defer {
+            publishCommitLog(
+                progressBuffer.output,
+                sessionID: commitLogSessionID,
+                projectID: project.id
+            )
+            endOperation(operationID)
+        }
         do {
             let result = try await client.commit(
                 at: project.path,
@@ -1402,7 +1415,17 @@ final class ProjectStore {
                 message: message,
                 credentials: credentials(for: project),
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
-                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project),
+                progress: { [weak self] output in
+                    let accumulatedOutput = progressBuffer.append(output)
+                    Task { @MainActor [weak self] in
+                        self?.publishCommitLog(
+                            accumulatedOutput,
+                            sessionID: commitLogSessionID,
+                            projectID: project.id
+                        )
+                    }
+                }
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard selectedProjectID == project.id else { return true }
@@ -1445,6 +1468,17 @@ final class ProjectStore {
             }
             return false
         }
+    }
+
+    private func publishCommitLog(
+        _ output: String,
+        sessionID: UUID,
+        projectID: SVNProject.ID
+    ) {
+        guard commitLogSessionID == sessionID,
+              selectedProjectID == projectID,
+              output.utf8.count >= commitLog.utf8.count else { return }
+        commitLog = output
     }
 
     static func containsSelectedConflict(
@@ -1950,6 +1984,8 @@ final class ProjectStore {
     /// 상태를 한곳에서 초기화합니다. 진행 중이던 요청 토큰도 폐기합니다.
     private func resetSelectedProjectState() {
         latestRequestIDs.removeAll()
+        commitLogSessionID = UUID()
+        commitLog = ""
         failedRefreshCycleIDs = []
         automaticRefreshBlockedProjectID = nil
         changesState = ProjectChangesStore()
