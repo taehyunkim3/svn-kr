@@ -168,6 +168,12 @@ enum SVNAuthenticationAction: Equatable {
     case retryManually
 }
 
+enum FolderSettingsSaveResult: Equatable {
+    case saved
+    case credentialFailure(String)
+    case failed
+}
+
 enum RefreshErrorPolicy {
     case standalone
     case coordinated(UUID)
@@ -587,8 +593,12 @@ final class ProjectStore {
 
     var isRelocatingProject: Bool {
         activeOperations.contains { operation in
-            if case .relocate = operation.kind { return true }
-            return false
+            switch operation.kind {
+            case .relocate, .relocateRepository:
+                true
+            default:
+                false
+            }
         }
     }
 
@@ -838,6 +848,8 @@ final class ProjectStore {
     ) async -> Bool {
         let checkoutLogSessionID = UUID()
         self.checkoutLogSessionID = checkoutLogSessionID
+        recoveryState.canceledCheckoutRecoverySessionID = checkoutLogSessionID
+        recoveryState.latestCanceledCheckoutRecoveryRequest = canceledCheckoutRecoveryRequest
         checkoutLog = ""
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -894,7 +906,8 @@ final class ProjectStore {
             // 사용자가 직접 멈춘 작업은 실패가 아니므로 오류 대화상자를 띄우지 않습니다.
             if (error is CancellationError || Task.isCancelled), let bookmarkData {
                 errorMessage = nil
-                if await prepareCanceledCheckoutRecovery(
+                let preparedRecovery = await prepareCurrentCanceledCheckoutRecovery(
+                    sessionID: checkoutLogSessionID,
                     id: id,
                     destination: destination,
                     username: username,
@@ -903,7 +916,12 @@ final class ProjectStore {
                     canEmptySafely: destinationWasEmpty,
                     allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
                     credentials: checkoutCredentials
-                ) {
+                )
+                guard let preparedRecovery else {
+                    projectAccessManager.endAccessing(url: destination)
+                    return false
+                }
+                if preparedRecovery {
                     notice = nil
                 } else {
                     projectAccessManager.endAccessing(url: destination)
@@ -914,19 +932,26 @@ final class ProjectStore {
                 }
                 return false
             }
-            if SVNClient.needsCleanup(error), let bookmarkData,
-               await prepareCanceledCheckoutRecovery(
-                   id: id,
-                   destination: destination,
-                   username: username,
-                   password: password,
-                   bookmarkData: bookmarkData,
-                   canEmptySafely: destinationWasEmpty,
-                   allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
-                   credentials: checkoutCredentials
-               ) {
-                errorMessage = nil
-                return false
+            if SVNClient.needsCleanup(error), let bookmarkData {
+                let preparedRecovery = await prepareCurrentCanceledCheckoutRecovery(
+                    sessionID: checkoutLogSessionID,
+                    id: id,
+                    destination: destination,
+                    username: username,
+                    password: password,
+                    bookmarkData: bookmarkData,
+                    canEmptySafely: destinationWasEmpty,
+                    allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    credentials: checkoutCredentials
+                )
+                guard let preparedRecovery else {
+                    projectAccessManager.endAccessing(url: destination)
+                    return false
+                }
+                if preparedRecovery {
+                    errorMessage = nil
+                    return false
+                }
             }
             projectAccessManager.endAccessing(url: destination)
             errorMessage = localizedError(error)
@@ -962,6 +987,39 @@ final class ProjectStore {
         // 마지막에 다시 적용해 사용자가 다음 실행에 대비할 수 있게 합니다.
         if let keychainWarning { notice = keychainWarning }
         return true
+    }
+
+    private func prepareCurrentCanceledCheckoutRecovery(
+        sessionID: UUID,
+        id: SVNProject.ID,
+        destination: URL,
+        username: String,
+        password: String,
+        bookmarkData: Data,
+        canEmptySafely: Bool,
+        allowsUntrustedServerCertificate: Bool,
+        credentials: SVNCredentials?
+    ) async -> Bool? {
+        let prepared = await prepareCanceledCheckoutRecovery(
+            id: id,
+            destination: destination,
+            username: username,
+            password: password,
+            bookmarkData: bookmarkData,
+            canEmptySafely: canEmptySafely,
+            allowsUntrustedServerCertificate: allowsUntrustedServerCertificate,
+            credentials: credentials
+        )
+        guard recoveryState.canceledCheckoutRecoverySessionID == sessionID else {
+            if canceledCheckoutRecoveryRequest?.id == id {
+                canceledCheckoutRecoveryRequest = recoveryState.latestCanceledCheckoutRecoveryRequest
+            }
+            return nil
+        }
+        if prepared {
+            recoveryState.latestCanceledCheckoutRecoveryRequest = canceledCheckoutRecoveryRequest
+        }
+        return prepared
     }
 
     func addProject(_ url: URL) {
@@ -1399,6 +1457,99 @@ final class ProjectStore {
     /// 새로고침이 실패해 되돌릴 것이 남습니다. 확인을 저장보다 앞에 두면 실패했을 때
     /// 아무것도 바뀌지 않은 상태가 되어 사용자가 재입력과 취소를 그대로 고를 수 있습니다.
     /// 반환값은 실패 사유이고, `nil`이면 확인에 성공한 것입니다.
+    func saveFolderSettings(
+        for projectID: SVNProject.ID,
+        destinationURL: URL,
+        username: String,
+        newPassword: String,
+        allowsUntrustedServerCertificate: Bool
+    ) async -> FolderSettingsSaveResult {
+        guard let originalProject = projects.first(where: { $0.id == projectID }) else {
+            return .failed
+        }
+        let destination = destinationURL.standardizedFileURL
+        let destinationPath = destination.path
+        guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
+            errorMessage = AppLanguage.current.localized(.ui.recovery.localWorkingFolderAlreadyRegistered)
+            return .failed
+        }
+
+        let operationID = beginOperation(.verifyCredentials(projectID))
+        defer { endOperation(operationID) }
+        do {
+            let bookmarkData = destinationPath == originalProject.path
+                ? originalProject.bookmarkData
+                : try projectAccessManager.makeBookmark(for: destination)
+            if destinationPath != originalProject.path {
+                try await client.validateWorkingCopy(at: destinationPath, credentials: nil)
+            }
+
+            let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            let effectivePassword: String?
+            if newPassword.isEmpty {
+                if let sessionPassword = sessionPasswords[projectID] {
+                    effectivePassword = sessionPassword
+                } else {
+                    effectivePassword = try credentialStore.password(for: projectID)
+                }
+            } else {
+                effectivePassword = newPassword
+            }
+            let credentials = trimmedUsername.isEmpty
+                ? nil
+                : SVNCredentials(username: trimmedUsername, password: effectivePassword)
+            var allowedFailures = originalProject.allowedServerCertificateFailures
+            if allowsUntrustedServerCertificate {
+                allowedFailures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+            } else {
+                allowedFailures.subtract(SVNProject.legacyAllowedServerCertificateFailures)
+            }
+            do {
+                try await client.verifyCredentials(
+                    at: destinationPath,
+                    credentials: credentials,
+                    allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    allowedServerCertificateFailures: allowedFailures
+                )
+            } catch {
+                return .credentialFailure(localizedError(error))
+            }
+
+            guard let index = projects.firstIndex(where: {
+                $0.id == projectID && $0.path == originalProject.path
+            }), !projects.contains(where: {
+                $0.id != projectID && $0.path == destinationPath
+            }) else { return .failed }
+
+            if !newPassword.isEmpty {
+                try credentialStore.setPassword(newPassword, for: projectID)
+            }
+            var updatedProject = originalProject
+            updatedProject.name = destination.lastPathComponent
+            updatedProject.path = destinationPath
+            updatedProject.username = trimmedUsername.isEmpty ? nil : trimmedUsername
+            updatedProject.bookmarkData = bookmarkData
+            updatedProject.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            updatedProject.allowedServerCertificateFailures = allowedFailures
+
+            if destinationPath != originalProject.path {
+                projectAccessManager.endAccessing(projectID: projectID)
+                projectAccessManager.beginAccessing(destination, for: projectID)
+            }
+            projects[index] = updatedProject
+            if !newPassword.isEmpty { sessionPasswords[projectID] = newPassword }
+            probeFilenameNormalization(for: updatedProject)
+            notice = AppLanguage.current.localized(
+                .ui.authentication.credentialsSaved,
+                updatedProject.name
+            )
+            return .saved
+        } catch {
+            errorMessage = localizedError(error)
+            return .failed
+        }
+    }
+
     func verifyCredentials(
         for projectID: SVNProject.ID,
         username: String,
@@ -1446,14 +1597,15 @@ final class ProjectStore {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return false }
         do {
             let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
-            projects[index].username = username.isEmpty ? nil : username
-            projects[index].allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            var updatedProject = projects[index]
+            updatedProject.username = username.isEmpty ? nil : username
+            updatedProject.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
             if allowsUntrustedServerCertificate {
-                projects[index].allowedServerCertificateFailures.formUnion(
+                updatedProject.allowedServerCertificateFailures.formUnion(
                     SVNProject.legacyAllowedServerCertificateFailures
                 )
             } else {
-                projects[index].allowedServerCertificateFailures.subtract(
+                updatedProject.allowedServerCertificateFailures.subtract(
                     SVNProject.legacyAllowedServerCertificateFailures
                 )
             }
@@ -1461,7 +1613,8 @@ final class ProjectStore {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.localized(.ui.authentication.credentialsSaved, projects[index].name)
+            projects[index] = updatedProject
+            notice = AppLanguage.current.localized(.ui.authentication.credentialsSaved, updatedProject.name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1500,10 +1653,10 @@ final class ProjectStore {
         guard !username.isEmpty, !password.isEmpty else { return false }
 
         do {
-            projects[index].username = username
             if saveInKeychain {
                 try credentialStore.setPassword(password, for: request.projectID)
             }
+            projects[index].username = username
             sessionPasswords[request.projectID] = password
             authenticationRequest = nil
             await resume(request)
@@ -1552,7 +1705,7 @@ final class ProjectStore {
         return failures
     }
 
-    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) {
+    func allowServerCertificateFailure(for request: SVNAuthenticationRequest) async {
         guard authenticationRequest?.id == request.id,
               let trust = request.serverCertificateTrust,
               trust.canAllow,
@@ -1564,6 +1717,7 @@ final class ProjectStore {
             .ui.certificate.savedCertificateExceptionRetrySvnOperation,
             projects[index].name
         )
+        await resume(request)
     }
 
     func handleRemoteError(

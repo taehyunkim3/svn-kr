@@ -99,6 +99,7 @@ extension ProjectStore {
             )
             guard selectedProjectID == project.id else { return }
             await refreshLocalWorkingCopy()
+            guard selectedProjectID == project.id else { return }
             let deletedPaths = Set(statuses.lazy.filter { $0.item == .deleted }.map(\.path))
             selectedPaths.formUnion(result.scheduledPaths.filter(deletedPaths.contains))
             if result.failedPaths.isEmpty {

@@ -163,7 +163,7 @@ private struct ServerCertificateTrustView: View {
                         appLanguage.localized(.ui.certificate.allowProject),
                         role: .destructive
                     ) {
-                        store.allowServerCertificateFailure(for: request)
+                        Task { await store.allowServerCertificateFailure(for: request) }
                     }
                     .buttonStyle(.borderedProminent)
                 }
@@ -444,7 +444,6 @@ struct CredentialsView: View {
     @State private var hasSavedPassword: Bool
     @State private var allowsUntrustedServerCertificate: Bool
     @State private var relocatedURL: URL?
-    @State private var originalPath: String
     @State private var credentialFailureMessage: String?
 
     init(project: SVNProject) {
@@ -452,7 +451,6 @@ struct CredentialsView: View {
         _username = State(initialValue: project.username ?? "")
         _hasSavedPassword = State(initialValue: false)
         _allowsUntrustedServerCertificate = State(initialValue: project.allowsUntrustedServerCertificate == true)
-        _originalPath = State(initialValue: project.path)
     }
 
     var body: some View {
@@ -635,45 +633,34 @@ struct CredentialsView: View {
     /// 확인 전에는 아무것도 바꾸지 않으므로 사용자가 재입력을 고르면 이전 설정이 그대로 남습니다.
     private func save() {
         Task {
-            if let relocatedURL, relocatedURL.path != project.path {
-                guard await store.relocateProject(project.id, to: relocatedURL) else { return }
-            }
-            if let failure = await store.verifyCredentials(
+            let result = await store.saveFolderSettings(
                 for: project.id,
-                username: username,
-                password: newPassword,
-                allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
-            ) {
-                credentialFailureMessage = failure
-                return
-            }
-            guard store.saveCredentials(
-                for: project.id,
+                destinationURL: relocatedURL ?? URL(
+                    fileURLWithPath: project.path,
+                    isDirectory: true
+                ),
                 username: username,
                 newPassword: newPassword,
                 allowsUntrustedServerCertificate: allowsUntrustedServerCertificate
-            ) else { return }
+            )
+            if case let .credentialFailure(failure) = result {
+                credentialFailureMessage = failure
+                return
+            }
+            guard result == .saved else { return }
             dismiss()
             await store.refresh()
         }
     }
 
     /// 확인에 실패한 입력을 버리고 시트를 열었을 때의 상태로 되돌립니다.
-    /// 자격 증명은 아직 저장되지 않았으므로 이 화면에서 바꾼 폴더 위치만 복구하면 됩니다.
+    /// 자격 증명과 폴더 위치는 아직 저장되지 않았으므로 화면 입력만 버립니다.
     private func discardChanges() {
-        Task {
-            if store.projects.first(where: { $0.id == project.id })?.path != originalPath {
-                _ = await store.relocateProject(
-                    project.id,
-                    to: URL(fileURLWithPath: originalPath, isDirectory: true)
-                )
-            }
-            relocatedURL = nil
-            username = project.username ?? ""
-            newPassword = ""
-            allowsUntrustedServerCertificate = project.allowsUntrustedServerCertificate == true
-            dismiss()
-        }
+        relocatedURL = nil
+        username = project.username ?? ""
+        newPassword = ""
+        allowsUntrustedServerCertificate = project.allowsUntrustedServerCertificate == true
+        dismiss()
     }
 }
 

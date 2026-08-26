@@ -75,7 +75,7 @@ import Testing
     )
 }
 
-@Test @MainActor func expiredCertificateRequiresConsentThenAppliesOnlyToRequestedProject() throws {
+@Test @MainActor func expiredCertificateRequiresConsentThenAppliesOnlyToRequestedProject() async throws {
     let firstProject = SVNProject(name: "First", path: "/tmp/first")
     let secondProject = SVNProject(name: "Second", path: "/tmp/second")
     let persistence = CertificateProjectPersistence(projects: [firstProject, secondProject])
@@ -97,7 +97,7 @@ import Testing
     #expect(!store.allowedServerCertificateFailures(for: firstProject).contains(.expired))
     #expect(!store.allowedServerCertificateFailures(for: secondProject).contains(.expired))
 
-    store.allowServerCertificateFailure(for: request)
+    await store.allowServerCertificateFailure(for: request)
 
     let updatedFirstProject = try #require(store.projects.first { $0.id == firstProject.id })
     let unchangedSecondProject = try #require(store.projects.first { $0.id == secondProject.id })
@@ -131,7 +131,7 @@ import Testing
     #expect(store.allowedServerCertificateFailures(for: updatedProject) == [.expired])
 }
 
-@Test @MainActor func unclassifiedCertificateFailureExplainsProblemWithoutBroadConsent() throws {
+@Test @MainActor func unclassifiedCertificateFailureExplainsProblemWithoutBroadConsent() async throws {
     let project = SVNProject(name: "Project", path: "/tmp/project")
     let store = ProjectStore(
         persistence: CertificateProjectPersistence(projects: [project]),
@@ -148,7 +148,7 @@ import Testing
     let request = try #require(store.authenticationRequest)
     #expect(request.serverCertificateTrust?.failure == .other)
     #expect(request.serverCertificateTrust?.canAllow == false)
-    store.allowServerCertificateFailure(for: request)
+    await store.allowServerCertificateFailure(for: request)
     #expect(store.allowedServerCertificateFailures(for: project).isEmpty)
 }
 

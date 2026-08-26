@@ -183,8 +183,9 @@ extension ProjectStore {
 
         let operationID = beginOperation(.ignore(project.id))
         defer { endOperation(operationID) }
-        do {
-            for proposal in proposals {
+        var applicationError: Error?
+        for proposal in proposals {
+            do {
                 try await client.addIgnoreRule(
                     at: project.path,
                     directory: proposal.directory,
@@ -192,16 +193,23 @@ extension ProjectStore {
                     propertyKind: proposal.propertyKind,
                     credentials: nil
                 )
+                guard selectedProjectID == project.id else { return }
+            } catch {
+                applicationError = error
+                break
             }
-            guard selectedProjectID == project.id else { return }
+        }
+        guard selectedProjectID == project.id else { return }
+        await refreshLocalWorkingCopy()
+        guard selectedProjectID == project.id else { return }
+        await compareGitIgnore()
+        guard selectedProjectID == project.id else { return }
+        if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
+
+        if let applicationError {
+            errorMessage = localizedError(applicationError)
+        } else {
             notice = AppLanguage.current.localized(.ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare, proposals.count)
-            await refreshLocalWorkingCopy()
-            await compareGitIgnore()
-            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
-        } catch {
-            if selectedProjectID == project.id {
-                errorMessage = localizedError(error)
-            }
         }
     }
 }

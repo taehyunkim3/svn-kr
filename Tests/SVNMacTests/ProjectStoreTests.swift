@@ -3021,6 +3021,62 @@ import Testing
 }
 
 @MainActor
+@Test func olderCanceledCheckoutValidationCannotOverwriteNewerRecoveryRequest() async throws {
+    let firstDestination = URL(fileURLWithPath: "/tmp/canceled-checkout-first", isDirectory: true)
+    let secondDestination = URL(fileURLWithPath: "/tmp/canceled-checkout-second", isDirectory: true)
+    let firstValidationGate = AsyncTestGate()
+    let secondValidationGate = AsyncTestGate()
+    let client = StubSVNClient(
+        checkoutRunsUntilCancelled: true,
+        validateWorkingCopyGatesByPath: [
+            firstDestination.path: firstValidationGate,
+            secondDestination.path: secondValidationGate,
+        ]
+    )
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(),
+        projectAccessManager: StubProjectAccessManager(),
+        projectPathChecker: StubProjectPathChecker(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let firstCheckout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/first",
+            destinationURL: firstDestination,
+            username: "",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await client.waitUntilCheckoutStarts()
+    store.cancelCheckout()
+    await firstValidationGate.waitUntilEntered()
+
+    let secondCheckout = Task {
+        await store.startCheckout(
+            repositoryURL: "https://example.test/svn/second",
+            destinationURL: secondDestination,
+            username: "",
+            password: "",
+            allowsUntrustedServerCertificate: false
+        )
+    }
+    await client.waitUntilCheckoutStarts(2)
+    store.cancelCheckout()
+    await secondValidationGate.waitUntilEntered()
+    await secondValidationGate.release()
+    _ = await secondCheckout.value
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == secondDestination.path)
+
+    await firstValidationGate.release()
+    _ = await firstCheckout.value
+    #expect(store.canceledCheckoutRecoveryRequest?.destinationPath == secondDestination.path)
+}
+
+@MainActor
 @Test func relocatingProjectKeepsIdentityAndCredentialsWhileMovingTheFolder() async {
     let project = SVNProject(name: "이전 폴더", path: "/tmp/old-location", username: "tester")
     let client = StubSVNClient()
@@ -3107,6 +3163,166 @@ import Testing
     #expect(verified.count == 1)
     #expect(verified.first??.username == "tester")
     #expect(verified.first??.password == "stored-secret")
+}
+
+@MainActor
+@Test func credentialWriteFailureKeepsStoredProjectAuthenticationSettings() {
+    let project = SVNProject(
+        name: "프로젝트",
+        path: "/tmp/project",
+        username: "old-user",
+        allowsUntrustedServerCertificate: false,
+        allowedServerCertificateFailures: [.expired]
+    )
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let persistence = MemoryProjectPersistence(projects: [project])
+    let store = ProjectStore(
+        credentialStore: credentials,
+        persistence: persistence,
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    #expect(!store.saveCredentials(
+        for: project.id,
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    ))
+
+    #expect(store.projects == [project])
+    #expect(persistence.savedProjects == [project])
+}
+
+@MainActor
+@Test func authenticationRetryKeychainFailureKeepsStoredUsername() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "old-user")
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let store = ProjectStore(
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+    let request = SVNAuthenticationRequest(projectID: project.id, action: .retryManually)
+    store.authenticationRequest = request
+
+    let succeeded = await store.useCredentials(
+        for: request,
+        username: "new-user",
+        password: "new-secret",
+        saveInKeychain: true
+    )
+
+    #expect(!succeeded)
+    #expect(store.projects == [project])
+    #expect(store.authenticationRequest == request)
+}
+
+@MainActor
+@Test func folderSettingsCredentialFailureKeepsPathAndAuthenticationSettings() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let client = StubSVNClient(
+        verifyCredentialsError: SVNError.commandFailed(command: "svn info", message: "E215004")
+    )
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: URL(fileURLWithPath: "/tmp/new", isDirectory: true),
+        username: "new-user",
+        newPassword: "wrong",
+        allowsUntrustedServerCertificate: true
+    )
+
+    guard case .credentialFailure = result else {
+        Issue.record("Expected credential failure, got \(result)")
+        return
+    }
+    #expect(store.projects == [project])
+}
+
+@MainActor
+@Test func folderSettingsKeychainFailureKeepsPathAndAuthenticationSettings() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let store = ProjectStore(
+        client: StubSVNClient(),
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: URL(fileURLWithPath: "/tmp/new", isDirectory: true),
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    )
+
+    #expect(result == .failed)
+    #expect(store.projects == [project])
+}
+
+@MainActor
+@Test func folderSettingsCommitPathAndAuthenticationAfterAllRiskySteps() async throws {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let destination = URL(fileURLWithPath: "/tmp/new", isDirectory: true)
+    let credentials = StubCredentialStore()
+    let accessManager = StubProjectAccessManager()
+    let client = StubSVNClient()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: accessManager,
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: destination,
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    )
+
+    let updatedProject = try #require(store.projects.first)
+    #expect(result == .saved)
+    #expect(updatedProject.path == destination.path)
+    #expect(updatedProject.name == "new")
+    #expect(updatedProject.username == "new-user")
+    #expect(updatedProject.allowsUntrustedServerCertificate == true)
+    #expect(try credentials.password(for: project.id) == "new-secret")
+    #expect(accessManager.accessedURLs[project.id] == destination)
+    #expect(await client.recordedVerifiedPaths() == [destination.path])
+}
+
+@MainActor
+@Test func allowingCertificateFailureResumesTheFailedUpdate() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [project], client: client)
+    let certificateError = SVNError.commandFailed(
+        command: "svn update",
+        message: "svn: E230001: Server SSL certificate verification failed: certificate has expired"
+    )
+    store.handleRemoteError(certificateError, project: project, action: .update)
+    let request = try #require(store.authenticationRequest)
+
+    await store.allowServerCertificateFailure(for: request)
+
+    #expect(await client.updateRequestCount() == 1)
+    #expect(store.authenticationRequest == nil)
+    #expect(store.allowedServerCertificateFailures(for: store.projects[0]).contains(.expired))
 }
 
 @MainActor
@@ -3667,6 +3883,30 @@ import Testing
 }
 
 @MainActor
+@Test func partialGitIgnoreApplicationRefreshesAppliedAndPendingRules() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("svn-gitignore-partial-test-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    try Data("/build/\n/cache/\n".utf8)
+        .write(to: directory.appendingPathComponent(".gitignore"))
+
+    let project = SVNProject(name: "프로젝트", path: directory.path)
+    let client = StubSVNClient(addIgnoreRuleFailureAtRequest: 2)
+    let store = makeStore(projects: [project], client: client)
+    await store.compareGitIgnore()
+    store.selectedGitIgnoreImportIDs = store.selectableGitIgnoreImportIDs
+
+    await store.applySelectedGitIgnoreRules()
+
+    #expect(await client.requestedAddedIgnoreRules().count == 1)
+    #expect(store.gitIgnoreImportItems.count == 2)
+    #expect(store.gitIgnoreImportItems.filter(\.isSelectable).count == 1)
+    #expect(store.selectedGitIgnoreImportIDs.count == 1)
+    #expect(store.errorMessage != nil)
+}
+
+@MainActor
 @Test func deletionRequestWaitsForConfirmationAndSelectsOnlyVerifiedDeletedPaths() async throws {
     let project = SVNProject(name: "프로젝트", path: "/tmp/delete-flow")
     let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10", nodeKind: .file)
@@ -3717,6 +3957,42 @@ import Testing
 
     #expect(await client.scheduleDeletionRequestCount() == 0)
     #expect(store.selectedPaths.isEmpty)
+}
+
+@MainActor
+@Test func deletionCompletionAfterRefreshDoesNotPublishIntoAnotherProject() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/delete-race-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/delete-race-second")
+    let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10")
+    let refreshGate = AsyncTestGate()
+    let client = StubSVNClient(snapshotGate: refreshGate)
+    let store = makeStore(projects: [first, second], client: client)
+    store.statuses = [missing]
+    store.requestDeletion(missing)
+    let request = try #require(store.deletionRequest)
+
+    let deletion = Task { await store.confirmDeletion(request) }
+    await refreshGate.waitUntilEntered()
+    store.selectedProjectID = second.id
+    let secondStatus = SVNStatusEntry(path: "second.txt", item: .modified, revision: "20")
+    store.statuses = [secondStatus]
+    await refreshGate.release()
+    await deletion.value
+
+    #expect(store.statuses == [secondStatus])
+    #expect(store.selectedPaths.isEmpty)
+    #expect(store.notice == nil)
+}
+
+@MainActor
+@Test func repositoryRelocationOperationAppearsInFolderSettingsProgress() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/project")])
+    let operationID = store.beginOperation(.relocateRepository(store.projects[0].id))
+
+    #expect(store.isRelocatingProject)
+
+    store.endOperation(operationID)
+    #expect(!store.isRelocatingProject)
 }
 
 @MainActor
@@ -4022,13 +4298,15 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let validateWorkingCopyGatesByPath: [String: AsyncTestGate]
     let validateWorkingCopyErrorsByPath: [String: Error]
     let verifyCredentialsError: Error?
-    private var checkoutStarted = false
-    private var checkoutStartWaiters: [CheckedContinuation<Void, Never>] = []
+    private var checkoutStartCount = 0
+    private var checkoutStartWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
     private var validatedPaths: [String] = []
     private var verifiedCredentials: [SVNCredentials?] = []
+    private var verifiedPaths: [String] = []
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
     let snapshotError: Error?
+    let snapshotGate: AsyncTestGate?
     let workingCopyEntriesError: Error?
     let repositoryLocksByPath: [String: [SVNLockInfo]]
     let repositoryLocksErrorsByPath: [String: Error]
@@ -4046,6 +4324,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let resolveGate: AsyncTestGate?
     let workingCopyEntriesValue: [SVNWorkingCopyEntry]
     let ignoreRulesValue: [SVNIgnoreRule]
+    let addIgnoreRuleFailureAtRequest: Int?
     let commitError: SVNError?
     private var commitErrors: [SVNError]
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
@@ -4121,6 +4400,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         lockInfoByPath: [String: SVNLockInfo] = [:],
         lockInfoError: Error? = nil,
         snapshotError: Error? = nil,
+        snapshotGate: AsyncTestGate? = nil,
         workingCopyEntriesError: Error? = nil,
         repositoryLocksByPath: [String: [SVNLockInfo]] = [:],
         repositoryLocksErrorsByPath: [String: Error] = [:],
@@ -4140,6 +4420,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         resolveGate: AsyncTestGate? = nil,
         workingCopyEntries: [SVNWorkingCopyEntry] = [],
         ignoreRules: [SVNIgnoreRule] = [],
+        addIgnoreRuleFailureAtRequest: Int? = nil,
         commitError: SVNError? = nil,
         commitErrors: [SVNError] = [],
         updateErrors: [KeychainStoreError] = [],
@@ -4180,6 +4461,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.lockInfoByPath = lockInfoByPath
         self.lockInfoError = lockInfoError
         self.snapshotError = snapshotError
+        self.snapshotGate = snapshotGate
         self.workingCopyEntriesError = workingCopyEntriesError
         self.repositoryLocksByPath = repositoryLocksByPath
         self.repositoryLocksErrorsByPath = repositoryLocksErrorsByPath
@@ -4214,6 +4496,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.updatePreviewGatesByRequest = updatePreviewGatesByRequest
         workingCopyEntriesValue = workingCopyEntries
         ignoreRulesValue = ignoreRules
+        self.addIgnoreRuleFailureAtRequest = addIgnoreRuleFailureAtRequest
         recoveryPreviewValue = recoveryPreview
         recoveryResultValue = recoveryResult ?? SVNRecoveryResult(
             destinationPath: "/tmp/recovered",
@@ -4235,10 +4518,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func checkout(repositoryURL: String, destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
         for output in checkoutProgress { progress?(output) }
         if checkoutRunsUntilCancelled {
-            checkoutStarted = true
-            let pending = checkoutStartWaiters
-            checkoutStartWaiters.removeAll()
-            pending.forEach { $0.resume() }
+            checkoutStartCount += 1
+            let pending = checkoutStartWaiters.filter { $0.count <= checkoutStartCount }
+            checkoutStartWaiters.removeAll { $0.count <= checkoutStartCount }
+            pending.forEach { $0.continuation.resume() }
             // 실제 SVNClient는 취소 시 svn 프로세스를 종료하고 CancellationError를
             // 던집니다. sleep도 같은 오류를 던지므로 취소 경로를 그대로 재현합니다.
             try await Task.sleep(for: .seconds(60))
@@ -4260,16 +4543,18 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func cleanupRequestCount() -> Int { cleanupRequests }
 
     func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws {
+        verifiedPaths.append(path)
         verifiedCredentials.append(credentials)
         if let verifyCredentialsError { throw verifyCredentialsError }
     }
 
     func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
+    func recordedVerifiedPaths() -> [String] { verifiedPaths }
     func recordedValidatedPaths() -> [String] { validatedPaths }
-    func waitUntilCheckoutStarts() async {
-        guard !checkoutStarted else { return }
+    func waitUntilCheckoutStarts(_ count: Int = 1) async {
+        guard checkoutStartCount < count else { return }
         await withCheckedContinuation { continuation in
-            checkoutStartWaiters.append(continuation)
+            checkoutStartWaiters.append((count, continuation))
         }
     }
     func status(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] {
@@ -4284,6 +4569,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     }
     func workingCopySnapshot(at path: String, credentials: SVNCredentials?) async throws -> SVNWorkingCopySnapshot {
         snapshotRequests += 1
+        await snapshotGate?.wait()
         await delay(for: path)
         if let snapshotError { throw snapshotError }
         if !conflictOperations.isEmpty, let snapshot = postResolveSnapshotsByPath[path] { return snapshot }
@@ -4338,8 +4624,13 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func repositoryPathNormalizationRequestCount() -> Int { repositoryPathNormalizationRequests }
     func lastRecoveryPaths() -> [String] { recoveryPaths }
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry] { [] }
-    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] { ignoreRulesValue }
+    func ignoreRules(at path: String, credentials: SVNCredentials?) async throws -> [SVNIgnoreRule] {
+        ignoreRulesValue + addedIgnoreRules
+    }
     func addIgnoreRule(at path: String, directory: String, pattern: String, propertyKind: SVNIgnorePropertyKind, credentials: SVNCredentials?) async throws {
+        if addedIgnoreRules.count + 1 == addIgnoreRuleFailureAtRequest {
+            throw TestError.credentialWriteFailed
+        }
         addedIgnoreRules.append(SVNIgnoreRule(directory: directory, pattern: pattern, propertyKind: propertyKind))
     }
     func requestedAddedIgnoreRules() -> [SVNIgnoreRule] { addedIgnoreRules }

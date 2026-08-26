@@ -30,6 +30,8 @@ struct ProjectRecoveryState {
     var repositoryBrowseSelectedURL: String?
     var commitSubmissionID: UUID?
     var projectRegistrationSessionID: UUID?
+    var canceledCheckoutRecoverySessionID: UUID?
+    var latestCanceledCheckoutRecoveryRequest: CanceledCheckoutRecoveryRequest?
 
     mutating func beginCommitSubmission(isActionBlocked: Bool, canCommit: Bool) -> UUID? {
         guard commitSubmissionID == nil, !isActionBlocked, canCommit else { return nil }
