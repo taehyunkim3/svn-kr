@@ -1113,6 +1113,107 @@ public actor SVNClient {
         }
     }
 
+    public func untrackedChildren(
+        at path: String,
+        directory: String,
+        credentials: SVNCredentials? = nil
+    ) async throws -> [SVNUntrackedChild] {
+        let root = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        let directoryURL = directory.isEmpty || directory == "."
+            ? root
+            : root.appendingPathComponent(directory, isDirectory: true).standardizedFileURL
+        guard SVNFileSystem.isAtOrBelow(directoryURL, root: root) else {
+            throw SVNError.unsupportedTargetPath(paths: [directory])
+        }
+
+        let names = try FileManager.default.contentsOfDirectory(atPath: directoryURL.path)
+        let rules = try await ignoreRules(at: path, credentials: credentials)
+        return try names.map { name in
+            let relativePath = try Self.childPath(directory: directory, name: name)
+            return SVNUntrackedChild(
+                path: relativePath,
+                isDirectory: Self.nodeKind(at: directoryURL.appendingPathComponent(name)) == .directory,
+                isIgnored: Self.isIgnored(
+                    name: name,
+                    in: directory,
+                    workingCopyPath: path,
+                    rules: rules
+                )
+            )
+        }
+        .sorted {
+            Data($0.path.utf8).lexicographicallyPrecedes(Data($1.path.utf8))
+        }
+    }
+
+    private static func childPath(directory: String, name: String) throws -> String {
+        let parentBytes = directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        let pathBytes = parentBytes.isEmpty
+            ? Data(name.utf8)
+            : parentBytes + Data([0x2F]) + Data(name.utf8)
+        guard let path = String(data: pathBytes, encoding: .utf8) else {
+            throw SVNError.malformedResponse
+        }
+        return path
+    }
+
+    private static func isIgnored(
+        name: String,
+        in directory: String,
+        workingCopyPath: String,
+        rules: [SVNIgnoreRule]
+    ) -> Bool {
+        rules.contains { rule in
+            guard ignoreRule(rule, appliesTo: directory, workingCopyPath: workingCopyPath) else {
+                return false
+            }
+            return rule.pattern.withCString { pattern in
+                name.withCString { fnmatch(pattern, $0, 0) == 0 }
+            }
+        }
+    }
+
+    private static func ignoreRule(
+        _ rule: SVNIgnoreRule,
+        appliesTo directory: String,
+        workingCopyPath: String
+    ) -> Bool {
+        let ruleDirectory = relativeIgnoreDirectory(rule.directory, workingCopyPath: workingCopyPath)
+        let directoryBytes = directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        if rule.propertyKind == .local { return ruleDirectory == directoryBytes }
+        return ruleDirectory.isEmpty
+            || ruleDirectory == directoryBytes
+            || directoryBytes.starts(with: ruleDirectory + Data([0x2F]))
+    }
+
+    private static func relativeIgnoreDirectory(_ directory: String, workingCopyPath: String) -> Data {
+        guard directory.hasPrefix("/") else {
+            return directory.isEmpty || directory == "." ? Data() : Data(directory.utf8)
+        }
+        let roots = [
+            workingCopyPath,
+            physicalPath(workingCopyPath),
+        ].compactMap { $0 }
+        let directoryBytes = Data(directory.utf8)
+        for root in roots {
+            let rootBytes = Data(root.utf8)
+            if directoryBytes == rootBytes { return Data() }
+            let prefix = rootBytes + Data([0x2F])
+            if directoryBytes.starts(with: prefix) {
+                return Data(directoryBytes.dropFirst(prefix.count))
+            }
+        }
+        return directoryBytes
+    }
+
+    private static func physicalPath(_ path: String) -> String? {
+        path.withCString { fileSystemPath in
+            guard let resolved = Darwin.realpath(fileSystemPath, nil) else { return nil }
+            defer { free(resolved) }
+            return String(validatingCString: resolved)
+        }
+    }
+
     public func addIgnoreRule(
         at path: String,
         directory: String,

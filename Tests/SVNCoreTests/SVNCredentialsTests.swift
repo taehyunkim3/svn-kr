@@ -791,6 +791,60 @@ private final class AsyncTestEvent: @unchecked Sendable {
     #expect(byPath["새 파일.pdf"]?.nodeKind == .file)
 }
 
+@Test func untrackedChildrenListsOnlyImmediateEntriesWithRawPathsAndIgnoreState() async throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory
+        .appendingPathComponent("svn-untracked-children-test-\(UUID().uuidString)", isDirectory: true)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? fileManager.removeItem(at: directory) }
+
+    let parentName = "새 폴더".decomposedStringWithCanonicalMapping
+    let parent = directory.appendingPathComponent(parentName, isDirectory: true)
+    let childDirectory = parent.appendingPathComponent("하위 폴더", isDirectory: true)
+    try fileManager.createDirectory(at: childDirectory, withIntermediateDirectories: true)
+    try Data().write(to: parent.appendingPathComponent("선택.txt"))
+    try Data().write(to: parent.appendingPathComponent("제외.log"))
+    try Data().write(to: childDirectory.appendingPathComponent("깊은.txt"))
+
+    let executable = directory.appendingPathComponent("fake-svn")
+    let script = """
+    #!/bin/sh
+    case "$*" in
+      *"propget svn:ignore"*)
+        printf '%s' '<?xml version="1.0"?><properties><target path="\(parent.path)"><property name="svn:ignore">*.log</property></target></properties>'
+        ;;
+      *"propget svn:global-ignores"*)
+        printf '%s' '<?xml version="1.0"?><properties></properties>'
+        ;;
+      *) exit 1 ;;
+    esac
+    """
+    try Data(script.utf8).write(to: executable)
+    try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+
+    let client = SVNClient(
+        executablePath: executable.path,
+        configDirectoryPath: directory.appendingPathComponent("svn-config").path
+    )
+    let children = try await client.untrackedChildren(
+        at: directory.path,
+        directory: parentName
+    )
+    let storedParentName = try #require(fileManager.contentsOfDirectory(atPath: directory.path).first {
+        $0.precomposedStringWithCanonicalMapping == parentName.precomposedStringWithCanonicalMapping
+    })
+    let expectedPrefix = Data(storedParentName.utf8) + Data([0x2F])
+    let storedChildNames = try fileManager.contentsOfDirectory(atPath: parent.path)
+    let expectedPaths = storedChildNames.map { expectedPrefix + Data($0.utf8) }
+        .sorted { $0.lexicographicallyPrecedes($1) }
+
+    #expect(children.map { Data($0.path.utf8) } == expectedPaths)
+    #expect(children.count(where: \.isDirectory) == 1)
+    #expect(children.first { $0.path.hasSuffix("제외.log") }?.isIgnored == true)
+    #expect(children.filter(\.isIgnored).count == 1)
+    #expect(!children.contains { $0.path.hasSuffix("깊은.txt") })
+}
+
 private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throws {
     let descriptor = path.withCString {
         Darwin.open($0, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)
