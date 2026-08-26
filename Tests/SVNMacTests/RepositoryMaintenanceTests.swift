@@ -37,6 +37,7 @@ import Testing
 
     #expect(offered)
     #expect(store.errorMessage == nil)
+    #expect(store.isShowingCredentials)
     #expect(store.recoveryState.repositoryRelocationRequest?.currentURL == fixture.repositoryURL)
     #expect(store.recoveryState.repositoryRelocationRequest?.connectionErrorMessage == message)
 }
@@ -59,6 +60,7 @@ import Testing
     #expect(SVNClient.isRepositoryConnectionError(connectionError))
 
     await store.requestRepositoryRelocation()
+    #expect(store.isShowingCredentials)
     let relocatedURL = movedRepository.absoluteString + "trunk"
     #expect(await store.relocateSelectedRepository(to: relocatedURL))
     _ = try await fixture.client.update(at: fixture.workingCopy.path)
@@ -100,6 +102,50 @@ import Testing
         relativePath: sharedPath
     )
     #expect(!unlockedProperties.contains { $0.name == "svn:needs-lock" })
+}
+
+@Test func repositoryRelocationEntryBelongsToFolderSettingsNotChangesOrAddSheet() throws {
+    let sources = try repositoryMaintenanceSources()
+    let changes = try String(
+        contentsOf: sources.appendingPathComponent("ChangesView.swift"),
+        encoding: .utf8
+    )
+    let dialogs = try String(
+        contentsOf: sources.appendingPathComponent("RepositoryDialogs.swift"),
+        encoding: .utf8
+    )
+    let addView = try viewSlice(
+        dialogs,
+        from: "struct AddRepositoryView: View",
+        to: "struct CredentialsView: View"
+    )
+    let credentials = try viewSlice(
+        dialogs,
+        from: "struct CredentialsView: View",
+        to: "struct RepositoryRelocationView: View"
+    )
+
+    #expect(changes.contains("if let repositoryURL = store.recoveryState.repositoryURL"))
+    #expect(changes.contains("Text(repositoryURL)"))
+    #expect(changes.contains("captureRepositoryConnectionError"))
+    #expect(!changes.contains("requestRepositoryRelocation"))
+    #expect(!changes.contains(".ui.change.repositoryLocation"))
+
+    #expect(!addView.contains("requestRepositoryRelocation"))
+    #expect(!addView.contains(".ui.change.repositoryLocation"))
+    #expect(!addView.contains(".ui.current.repositoryUrl"))
+
+    #expect(credentials.contains("requestRepositoryRelocation"))
+    #expect(credentials.contains(".ui.change.repositoryLocation"))
+    #expect(credentials.contains(".ui.current.repositoryUrl"))
+    #expect(credentials.contains("repositoryRelocationRequest"))
+
+    let urlLabel = try #require(credentials.range(of: ".ui.current.repositoryUrl"))
+    let credentialFields = try #require(credentials.range(of: "CredentialFieldsGrid("))
+    #expect(urlLabel.lowerBound < credentialFields.lowerBound)
+    #expect(
+        credentials.range(of: "Divider()", range: urlLabel.upperBound..<credentialFields.lowerBound) != nil
+    )
 }
 
 @Test func repositoryMaintenanceViewsExposeActionsAndLocalizedStrings() throws {
@@ -149,6 +195,13 @@ private func repositoryMaintenanceSources() throws -> URL {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+}
+
+private func viewSlice(_ source: String, from start: String, to end: String) throws -> String {
+    let startRange = try #require(source.range(of: start))
+    let endRange = try #require(source.range(of: end))
+    #expect(startRange.lowerBound < endRange.lowerBound)
+    return String(source[startRange.lowerBound..<endRange.lowerBound])
 }
 
 private final class RepositoryMaintenanceFixture {

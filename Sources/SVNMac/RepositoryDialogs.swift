@@ -258,24 +258,6 @@ struct AddRepositoryView: View {
                             .help(appLanguage.localized(.ui.choose.theLocalFolderForTheCheckout))
                     }
                 }
-                GridRow {
-                    Text(appLanguage.localized(.ui.current.repositoryUrl))
-                    HStack {
-                        TextField(
-                            "",
-                            text: Binding(
-                                get: { store.recoveryState.repositoryURL ?? "" },
-                                set: { _ in }
-                            )
-                        )
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(true)
-                        Button(appLanguage.localized(.ui.change.repositoryLocation)) {
-                            Task { await store.requestRepositoryRelocation() }
-                        }
-                        .disabled(store.isWorking)
-                    }
-                }
             }
 
             CredentialFieldsGrid(
@@ -499,6 +481,21 @@ struct CredentialsView: View {
                             .help(appLanguage.localized(.ui.pick.theNewLocationOfThisSvnWorkingFolder))
                     }
                 }
+                GridRow {
+                    Text(appLanguage.localized(.ui.current.repositoryUrl))
+                    HStack {
+                        Text(store.recoveryState.repositoryURL ?? "")
+                            .textSelection(.enabled)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                            .help(store.recoveryState.repositoryURL ?? "")
+                        Spacer(minLength: 0)
+                        Button(appLanguage.localized(.ui.change.repositoryLocation)) {
+                            Task { await store.requestRepositoryRelocation() }
+                        }
+                        .disabled(store.isWorking)
+                    }
+                }
             }
 
             if pendingPath != project.path {
@@ -509,6 +506,8 @@ struct CredentialsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            Divider()
 
             CredentialFieldsGrid(
                 username: $username,
