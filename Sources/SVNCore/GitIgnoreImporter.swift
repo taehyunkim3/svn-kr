@@ -57,6 +57,14 @@ public enum GitIgnoreImporter {
         if rule.pattern.contains("**") {
             return IgnoreImportItem(rule: rule, disposition: .unsupported(reason: "재귀 패턴(**)은 SVN 무시 속성과 의미가 다릅니다."))
         }
+        if rule.isDirectoryOnly {
+            return IgnoreImportItem(
+                rule: rule,
+                disposition: .unsupported(
+                    reason: "디렉터리 전용 규칙은 SVN 무시 속성으로 안전하게 변환할 수 없습니다."
+                )
+            )
+        }
 
         let components = rule.pattern.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard !components.isEmpty else {
