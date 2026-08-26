@@ -189,7 +189,9 @@
 "ui.revision.fileCommitHistory" = "파일 커밋 기록";
 "ui.browser.files" = "파일";
 "ui.checkout.filesDownloadedAppearHereAfterCheckoutStarts" = "체크아웃을 시작하면 내려받는 파일이 여기에 표시됩니다.";
-"ui.changes.filesInsideFolderAddedTogether" = "하위 파일이 함께 추가됩니다.";
+"ui.changes.filesInsideFolderAddedTogether" = "폴더를 체크하면 하위 전체가 추가됩니다. 펼치면 일부만 고를 수 있습니다.";
+"ui.changes.expandFolder" = "%1$@ 펼치기";
+"ui.changes.collapseFolder" = "%1$@ 접기";
 "ui.authentication.folderCredentials" = "폴더별 인증 설정";
 "ui.common.folder" = "폴더";
 "ui.settings.folderSettings" = "폴더 설정";

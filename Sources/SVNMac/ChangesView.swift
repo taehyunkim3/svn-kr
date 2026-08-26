@@ -86,6 +86,11 @@ struct ChangesView: View {
             }
             ForEach(visibleStatuses) { entry in
                 changedFileRow(entry)
+                if entry.item == .unversioned && entry.nodeKind == .directory {
+                    ForEach(store.visibleUntrackedDescendants(in: entry.path)) { row in
+                        untrackedChildRow(row)
+                    }
+                }
             }
             if store.showsIgnoredFiles {
                 ForEach(visibleIgnoredStatuses) { entry in
@@ -147,12 +152,18 @@ struct ChangesView: View {
 
     private func changedFileRow(_ entry: SVNStatusEntry) -> some View {
         HStack {
+            untrackedDirectoryDisclosure(path: entry.path, isDirectory: isUntrackedDirectory(entry))
             if entry.isSelectableForCommit || entry.canScheduleRepositoryDeletion {
                 Toggle("", isOn: Binding(
                     get: { store.selectedPaths.contains(entry.path) },
                     set: { checked in
-                        if checked { store.selectedPaths.insert(entry.path) }
-                        else { store.selectedPaths.remove(entry.path) }
+                        if isUntrackedDirectory(entry) {
+                            store.setUntrackedDirectorySelected(entry.path, selected: checked)
+                        } else if checked {
+                            store.selectedPaths.insert(entry.path)
+                        } else {
+                            store.selectedPaths.remove(entry.path)
+                        }
                     }
                 ))
                 .labelsHidden()
@@ -194,6 +205,12 @@ struct ChangesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
+                    if let error = store.untrackedChildrenErrorsByDirectory[entry.path] {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .lineLimit(2)
+                    }
                     if WorkingCopyStatusPolicy.showsObstructionGuidance(entry) {
                         Text(appLanguage.localized(.ui.changes.unversionedLocalFileBlockingServerFileSameNameMoveRename))
                             .font(.caption)
@@ -209,6 +226,9 @@ struct ChangesView: View {
             .buttonStyle(.plain)
             .accessibilityHint(appLanguage.localized(.ui.changes.showsDiffFile))
             Spacer()
+            if store.loadingUntrackedDirectoryPaths.contains(entry.path) {
+                ProgressView().controlSize(.small)
+            }
             if entry.item == .obstructed {
                 Button(appLanguage.localized(.ui.common.revealFinder)) {
                     store.revealInFinder(entry.path)
@@ -222,6 +242,106 @@ struct ChangesView: View {
         }
         .listRowBackground(store.selectedStatusPath == entry.path ? Color.accentColor.opacity(0.12) : Color.clear)
         .contextMenu {
+            changedFileContextMenu(entry)
+        }
+    }
+
+    private func untrackedChildRow(_ row: VisibleUntrackedChild) -> some View {
+        let child = row.child
+        let entry = SVNStatusEntry(
+            path: child.path,
+            item: child.isIgnored ? .ignored : .unversioned,
+            nodeKind: child.isDirectory ? .directory : .file
+        )
+        return HStack {
+            untrackedDirectoryDisclosure(path: child.path, isDirectory: child.isDirectory)
+            Toggle("", isOn: Binding(
+                get: {
+                    store.selectedUntrackedChildPaths.contains(child.path)
+                        || store.isUntrackedChildSelectionDisabled(in: row.parentDirectory)
+                },
+                set: { selected in
+                    if child.isDirectory {
+                        store.setUntrackedDirectorySelected(child.path, selected: selected)
+                    } else {
+                        store.setUntrackedChildSelected(
+                            child.path,
+                            parentDirectory: row.parentDirectory,
+                            selected: selected
+                        )
+                    }
+                }
+            ))
+            .labelsHidden()
+            .disabled(store.isCommitInteractionLocked ||
+                store.isUntrackedChildSelectionDisabled(in: row.parentDirectory))
+            .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, child.path))
+            .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
+            statusBadge(entry)
+            Button {
+                Task { await store.loadDiff(for: child.path) }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(child.path.precomposedStringWithCanonicalMapping).lineLimit(1)
+                    if let error = store.untrackedChildrenErrorsByDirectory[child.path] {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .lineLimit(2)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(appLanguage.localized(.ui.changes.showsDiffFile))
+            Spacer()
+            if store.loadingUntrackedDirectoryPaths.contains(child.path) {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .padding(.leading, CGFloat(row.depth) * AppLayout.untrackedChildIndentation)
+        .listRowBackground(store.selectedStatusPath == child.path ? Color.accentColor.opacity(0.12) : Color.clear)
+        .contextMenu {
+            changedFileContextMenu(entry)
+        }
+    }
+
+    @ViewBuilder
+    private func untrackedDirectoryDisclosure(path: String, isDirectory: Bool) -> some View {
+        if isDirectory {
+            Button {
+                Task {
+                    await store.setUntrackedDirectoryExpanded(
+                        path,
+                        expanded: !store.expandedUntrackedDirectoryPaths.contains(path)
+                    )
+                }
+            } label: {
+                Image(systemName: store.expandedUntrackedDirectoryPaths.contains(path)
+                    ? "chevron.down"
+                    : "chevron.right")
+                    .frame(
+                        width: AppLayout.changesDisclosureSize.width,
+                        height: AppLayout.changesDisclosureSize.height
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(appLanguage.localized(
+                store.expandedUntrackedDirectoryPaths.contains(path)
+                    ? .ui.changes.collapseFolder
+                    : .ui.changes.expandFolder,
+                path
+            ))
+        } else {
+            Color.clear
+                .frame(
+                    width: AppLayout.changesDisclosureSize.width,
+                    height: AppLayout.changesDisclosureSize.height
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func changedFileContextMenu(_ entry: SVNStatusEntry) -> some View {
             Button(appLanguage.localized(.ui.common.openFile)) {
                 Task {
                     await store.prepareToOpen(
@@ -313,7 +433,10 @@ struct ChangesView: View {
                     store.requestRevert(entry)
                 }
             }
-        }
+    }
+
+    private func isUntrackedDirectory(_ entry: SVNStatusEntry) -> Bool {
+        entry.item == .unversioned && entry.nodeKind == .directory
     }
 
     private func collisionRow(_ collision: SVNPathCollision) -> some View {

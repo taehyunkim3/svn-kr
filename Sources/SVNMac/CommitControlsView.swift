@@ -35,10 +35,10 @@ struct CommitControlsView: View {
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
                 Button(appLanguage.localized(.ui.commit.selectAll)) {
-                    store.selectedPaths = store.selectAllStatusPaths
+                    store.selectAllCommitPaths()
                 }
                 .help(appLanguage.localized(.ui.commit.selectAllCurrentlyChangedFilesCommit))
-                Button(appLanguage.localized(.ui.commit.clearSelection)) { store.selectedPaths.removeAll() }
+                Button(appLanguage.localized(.ui.commit.clearSelection)) { store.clearCommitSelection() }
                     .help(appLanguage.localized(.ui.commit.clearAllSelectedCommitTargets))
                 if store.isCommitInteractionLocked {
                     Text(appLanguage.localized(.ui.commit.committing))
@@ -46,7 +46,7 @@ struct CommitControlsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(appLanguage.localized(.ui.common.selectedCount, store.selectedPaths.count))
+                Text(appLanguage.localized(.ui.common.selectedCount, store.selectedCommitPaths().count))
                     .foregroundStyle(.secondary)
                 if store.scheduledDeletionCount > 0 {
                     Text(appLanguage.localized(.ui.commit.pendingDeletionCount, store.scheduledDeletionCount))
