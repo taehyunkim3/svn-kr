@@ -387,10 +387,6 @@ struct ChangesView: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
                     .help(repositoryURL)
-                Button(appLanguage.localized(.ui.change.repositoryLocation)) {
-                    Task { await store.requestRepositoryRelocation() }
-                }
-                .disabled(store.isWorking)
             }
             Button(appLanguage.localized(.ui.manage.ignoreRules), systemImage: "eye.slash") {
                 Task {
