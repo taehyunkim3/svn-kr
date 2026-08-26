@@ -12,11 +12,17 @@ private struct SVNWorkingCopyCommandPath {
     let svnPathRelativeToWorkingCopyRoot: String
 }
 
-/// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
+/// SVN CLI 호출을 한곳으로 모으는 코어 서비스입니다.
 ///
-/// actor로 선언해 동일 클라이언트에서 update와 commit 같은 명령이 동시에
-/// 작업 복사본을 변경하지 않도록 보장합니다. 실제 CLI 실행은 `run` 한곳을
-/// 통과하므로 인증 인자와 출력 수집 방식도 모든 명령에서 동일합니다.
+/// actor로 선언한 것은 경로 접두사 캐시 같은 내부 상태를 데이터 경쟁 없이 다루기
+/// 위해서입니다. **명령 실행은 직렬화되지 않습니다.** actor는 `await`마다 재진입을
+/// 허용하므로, 한 명령이 svn 프로세스를 기다리는 동안 다른 명령이 같은 작업 복사본에
+/// 들어옵니다(`SVNClientSerializationContractTests`가 이 동작을 고정합니다).
+/// 겹치면 안 되는 조합(update와 commit 등)은 호출하는 쪽에서 막아야 하고,
+/// 겹치면 svn이 `E155004`로 실패합니다.
+///
+/// 실제 CLI 실행은 `run` 한곳을 통과하므로 인증 인자와 출력 수집 방식은 모든
+/// 명령에서 동일합니다.
 public actor SVNClient {
     private struct ProjectPathPrefixCacheEntry {
         let prefix: String
@@ -843,6 +849,12 @@ public actor SVNClient {
         )
     }
 
+    /// 작업 복사본 상태를 읽습니다. **이름과 달리 읽기 전용이 아닙니다.**
+    ///
+    /// 디스크에서 사라진 추가 예약(NFC/NFD 별칭 수리가 남긴 고아 항목)은 `svn revert`로
+    /// 정리합니다. 그대로 두면 `!` 상태가 남아 커밋이 `unresolvedMissingPaths`로 막히고,
+    /// 별칭 수리 흐름이 끝나지 않습니다. 그래서 조회에 붙여 두었습니다.
+    /// 이 메서드는 커밋·update와 겹치면 안 됩니다. 호출하는 쪽에서 막아야 합니다.
     public func workingCopySnapshot(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopySnapshot {
         let snapshot = try await readWorkingCopySnapshot(at: path, credentials: credentials)
         let cleanedSnapshot = await cleanupMissingScheduledAdditions(
