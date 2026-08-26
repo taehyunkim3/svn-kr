@@ -5,6 +5,8 @@ import Foundation
 public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
     public static let shared = SVNVolumeNormalizationProbe()
 
+    private static let probeNamePrefix = ".svn-mac-normalization-probe-"
+
     private let lock = NSLock()
     private var cachedResults: [String: Bool] = [:]
 
@@ -31,10 +33,34 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
     }
 
     private func probeUncached(at directoryPath: String) -> Bool? {
-        guard let directory = opendir(directoryPath) else { return nil }
+        // 예전 판이 남긴 탐사 파일을 먼저 치웁니다. 지금은 대상 폴더에 탐사 파일을
+        // 만들지 않으므로 이 정리는 실행 중인 다른 프로브와 겹치지 않습니다.
+        guard removeStaleProbeFiles(inDirectoryAt: directoryPath) else { return nil }
+
+        // 탐사 파일을 작업 복사본 안에 만들면 그 순간의 `svn status`에 미버전 항목으로
+        // 잡히고, 같은 폴더를 조사하는 다른 프로브의 정리 루프가 그 파일을 지웁니다.
+        // 같은 볼륨의 전용 임시 폴더에서 조사하면 두 문제가 함께 없어집니다.
+        if let volumeTemporaryDirectory = try? FileManager.default.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: URL(fileURLWithPath: directoryPath, isDirectory: true),
+            create: true
+        ) {
+            defer { try? FileManager.default.removeItem(at: volumeTemporaryDirectory) }
+            if let result = probeNormalization(inDirectoryAt: volumeTemporaryDirectory.path) {
+                return result
+            }
+        }
+
+        // 볼륨 임시 폴더를 만들 수 없으면 대상 폴더에서 직접 조사합니다.
+        return probeNormalization(inDirectoryAt: directoryPath)
+    }
+
+    private func removeStaleProbeFiles(inDirectoryAt directoryPath: String) -> Bool {
+        guard let directory = opendir(directoryPath) else { return false }
         defer { closedir(directory) }
 
-        let probePrefix = Data(".svn-mac-normalization-probe-".utf8)
+        let probePrefix = Data(Self.probeNamePrefix.utf8)
         while let entry = readdir(directory) {
             let bytes = entryNameBytes(entry)
             guard bytes.starts(with: probePrefix) else { continue }
@@ -44,10 +70,13 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
                     capacity: MemoryLayout.size(ofValue: entry.pointee.d_name)
                 ) { unlinkat(dirfd(directory), $0, 0) == 0 }
             }
-            guard didRemove else { return nil }
+            guard didRemove else { return false }
         }
+        return true
+    }
 
-        let probeName = ".svn-mac-normalization-probe-\(UUID().uuidString)-한글"
+    private func probeNormalization(inDirectoryAt directoryPath: String) -> Bool? {
+        let probeName = "\(Self.probeNamePrefix)\(UUID().uuidString)-한글"
             .precomposedStringWithCanonicalMapping
         // URL.appendingPathComponent는 Darwin에서 유니코드 경로 표현을 바꿀 수 있으므로
         // 생성할 마지막 경로 성분은 문자열의 UTF-8 바이트를 그대로 POSIX open에 넘깁니다.
@@ -59,7 +88,10 @@ public final class SVNVolumeNormalizationProbe: @unchecked Sendable {
         close(descriptor)
         defer { unlink(probePath) }
 
-        rewinddir(directory)
+        // 탐사 파일을 만든 뒤에 디렉터리를 엽니다. 먼저 연 스트림은 새로 만든 항목을
+        // 돌려주지 않을 수 있습니다.
+        guard let directory = opendir(directoryPath) else { return nil }
+        defer { closedir(directory) }
 
         let expectedNFC = Data(probeName.utf8)
         let expectedNFD = Data(probeName.decomposedStringWithCanonicalMapping.utf8)

@@ -86,7 +86,10 @@ import Testing
 
     let probe = SVNVolumeNormalizationProbe()
     #expect(probe.preservesPrecomposedFilenames(at: mount.path) == false)
-    #expect((try? fileManager.contentsOfDirectory(atPath: mount.path))?.isEmpty == true)
+    // 탐사는 같은 볼륨의 전용 임시 폴더에서 하므로 대상 폴더에는 탐사 파일이 남지 않습니다.
+    // 볼륨 루트의 `.TemporaryItems`는 macOS가 만드는 폴더라 대상에서 제외합니다.
+    let remaining = (try? fileManager.contentsOfDirectory(atPath: mount.path)) ?? []
+    #expect(!remaining.contains { $0.hasPrefix(".svn-mac-normalization-probe-") })
 }
 
 private func run(_ executable: String, _ arguments: [String]) -> Bool {
@@ -102,4 +105,45 @@ private func run(_ executable: String, _ arguments: [String]) -> Bool {
     } catch {
         return false
     }
+}
+
+@Test func concurrentProbesOnSameDirectoryDoNotDeleteEachOthersProbeFiles() async throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory
+        .appendingPathComponent("svn-normalization-race-\(UUID().uuidString)", isDirectory: true)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: false)
+    defer { try? fileManager.removeItem(at: directory) }
+
+    // 캐시를 공유하지 않는 별개 프로브가 같은 폴더를 동시에 조사해도 결과가 나와야 합니다.
+    let results = await withTaskGroup(of: Bool?.self, returning: [Bool?].self) { group in
+        for _ in 0 ..< 16 {
+            group.addTask {
+                SVNVolumeNormalizationProbe().preservesPrecomposedFilenames(at: directory.path)
+            }
+        }
+        var collected: [Bool?] = []
+        for await result in group { collected.append(result) }
+        return collected
+    }
+
+    #expect(results.allSatisfy { $0 == true })
+    #expect(try fileManager.contentsOfDirectory(atPath: directory.path).isEmpty)
+}
+
+@Test func normalizationProbeDoesNotWriteInsideTargetDirectory() throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory
+        .appendingPathComponent("svn-normalization-readonly-\(UUID().uuidString)", isDirectory: true)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: false)
+    defer {
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        try? fileManager.removeItem(at: directory)
+    }
+
+    // 쓰기 권한이 없는 폴더에서도 결과가 나오면 탐사 파일을 그 폴더에 만들지 않은 것입니다.
+    try fileManager.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+
+    let probe = SVNVolumeNormalizationProbe()
+    #expect(probe.preservesPrecomposedFilenames(at: directory.path) == true)
+    #expect(try fileManager.contentsOfDirectory(atPath: directory.path).isEmpty)
 }
