@@ -263,7 +263,7 @@
 "ui.about.needHelp" = "Need help?";
 "ui.recovery.new" = "New";
 "ui.recovery.newWorkingFolder" = "New Working Folder";
-"ui.commit.no" = "No";
+"ui.commit.no" = "Cancel";
 "ui.revision.noChangedFiles" = "No Changed Files";
 "ui.changes.noChanges" = "No Changes";
 "ui.history.noCommitHistory" = "No Commit History";
@@ -637,8 +637,9 @@
 "ui.lock.lockedFile" = "Locked %1$@ file(s).";
 "ui.commit.reviewCommit" = "Review Commit";
 "ui.commit.itemDeletedServer" = "%1$@ item(s) will be deleted from the server";
-"ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould" = "Some files will be deleted. Review the list below and confirm that they should be deleted.";
+"ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould" = "Committing will delete the items below from the server. This is difficult to undo, so review the list before continuing.";
 "ui.commit.restoreSelectedFilesAction" = "Restore Selected Files from Server…";
+"ui.commit.restoreSelectionHelp" = "Check only the items you want to restore from the server instead of deleting. Then click “Restore Selected Files from Server…” below. Checkboxes do not affect which items are committed.";
 "ui.commit.restoreSelectedFilesConfirmationTitle" = "Restore the selected files from the server?";
 "ui.commit.restoreSelectedDeletionFileServer" = "Restore %1$@ selected deletion file(s) from the server.";
 "ui.commit.restoreServer" = "Restore from Server";
@@ -646,7 +647,7 @@
 "ui.file.noLongerMarkedDeleted" = "This file is no longer marked as deleted.";
 "ui.file.restoredSelectedDeletionFileServer" = "Restored %1$@ selected deletion file(s) from the server.";
 "ui.commit.noFilesDeleted" = "No files will be deleted";
-"ui.commit.confirm" = "Confirm";
+"ui.commit.confirm" = "Commit";
 "ui.update.createdConflictsSoCommitNotRetried" = "Update created conflicts, so the commit was not retried: %1$@";
 "ui.update.someSavedCommitSelectionsDisappearedChangeListAfterUpdateReview" = "Some saved commit selections disappeared from the change list after Update. Review the changes, then commit again.";
 "ui.update.goConflictResolution" = "Go to Conflict Resolution";

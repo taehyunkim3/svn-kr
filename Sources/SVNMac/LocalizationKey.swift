@@ -306,6 +306,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.commit.restoreSelectedDeletionFileServer,
         Self.ui.commit.restoreSelectedFilesAction,
         Self.ui.commit.restoreSelectedFilesConfirmationTitle,
+        Self.ui.commit.restoreSelectionHelp,
         Self.ui.commit.restoreServer,
         Self.ui.commit.revert,
         Self.ui.commit.revertLocalChangesAction,
@@ -1129,6 +1130,7 @@ struct LocalizationUICommitKeys {
     let restoreSelectedDeletionFileServer = LocalizationKey("ui.commit.restoreSelectedDeletionFileServer")
     let restoreSelectedFilesAction = LocalizationKey("ui.commit.restoreSelectedFilesAction")
     let restoreSelectedFilesConfirmationTitle = LocalizationKey("ui.commit.restoreSelectedFilesConfirmationTitle")
+    let restoreSelectionHelp = LocalizationKey("ui.commit.restoreSelectionHelp")
     let restoreServer = LocalizationKey("ui.commit.restoreServer")
     let revert = LocalizationKey("ui.commit.revert")
     let revertLocalChangesAction = LocalizationKey("ui.commit.revertLocalChangesAction")

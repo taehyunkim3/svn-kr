@@ -20,10 +20,15 @@ struct DestructiveReturnKeyTests {
 
     @Test func commitConfirmationKeepsEscapeOnCancel() throws {
         let source = try source(named: "CommitConfirmationView.swift")
-        let keepsEscape = source.contains("role: .cancel")
-            && source.contains(".cancelAction")
+        let cancelButton = try modifierBlock(
+            in: source,
+            after: "Button(appLanguage.localized(.ui.commit.no), role: .cancel)",
+            endingWith: "Button(appLanguage.localized(.ui.commit.confirm))"
+        )
 
-        #expect(keepsEscape)
+        #expect(cancelButton.contains("role: .cancel"))
+        #expect(cancelButton.contains(".keyboardShortcut(.cancelAction)"))
+        #expect(!cancelButton.contains(".defaultAction"))
     }
 
     @Test func pathNormalizationConfirmationDoesNotBindReturnToCommit() throws {
