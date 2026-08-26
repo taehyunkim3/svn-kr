@@ -1097,14 +1097,13 @@ final class ProjectStore {
             finishRequest(updateBadgeRequestID, kind: .updateBadge(project.id))
             endOperation(operationID)
         }
+        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
 
         guard await applyLocalWorkingCopyRefresh(
             for: project,
             requestID: requestID,
             errorPolicy: errorPolicy
         ) else { return }
-
-        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
 
         do {
             let projectCredentials = try credentials(for: project)
