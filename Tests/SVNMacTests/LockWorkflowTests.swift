@@ -62,6 +62,111 @@ import SVNCore
     #expect(await client.commands == [ExplicitLockCommand(paths: request.paths, force: true)])
 }
 
+@Test func canonicalAliasLockRequiresConfirmationBeforeForceCommand() {
+    let repositoryPath = "문서/주간보고서.hwp"
+    let localPath = repositoryPath.decomposedStringWithCanonicalMapping
+    let lock = SVNLockInfo(path: repositoryPath, owner: "other.user")
+
+    let plan = ExplicitLockPlanner.plan(
+        paths: [localPath],
+        locks: [lock],
+        username: "me"
+    )
+
+    guard case let .confirmForce(request) = plan else {
+        Issue.record("canonical alias lock must require force confirmation")
+        return
+    }
+    #expect(request.conflictingLocks == [lock])
+    #expect(request.paths.count == 1)
+    #expect(Data(request.paths[0].utf8) == Data(localPath.utf8))
+}
+
+@Test func canonicalCollisionKeepsDistinctLockPathsByteExact() {
+    let composed = "문서/주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    let locks = [
+        SVNLockInfo(path: composed, owner: "other.user"),
+        SVNLockInfo(path: decomposed, owner: "me"),
+    ]
+
+    let plan = ExplicitLockPlanner.plan(
+        paths: [decomposed],
+        locks: locks,
+        username: "me"
+    )
+
+    #expect(plan == .noAction)
+}
+
+@Test func canonicalCollisionDoesNotTreatOtherRawPathAsOwned() {
+    let composed = "문서/주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    let otherLock = SVNLockInfo(path: composed, owner: "other.user")
+    let locks = [
+        otherLock,
+        SVNLockInfo(path: decomposed, owner: "me"),
+    ]
+
+    let plan = ExplicitLockPlanner.plan(
+        paths: [composed],
+        locks: locks,
+        username: "me"
+    )
+
+    guard case let .confirmForce(request) = plan else {
+        Issue.record("raw-distinct other lock must require force confirmation")
+        return
+    }
+    #expect(request.conflictingLocks == [otherLock])
+}
+
+@Test func canonicalCollisionPreservesBothRequestedRawPaths() {
+    let composed = "문서/주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+
+    let plan = ExplicitLockPlanner.plan(
+        paths: [composed, decomposed],
+        locks: [],
+        username: "me"
+    )
+
+    guard case let .run(command) = plan else {
+        Issue.record("raw-distinct paths must remain separate lock targets")
+        return
+    }
+    #expect(command.paths.count == 2)
+    #expect(Set(command.paths.map { SVNPathIdentity(rawPath: $0) }).count == 2)
+}
+
+@Test func changesLockMatchingUsesCanonicalAliasOnlyWhenUnambiguous() {
+    let composed = "문서/주간보고서.hwp"
+    let decomposed = composed.decomposedStringWithCanonicalMapping
+    let composedLock = SVNLockInfo(path: composed, owner: "other.user")
+
+    #expect(ChangesLockMatcher.lockInfo(
+        for: decomposed,
+        in: [composedLock]
+    ) == composedLock)
+    #expect(ChangesLockMatcher.lockInfo(
+        for: composed,
+        in: [
+            composedLock,
+            SVNLockInfo(path: decomposed, owner: "me"),
+        ]
+    ) == composedLock)
+
+    let fullyDecomposed = "각.hwp".decomposedStringWithCanonicalMapping
+    let partiallyDecomposed = "가\u{11A8}.hwp"
+    #expect(ChangesLockMatcher.lockInfo(
+        for: partiallyDecomposed,
+        in: [
+            SVNLockInfo(path: "각.hwp", owner: "other.user"),
+            SVNLockInfo(path: fullyDecomposed, owner: "me"),
+        ]
+    ) == nil)
+}
+
 @Test func bulkUnlockReportsExactPartialFailures() async {
     let locks = [
         SVNLockInfo(path: "Documents/a.xlsx", owner: "me"),

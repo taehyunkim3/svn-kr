@@ -465,9 +465,7 @@ struct ChangesView: View {
 
     private func lockInfo(for entry: SVNStatusEntry) -> SVNLockInfo? {
         let repositoryPath = lockPath(for: entry)
-        return store.repositoryLocks.first {
-            Data($0.path.utf8) == Data(repositoryPath.utf8)
-        }
+        return ChangesLockMatcher.lockInfo(for: repositoryPath, in: store.repositoryLocks)
     }
 
     private func lockPath(for entry: SVNStatusEntry) -> String {
@@ -480,5 +478,14 @@ struct ChangesView: View {
             return appLanguage.localized(.ui.lock.lockedByCurrentUser)
         }
         return appLanguage.localized(.ui.lock.lockedByOwner, lock.owner)
+    }
+}
+
+enum ChangesLockMatcher {
+    static func lockInfo(for path: String, in locks: [SVNLockInfo]) -> SVNLockInfo? {
+        let lockPaths = locks.map(\.path)
+        return locks.first {
+            CanonicalPathMatcher.matches(path, candidate: $0.path, among: lockPaths)
+        }
     }
 }

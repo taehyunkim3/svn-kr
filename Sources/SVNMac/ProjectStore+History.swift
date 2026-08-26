@@ -113,17 +113,19 @@ extension ProjectStore {
         guard let workingCopyRepositoryPath else { return nil }
         let repositoryComponents = decodedPathComponents(repositoryPath)
         let rootComponents = decodedPathComponents(workingCopyRepositoryPath)
-        guard repositoryComponents.starts(with: rootComponents),
+        guard repositoryComponents.starts(with: rootComponents, by: { lhs, rhs in
+            SVNPathIdentity(rawPath: lhs) == SVNPathIdentity(rawPath: rhs)
+        }),
               repositoryComponents.count > rootComponents.count else { return nil }
         return repositoryComponents
             .dropFirst(rootComponents.count)
             .joined(separator: "/")
-            .precomposedStringWithCanonicalMapping
     }
 
     private func decodedPathComponents(_ path: String) -> [String] {
+        // 두 값 모두 SVN 저장소가 준 경로입니다. 정규 동등성을 적용하면 NFC/NFD로
+        // 실제 구분된 저장소 노드를 섞으므로 percent decoding 뒤 원문 바이트를 보존합니다.
         (path.removingPercentEncoding ?? path)
-            .precomposedStringWithCanonicalMapping
             .split(separator: "/", omittingEmptySubsequences: true)
             .map(String.init)
     }

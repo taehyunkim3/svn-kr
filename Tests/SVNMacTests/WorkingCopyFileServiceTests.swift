@@ -65,6 +65,35 @@ import Testing
     #expect(entry.status == "unversioned")
 }
 
+@Test func matchesSingleCanonicalAliasEntryAcrossFilesystemNormalization() async throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("working-copy-single-alias-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let repositoryPath = "주간보고서.hwp"
+    let localPath = repositoryPath.decomposedStringWithCanonicalMapping
+    FileManager.default.createFile(atPath: root.path + "/" + localPath, contents: Data())
+
+    let nodes = try await WorkingCopyFileService().tree(
+        at: root.path,
+        svnEntries: [
+            SVNWorkingCopyEntry(
+                path: repositoryPath,
+                status: "normal",
+                revision: "7",
+                repositoryPath: repositoryPath
+            ),
+        ]
+    )
+    let node = try #require(nodes.first)
+
+    #expect(Data(node.relativePath.utf8) == Data(localPath.utf8))
+    #expect(node.isVersioned)
+    #expect(Data(try #require(node.svnEntry).path.utf8) == Data(repositoryPath.utf8))
+    #expect(node.matchesRepositoryPath(repositoryPath))
+}
+
 @Test func canonicalAliasNodeMatchesRepositoryLockPathInsteadOfLocalAlias() {
     let repositoryPath = "주간보고서.hwp"
     let localPath = repositoryPath.decomposedStringWithCanonicalMapping

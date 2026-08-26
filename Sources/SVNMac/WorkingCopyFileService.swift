@@ -19,6 +19,8 @@ struct WorkingCopyFileNode: Identifiable, Hashable, Sendable {
     var repositoryRelativePath: String { svnEntry?.repositoryRelativePath ?? relativePath }
 
     func matchesRepositoryPath(_ path: String) -> Bool {
+        // svnEntry를 붙일 때 정규 별칭의 모호성을 해소했습니다. 여기서는 같은 정규 키의
+        // 실제 두 저장소 노드를 섞지 않도록 선택된 저장소 경로의 원문 바이트를 비교합니다.
         Data(repositoryRelativePath.utf8) == Data(path.utf8)
     }
 
@@ -139,16 +141,17 @@ actor WorkingCopyFileService: WorkingCopyFileListing {
 
     private func entriesByPath(
         _ svnEntries: [SVNWorkingCopyEntry]
-    ) -> [SVNPathIdentity: SVNWorkingCopyEntry] {
-        svnEntries.reduce(into: [SVNPathIdentity: SVNWorkingCopyEntry]()) { result, entry in
-            result[SVNPathIdentity(rawPath: entry.path)] = entry
+    ) -> [String: [SVNPathIdentity: SVNWorkingCopyEntry]] {
+        svnEntries.reduce(into: [String: [SVNPathIdentity: SVNWorkingCopyEntry]]()) { result, entry in
+            let identity = SVNPathIdentity(rawPath: entry.path)
+            result[identity.canonicalKey, default: [:]][identity] = entry
         }
     }
 
     private func loadChildren(
         of directoryURL: URL,
         relativeDirectory: String,
-        entriesByPath: [SVNPathIdentity: SVNWorkingCopyEntry],
+        entriesByPath: [String: [SVNPathIdentity: SVNWorkingCopyEntry]],
         recursively: Bool
     ) throws -> [WorkingCopyFileNode] {
         let keys: Set<URLResourceKey> = [
@@ -197,7 +200,7 @@ actor WorkingCopyFileService: WorkingCopyFileListing {
                 fileSize: isDirectory ? nil : values?.fileSize,
                 typeDescription: values?.localizedTypeDescription,
                 hasChildren: hasChildren,
-                svnEntry: entriesByPath[SVNPathIdentity(rawPath: relativePath)],
+                svnEntry: svnEntry(for: relativePath, entriesByPath: entriesByPath),
                 children: nestedChildren
             )
         }
@@ -205,6 +208,19 @@ actor WorkingCopyFileService: WorkingCopyFileListing {
             if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    private func svnEntry(
+        for relativePath: String,
+        entriesByPath: [String: [SVNPathIdentity: SVNWorkingCopyEntry]]
+    ) -> SVNWorkingCopyEntry? {
+        let identity = SVNPathIdentity(rawPath: relativePath)
+        guard let canonicalEntries = entriesByPath[identity.canonicalKey] else { return nil }
+        if let exactEntry = canonicalEntries[identity] { return exactEntry }
+        // 일대일 정규 별칭만 파일시스템 표기 차이로 봅니다. 둘 이상이면 실제로 다른
+        // SVN 노드일 수 있으므로 어느 파일에도 임의 연결하지 않습니다.
+        guard canonicalEntries.count == 1 else { return nil }
+        return canonicalEntries.values.first
     }
 
     private func containsVisibleChild(at directoryURL: URL) -> Bool {

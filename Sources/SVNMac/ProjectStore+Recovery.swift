@@ -74,7 +74,11 @@ extension ProjectStore {
             )
             let recoveryIsStillCurrent = selectedProjectID == sourceID
                 && pathRecoverySourceProjectID == sourceID
-            projects.append(recoveredProject)
+            if recoveryIsStillCurrent {
+                registerRecoveredCheckout(recoveredProject)
+            } else {
+                projects.append(recoveredProject)
+            }
 
             if let password = sourceCredentials?.password, !password.isEmpty {
                 sessionPasswords[recoveredID] = password
@@ -82,7 +86,6 @@ extension ProjectStore {
             }
 
             guard recoveryIsStillCurrent else { return true }
-            selectedProjectID = recoveredID
             await refresh()
             guard selectedProjectID == recoveredID else { return true }
             notice = AppLanguage.current.localized(.ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved)

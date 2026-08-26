@@ -128,6 +128,27 @@ import Testing
 }
 
 @MainActor
+@Test func historyRevisionActionsPreserveRepositoryPathUTF8Bytes() throws {
+    let project = SVNProject(name: "project", path: "/tmp/revision-history-path")
+    let store = revisionRestoreStore(projects: [project])
+    let repositoryFilePath = "/trunk/문서/주간보고서.hwp".decomposedStringWithCanonicalMapping
+    store.workingCopyRepositoryPath = "/trunk"
+
+    store.prepareHistoryRevisionActions(
+        revision: "7",
+        changedPath: SVNChangedPath(
+            path: repositoryFilePath,
+            action: .modified,
+            kind: .file
+        )
+    )
+
+    let request = try #require(store.fileHistoryRequest)
+    let expected = "문서/주간보고서.hwp".decomposedStringWithCanonicalMapping
+    #expect(Data(request.relativePath.utf8) == Data(expected.utf8))
+}
+
+@MainActor
 @Test func switchedProjectRejectsLateRevisionContentsBeforeFileMutation() async throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("revision-restore-project-switch-\(UUID().uuidString)", isDirectory: true)
