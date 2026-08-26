@@ -303,6 +303,7 @@
 "ui.about.questionsSupport" = "Questions & Support";
 "ui.recovery.recoverNewWorkingFolder" = "Recover to New Working Folder";
 "ui.recovery.preview" = "Recovery Preview";
+"ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder" = "The recovery folder must be outside the current working folder. Choose a folder in another location.";
 "ui.common.refresh" = "Refresh";
 "ui.common.refreshed" = "%1$@ refreshed";
 "ui.repository.registerExistingSvnWorkingFolderApp" = "Register an existing SVN working folder in the app.";

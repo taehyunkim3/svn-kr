@@ -12,11 +12,17 @@ private struct SVNWorkingCopyCommandPath {
     let svnPathRelativeToWorkingCopyRoot: String
 }
 
-/// SVN CLI 호출을 직렬화하는 코어 서비스입니다.
+/// SVN CLI 호출을 한곳으로 모으는 코어 서비스입니다.
 ///
-/// actor로 선언해 동일 클라이언트에서 update와 commit 같은 명령이 동시에
-/// 작업 복사본을 변경하지 않도록 보장합니다. 실제 CLI 실행은 `run` 한곳을
-/// 통과하므로 인증 인자와 출력 수집 방식도 모든 명령에서 동일합니다.
+/// actor로 선언한 것은 경로 접두사 캐시 같은 내부 상태를 데이터 경쟁 없이 다루기
+/// 위해서입니다. **명령 실행은 직렬화되지 않습니다.** actor는 `await`마다 재진입을
+/// 허용하므로, 한 명령이 svn 프로세스를 기다리는 동안 다른 명령이 같은 작업 복사본에
+/// 들어옵니다(`SVNClientSerializationContractTests`가 이 동작을 고정합니다).
+/// 겹치면 안 되는 조합(update와 commit 등)은 호출하는 쪽에서 막아야 하고,
+/// 겹치면 svn이 `E155004`로 실패합니다.
+///
+/// 실제 CLI 실행은 `run` 한곳을 통과하므로 인증 인자와 출력 수집 방식은 모든
+/// 명령에서 동일합니다.
 public actor SVNClient {
     private struct ProjectPathPrefixCacheEntry {
         let prefix: String
@@ -669,43 +675,108 @@ public actor SVNClient {
     ) async throws -> SVNRecoveryResult {
         let source = URL(fileURLWithPath: sourcePath, isDirectory: true).standardizedFileURL
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
-        try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
+        try SVNWorkingCopyRecovery.requireSeparateDestination(source: source, destination: destination)
+        let preparation = try SVNWorkingCopyRecovery.prepareEmptyDestination(destination)
 
-        let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
-        let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
-        guard preview.blockingPaths.isEmpty else {
-            throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
-        }
-        let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
-        // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
-        // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
-        // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
-        _ = try await checkout(
-            repositoryURL: repositoryURL,
-            destinationPath: destination.path,
-            revision: sourceSnapshot.revision.minimum,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-        try await pinRecoveryBaseRevisions(
-            of: sourceSnapshot,
-            at: destination.path,
-            credentials: credentials,
-            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
-        )
-        try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
+        do {
+            let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
+            let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
+            guard preview.blockingPaths.isEmpty else {
+                throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
+            }
+            let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
+            // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
+            // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
+            // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
+            _ = try await checkout(
+                repositoryURL: repositoryURL,
+                destinationPath: destination.path,
+                revision: sourceSnapshot.revision.minimum,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            try await pinRecoveryBaseRevisions(
+                of: sourceSnapshot,
+                at: destination.path,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
+            try await restoreRecoveryScheduling(
+                preview,
+                at: destination,
+                credentials: credentials
+            )
 
-        let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
-        guard !recoveredSnapshot.hasPathCollisions else {
-            throw SVNError.recoveryValidationFailed(paths: recoveredSnapshot.collisions.map(\.displayPath))
+            let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
+            guard !recoveredSnapshot.hasPathCollisions else {
+                throw SVNError.recoveryValidationFailed(paths: recoveredSnapshot.collisions.map(\.displayPath))
+            }
+            return SVNRecoveryResult(
+                destinationPath: destination.path,
+                snapshot: recoveredSnapshot,
+                migratedPaths: preview.mappings.map(\.destinationPath)
+            )
+        } catch {
+            // 부분 체크아웃이 남으면 같은 폴더로 다시 시도할 때 "비어 있어야 합니다"로만 막힙니다.
+            SVNWorkingCopyRecovery.rollbackDestination(preparation, at: destination)
+            throw error
         }
-        return SVNRecoveryResult(
-            destinationPath: destination.path,
-            snapshot: recoveredSnapshot,
-            migratedPaths: preview.mappings.map(\.destinationPath)
-        )
+    }
+
+    /// 파일 복사만으로는 삭제·추가 예약이 재현되지 않습니다. 삭제 예약은 새 작업 복사본에서
+    /// "누락"으로, 추가 예약은 "미등록"으로 격하되어 사용자가 예약을 처음부터 다시 해야 하고,
+    /// 누락 상태는 커밋 자체를 막습니다. 예약을 svn 명령으로 다시 세웁니다.
+    private func restoreRecoveryScheduling(
+        _ preview: SVNRecoveryPreview,
+        at destination: URL,
+        credentials: SVNCredentials?
+    ) async throws {
+        // 상위 경로를 먼저 추가해야 하위 경로를 추가할 수 있습니다. `--depth empty`는
+        // 추가 예약 폴더 아래의 미등록 파일을 함께 끌어들이지 않게 합니다. 방금 복사한
+        // 파일이므로 디스크에 실제로 만들어진 이름을 그대로 넘깁니다.
+        let additions = Self.recoverySchedulingTargets(in: preview, status: .added, path: \.destinationPath)
+            .compactMap {
+                SVNWorkingCopyRecovery.onDiskRelativePath(for: $0, below: destination)
+            }
+        if !additions.isEmpty {
+            _ = try await checkedRunWithMultipleWorkingCopyPathArguments(
+                ["add", "--depth", "empty"],
+                projectRelativePaths: additions,
+                at: destination.path,
+                credentials: credentials
+            )
+        }
+
+        // 삭제 예약 대상은 저장소가 가진 원문 경로로 체크아웃되어 있습니다. NFC로 접은
+        // 대상 경로를 넘기면 저장소 이름이 NFD일 때 "버전 관리 대상이 아니다"가 됩니다.
+        let deletions = Self.recoverySchedulingTargets(in: preview, status: .deleted, path: \.sourcePath)
+        if !deletions.isEmpty {
+            _ = try await checkedRunWithMultipleWorkingCopyPathArguments(
+                ["delete"],
+                projectRelativePaths: deletions,
+                at: destination.path,
+                credentials: credentials
+            )
+        }
+    }
+
+    private static func recoverySchedulingTargets(
+        in preview: SVNRecoveryPreview,
+        status: SVNStatusKind,
+        path: KeyPath<SVNRecoveryPathMapping, String>
+    ) -> [String] {
+        preview.mappings
+            .filter { $0.status == status }
+            .map { $0[keyPath: path] }
+            .sorted {
+                let leftDepth = $0.split(separator: "/").count
+                let rightDepth = $1.split(separator: "/").count
+                if leftDepth != rightDepth { return leftDepth < rightDepth }
+                return $0 < $1
+            }
     }
 
     /// 혼합 리비전 작업 복사본은 경로마다 BASE가 다릅니다. 가장 낮은 리비전으로 체크아웃한
@@ -778,6 +849,12 @@ public actor SVNClient {
         )
     }
 
+    /// 작업 복사본 상태를 읽습니다. **이름과 달리 읽기 전용이 아닙니다.**
+    ///
+    /// 디스크에서 사라진 추가 예약(NFC/NFD 별칭 수리가 남긴 고아 항목)은 `svn revert`로
+    /// 정리합니다. 그대로 두면 `!` 상태가 남아 커밋이 `unresolvedMissingPaths`로 막히고,
+    /// 별칭 수리 흐름이 끝나지 않습니다. 그래서 조회에 붙여 두었습니다.
+    /// 이 메서드는 커밋·update와 겹치면 안 됩니다. 호출하는 쪽에서 막아야 합니다.
     public func workingCopySnapshot(at path: String, credentials: SVNCredentials? = nil) async throws -> SVNWorkingCopySnapshot {
         let snapshot = try await readWorkingCopySnapshot(at: path, credentials: credentials)
         let cleanedSnapshot = await cleanupMissingScheduledAdditions(

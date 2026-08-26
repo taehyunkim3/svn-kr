@@ -529,6 +529,7 @@ struct LocalizationKey: Hashable, Sendable {
         ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved
         ui.recovery.preview
         ui.recovery.recoverNewWorkingFolder
+        ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder
         ui.recovery.successBothOriginalRecoveredCopiesRemainSidebar
         ui.repository.addLocalWorkingFolder
         ui.repository.addSvnRepository
@@ -1308,6 +1309,7 @@ struct LocalizationUIRecoveryKeys {
     let pathRecoveryCompletedOriginalWorkingFolderPreserved = LocalizationKey("ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved")
     let preview = LocalizationKey("ui.recovery.preview")
     let recoverNewWorkingFolder = LocalizationKey("ui.recovery.recoverNewWorkingFolder")
+    let recoveryFolderMustBeOutsideCurrentWorkingFolder = LocalizationKey("ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder")
     let successBothOriginalRecoveredCopiesRemainSidebar = LocalizationKey("ui.recovery.successBothOriginalRecoveredCopiesRemainSidebar")
 }
 

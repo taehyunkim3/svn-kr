@@ -109,6 +109,141 @@ struct SVNWorkingCopyRecoveryTests {
         #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("command-log").path))
         #expect(try String(contentsOf: destination.appendingPathComponent("existing.txt"), encoding: .utf8) == "keep")
     }
+
+    /// 복구 대상 폴더가 원본 작업 폴더 안이면 새 체크아웃이 원본의 미등록 항목으로 잡혀
+    /// 저장소 전체가 자기 안으로 한 번 더 복사됩니다. svn을 부르기 전에 막아야 합니다.
+    @Test func rejectsRecoveryDestinationInsideSourceWorkingCopy() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-nested-test-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let destination = source.appendingPathComponent("복구", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let commandLog = root.appendingPathComponent("command-log")
+        let client = SVNClient(executablePath: try makeLoggingFakeSVN(at: root, log: commandLog).path)
+
+        do {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+            Issue.record("원본 하위 폴더가 거부되어야 합니다.")
+        } catch SVNError.recoveryBlocked {
+            // expected
+        } catch {
+            Issue.record("예상하지 못한 오류: \(error)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: commandLog.path))
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    @Test func rejectsRecoveryDestinationThatContainsSourceWorkingCopy() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-parent-test-\(UUID().uuidString)", isDirectory: true)
+        let destination = root.appendingPathComponent("작업", isDirectory: true)
+        let source = destination.appendingPathComponent("source", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let commandLog = root.appendingPathComponent("command-log")
+        let client = SVNClient(executablePath: try makeLoggingFakeSVN(at: root, log: commandLog).path)
+
+        do {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+            Issue.record("원본을 품는 폴더가 거부되어야 합니다.")
+        } catch SVNError.recoveryBlocked {
+            // expected
+        } catch {
+            Issue.record("예상하지 못한 오류: \(error)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: commandLog.path))
+    }
+
+    /// checkout이 대상에 `.svn`을 만든 뒤 실패하면 앱이 만든 폴더가 남아 재시도가
+    /// "복구 대상 폴더는 비어 있어야 합니다."로만 막힙니다. 실패하면 되돌려야 합니다.
+    @Test func rollsBackAppCreatedDestinationWhenCheckoutFailsPartway() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-rollback-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let destination = root.appendingPathComponent("recovered", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = SVNClient(
+            executablePath: try makeFailingCheckoutFakeSVN(at: root).path,
+            configDirectoryPath: root.appendingPathComponent("svn-config").path
+        )
+
+        await #expect(throws: (any Error).self) {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+        }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    @Test func emptiesAdoptedDestinationWhenCheckoutFailsPartway() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svn-recovery-rollback-adopted-\(UUID().uuidString)", isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let destination = root.appendingPathComponent("recovered", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let client = SVNClient(
+            executablePath: try makeFailingCheckoutFakeSVN(at: root).path,
+            configDirectoryPath: root.appendingPathComponent("svn-config").path
+        )
+
+        await #expect(throws: (any Error).self) {
+            _ = try await client.recoverWorkingCopy(from: source.path, to: destination.path)
+        }
+        // 사용자가 고른 폴더는 지우지 않고, 안에 만든 것만 지워 재시도를 열어 둔다.
+        #expect(FileManager.default.fileExists(atPath: destination.path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: destination.path).isEmpty)
+    }
+}
+
+/// `svn:externals` 실패처럼 체크아웃이 대상에 파일을 만든 뒤 끝나는 상황을 재현합니다.
+private func makeFailingCheckoutFakeSVN(at root: URL) throws -> URL {
+    let executable = root.appendingPathComponent("fake-svn-failing-checkout-\(UUID().uuidString)")
+    let script = """
+    #!/bin/sh
+    command=
+    for argument in "$@"; do
+      case "$argument" in
+        status|info|checkout) command=$argument ;;
+      esac
+    done
+    if [ "$command" = info ]; then
+      printf 'https://svn.example.test/project/trunk\\n'
+      exit 0
+    fi
+    if [ "$command" = status ]; then
+      printf '%s' '<?xml version="1.0"?><status><target path="."><entry path="."><wc-status item="normal" revision="10"/></entry></target></status>'
+      exit 0
+    fi
+    if [ "$command" = checkout ]; then
+      mkdir -p '.svn'
+      printf 'sqlite' > '.svn/wc.db'
+      printf 'partial' > '문서.txt'
+      printf 'svn: E205011: Failure occurred processing one or more externals definitions\\n' >&2
+      exit 1
+    fi
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    return executable
+}
+
+private func makeLoggingFakeSVN(at root: URL, log: URL) throws -> URL {
+    let executable = root.appendingPathComponent("fake-svn-\(UUID().uuidString)")
+    let script = """
+    #!/bin/sh
+    printf '%s\\n' "$*" >> '\(log.path)'
+    exit 1
+    """
+    try Data(script.utf8).write(to: executable)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    return executable
 }
 
 private func directoryFileDigest(at root: URL) throws -> [String: Data] {
