@@ -2000,7 +2000,7 @@ import Testing
 }
 
 @MainActor
-@Test func alwaysLockAndOpenOpensWithoutLockAndNamesTheOtherOwner() async {
+@Test func alwaysLockAndOpenShowsConfirmationWhenLockedByAnotherUser() async throws {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
     let opener = StubWorkspaceOpener()
     let client = StubSVNClient(lockInfoByPath: [
@@ -2015,10 +2015,35 @@ import Testing
 
     await store.prepareToOpen(path: "shared.xlsx", isVersioned: true)
 
+    let request = try #require(store.documentOpenRequest)
+    #expect(request.existingLock?.owner == "other-user")
+    #expect(!request.lockInformationWasUnavailable)
+    #expect(opener.openedURLs.isEmpty)
     #expect(await client.requestedLockPaths().isEmpty)
+
+    store.openWithoutLock(request)
     #expect(opener.openedURLs.map(\.lastPathComponent) == ["shared.xlsx"])
+}
+
+@MainActor
+@Test func alwaysLockAndOpenOpensImmediatelyWhenLockedByCurrentUser() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project", username: "tester")
+    let opener = StubWorkspaceOpener()
+    let client = StubSVNClient(lockInfoByPath: [
+        "owned.pptx": SVNLockInfo(path: "owned.pptx", owner: "tester"),
+    ])
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        workspaceOpener: opener,
+        settingsDefaults: makeDocumentOpenPolicyDefaults(.alwaysLockAndOpen)
+    )
+
+    await store.prepareToOpen(path: "owned.pptx", isVersioned: true)
+
+    #expect(opener.openedURLs.map(\.lastPathComponent) == ["owned.pptx"])
     #expect(store.documentOpenRequest == nil)
-    #expect(store.notice?.contains("other-user") == true)
+    #expect(await client.requestedLockPaths().isEmpty)
 }
 
 @MainActor
