@@ -3215,6 +3215,23 @@ import Testing
 }
 
 @MainActor
+@Test func temporaryFileCleanupSheetCannotCloseWhileCleanupIsRunning() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.isShowingTemporaryFileCleanup = true
+    let operationID = store.beginOperation(.cleanupTemporaryFiles(project.id))
+
+    store.isShowingTemporaryFileCleanup = false
+
+    #expect(store.isShowingTemporaryFileCleanup)
+
+    store.endOperation(operationID)
+    store.isShowingTemporaryFileCleanup = false
+
+    #expect(!store.isShowingTemporaryFileCleanup)
+}
+
+@MainActor
 @Test func historyDiffLoadsOnlySelectedFileAndUsesPreviousPegForDeletion() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/project")
     let client = StubSVNClient()

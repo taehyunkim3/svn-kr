@@ -226,7 +226,13 @@ final class ProjectStore {
     var isShowingIgnoreRules = false
     var isShowingLocks = false
     var isShowingUpdatePreview = false
-    var isShowingTemporaryFileCleanup = false
+    var isShowingTemporaryFileCleanup = false {
+        didSet {
+            if !isShowingTemporaryFileCleanup, isCleaningSelectedProjectTemporaryFiles {
+                isShowingTemporaryFileCleanup = true
+            }
+        }
+    }
     var isShowingFileHistory = false
     var isShowingPathRecovery = false {
         didSet {
