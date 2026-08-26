@@ -168,6 +168,12 @@ enum SVNAuthenticationAction: Equatable {
     case retryManually
 }
 
+enum FolderSettingsSaveResult: Equatable {
+    case saved
+    case credentialFailure(String)
+    case failed
+}
+
 enum RefreshErrorPolicy {
     case standalone
     case coordinated(UUID)
@@ -1399,6 +1405,99 @@ final class ProjectStore {
     /// 새로고침이 실패해 되돌릴 것이 남습니다. 확인을 저장보다 앞에 두면 실패했을 때
     /// 아무것도 바뀌지 않은 상태가 되어 사용자가 재입력과 취소를 그대로 고를 수 있습니다.
     /// 반환값은 실패 사유이고, `nil`이면 확인에 성공한 것입니다.
+    func saveFolderSettings(
+        for projectID: SVNProject.ID,
+        destinationURL: URL,
+        username: String,
+        newPassword: String,
+        allowsUntrustedServerCertificate: Bool
+    ) async -> FolderSettingsSaveResult {
+        guard let originalProject = projects.first(where: { $0.id == projectID }) else {
+            return .failed
+        }
+        let destination = destinationURL.standardizedFileURL
+        let destinationPath = destination.path
+        guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
+            errorMessage = AppLanguage.current.localized(.ui.recovery.localWorkingFolderAlreadyRegistered)
+            return .failed
+        }
+
+        let operationID = beginOperation(.verifyCredentials(projectID))
+        defer { endOperation(operationID) }
+        do {
+            let bookmarkData = destinationPath == originalProject.path
+                ? originalProject.bookmarkData
+                : try projectAccessManager.makeBookmark(for: destination)
+            if destinationPath != originalProject.path {
+                try await client.validateWorkingCopy(at: destinationPath, credentials: nil)
+            }
+
+            let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            let effectivePassword: String?
+            if newPassword.isEmpty {
+                if let sessionPassword = sessionPasswords[projectID] {
+                    effectivePassword = sessionPassword
+                } else {
+                    effectivePassword = try credentialStore.password(for: projectID)
+                }
+            } else {
+                effectivePassword = newPassword
+            }
+            let credentials = trimmedUsername.isEmpty
+                ? nil
+                : SVNCredentials(username: trimmedUsername, password: effectivePassword)
+            var allowedFailures = originalProject.allowedServerCertificateFailures
+            if allowsUntrustedServerCertificate {
+                allowedFailures.formUnion(SVNProject.legacyAllowedServerCertificateFailures)
+            } else {
+                allowedFailures.subtract(SVNProject.legacyAllowedServerCertificateFailures)
+            }
+            do {
+                try await client.verifyCredentials(
+                    at: destinationPath,
+                    credentials: credentials,
+                    allowUntrustedServerCertificate: allowsUntrustedServerCertificate,
+                    allowedServerCertificateFailures: allowedFailures
+                )
+            } catch {
+                return .credentialFailure(localizedError(error))
+            }
+
+            guard let index = projects.firstIndex(where: {
+                $0.id == projectID && $0.path == originalProject.path
+            }), !projects.contains(where: {
+                $0.id != projectID && $0.path == destinationPath
+            }) else { return .failed }
+
+            if !newPassword.isEmpty {
+                try credentialStore.setPassword(newPassword, for: projectID)
+            }
+            var updatedProject = originalProject
+            updatedProject.name = destination.lastPathComponent
+            updatedProject.path = destinationPath
+            updatedProject.username = trimmedUsername.isEmpty ? nil : trimmedUsername
+            updatedProject.bookmarkData = bookmarkData
+            updatedProject.allowsUntrustedServerCertificate = allowsUntrustedServerCertificate
+            updatedProject.allowedServerCertificateFailures = allowedFailures
+
+            if destinationPath != originalProject.path {
+                projectAccessManager.endAccessing(projectID: projectID)
+                projectAccessManager.beginAccessing(destination, for: projectID)
+            }
+            projects[index] = updatedProject
+            if !newPassword.isEmpty { sessionPasswords[projectID] = newPassword }
+            probeFilenameNormalization(for: updatedProject)
+            notice = AppLanguage.current.localized(
+                .ui.authentication.credentialsSaved,
+                updatedProject.name
+            )
+            return .saved
+        } catch {
+            errorMessage = localizedError(error)
+            return .failed
+        }
+    }
+
     func verifyCredentials(
         for projectID: SVNProject.ID,
         username: String,

@@ -3164,6 +3164,93 @@ import Testing
 }
 
 @MainActor
+@Test func folderSettingsCredentialFailureKeepsPathAndAuthenticationSettings() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let client = StubSVNClient(
+        verifyCredentialsError: SVNError.commandFailed(command: "svn info", message: "E215004")
+    )
+    let store = ProjectStore(
+        client: client,
+        credentialStore: StubCredentialStore(),
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: URL(fileURLWithPath: "/tmp/new", isDirectory: true),
+        username: "new-user",
+        newPassword: "wrong",
+        allowsUntrustedServerCertificate: true
+    )
+
+    guard case .credentialFailure = result else {
+        Issue.record("Expected credential failure, got \(result)")
+        return
+    }
+    #expect(store.projects == [project])
+}
+
+@MainActor
+@Test func folderSettingsKeychainFailureKeepsPathAndAuthenticationSettings() async {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let credentials = StubCredentialStore(setError: TestError.credentialWriteFailed)
+    let store = ProjectStore(
+        client: StubSVNClient(),
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: StubProjectAccessManager(),
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: URL(fileURLWithPath: "/tmp/new", isDirectory: true),
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    )
+
+    #expect(result == .failed)
+    #expect(store.projects == [project])
+}
+
+@MainActor
+@Test func folderSettingsCommitPathAndAuthenticationAfterAllRiskySteps() async throws {
+    let project = SVNProject(name: "이전 폴더", path: "/tmp/old", username: "old-user")
+    let destination = URL(fileURLWithPath: "/tmp/new", isDirectory: true)
+    let credentials = StubCredentialStore()
+    let accessManager = StubProjectAccessManager()
+    let client = StubSVNClient()
+    let store = ProjectStore(
+        client: client,
+        credentialStore: credentials,
+        persistence: MemoryProjectPersistence(projects: [project]),
+        projectAccessManager: accessManager,
+        updateBadgeRefreshInterval: nil
+    )
+
+    let result = await store.saveFolderSettings(
+        for: project.id,
+        destinationURL: destination,
+        username: "new-user",
+        newPassword: "new-secret",
+        allowsUntrustedServerCertificate: true
+    )
+
+    let updatedProject = try #require(store.projects.first)
+    #expect(result == .saved)
+    #expect(updatedProject.path == destination.path)
+    #expect(updatedProject.name == "new")
+    #expect(updatedProject.username == "new-user")
+    #expect(updatedProject.allowsUntrustedServerCertificate == true)
+    #expect(try credentials.password(for: project.id) == "new-secret")
+    #expect(accessManager.accessedURLs[project.id] == destination)
+    #expect(await client.recordedVerifiedPaths() == [destination.path])
+}
+
+@MainActor
 @Test func relocatingToAFolderRegisteredByAnotherProjectIsRejected() async {
     let first = SVNProject(name: "첫 폴더", path: "/tmp/first-location")
     let second = SVNProject(name: "둘째 폴더", path: "/tmp/second-location")
@@ -4080,6 +4167,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var checkoutStartWaiters: [CheckedContinuation<Void, Never>] = []
     private var validatedPaths: [String] = []
     private var verifiedCredentials: [SVNCredentials?] = []
+    private var verifiedPaths: [String] = []
     let lockInfoByPath: [String: SVNLockInfo]
     let lockInfoError: Error?
     let snapshotError: Error?
@@ -4314,11 +4402,13 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func cleanupRequestCount() -> Int { cleanupRequests }
 
     func verifyCredentials(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws {
+        verifiedPaths.append(path)
         verifiedCredentials.append(credentials)
         if let verifyCredentialsError { throw verifyCredentialsError }
     }
 
     func recordedVerifiedCredentials() -> [SVNCredentials?] { verifiedCredentials }
+    func recordedVerifiedPaths() -> [String] { verifiedPaths }
     func recordedValidatedPaths() -> [String] { validatedPaths }
     func waitUntilCheckoutStarts() async {
         guard !checkoutStarted else { return }
