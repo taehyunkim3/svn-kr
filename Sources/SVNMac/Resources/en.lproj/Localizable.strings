@@ -488,6 +488,7 @@
 "ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile" = "Overwriting with your version removes incoming server changes from the working file. The server file remains in the backup folder.";
 "ui.conflict.treeConflict" = "Tree Conflict";
 "ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice" = "A tree conflict concerns the path state, not file contents. This is not a choice between two files.";
+"ui.conflict.treeConflictLocalServerTarget" = "Local: %1$@ · Server: %2$@ · Target: %3$@";
 "ui.conflict.applyServerProperties" = "Apply Server Properties";
 "ui.conflict.conflictedProperties" = "Conflicted properties: %1$@";
 "ui.conflict.conflictedPropertyNameCouldNotDetermined" = "The conflicted property name could not be determined.";

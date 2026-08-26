@@ -330,6 +330,7 @@ struct LocalizationKey: Hashable, Sendable {
         ui.conflict.serverRevision
         ui.conflict.treeConflict
         ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice
+        ui.conflict.treeConflictLocalServerTarget
         ui.conflict.uncommittedChange
         ui.conflict.uncommittedLocalChangesDiscarded
         ui.conflict.useMineAction
@@ -1087,6 +1088,7 @@ struct LocalizationUIConflictKeys {
     let serverRevision = LocalizationKey("ui.conflict.serverRevision")
     let treeConflict = LocalizationKey("ui.conflict.treeConflict")
     let treeConflictConcernsPathStateNotFileContentsNotChoice = LocalizationKey("ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice")
+    let treeConflictLocalServerTarget = LocalizationKey("ui.conflict.treeConflictLocalServerTarget")
     let uncommittedChange = LocalizationKey("ui.conflict.uncommittedChange")
     let uncommittedLocalChangesDiscarded = LocalizationKey("ui.conflict.uncommittedLocalChangesDiscarded")
     let useMineAction = LocalizationKey("ui.conflict.useMineAction")

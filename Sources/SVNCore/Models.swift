@@ -388,10 +388,12 @@ public struct SVNWorkingCopyEntry: Identifiable, Hashable, Sendable {
     public var id: String { path }
     public var repositoryRelativePath: String { repositoryPath ?? path }
     public var isVersioned: Bool {
-        status != "unversioned"
-            && status != "ignored"
-            && status != "external"
-            && revision.flatMap(Int.init).map { $0 >= 0 } == true
+        guard status != "unversioned", status != "ignored", status != "external" else {
+            return false
+        }
+        return status == "added"
+            || status == "replaced"
+            || revision.flatMap(Int.init).map { $0 >= 0 } == true
     }
 
     public init(

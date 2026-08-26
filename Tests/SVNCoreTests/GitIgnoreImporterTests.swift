@@ -27,11 +27,13 @@ import Testing
         pattern: "build",
         propertyKind: .local
     ))
+    #expect(preview[1].warning?.contains("같은 이름의 파일") == true)
     #expect(preview[2].proposal == SVNIgnoreRule(
         directory: "nested",
         pattern: "cache",
         propertyKind: .local
     ))
+    #expect(preview[2].warning?.contains("같은 이름의 파일") == true)
     if case .unsupported = preview[3].disposition {} else {
         Issue.record("Negated rule must remain unsupported")
     }
@@ -70,6 +72,7 @@ import Testing
     #expect(preview[0].proposal == SVNIgnoreRule(directory: ".", pattern: "*.log", propertyKind: .global))
     #expect(preview[1].proposal == SVNIgnoreRule(directory: "lib", pattern: "local.txt", propertyKind: .local))
     #expect(preview[2].proposal == SVNIgnoreRule(directory: "lib", pattern: "build", propertyKind: .global))
-    #expect(preview[2].warning != nil, "lib/build 아래 이미 추적 중인 파일이 있으므로 경고가 있어야 합니다.")
+    #expect(preview[2].warning?.contains("같은 이름의 파일") == true)
+    #expect(preview[2].warning?.contains("이미 추적 중인 1개") == true)
     #expect(preview[3].proposal == SVNIgnoreRule(directory: "lib/cache", pattern: "tmp", propertyKind: .local))
 }

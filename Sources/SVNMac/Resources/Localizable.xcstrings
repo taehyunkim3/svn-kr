@@ -10184,6 +10184,23 @@
         }
       }
     },
+    "ui.conflict.treeConflictLocalServerTarget": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local: %1$@ · Server: %2$@ · Target: %3$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로컬: %1$@ · 서버: %2$@ · 대상: %3$@"
+          }
+        }
+      }
+    },
     "ui.authentication.tryKeychainAgain": {
       "extractionState": "manual",
       "localizations": {
