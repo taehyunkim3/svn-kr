@@ -2919,6 +2919,31 @@ import Testing
 }
 
 @MainActor
+@Test func commitInteractionsPreserveExistingBlocksAndLockDuringCommit() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let other = SVNProject(name: "다른", path: "/tmp/other")
+    let store = makeStore(projects: [selected, other])
+
+    #expect(!store.isCommitInteractionLocked)
+
+    let refreshID = store.beginOperation(.refresh(selected.id))
+    #expect(store.isWorking)
+    #expect(store.isCommitInteractionLocked)
+    store.endOperation(refreshID)
+
+    let otherCommitID = store.beginOperation(.commit(other.id))
+    #expect(store.isWorking)
+    #expect(!store.isCommitInteractionLocked)
+    store.endOperation(otherCommitID)
+
+    let selectedCommitID = store.beginOperation(.commit(selected.id))
+    #expect(store.isCommitInteractionLocked)
+    store.endOperation(selectedCommitID)
+
+    #expect(!store.isCommitInteractionLocked)
+}
+
+@MainActor
 @Test func selectedProjectActionsIgnoreUnrelatedReadOperations() {
     let selected = SVNProject(name: "선택", path: "/tmp/selected")
     let other = SVNProject(name: "다른", path: "/tmp/other")
@@ -3023,6 +3048,50 @@ import Testing
     Checked out revision 10.
 
     """)
+}
+
+@MainActor
+@Test func commitPublishesProgressAndRejectsPreviousSessionOutput() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/commit-progress")
+    let status = SVNStatusEntry(path: "Sources/App.swift", item: .modified)
+    let client = StubSVNClient(
+        statusesByPath: [project.path: [status]],
+        commitProgressByRequest: [
+            ["Sending        Sources/App.swift\n", "Transmitting file data ."],
+            ["Sending        Sources/App.swift\n", "Committed revision 12.\n"],
+        ]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [status]
+    store.selectedPaths = [status.path]
+
+    #expect(await store.commit(message: "첫 커밋"))
+    #expect(store.commitLog == "Sending        Sources/App.swift\nTransmitting file data .")
+
+    store.selectedPaths = [status.path]
+    #expect(await store.commit(message: "두 번째 커밋"))
+    #expect(store.commitLog == "Sending        Sources/App.swift\nCommitted revision 12.\n")
+
+    await client.emitCommitProgress("late first session output\n", requestIndex: 0)
+    await Task.yield()
+
+    #expect(store.commitLog == "Sending        Sources/App.swift\nCommitted revision 12.\n")
+}
+
+@MainActor
+@Test func failedCommitKeepsProgressLog() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/failed-commit-progress")
+    let status = SVNStatusEntry(path: "Sources/App.swift", item: .modified)
+    let client = StubSVNClient(
+        commitProgressByRequest: [["Sending        Sources/App.swift\n"]],
+        commitError: .commandFailed(command: "svn commit", message: "network failed")
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [status]
+    store.selectedPaths = [status.path]
+
+    #expect(!(await store.commit(message: "실패 커밋")))
+    #expect(store.commitLog == "Sending        Sources/App.swift\n")
 }
 
 @MainActor
@@ -4366,6 +4435,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var fileLogGatesByRequest: [AsyncTestGate]
     let checkoutResult: String
     let checkoutProgress: [String]
+    let commitProgressByRequest: [[String]]
     let checkoutRunsUntilCancelled: Bool
     let validateWorkingCopyError: Error?
     let validateWorkingCopyGatesByPath: [String: AsyncTestGate]
@@ -4448,6 +4518,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var recordedUpdateAllowedCertificateFailures: [Set<SVNServerCertificateFailure>] = []
     private var repositoryCleanupDeletionPaths: [String] = []
     private var commitRequests: [CommitRequest] = []
+    private var commitProgressHandlers: [SVNOutputHandler?] = []
     private var cleanupRequests = 0
     private var unlockForces: [Bool] = []
     private var multiplePathLockRequests = 0
@@ -4465,6 +4536,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         fileLogGatesByRequest: [AsyncTestGate] = [],
         checkoutResult: String = "checked out",
         checkoutProgress: [String] = [],
+        commitProgressByRequest: [[String]] = [],
         checkoutRunsUntilCancelled: Bool = false,
         validateWorkingCopyError: Error? = nil,
         validateWorkingCopyGatesByPath: [String: AsyncTestGate] = [:],
@@ -4526,6 +4598,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.fileLogGatesByRequest = fileLogGatesByRequest
         self.checkoutResult = checkoutResult
         self.checkoutProgress = checkoutProgress
+        self.commitProgressByRequest = commitProgressByRequest
         self.checkoutRunsUntilCancelled = checkoutRunsUntilCancelled
         self.validateWorkingCopyError = validateWorkingCopyError
         self.validateWorkingCopyGatesByPath = validateWorkingCopyGatesByPath
@@ -4880,8 +4953,13 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         await requestGate?.wait()
         return requestLogs ?? fileLogsByPath[path] ?? []
     }
-    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
+        let requestIndex = commitRequests.count
         commitRequests.append(CommitRequest(paths: paths, message: message))
+        commitProgressHandlers.append(progress)
+        if commitProgressByRequest.indices.contains(requestIndex) {
+            for output in commitProgressByRequest[requestIndex] { progress?(output) }
+        }
         await commitGate?.wait()
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(
@@ -4895,6 +4973,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     }
     func lastCommitRequest() -> CommitRequest? { commitRequests.last }
     func commitRequestCount() -> Int { commitRequests.count }
+    func emitCommitProgress(_ output: String, requestIndex: Int) {
+        guard commitProgressHandlers.indices.contains(requestIndex) else { return }
+        commitProgressHandlers[requestIndex]?(output)
+    }
 }
 
 private actor StubWorkingCopyFileService: WorkingCopyFileListing {

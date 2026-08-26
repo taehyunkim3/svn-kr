@@ -1902,7 +1902,8 @@ public actor SVNClient {
         message: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
+        progress: SVNOutputHandler? = nil
     ) async throws -> String {
         guard !paths.isEmpty else {
             throw SVNClientArgumentError.emptyTargets(command: "commit")
@@ -2033,7 +2034,8 @@ public actor SVNClient {
                     ["add", "--parents"],
                     projectRelativePaths: additions,
                     at: path,
-                    credentials: credentials
+                    credentials: credentials,
+                    progress: progress
                 )
             }
             commitOutput = try await checkedRunWithMultipleWorkingCopyPathArguments(
@@ -2042,7 +2044,8 @@ public actor SVNClient {
                 at: path,
                 credentials: credentials,
                 allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-                allowedServerCertificateFailures: allowedServerCertificateFailures
+                allowedServerCertificateFailures: allowedServerCertificateFailures,
+                progress: progress
             ).output
         } catch {
             let rollbackTargets = Self.normalizedCommitPaths(scheduledByThisCommit)
@@ -2405,7 +2408,8 @@ public actor SVNClient {
         at localProjectPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
-        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
+        progress: SVNOutputHandler? = nil
     ) async throws -> SVNCommandResult {
         guard !projectRelativePaths.isEmpty else {
             throw SVNClientArgumentError.emptyTargets(command: arguments.first ?? "")
@@ -2438,7 +2442,8 @@ public actor SVNClient {
             at: workingCopyRootPath,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
-            allowedServerCertificateFailures: allowedServerCertificateFailures
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: progress
         )
     }
 

@@ -227,7 +227,8 @@ extension ProjectStore {
                     message: repositoryTemporaryFileCleanupCommitMessage(paths: scheduledPaths),
                     credentials: projectCredentials,
                     allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
-                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
+                    allowedServerCertificateFailures: allowedServerCertificateFailures(for: project),
+                    progress: nil
                 ).trimmingCharacters(in: .whitespacesAndNewlines)
                 guard selectedProjectID == project.id else { return }
                 isShowingTemporaryFileCleanup = false

@@ -59,6 +59,8 @@ import Testing
 
     #expect(AppLayout.checkoutLogHeight > 0)
     #expect(AppLayout.checkoutLogHeight < AppLayout.addRepositorySheetMinimumSize.height)
+    #expect(AppLayout.commitLogHeight > 0)
+    #expect(AppLayout.commitLogHeight < AppLayout.windowMinimumHeight)
     #expect(AppLayout.inlineErrorMaximumHeight > 0)
     #expect(AppLayout.inlineErrorMaximumHeight < AppLayout.pathRecoverySheetMinimumSize.height)
 }

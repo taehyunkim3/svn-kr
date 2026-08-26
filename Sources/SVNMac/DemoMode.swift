@@ -321,7 +321,11 @@ private actor DemoSVNClient: SVNClientServing {
     func diff(at _: String, relativePath _: String?, credentials _: SVNCredentials?) async throws -> String { DemoData.diff }
     func revert(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Reverted" }
     func fileLog(at _: String, relativePath _: String, limit _: Int, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry] { DemoData.logs }
-    func commit(at _: String, paths _: [String], message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Committed revision 1846" }
+    func commit(at _: String, paths _: [String], message _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
+        let output = "Committed revision 1846\n"
+        progress?(output)
+        return output
+    }
 
     private var currentStatuses: [SVNStatusEntry] {
         DemoData.statuses.map { entry in

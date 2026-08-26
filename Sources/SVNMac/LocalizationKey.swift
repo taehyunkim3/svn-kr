@@ -301,7 +301,9 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.commit.noCommitMessage,
         Self.ui.commit.noFilesDeleted,
         Self.ui.commit.onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted,
+        Self.ui.commit.outputAppearsHereAfterCommitStarts,
         Self.ui.commit.pendingDeletionCount,
+        Self.ui.commit.progressLog,
         Self.ui.commit.recordedEmptyMessage,
         Self.ui.commit.restoreSelectedDeletionFileServer,
         Self.ui.commit.restoreSelectedFilesAction,
@@ -1125,7 +1127,9 @@ struct LocalizationUICommitKeys {
     let noCommitMessage = LocalizationKey("ui.commit.noCommitMessage")
     let noFilesDeleted = LocalizationKey("ui.commit.noFilesDeleted")
     let onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted = LocalizationKey("ui.commit.onlyMarksItemsDeletionTheyDeletedSvnRepositoryWhenCommitted")
+    let outputAppearsHereAfterCommitStarts = LocalizationKey("ui.commit.outputAppearsHereAfterCommitStarts")
     let pendingDeletionCount = LocalizationKey("ui.commit.pendingDeletionCount")
+    let progressLog = LocalizationKey("ui.commit.progressLog")
     let recordedEmptyMessage = LocalizationKey("ui.commit.recordedEmptyMessage")
     let restoreSelectedDeletionFileServer = LocalizationKey("ui.commit.restoreSelectedDeletionFileServer")
     let restoreSelectedFilesAction = LocalizationKey("ui.commit.restoreSelectedFilesAction")

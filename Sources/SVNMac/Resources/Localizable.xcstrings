@@ -3265,6 +3265,40 @@
         }
       }
     },
+    "ui.commit.outputAppearsHereAfterCommitStarts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN output appears here after the commit starts."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋을 시작하면 SVN 출력이 여기에 표시됩니다."
+          }
+        }
+      }
+    },
+    "ui.commit.progressLog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit Log"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커밋 로그"
+          }
+        }
+      }
+    },
     "ui.ignore.compareGitRules": {
       "extractionState": "manual",
       "localizations": {

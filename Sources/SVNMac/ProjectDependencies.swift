@@ -54,7 +54,7 @@ protocol SVNClientServing: Sendable {
     func diff(at path: String, relativePath: String?, credentials: SVNCredentials?) async throws -> String
     func revert(at path: String, relativePath: String, credentials: SVNCredentials?) async throws -> String
     func fileLog(at path: String, relativePath: String, limit: Int, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNLogEntry]
-    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String
+    func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String
 }
 
 extension SVNClientServing {

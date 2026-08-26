@@ -667,3 +667,5 @@
 "ui.conflict.fileAlsoPropertyConflictChoosingVersionBelowResolvesPropertiesSame" = "This file also has a property conflict. Choosing a version below resolves the properties the same way.";
 "ui.conflict.serverPropertyValuesAppliedWell" = "Server property values are applied as well.";
 "ui.conflict.propertyValuesKeptWell" = "Your property values are kept as well.";
+"ui.commit.outputAppearsHereAfterCommitStarts" = "SVN output appears here after the commit starts.";
+"ui.commit.progressLog" = "Commit Log";
