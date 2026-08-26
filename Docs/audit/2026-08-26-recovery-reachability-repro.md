@@ -1,7 +1,7 @@
 # 작업 복사본 복구 도달 가능성 재현
 
-날짜: 2026-08-26  
-환경: macOS 26.6.2, svn/svnadmin 1.14.5  
+날짜: 2026-08-26
+환경: macOS 26.6.2, svn/svnadmin 1.14.5
 결론: `canRepairCanonicalAliases == false`이고 `recoveryPreview().blockingPaths == []`인 실제 작업 복사본을 재현했다.
 
 ## 확인한 사실
