@@ -124,6 +124,9 @@ extension ProjectStore {
         selectedPaths.subtract(restoredPaths)
         selectedCommitDeletionRestorePaths.removeAll()
         await refreshLocalWorkingCopy()
+        if !restoredPaths.isEmpty {
+            await loadWorkingCopyFiles()
+        }
         guard selectedProjectID == project.id else { return }
         if let confirmation = commitConfirmationRequest,
            confirmation.projectID == project.id {

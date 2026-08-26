@@ -26,6 +26,7 @@ struct HistoryRevisionDiffView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .textBackgroundColor))
+        .historyRevisionRestoreConfirmation()
     }
 
     /// 선택/로딩 상태가 바뀌어도 파일 목록과 diff 컨테이너 자체는 교체하지 않습니다.
@@ -36,6 +37,16 @@ struct HistoryRevisionDiffView: View {
                 .frame(height: AppLayout.historyChangedFilesHeight)
 
             Divider()
+
+            if let context = selectedRevisionActionContext {
+                HistoryRevisionActions(
+                    fileHistoryRequest: context.fileHistoryRequest,
+                    revision: context.contentRevision
+                )
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                Divider()
+            }
 
             selectedPathDiff
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -71,6 +82,10 @@ struct HistoryRevisionDiffView: View {
                 )
                 Button {
                     guard let revision = store.selectedHistoryRevision else { return }
+                    store.prepareHistoryRevisionActions(
+                        revision: revision,
+                        changedPath: changedPath
+                    )
                     Task { await store.loadHistoryDiff(for: revision, changedPath: changedPath) }
                 } label: {
                     HStack(spacing: 8) {
@@ -156,6 +171,13 @@ struct HistoryRevisionDiffView: View {
     private var selectedEntry: SVNLogEntry? {
         guard let revision = store.selectedHistoryRevision else { return nil }
         return store.logs.first { $0.revision == revision }
+    }
+
+    private var selectedRevisionActionContext: HistoryRevisionActionContext? {
+        guard let context = store.recoveryState.historyRevisionActionContext,
+              context.selectedRevision == store.selectedHistoryRevision,
+              context.repositoryPath == store.selectedHistoryPath else { return nil }
+        return context
     }
 
     private func actionColor(_ action: SVNChangeAction) -> Color {

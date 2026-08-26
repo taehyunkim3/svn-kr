@@ -473,6 +473,34 @@ import Testing
 }
 
 @MainActor
+@Test func successfulRevertRefreshesWorkingCopyBrowserCache() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/revert-browser-cache")
+    let entry = SVNStatusEntry(path: "보고서.hwp", item: .modified)
+    let client = StubSVNClient(
+        snapshotsByPath: [
+            project.path: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "10", maximum: "10"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+        ]
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+    store.statuses = [entry]
+    let generationBeforeRevert = store.workingCopyBrowserRefreshGeneration
+
+    await store.confirmRevert(RevertRequest(projectID: project.id, entry: entry))
+
+    #expect(store.workingCopyBrowserRefreshGeneration == generationBeforeRevert + 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+}
+
+@MainActor
 @Test func staleRevertCompletionDoesNotMutateNewProject() async {
     let first = SVNProject(name: "첫 프로젝트", path: "/tmp/revert-first")
     let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/revert-second")
@@ -2374,6 +2402,8 @@ import Testing
     await store.refresh()
 
     #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 1, outOfDate: 1))
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 1)
 }
 
 @MainActor
@@ -3194,6 +3224,55 @@ import Testing
         workingCopyRepositoryPath: "/trunk",
         pegRevision: "41"
     ))
+}
+
+@MainActor
+@Test func commitHistoryPreparesExistingRevisionActionsForWorkingCopyFile() throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    let deletedPath = SVNChangedPath(
+        path: "/project/trunk/docs/%E1%84%87%E1%85%A9%E1%84%80%E1%85%A9%E1%84%89%E1%85%A5.xlsx",
+        action: .deleted,
+        kind: .file
+    )
+    store.workingCopyRepositoryPath = "/project/trunk"
+
+    store.prepareHistoryRevisionActions(revision: "42", changedPath: deletedPath)
+
+    let context = try #require(store.recoveryState.historyRevisionActionContext)
+    #expect(context.selectedRevision == "42")
+    #expect(context.contentRevision == "41")
+    #expect(context.repositoryPath == deletedPath.path)
+    #expect(context.fileHistoryRequest.projectID == project.id)
+    #expect(context.fileHistoryRequest.relativePath == "docs/보고서.xlsx")
+    #expect(store.fileHistoryRequest == context.fileHistoryRequest)
+
+    store.requestHistoryRevisionRestore(revision: context.contentRevision)
+
+    let restoreRequest = try #require(store.recoveryState.historyRevisionRestoreRequest)
+    #expect(restoreRequest.fileHistoryRequestID == context.fileHistoryRequest.id)
+    #expect(restoreRequest.projectID == project.id)
+    #expect(restoreRequest.relativePath == "docs/보고서.xlsx")
+    #expect(restoreRequest.revision == "41")
+}
+
+@MainActor
+@Test func commitHistoryDoesNotOfferRevisionActionsOutsideWorkingCopyRoot() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/project")
+    let store = makeStore(projects: [project])
+    store.workingCopyRepositoryPath = "/project/trunk"
+
+    store.prepareHistoryRevisionActions(
+        revision: "42",
+        changedPath: SVNChangedPath(
+            path: "/project/branches/other/report.xlsx",
+            action: .modified,
+            kind: .file
+        )
+    )
+
+    #expect(store.recoveryState.historyRevisionActionContext == nil)
+    #expect(store.fileHistoryRequest == nil)
 }
 
 @Test func recognizesTemporaryFileNamesButOnlyHidesKnownUnversionedFiles() {

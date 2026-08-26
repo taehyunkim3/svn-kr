@@ -21,6 +21,18 @@ import Testing
     #expect(view.contains("store.isHistoryRevisionOperationRunning"))
 }
 
+@Test func commitHistorySelectedFileWiresTheExistingRevisionActions() throws {
+    let sources = try revisionRestoreSources()
+    let view = try String(
+        contentsOf: sources.appendingPathComponent("HistoryRevisionDiffView.swift"),
+        encoding: .utf8
+    )
+
+    #expect(view.contains("HistoryRevisionActions("))
+    #expect(view.contains("store.prepareHistoryRevisionActions("))
+    #expect(view.contains(".historyRevisionRestoreConfirmation()"))
+}
+
 @Test func revisionSaveUsesSecurityScopedDestinationAccess() throws {
     let sources = try revisionRestoreSources()
     let historyStore = try String(

@@ -1066,9 +1066,7 @@ final class ProjectStore {
             if canRefreshSelectedProject, ensureWorkingCopyDirectoryExists(for: project) {
                 let cycleID = UUID()
                 let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
-                async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
-                async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
-                _ = await (projectRefresh, browserRefresh)
+                await refresh(errorPolicy: errorPolicy)
                 finishRefreshCycle(cycleID)
             }
         }
@@ -1099,6 +1097,7 @@ final class ProjectStore {
             finishRequest(updateBadgeRequestID, kind: .updateBadge(project.id))
             endOperation(operationID)
         }
+        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
 
         guard await applyLocalWorkingCopyRefresh(
             for: project,
@@ -1141,6 +1140,7 @@ final class ProjectStore {
                 )
             }
         }
+        _ = await browserRefresh
     }
 
     private func prepareRefreshRequest() -> UUID {
