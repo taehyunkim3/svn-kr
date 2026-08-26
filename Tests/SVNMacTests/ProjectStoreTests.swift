@@ -2163,6 +2163,40 @@ import Testing
 }
 
 @MainActor
+@Test func updateLocalSummaryCountsPropertyConflictsOncePerPath() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/property-conflict-badge")
+    let store = makeStore(projects: [project])
+
+    store.updateLocalSummary(
+        for: project.id,
+        statuses: [
+            SVNStatusEntry(
+                path: "속성만.txt",
+                item: .unknown("normal"),
+                propertyState: .conflicted
+            ),
+            SVNStatusEntry(
+                path: "둘다.txt",
+                item: .conflicted,
+                propertyState: .conflicted
+            ),
+            SVNStatusEntry(
+                path: "텍스트만.txt",
+                item: .conflicted,
+                propertyState: .none
+            ),
+            SVNStatusEntry(
+                path: "수정.txt",
+                item: .modified,
+                propertyState: .modified
+            ),
+        ]
+    )
+
+    #expect(store.projectSummaries[project.id]?.conflictCount == 3)
+}
+
+@MainActor
 @Test func updateBadgeRefreshIncludesUnselectedProjects() async {
     let selected = SVNProject(name: "선택", path: "/tmp/badge-selected")
     let unselected = SVNProject(name: "비선택", path: "/tmp/badge-unselected")
