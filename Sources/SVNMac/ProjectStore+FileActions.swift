@@ -1,6 +1,15 @@
 import AppKit
 import SVNCore
 
+/// 폴더 되돌리기가 지울 하위 항목입니다.
+/// `svn revert --depth infinity`는 대상 아래를 통째로 되돌리므로,
+/// 확인창이 개수만이 아니라 경로를 보여줄 수 있도록 스캔 결과를 붙여 둡니다.
+/// 트리 충돌 되돌리기와 같은 위험 분류를 씁니다.
+struct RevertImpactContext: Equatable {
+    let requestID: RevertRequest.ID
+    let impact: TreeConflictRestoreImpact
+}
+
 struct CommitDeletionRestoreRequest: Identifiable, Equatable {
     let id = UUID()
     let projectID: SVNProject.ID
@@ -46,9 +55,38 @@ extension ProjectStore {
         set { recoveryState.commitDeletionRestoreFailureMessage = newValue }
     }
 
+    var revertImpactContext: RevertImpactContext? {
+        get { recoveryState.revertImpactContext }
+        set { recoveryState.revertImpactContext = newValue }
+    }
+
+    /// 확인창이 보여줄 하위 항목입니다. 요청이 바뀌면 이전 결과를 쓰지 않습니다.
+    func revertImpact(for request: RevertRequest) -> TreeConflictRestoreImpact? {
+        guard let context = revertImpactContext, context.requestID == request.id else { return nil }
+        return context.impact
+    }
+
     func requestRevert(_ entry: SVNStatusEntry) {
         guard let project = selectedProject else { return }
-        revertRequest = RevertRequest(projectID: project.id, entry: entry)
+        let request = RevertRequest(projectID: project.id, entry: entry)
+        // 파일 하나를 되돌리면 확인창의 경로가 곧 사라지는 것 전부입니다.
+        // 폴더는 하위 항목이 함께 사라지므로 목록을 미리 만들어 둡니다.
+        revertImpactContext = entry.nodeKind == .directory
+            ? RevertImpactContext(
+                requestID: request.id,
+                impact: TreeConflictRestoreScan.impact(
+                    target: entry.path,
+                    statuses: statuses,
+                    containedFilePaths: { path in
+                        conflictFileService.containedFilePaths(
+                            relativePath: path,
+                            workingCopyPath: project.path
+                        )
+                    }
+                )
+            )
+            : nil
+        revertRequest = request
     }
 
     func requestCommitDeletionRestore() {
@@ -169,12 +207,23 @@ extension ProjectStore {
             return
         }
         guard revertRequest == nil || revertRequest == request else { return }
+        let impact = revertImpact(for: request)
         revertRequest = nil
+        revertImpactContext = nil
         let requestID = beginRequest(.revert)
         defer { finishRequest(requestID, kind: .revert) }
         let operationID = beginOperation(.revert(project.id))
         defer { endOperation(operationID) }
         do {
+            // 복사로 추가한 폴더를 되돌리면 `svn revert`가 그 폴더를 디스크에서 지웁니다.
+            // 버전관리되지 않은 파일은 저장소 이력에도 없으므로 먼저 복구본을 만듭니다.
+            if let impact, !impact.isEmpty {
+                _ = try conflictFileService.preserveSubtree(
+                    relativePath: request.entry.path,
+                    projectID: project.id,
+                    workingCopyPath: project.path
+                )
+            }
             _ = try await client.revert(at: project.path, relativePath: request.entry.path, credentials: nil)
             guard canApplyRequest(
                 requestID,
