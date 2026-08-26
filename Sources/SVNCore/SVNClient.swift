@@ -112,6 +112,36 @@ public actor SVNClient {
         ).output
     }
 
+    /// 지정한 리비전으로 체크아웃합니다. 복구처럼 원본 작업 복사본의 BASE를 그대로
+    /// 재현해야 하는 흐름은 HEAD로 체크아웃하면 그 사이 다른 사람이 올린 커밋을
+    /// out-of-date 검사 없이 덮어쓰게 되므로 이 오버로드를 사용합니다.
+    public func checkout(
+        repositoryURL: String,
+        destinationPath: String,
+        revision: String,
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
+        progress: SVNOutputHandler? = nil
+    ) async throws -> String {
+        guard let revisionNumber = Int(revision), revisionNumber >= 0 else {
+            throw SVNClientArgumentError.unsupportedRevision(revision)
+        }
+        let repositoryURL = URL(string: repositoryURL)?.absoluteString ?? repositoryURL
+        let destination = URL(fileURLWithPath: destinationPath).standardizedFileURL
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        return try await checkedRunWithSVNPathArguments(
+            ["checkout", "--revision", String(revisionNumber)],
+            svnPathArguments: [repositoryURL, "."],
+            escapePegSyntax: [true, false],
+            at: destination.path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            progress: progress
+        ).output
+    }
+
     public func validateWorkingCopy(at path: String, credentials: SVNCredentials? = nil) async throws {
         let result = try await run(["info", "--show-item", "wc-root"], at: path, credentials: credentials)
         guard result.exitCode == 0 else { throw SVNError.invalidWorkingCopy }
@@ -653,14 +683,26 @@ public actor SVNClient {
         let destination = URL(fileURLWithPath: destinationPath, isDirectory: true).standardizedFileURL
         try SVNWorkingCopyRecovery.requireEmptyDestination(destination)
 
-        let preview = try await recoveryPreview(at: source.path, credentials: credentials)
+        let sourceSnapshot = try await workingCopySnapshot(at: source.path, credentials: credentials)
+        let preview = SVNWorkingCopyRecovery.preview(sourcePath: source.path, snapshot: sourceSnapshot)
         guard preview.blockingPaths.isEmpty else {
             throw SVNError.recoveryBlocked(paths: preview.blockingPaths)
         }
         let repositoryURL = try await workingCopyRepositoryURL(at: source.path, credentials: credentials)
+        // 원본의 BASE 리비전으로 체크아웃합니다. HEAD로 받으면 그 사이 올라온 커밋이
+        // 새 작업 복사본의 BASE가 되어, 복구한 파일을 커밋할 때 out-of-date 검사가
+        // 걸리지 않고 다른 사람의 변경이 조용히 사라집니다.
         _ = try await checkout(
             repositoryURL: repositoryURL,
             destinationPath: destination.path,
+            revision: sourceSnapshot.revision.minimum,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures
+        )
+        try await pinRecoveryBaseRevisions(
+            of: sourceSnapshot,
+            at: destination.path,
             credentials: credentials,
             allowUntrustedServerCertificate: allowUntrustedServerCertificate,
             allowedServerCertificateFailures: allowedServerCertificateFailures
@@ -676,6 +718,48 @@ public actor SVNClient {
             snapshot: recoveredSnapshot,
             migratedPaths: preview.mappings.map(\.destinationPath)
         )
+    }
+
+    /// 혼합 리비전 작업 복사본은 경로마다 BASE가 다릅니다. 가장 낮은 리비전으로 체크아웃한
+    /// 새 작업 복사본에서 더 높은 BASE를 가진 경로만 원본과 같은 리비전으로 올려, 커밋 시
+    /// out-of-date 판정이 원본과 동일하게 나오도록 맞춥니다.
+    private func pinRecoveryBaseRevisions(
+        of snapshot: SVNWorkingCopySnapshot,
+        at destinationPath: String,
+        credentials: SVNCredentials?,
+        allowUntrustedServerCertificate: Bool,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure>
+    ) async throws {
+        let baseRevision = snapshot.revision.minimum
+        // 상위 경로가 먼저 존재해야 하위 경로를 받을 수 있으므로 깊이 오름차순으로 처리합니다.
+        let pending = snapshot.baseRevisionsByPath
+            .filter { $0.value != baseRevision && Int($0.value) != nil }
+            .map { (path: $0.key.rawPath, revision: $0.value) }
+            .sorted {
+                let leftDepth = $0.path.split(separator: "/").count
+                let rightDepth = $1.path.split(separator: "/").count
+                if leftDepth != rightDepth { return leftDepth < rightDepth }
+                return $0.path < $1.path
+            }
+        guard !pending.isEmpty else { return }
+
+        var index = pending.startIndex
+        while index < pending.endIndex {
+            let revision = pending[index].revision
+            var end = index
+            while end < pending.endIndex, pending[end].revision == revision { end += 1 }
+            let paths = pending[index ..< end].map(\.path)
+            _ = try await checkedRunWithSVNPathArguments(
+                ["update", "--revision", revision, "--depth", "empty"],
+                svnPathArguments: paths,
+                escapePegSyntax: Array(repeating: true, count: paths.count),
+                at: destinationPath,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures
+            )
+            index = end
+        }
     }
 
     public func status(at path: String, credentials: SVNCredentials? = nil) async throws -> [SVNStatusEntry] {
@@ -2052,20 +2136,25 @@ public actor SVNClient {
         return normalizedCommitPaths(roots)
     }
 
+    /// SVN 경로 공간은 원문 UTF-8 바이트입니다. Swift String의 동등성은 NFC와 NFD를
+    /// 같게 보므로, 정규화만 다른 두 경로를 여기서 접으면 한쪽이 조용히 커밋 목록에서
+    /// 빠집니다. 중복 제거와 상위 경로 판정 모두 바이트 기준으로 합니다.
     static func normalizedCommitPaths(_ paths: [String]) -> [String] {
-        let selectedPaths = Set(paths)
-        if selectedPaths.contains(".") { return ["."] }
+        let selectedPaths = Set(paths.map { SVNPathIdentity(rawPath: $0) })
+        if selectedPaths.contains(SVNPathIdentity(rawPath: ".")) { return ["."] }
 
-        return selectedPaths.filter { path in
+        return selectedPaths.filter { identity in
+            let path = identity.rawPath
             var searchEnd = path.endIndex
             while let separator = path[..<searchEnd].lastIndex(of: "/") {
-                if selectedPaths.contains(String(path[..<separator])) {
+                if selectedPaths.contains(SVNPathIdentity(rawPath: String(path[..<separator]))) {
                     return false
                 }
                 searchEnd = separator
             }
             return true
         }
+        .map(\.rawPath)
         .sorted()
     }
 

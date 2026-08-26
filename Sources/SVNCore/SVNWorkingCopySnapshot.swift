@@ -65,6 +65,9 @@ public struct SVNWorkingCopySnapshot: Sendable {
     public let canonicalFileReplacements: [SVNCanonicalFileReplacement]
     public let missingScheduledAdditionCleanupTargets: [String]
     public let scheduledAdditionPaths: [String]
+    /// 버전 관리 경로별 BASE 리비전입니다. 원문 UTF-8 바이트로 식별하므로 NFC/NFD가
+    /// 함께 있는 손상 상태에서도 경로가 섞이지 않습니다.
+    public let baseRevisionsByPath: [SVNPathIdentity: String]
 
     public var hasPathCollisions: Bool { !collisions.isEmpty }
     public var repairableAliasPaths: [String] {
@@ -82,7 +85,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
         canonicalAliasRepairTargets: [String]? = nil,
         canonicalFileReplacements: [SVNCanonicalFileReplacement] = [],
         missingScheduledAdditionCleanupTargets: [String] = [],
-        scheduledAdditionPaths: [String] = []
+        scheduledAdditionPaths: [String] = [],
+        baseRevisionsByPath: [SVNPathIdentity: String] = [:]
     ) {
         self.statuses = statuses
         self.revision = revision
@@ -93,6 +97,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
         self.canonicalFileReplacements = canonicalFileReplacements
         self.missingScheduledAdditionCleanupTargets = missingScheduledAdditionCleanupTargets
         self.scheduledAdditionPaths = scheduledAdditionPaths
+        self.baseRevisionsByPath = baseRevisionsByPath
     }
 
     func annotatingNodeKinds(
@@ -117,7 +122,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
             canonicalAliasRepairTargets: canonicalAliasRepairTargets,
             canonicalFileReplacements: canonicalFileReplacements,
             missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets,
-            scheduledAdditionPaths: scheduledAdditionPaths
+            scheduledAdditionPaths: scheduledAdditionPaths,
+            baseRevisionsByPath: baseRevisionsByPath
         )
     }
 
@@ -132,6 +138,13 @@ public struct SVNWorkingCopySnapshot: Sendable {
             guard let revision = entry.revision.flatMap(Int.init), revision >= 0 else { return false }
             return entry.status != "unversioned" && entry.status != "ignored" && entry.status != "external"
         }
+        baseRevisionsByPath = Dictionary(
+            versionedEntries.compactMap { entry -> (SVNPathIdentity, String)? in
+                guard let revision = entry.revision else { return nil }
+                return (SVNPathIdentity(rawPath: entry.path), revision)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         versionedPathsByCanonicalKey = Dictionary(grouping: versionedEntries, by: { canonicalKey($0.path) })
             .mapValues { distinctRawPaths($0.map(\.path)) }
 
@@ -229,7 +242,8 @@ public struct SVNWorkingCopySnapshot: Sendable {
             canonicalAliasRepairTargets: canonicalAliasRepairTargets,
             canonicalFileReplacements: canonicalFileReplacements,
             missingScheduledAdditionCleanupTargets: missingScheduledAdditionCleanupTargets,
-            scheduledAdditionPaths: scheduledAdditionPaths
+            scheduledAdditionPaths: scheduledAdditionPaths,
+            baseRevisionsByPath: baseRevisionsByPath
         )
     }
 
