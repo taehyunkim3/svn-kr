@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var fileSearchText = ""
     @State private var historySearchText = ""
     @State private var projectPendingRemoval: SVNProject?
+    @State private var isPreparingPathRecovery = false
     private let onBrowseDemo: () -> Void
     private let onExitDemo: () -> Void
 
@@ -230,6 +231,10 @@ struct ContentView: View {
             RepositoryPathNormalizationView()
                 .environment(store)
         }
+        .sheet(isPresented: $store.isShowingPathRecovery) {
+            WorkingCopyRecoveryView()
+                .environment(store)
+        }
         .sheet(item: rootAuthenticationRequest) { request in
             AuthenticationRequiredView(request: request)
                 .environment(store)
@@ -272,6 +277,9 @@ struct ContentView: View {
                     }
                 }
                 Spacer()
+                if store.shouldOfferNewWorkingFolderRecovery {
+                    newWorkingFolderRecoveryButton
+                }
                 repositoryPathNormalizationButton
                 repositoryLocksButton
                 Button(appLanguage.localized(.ui.repository.openFinder), systemImage: "folder") {
@@ -308,6 +316,28 @@ struct ContentView: View {
                 historyPrompt: appLanguage.localized(.ui.revision.searchAuthorFileMessageRevision)
             ))
         }
+    }
+
+    /// 저장소 전체를 새로 체크아웃하므로 수리 불가 경로 충돌이 있을 때만 명시적으로 제공합니다.
+    private var newWorkingFolderRecoveryButton: some View {
+        Button {
+            Task { await beginNewWorkingFolderRecovery() }
+        } label: {
+            ActionProgressLabel(
+                title: appLanguage.localized(.ui.recovery.newWorkingFolderRecoveryAction),
+                inProgressTitle: appLanguage.localized(.ui.recovery.preparingNewWorkingFolderRecovery),
+                systemImage: "cross.case",
+                isInProgress: isPreparingPathRecovery
+            )
+        }
+        .disabled(store.isSelectedProjectActionBlocked || isPreparingPathRecovery)
+        .help(appLanguage.localized(.ui.recovery.newWorkingFolderRecoveryHelp))
+    }
+
+    private func beginNewWorkingFolderRecovery() async {
+        isPreparingPathRecovery = true
+        defer { isPreparingPathRecovery = false }
+        await store.beginPathRecovery()
     }
 
     /// 저장소 전체를 검사하는 작업이므로 자동 실행하지 않고 공통 머리글의 명시적 액션으로 제공합니다.

@@ -46,10 +46,6 @@ struct ChangesView: View {
             FileHistoryView()
                 .environment(store)
         }
-        .sheet(isPresented: $store.isShowingPathRecovery) {
-            WorkingCopyRecoveryView()
-                .environment(store)
-        }
         .sheet(item: $store.deletionRequest) { request in
             DeletionConfirmationView(request: request)
                 .environment(store)
