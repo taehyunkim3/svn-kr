@@ -738,6 +738,10 @@ final class ProjectStore {
         pathCollisions.contains { $0.repairableRawPath == nil }
     }
 
+    var shouldOfferNewWorkingFolderRecovery: Bool {
+        hasUnrepairablePathCollisions
+    }
+
     var canCommitSelectedPaths: Bool {
         !hasUnrepairablePathCollisions
             && !selectedPaths.isEmpty

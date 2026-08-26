@@ -302,6 +302,9 @@
 "ui.history.propertiesChanged" = "Properties changed";
 "ui.about.questionsSupport" = "Questions & Support";
 "ui.recovery.recoverNewWorkingFolder" = "Recover to New Working Folder";
+"ui.recovery.newWorkingFolderRecoveryAction" = "Recover to New Working Folder…";
+"ui.recovery.preparingNewWorkingFolderRecovery" = "Preparing Recovery…";
+"ui.recovery.newWorkingFolderRecoveryHelp" = "A clean working copy is checked out from the server, then only real local changes are migrated using NFC paths. The current working folder and its files are not changed or deleted. On success, both the original and recovered copies remain in the sidebar.";
 "ui.recovery.preview" = "Recovery Preview";
 "ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder" = "The recovery folder must be outside the current working folder. Choose a folder in another location.";
 "ui.common.refresh" = "Refresh";

@@ -2417,6 +2417,20 @@ import Testing
 }
 
 @MainActor
+@Test func newWorkingFolderRecoveryIsOfferedOnlyForUnrepairablePathCollisions() {
+    let store = makeStore(projects: [SVNProject(name: "프로젝트", path: "/tmp/path-recovery-offer")])
+
+    store.pathCollisions = []
+    #expect(!store.shouldOfferNewWorkingFolderRecovery)
+
+    store.pathCollisions = [makePathCollision(path: "수리 가능", repairable: true)]
+    #expect(!store.shouldOfferNewWorkingFolderRecovery)
+
+    store.pathCollisions = [makePathCollision(path: "수리 불가", repairable: false)]
+    #expect(store.shouldOfferNewWorkingFolderRecovery)
+}
+
+@MainActor
 @Test func localWorkingCopyRefreshUpdatesStatusWithoutRemoteHistoryRequests() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/local-refresh")
     let entry = SVNStatusEntry(path: "보고서.xlsx", item: .modified, revision: "12")

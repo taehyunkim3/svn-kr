@@ -610,7 +610,10 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.recovery.locallyMissingActionRequired,
         Self.ui.recovery.new,
         Self.ui.recovery.newWorkingFolder,
+        Self.ui.recovery.newWorkingFolderRecoveryAction,
+        Self.ui.recovery.newWorkingFolderRecoveryHelp,
         Self.ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved,
+        Self.ui.recovery.preparingNewWorkingFolderRecovery,
         Self.ui.recovery.preview,
         Self.ui.recovery.recoverNewWorkingFolder,
         Self.ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder,
@@ -1430,7 +1433,10 @@ struct LocalizationUIRecoveryKeys {
     let locallyMissingActionRequired = LocalizationKey("ui.recovery.locallyMissingActionRequired")
     let new = LocalizationKey("ui.recovery.new")
     let newWorkingFolder = LocalizationKey("ui.recovery.newWorkingFolder")
+    let newWorkingFolderRecoveryAction = LocalizationKey("ui.recovery.newWorkingFolderRecoveryAction")
+    let newWorkingFolderRecoveryHelp = LocalizationKey("ui.recovery.newWorkingFolderRecoveryHelp")
     let pathRecoveryCompletedOriginalWorkingFolderPreserved = LocalizationKey("ui.recovery.pathRecoveryCompletedOriginalWorkingFolderPreserved")
+    let preparingNewWorkingFolderRecovery = LocalizationKey("ui.recovery.preparingNewWorkingFolderRecovery")
     let preview = LocalizationKey("ui.recovery.preview")
     let recoverNewWorkingFolder = LocalizationKey("ui.recovery.recoverNewWorkingFolder")
     let recoveryFolderMustBeOutsideCurrentWorkingFolder = LocalizationKey("ui.recovery.recoveryFolderMustBeOutsideCurrentWorkingFolder")

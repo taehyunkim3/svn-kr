@@ -53,6 +53,21 @@ import Testing
     #expect(!normalizationView.contains(".task"))
 }
 
+@Test func newWorkingFolderRecoveryRequiresAnExplicitConditionalProjectHeaderAction() throws {
+    let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/SVNMac", isDirectory: true)
+    let contentView = try source(named: "ContentView.swift", in: sources)
+    let changesView = try source(named: "ChangesView.swift", in: sources)
+
+    #expect(contentView.contains("if store.shouldOfferNewWorkingFolderRecovery"))
+    #expect(contentView.contains("private var newWorkingFolderRecoveryButton"))
+    #expect(contentView.contains("await store.beginPathRecovery()"))
+    #expect(!changesView.contains("await store.beginPathRecovery()"))
+}
+
 @Test func appSettingsAreReachableFromTheSidebarFooter() throws {
     let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

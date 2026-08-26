@@ -4,12 +4,19 @@ import Testing
 
 @Test func sharedPresentationStateHasOneActiveOwner() throws {
     let sources = try svnMacSourceText()
+    let content = try source("ContentView.swift")
+    let changes = try source("ChangesView.swift")
 
     #expect(occurrences(of: ".sheet(isPresented: $store.isShowingFileHistory)", in: sources) == 1)
+    #expect(occurrences(of: ".sheet(isPresented: $store.isShowingPathRecovery)", in: sources) == 1)
     #expect(occurrences(of: ".sheet(item: $store.recoveryState.versionedFileActionRequest)", in: sources) == 1)
     #expect(occurrences(of: ".documentOpenConfirmation()", in: sources) == 1)
     #expect(occurrences(of: ".explicitLockConfirmation()", in: sources) == 1)
     #expect(occurrences(of: ".historyRevisionRestoreConfirmation()", in: sources) == 1)
+    #expect(content.contains(".sheet(isPresented: $store.isShowingPathRecovery)"))
+    #expect(content.contains("WorkingCopyRecoveryView()"))
+    #expect(!changes.contains("$store.isShowingPathRecovery"))
+    #expect(!changes.contains("WorkingCopyRecoveryView()"))
 
     let restoreConfirmation = try source("CommitDeletionRestoreConfirmation.swift")
     let commitConfirmation = try source("CommitConfirmationView.swift")
