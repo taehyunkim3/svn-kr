@@ -114,12 +114,13 @@ import Testing
       <entry path="Documents"><wc-status item="normal" revision="12"/></entry>
       <entry path="Documents/plan.pptx"><wc-status item="normal" revision="12"/></entry>
       <entry path="new.txt"><wc-status item="added" revision="-1"/></entry>
+      <entry path="replaced.txt"><wc-status item="replaced" revision="-1"/></entry>
       <entry path="draft.txt"><wc-status item="unversioned"/></entry>
     </target></status>
     """
     let entries = try SVNXMLParser.workingCopyEntries(from: Data(xml.utf8))
-    #expect(entries.map(\.path) == ["Documents", "Documents/plan.pptx", "new.txt", "draft.txt"])
-    #expect(entries.map(\.isVersioned) == [true, true, false, false])
+    #expect(entries.map(\.path) == ["Documents", "Documents/plan.pptx", "new.txt", "replaced.txt", "draft.txt"])
+    #expect(entries.map(\.isVersioned) == [true, true, true, true, false])
 }
 
 @Test func parsesWorkingCopyPropertyAndSwitchedMetadataFromVerboseStatus() throws {
