@@ -316,7 +316,7 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     try fileManager.createDirectory(at: mount, withIntermediateDirectories: true)
     defer {
         if mounted {
-            _ = try? runIntegrationCommand(hdiutilPath, ["detach", mount.path])
+            detachDiskImage(hdiutilPath, mountPath: mount.path)
         }
         try? fileManager.removeItem(at: fixture)
     }
@@ -453,6 +453,27 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     #expect(!committedSnapshot.statuses.contains { $0.path == replacementPath })
 }
 
+@Test func canonicalAliasDiskImageDetachRetriesBeforeWarning() {
+    var attempts = 0
+    var waits: [TimeInterval] = []
+    var warnings: [String] = []
+
+    detachDiskImage(
+        "/usr/bin/hdiutil",
+        mountPath: "/tmp/canonical-alias-mount",
+        execute: { _, _ in
+            attempts += 1
+            return false
+        },
+        wait: { waits.append($0) },
+        warning: { warnings.append($0) }
+    )
+
+    #expect(attempts == 3)
+    #expect(waits == [0.5, 0.5])
+    #expect(warnings.count == 1)
+}
+
 private func firstExecutable(at paths: [String]) -> String? {
     paths.first(where: FileManager.default.isExecutableFile(atPath:))
 }
@@ -488,6 +509,27 @@ private func writeRawFile(_ data: Data, atPath path: String) throws {
             offset += written
         }
     }
+}
+
+private let diskImageDetachAttemptCount = 3
+private let diskImageDetachRetryInterval: TimeInterval = 0.5
+
+private func detachDiskImage(
+    _ executablePath: String,
+    mountPath: String,
+    execute: (String, [String]) -> Bool = { executablePath, arguments in
+        (try? runIntegrationCommand(executablePath, arguments)) != nil
+    },
+    wait: (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
+    warning: (String) -> Void = { print("warning: \($0)") }
+) {
+    for attempt in 1 ... diskImageDetachAttemptCount {
+        if execute(executablePath, ["detach", mountPath, "-quiet"]) { return }
+        if attempt < diskImageDetachAttemptCount {
+            wait(diskImageDetachRetryInterval)
+        }
+    }
+    warning("hdiutil detach failed after \(diskImageDetachAttemptCount) attempts: \(mountPath)")
 }
 
 @discardableResult
