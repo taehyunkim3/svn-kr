@@ -370,7 +370,7 @@ struct ChangesView: View {
                 } label: {
                     Label(appLanguage.localized(.ui.lock.requireLockBeforeEditing), systemImage: "lock.square")
                 }
-                .disabled(store.isWorking)
+                .disabled(store.isSelectedProjectActionBlocked)
             }
             Spacer()
             if let repositoryURL = store.recoveryState.repositoryURL {
