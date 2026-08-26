@@ -230,6 +230,8 @@ extension ProjectStore {
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             await refreshLocalWorkingCopy()
             guard canApplyHistoryRevisionOperation(operation) else { return false }
+            await loadWorkingCopyFiles()
+            guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
                 .ui.restored.revisionCommitRequired,
                 request.relativePath,

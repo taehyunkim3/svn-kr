@@ -1066,9 +1066,7 @@ final class ProjectStore {
             if canRefreshSelectedProject, ensureWorkingCopyDirectoryExists(for: project) {
                 let cycleID = UUID()
                 let errorPolicy = RefreshErrorPolicy.coordinated(cycleID)
-                async let projectRefresh: Void = refresh(errorPolicy: errorPolicy)
-                async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
-                _ = await (projectRefresh, browserRefresh)
+                await refresh(errorPolicy: errorPolicy)
                 finishRefreshCycle(cycleID)
             }
         }
@@ -1106,6 +1104,8 @@ final class ProjectStore {
             errorPolicy: errorPolicy
         ) else { return }
 
+        async let browserRefresh: Void = refreshWorkingCopyBrowser(errorPolicy: errorPolicy)
+
         do {
             let projectCredentials = try credentials(for: project)
             async let newLogs = client.log(
@@ -1141,6 +1141,7 @@ final class ProjectStore {
                 )
             }
         }
+        _ = await browserRefresh
     }
 
     private func prepareRefreshRequest() -> UUID {

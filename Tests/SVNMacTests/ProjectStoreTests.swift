@@ -473,6 +473,34 @@ import Testing
 }
 
 @MainActor
+@Test func successfulRevertRefreshesWorkingCopyBrowserCache() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/revert-browser-cache")
+    let entry = SVNStatusEntry(path: "보고서.hwp", item: .modified)
+    let client = StubSVNClient(
+        snapshotsByPath: [
+            project.path: SVNWorkingCopySnapshot(
+                statuses: [],
+                revision: SVNWorkingCopyRevision(minimum: "10", maximum: "10"),
+                collisions: [],
+                versionedPathsByCanonicalKey: [:]
+            ),
+        ]
+    )
+    let store = makeStore(
+        projects: [project],
+        client: client,
+        fileService: StubWorkingCopyFileService(delaysByPath: [:])
+    )
+    store.statuses = [entry]
+    let generationBeforeRevert = store.workingCopyBrowserRefreshGeneration
+
+    await store.confirmRevert(RevertRequest(projectID: project.id, entry: entry))
+
+    #expect(store.workingCopyBrowserRefreshGeneration == generationBeforeRevert + 1)
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+}
+
+@MainActor
 @Test func staleRevertCompletionDoesNotMutateNewProject() async {
     let first = SVNProject(name: "첫 프로젝트", path: "/tmp/revert-first")
     let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/revert-second")
@@ -2374,6 +2402,8 @@ import Testing
     await store.refresh()
 
     #expect(await client.remoteRefreshRequestCounts() == RemoteRefreshRequestCounts(log: 1, outOfDate: 1))
+    #expect(await client.workingCopyEntriesRequestCount() == 1)
+    #expect(await client.repositoryLocksRequestCount() == 1)
 }
 
 @MainActor
