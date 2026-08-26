@@ -7243,6 +7243,57 @@
         }
       }
     },
+    "ui.recovery.newWorkingFolderRecoveryAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recover to New Working Folder…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 작업 폴더로 복구…"
+          }
+        }
+      }
+    },
+    "ui.recovery.preparingNewWorkingFolderRecovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing Recovery…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복구 준비 중…"
+          }
+        }
+      }
+    },
+    "ui.recovery.newWorkingFolderRecoveryHelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clean working copy is checked out from the server, then only real local changes are migrated using NFC paths. The current working folder and its files are not changed or deleted. On success, both the original and recovered copies remain in the sidebar."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 새 작업 폴더를 체크아웃한 뒤 실제 로컬 변경만 NFC 한글 경로로 옮깁니다. 현재 작업 폴더와 파일은 변경하거나 삭제하지 않습니다. 성공하면 원본과 복구본이 모두 왼쪽 목록에 남습니다."
+          }
+        }
+      }
+    },
     "ui.recovery.preview": {
       "extractionState": "manual",
       "localizations": {
