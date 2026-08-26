@@ -115,13 +115,31 @@ private func renderSource(_ definitions: [KeyDefinition]) -> String {
         lines.append("    static let \(topLevel) = Localization\(upperCamelCase(topLevel))Keys()")
     }
     lines.append("")
-    lines.append("    static let allCases: [LocalizationKey] = \"\"\"")
-    for definition in definitions {
-        lines.append("        \(definition.rawValue)")
+
+    for topLevel in topLevels.keys.sorted() {
+        let groups = Dictionary(grouping: topLevels[topLevel, default: []], by: \.groupName)
+        for group in groups.keys.sorted() {
+            lines.append(
+                "    private static let \(topLevel)\(upperCamelCase(group))Keys: "
+                    + "[LocalizationKey] = ["
+            )
+            for definition in groups[group, default: []].sorted(by: { $0.rawValue < $1.rawValue }) {
+                lines.append("        Self\(definition.expression),")
+            }
+            lines.append("    ]")
+            lines.append("")
+        }
+
+        lines.append("    private static let \(topLevel)Keys: [LocalizationKey] = [")
+        for group in groups.keys.sorted() {
+            lines.append("        \(topLevel)\(upperCamelCase(group))Keys,")
+        }
+        lines.append("    ].flatMap { $0 }")
+        lines.append("")
     }
-    lines.append("        \"\"\"")
-    lines.append("        .split(separator: \"\\n\")")
-    lines.append("        .map { LocalizationKey(String($0)) }")
+
+    let allCaseGroups = topLevels.keys.sorted().map { "\($0)Keys" }.joined(separator: " + ")
+    lines.append("    static let allCases: [LocalizationKey] = \(allCaseGroups)")
     lines.append("}")
 
     for topLevel in topLevels.keys.sorted() {
