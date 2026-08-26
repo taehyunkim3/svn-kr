@@ -488,6 +488,7 @@
 "ui.conflict.overwritingVersionRemovesIncomingServerChangesWorkingFileServerFile" = "내 파일로 덮어쓰면 서버에서 받은 변경 내용이 작업 파일에서 사라집니다. 서버 파일은 백업 폴더에 보관됩니다.";
 "ui.conflict.treeConflict" = "트리 충돌";
 "ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice" = "트리 충돌은 파일 내용이 아니라 경로 상태의 충돌입니다. 두 파일 중 하나를 고르는 상황이 아닙니다.";
+"ui.conflict.treeConflictLocalServerTarget" = "로컬: %1$@ · 서버: %2$@ · 대상: %3$@";
 "ui.conflict.applyServerProperties" = "서버 속성으로 반영";
 "ui.conflict.conflictedProperties" = "충돌한 속성: %1$@";
 "ui.conflict.conflictedPropertyNameCouldNotDetermined" = "충돌한 속성 이름을 확인할 수 없습니다.";

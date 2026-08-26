@@ -1,4 +1,5 @@
 import SwiftUI
+import SVNCore
 
 struct TreeConflictResolutionView: View {
     @Environment(ProjectStore.self) private var store
@@ -67,6 +68,16 @@ struct TreeConflictResolutionView: View {
             Text(session.details.path.precomposedStringWithCanonicalMapping)
                 .lineLimit(1)
                 .textSelection(.enabled)
+
+            if let description = TreeConflictPresentation.description(
+                for: session.details,
+                language: appLanguage
+            ) {
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
 
             Text(appLanguage.localized(.ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice))
                 .foregroundStyle(.secondary)
@@ -201,6 +212,43 @@ struct TreeConflictResolutionView: View {
             Button(appLanguage.localized(.ui.common.cancel)) { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .disabled(store.isResolvingConflict)
+        }
+    }
+}
+
+enum TreeConflictPresentation {
+    static func description(
+        for details: SVNConflictDetails,
+        language: AppLanguage
+    ) -> String? {
+        guard let localReason = details.treeConflictReason,
+              let serverAction = details.treeConflictAction,
+              let kind = details.treeConflictKind else { return nil }
+        return language.localized(
+            .ui.conflict.treeConflictLocalServerTarget,
+            changeLabel(localReason, language: language),
+            changeLabel(serverAction, language: language),
+            kindLabel(kind, language: language)
+        )
+    }
+
+    private static func changeLabel(_ value: String, language: AppLanguage) -> String {
+        switch value {
+        case "edit", "edited": language.localized(.ui.status.modified)
+        case "add", "added", "moved-here": language.localized(.ui.status.added)
+        case "delete", "deleted", "missing", "moved-away": language.localized(.ui.status.deleted)
+        case "replace", "replaced": language.localized(.ui.status.replaced)
+        case "unversioned": language.localized(.ui.status.unversioned)
+        case "obstructed": language.localized(.ui.update.localFileBlockingUpdate)
+        default: value
+        }
+    }
+
+    private static func kindLabel(_ value: String, language: AppLanguage) -> String {
+        switch value {
+        case "file": language.localized(.ui.common.fileType)
+        case "dir", "directory": language.localized(.ui.common.folder)
+        default: value
         }
     }
 }
