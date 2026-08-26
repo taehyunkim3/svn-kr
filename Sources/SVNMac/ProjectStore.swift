@@ -539,6 +539,10 @@ final class ProjectStore {
         return activeOperations.contains { $0.kind == .commit(projectID) }
     }
 
+    var isCommitInteractionLocked: Bool {
+        isCommittingSelectedProject
+    }
+
     var isLoadingSelectedProjectLocks: Bool {
         operationIsActive { .lock($0) }
     }

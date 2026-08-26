@@ -111,6 +111,7 @@ struct ChangesView: View {
                     }
                 ))
                 .labelsHidden()
+                .disabled(store.isCommitInteractionLocked)
                 .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, entry.path))
                 .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             } else {

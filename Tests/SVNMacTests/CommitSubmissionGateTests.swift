@@ -60,7 +60,7 @@ struct CommitSubmissionGateTests {
 
         #expect(beforeTask.contains("beginCommitSubmission"))
         #expect(source.contains("endCommitSubmission"))
-        #expect(source.contains("isSelectedProjectActionBlocked"))
+        #expect(source.contains("isCommitInteractionLocked"))
         #expect(source.contains("canCommitSelectedPaths"))
     }
 }

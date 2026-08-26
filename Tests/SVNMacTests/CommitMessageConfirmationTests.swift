@@ -33,7 +33,7 @@ struct CommitMessageConfirmationTests {
 
         #expect(!disabledBlock.contains("commitMessage"))
         #expect(disabledBlock.contains("store.canCommitSelectedPaths"))
-        #expect(disabledBlock.contains("store.isSelectedProjectActionBlocked"))
+        #expect(disabledBlock.contains("store.isCommitInteractionLocked"))
     }
 
     @Test func emptyMessageSubmissionUsesLocalizedConfirmation() throws {

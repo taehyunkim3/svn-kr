@@ -2919,6 +2919,31 @@ import Testing
 }
 
 @MainActor
+@Test func commitInteractionsLockOnlyDuringSelectedProjectCommit() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let other = SVNProject(name: "다른", path: "/tmp/other")
+    let store = makeStore(projects: [selected, other])
+
+    #expect(!store.isCommitInteractionLocked)
+
+    let refreshID = store.beginOperation(.refresh(selected.id))
+    #expect(store.isWorking)
+    #expect(!store.isCommitInteractionLocked)
+    store.endOperation(refreshID)
+
+    let otherCommitID = store.beginOperation(.commit(other.id))
+    #expect(store.isWorking)
+    #expect(!store.isCommitInteractionLocked)
+    store.endOperation(otherCommitID)
+
+    let selectedCommitID = store.beginOperation(.commit(selected.id))
+    #expect(store.isCommitInteractionLocked)
+    store.endOperation(selectedCommitID)
+
+    #expect(!store.isCommitInteractionLocked)
+}
+
+@MainActor
 @Test func selectedProjectActionsIgnoreUnrelatedReadOperations() {
     let selected = SVNProject(name: "선택", path: "/tmp/selected")
     let other = SVNProject(name: "다른", path: "/tmp/other")

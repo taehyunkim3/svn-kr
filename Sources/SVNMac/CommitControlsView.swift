@@ -40,6 +40,11 @@ struct CommitControlsView: View {
                 .help(appLanguage.localized(.ui.commit.selectAllCurrentlyChangedFilesCommit))
                 Button(appLanguage.localized(.ui.commit.clearSelection)) { store.selectedPaths.removeAll() }
                     .help(appLanguage.localized(.ui.commit.clearAllSelectedCommitTargets))
+                if store.isCommitInteractionLocked {
+                    Text(appLanguage.localized(.ui.commit.committing))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Text(appLanguage.localized(.ui.common.selectedCount, store.selectedPaths.count))
                     .foregroundStyle(.secondary)
@@ -60,13 +65,14 @@ struct CommitControlsView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(
                     !store.canCommitSelectedPaths
-                        || store.isSelectedProjectActionBlocked
+                        || store.isCommitInteractionLocked
                         || store.recoveryState.commitSubmissionID != nil
                 )
                 .help(appLanguage.localized(.ui.commit.selectedFilesSvnServerEnteredMessage))
             }
         }
         .padding()
+        .disabled(store.isCommitInteractionLocked)
         .onChange(of: store.lastCompletedCommitMessage) { _, message in
             guard message != nil else { return }
             // 직접 커밋과 인증 후 재개된 커밋 모두 이 완료 이벤트 하나로 입력을 비웁니다.
@@ -86,7 +92,7 @@ struct CommitControlsView: View {
     private func submitCommitAfterEndingTextInput() {
         guard let submissionProjectID = store.selectedProjectID,
               let submissionID = store.recoveryState.beginCommitSubmission(
-            isActionBlocked: store.isSelectedProjectActionBlocked,
+            isActionBlocked: store.isCommitInteractionLocked,
             canCommit: store.canCommitSelectedPaths
         ) else { return }
         isCommitMessageFocused = false
