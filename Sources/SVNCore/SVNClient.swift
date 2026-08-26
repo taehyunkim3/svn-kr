@@ -496,16 +496,11 @@ public actor SVNClient {
         }
 
         let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        // 스냅샷의 표시 목록은 정상·무시·external 항목을 이미 제외합니다. 남는 것은
+        // 내용 변경, 속성 전용 변경, switched, 미버전 문서처럼 서버 경로가 움직이면
+        // 옛 이름 아래에 남거나 트리 충돌이 되는 항목이므로 전부 차단 대상입니다.
         let blockingLocalPaths = snapshot.statuses.compactMap { entry -> String? in
-            switch entry.item {
-            case .modified, .added, .deleted, .missing, .conflicted, .replaced,
-                 .obstructed, .incomplete:
-                // obstructed와 incomplete는 정리되지 않은 상태이므로 보수적으로 차단 대상에 둡니다.
-                break
-            case .unversioned, .ignored, .unknown:
-                return nil
-            }
-            return targets.contains(where: {
+            targets.contains(where: {
                 SVNRepositoryPathNormalization.isAtOrBelowCanonicalPath(
                     entry.path,
                     root: $0.repositoryPath
