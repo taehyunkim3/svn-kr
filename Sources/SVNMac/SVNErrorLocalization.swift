@@ -30,55 +30,55 @@ enum SVNErrorLocalization {
             switch failureCode(in: message) {
             case .needsCleanup:
                 return language.localized(
-                    .ui.working.copyOperationInterruptedRunCleanup,
+                    .ui.error.workingCopyOperationInterruptedRunWorkingCopyCleanupTryOperation,
                     message
                 )
             case let .remainsInConflict(path):
                 return language.localized(
-                    .ui.file.remainsInConflictResolveBeforeRetry,
+                    .ui.error.fileRemainsConflictGoChangesChooseResolveConflictsResolveIt,
                     path,
                     message
                 )
             case .notLockedInWorkingCopy:
                 return language.localized(
-                    .ui.lock.belongsToAnotherWorkingCopyForceUnlock,
+                    .ui.error.lockTokenDoesNotBelongCurrentWorkingCopyReviewOwner,
                     message
                 )
             case nil:
-                return language.localized(.ui.failed.label, command, message)
+                return language.localized(.ui.error.failed, command, message)
             }
         case let .workingCopyOutOfDate(details):
-            return language.localized(.ui.the.commitIsBasedOnAnOlderWorkingCopySta, details)
+            return language.localized(.ui.error.commitBasedOlderWorkingCopyStateRunUpdateResolveAny, details)
         case .invalidWorkingCopy:
-            return language.localized(.ui.the.selectedFolderIsNotAnSvnLocalWorking)
+            return language.localized(.ui.error.selectedFolderNotSvnLocalWorkingFolder)
         case .malformedResponse:
-            return language.localized(.ui.the.svnResponseCouldNotBeRead)
+            return language.localized(.ui.error.svnResponseCouldNotRead)
         case let .pathNormalizationCollision(paths):
-            return language.localized(.error.pathNormalizationCollision, paths.joined(separator: ", "))
+            return language.localized(.error.path.normalizationCollision, paths.joined(separator: ", "))
         case let .pathAliasRepairFailed(paths):
-            return language.localized(.error.pathAliasRepair, paths.joined(separator: ", "))
+            return language.localized(.error.path.aliasRepair, paths.joined(separator: ", "))
         case let .fileReplacementRecoveryFailed(paths, backupPaths):
             return language.localized(
-                .error.fileReplacementRecovery,
+                .error.recovery.fileReplacement,
                 paths.joined(separator: ", "),
                 backupPaths.joined(separator: ", ")
             )
         case let .unsupportedTargetPath(paths):
-            return language.localized(.error.unsupportedTargetPath, paths.joined(separator: ", "))
+            return language.localized(.error.path.unsupportedTarget, paths.joined(separator: ", "))
         case let .unresolvedMissingPaths(paths):
-            return language.localized(.error.unresolvedMissingPaths, paths.joined(separator: ", "))
+            return language.localized(.error.deletion.unresolvedMissingPaths, paths.joined(separator: ", "))
         case let .deletionValidationFailed(paths):
-            return language.localized(.error.deletionValidation, paths.joined(separator: ", "))
+            return language.localized(.error.deletion.validation, paths.joined(separator: ", "))
         case let .commitSucceededWithValidationWarning(_, details):
-            return language.localized(.ui.the.commitCompletedButWorkingCopyValidation, details)
+            return language.localized(.ui.error.commitCompletedButWorkingCopyValidationFailedDoNotRetry, details)
         case let .recoveryBlocked(paths):
-            return language.localized(.error.recoveryBlocked, paths.joined(separator: ", "))
+            return language.localized(.error.recovery.blocked, paths.joined(separator: ", "))
         case .recoveryDestinationNotEmpty:
-            return language.localized(.ui.the.recoveryDestinationFolderMustBeEmpty)
+            return language.localized(.ui.error.recoveryDestinationFolderMustEmpty)
         case let .recoveryValidationFailed(paths):
-            return language.localized(.error.recoveryValidation, paths.joined(separator: ", "))
+            return language.localized(.error.recovery.validation, paths.joined(separator: ", "))
         case .svnExecutableNotFound:
-            return language.localized(.ui.the.bundledSvnExecutableCouldNotBeFoundRe)
+            return language.localized(.ui.error.bundledSvnExecutableCouldNotFoundReinstallApp)
         }
     }
 
@@ -115,15 +115,15 @@ enum SVNErrorLocalization {
     ) -> String {
         switch failure {
         case .unknownCertificateAuthority:
-            language.localized(.ui.certificate.unknownCaGuidance)
+            language.localized(.ui.certificate.issuerNotTrustedConfirmIssuerServerAdministratorAllowingItBypasses)
         case .commonNameMismatch:
-            language.localized(.ui.certificate.nameMismatchGuidance)
+            language.localized(.ui.certificate.issuedDifferentHostnameCheckRepositoryUrlCertificateHostnameBeforeAllowing)
         case .expired:
-            language.localized(.ui.certificate.expiredGuidance)
+            language.localized(.ui.certificate.serverCertificateExpiredRenewingItSafestAllowingItLetsProject)
         case .notYetValid:
-            language.localized(.ui.certificate.notYetValidGuidance)
+            language.localized(.ui.certificate.notYetValidCheckServerMacClocksCertificateStartDate)
         case .other:
-            language.localized(.ui.certificate.unclassifiedGuidance)
+            language.localized(.ui.certificate.svnReportedCertificateProblemButDidNotIdentifySupportedReason)
         }
     }
 
@@ -156,36 +156,36 @@ enum SVNErrorLocalization {
         switch error {
         case let .unsupportedType(type):
             return [
-                language.localized(.ui.unsupported.conflictType, type),
+                language.localized(.ui.error.unsupportedConflictType, type),
                 [
-                    language.localized(.ui.revert.localChangesAction),
-                    language.localized(.ui.run.update),
+                    language.localized(.ui.commit.revertLocalChangesAction),
+                    language.localized(.ui.update.runUpdate),
                 ].joined(separator: " → "),
             ].joined(separator: "\n")
         case .missingMine:
-            return language.localized(.ui.your.fileVersionCouldNotBeFound)
+            return language.localized(.ui.error.fileVersionCouldNotFound)
         case .missingServer:
-            return language.localized(.ui.the.serverFileVersionCouldNotBeFound)
+            return language.localized(.ui.error.serverFileVersionCouldNotFound)
         case .missingWorkingFile:
-            return language.localized(.ui.the.currentWorkingFileCouldNotBeFound)
+            return language.localized(.ui.error.currentWorkingFileCouldNotFound)
         case .sourceOutsideWorkingCopy:
-            return language.localized(.ui.a.conflictFilePathPointsOutsideTheWorking)
+            return language.localized(.ui.error.conflictFilePathPointsOutsideWorkingCopy)
         case .backupRootInsideWorkingCopy:
-            return language.localized(.ui.conflict.backupsMustBeStoredOutsideTheWork)
+            return language.localized(.ui.error.conflictBackupsMustStoredOutsideWorkingCopy)
         case .unsafeMineSource:
-            return language.localized(.ui.your.fileVersionMustBeARegularFileNotAS)
+            return language.localized(.ui.error.fileVersionMustRegularFileNotSymbolicLink)
         case .unsafeServerSource:
-            return language.localized(.ui.the.serverFileVersionMustBeARegularFileN)
+            return language.localized(.ui.error.serverFileVersionMustRegularFileNotSymbolicLink)
         case .unsafeWorkingFile:
-            return language.localized(.ui.the.currentWorkingFileMustBeARegularFile)
+            return language.localized(.ui.error.currentWorkingFileMustRegularFileNotSymbolicLink)
         case .workingRecoveryVerificationFailed:
-            return language.localized(.ui.the.recoveryBackupOfTheCurrentWorkingFile)
+            return language.localized(.ui.error.recoveryBackupCurrentWorkingFileCouldNotVerified)
         case .workingRestoreVerificationFailed:
-            return language.localized(.ui.the.selectedVersionOfYourFileCouldNotBeR)
+            return language.localized(.ui.error.selectedVersionFileCouldNotRestoredWorkingFile)
         case .conflictResolutionVerificationFailed:
-            return language.localized(.ui.the.conflictRemainsAfterTheSvnCommandRevie)
+            return language.localized(.ui.error.conflictRemainsAfterSvnCommandReviewBackupsTryAgain)
         case let .cleanupFailed(message):
-            return language.localized(.ui.failed.toRemoveAnIncompleteConflictBackup, message)
+            return language.localized(.ui.error.failedRemoveIncompleteConflictBackup, message)
         }
     }
 }

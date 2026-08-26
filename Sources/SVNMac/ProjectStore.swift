@@ -148,11 +148,11 @@ enum DiffContent: Equatable {
     func localizedText(_ language: AppLanguage) -> String {
         switch self {
         case .placeholder:
-            language.localized(.ui.select.aChangedFileToViewItsDiff)
+            language.localized(.ui.changes.selectChangedFileViewItsDiff)
         case .unavailableForUnversioned:
-            language.localized(.ui.diff.isUnavailableUntilThisFileIsAddedTo)
+            language.localized(.ui.commit.diffUnavailableUntilFileAddedSvnItAddedAutomaticallyWhen)
         case .noTextDiff:
-            language.localized(.ui.no.textDiffIsAvailableThisMayBeANewOrB)
+            language.localized(.ui.common.noTextDiffAvailableMayNewBinaryFile)
         case let .text(value):
             value
         case let .failure(message):
@@ -729,7 +729,7 @@ final class ProjectStore {
 
     func showFolderPicker() {
         let panel = NSOpenPanel()
-        panel.title = AppLanguage.current.localized(.ui.choose.svnLocalWorkingFolders)
+        panel.title = AppLanguage.current.localized(.ui.repository.chooseSvnLocalWorkingFolders)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
@@ -783,14 +783,14 @@ final class ProjectStore {
         let repositoryURL = repositoryURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !repositoryURL.isEmpty, let destinationURL else {
-            errorMessage = AppLanguage.current.localized(.ui.choose.aLocalFolderForTheCheckout)
+            errorMessage = AppLanguage.current.localized(.ui.checkout.localFolderRequiredError)
             return false
         }
         let destination = destinationURL.standardizedFileURL
         let destinationPath = destination.path
         let destinationWasEmpty = workingCopyRecoveryFileManager.isEmptyDirectory(at: destinationPath)
         guard !projects.contains(where: { $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
+            errorMessage = AppLanguage.current.localized(.ui.recovery.localWorkingFolderAlreadyRegistered)
             return false
         }
 
@@ -849,7 +849,7 @@ final class ProjectStore {
                 } else {
                     projectAccessManager.endAccessing(url: destination)
                     notice = AppLanguage.current.localized(
-                        .ui.the.checkoutWasCanceledPartiallyDownloadedF,
+                        .ui.recovery.checkoutCanceledPartiallyDownloadedFilesMayRemain,
                         destinationPath
                     )
                 }
@@ -894,7 +894,7 @@ final class ProjectStore {
             do {
                 try credentialStore.setPassword(password, for: id)
             } catch {
-                keychainWarning = AppLanguage.current.localized(.ui.checkout.completedButThePasswordCouldNotBe, localizedError(error))
+                keychainWarning = AppLanguage.current.localized(.ui.authentication.checkoutCompletedButPasswordCouldNotSavedKeychain, localizedError(error))
             }
         }
 
@@ -969,7 +969,7 @@ final class ProjectStore {
         let previousPath = projects[currentIndex].path
         guard destinationPath != previousPath else { return true }
         guard !projects.contains(where: { $0.id != projectID && $0.path == destinationPath }) else {
-            errorMessage = AppLanguage.current.localized(.ui.this.localWorkingFolderIsAlreadyRegistered)
+            errorMessage = AppLanguage.current.localized(.ui.recovery.localWorkingFolderAlreadyRegistered)
             return false
         }
 
@@ -991,7 +991,7 @@ final class ProjectStore {
             projects[index].bookmarkData = bookmarkData
             probeFilenameNormalization(for: projects[index])
             notice = AppLanguage.current.localized(
-                .ui.the.workingFolderWasChangedTo,
+                .ui.repository.workingFolderChanged,
                 destinationPath
             )
             if selectedProjectID == projectID { await refresh() }
@@ -1129,7 +1129,7 @@ final class ProjectStore {
                 self.isWorkingCopyOutOfDate = isWorkingCopyOutOfDate
                 updateRemoteSummary(for: project.id, needsUpdate: isWorkingCopyOutOfDate)
             }
-            notice = AppLanguage.current.localized(.ui.refreshed.label, project.name)
+            notice = AppLanguage.current.localized(.ui.common.refreshed, project.name)
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
                 handleRemoteError(
@@ -1219,7 +1219,7 @@ final class ProjectStore {
             }
             selectedPaths.formIntersection(selectableStatusPaths)
             updateLocalSummary(for: project.id, statuses: snapshot.statuses)
-            notice = AppLanguage.current.localized(.ui.local.changesRefreshed, project.name)
+            notice = AppLanguage.current.localized(.ui.changes.localChangesRefreshed, project.name)
             return true
         } catch {
             if canApplyRefresh(requestID, projectID: project.id) {
@@ -1259,13 +1259,13 @@ final class ProjectStore {
             .map(\.path)
         guard missingPaths.isEmpty else {
             errorMessage = AppLanguage.current.localized(
-                .error.chooseMissingItems,
+                .error.deletion.chooseMissingItems,
                 missingPaths.joined(separator: ", ")
             )
             return false
         }
         guard !Self.containsSelectedConflict(selectedPaths: selectedPaths, statuses: statuses) else {
-            errorMessage = AppLanguage.current.localized(.ui.resolve.conflictedFilesBeforeCommitting)
+            errorMessage = AppLanguage.current.localized(.ui.conflict.resolveConflictedFilesBeforeCommitting)
             return false
         }
         let operationID = beginOperation(.commit(project.id))
@@ -1402,7 +1402,7 @@ final class ProjectStore {
                 try credentialStore.setPassword(newPassword, for: projectID)
                 sessionPasswords[projectID] = newPassword
             }
-            notice = AppLanguage.current.localized(.ui.credentials.savedFor, projects[index].name)
+            notice = AppLanguage.current.localized(.ui.authentication.credentialsSaved, projects[index].name)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1414,7 +1414,7 @@ final class ProjectStore {
         do {
             try credentialStore.deletePassword(for: projectID)
             sessionPasswords[projectID] = nil
-            notice = AppLanguage.current.localized(.ui.the.savedPasswordWasDeleted)
+            notice = AppLanguage.current.localized(.ui.authentication.savedPasswordDeleted)
             return true
         } catch {
             errorMessage = localizedError(error)
@@ -1463,9 +1463,9 @@ final class ProjectStore {
         guard authenticationRequest?.id == request.id else { return }
         authenticationRequest = nil
         if request.serverCertificateTrust == nil {
-            notice = AppLanguage.current.localized(.ui.authentication.wasCanceledLocalChangesRemain)
+            notice = AppLanguage.current.localized(.ui.authentication.canceledLocalChangesRemainAvailable)
         } else {
-            notice = AppLanguage.current.localized(.ui.certificate.exceptionNotAllowed)
+            notice = AppLanguage.current.localized(.ui.certificate.exceptionNotAllowedNoProjectSettingChanged)
         }
     }
 
@@ -1502,7 +1502,7 @@ final class ProjectStore {
         authenticationRequest = nil
         automaticRefreshBlockedProjectID = nil
         notice = AppLanguage.current.localized(
-            .ui.certificate.exceptionSavedForProject,
+            .ui.certificate.savedCertificateExceptionRetrySvnOperation,
             projects[index].name
         )
     }
@@ -1567,7 +1567,7 @@ final class ProjectStore {
     }
 
     private var authenticationNotice: String {
-        AppLanguage.current.localized(.ui.keychain.accessWasDeniedChooseHowToAuthent)
+        AppLanguage.current.localized(.ui.authentication.keychainAccessDeniedChooseHowAuthenticate)
     }
 
     private func resume(_ request: SVNAuthenticationRequest) async {
@@ -1666,14 +1666,14 @@ final class ProjectStore {
     func openFile(_ relativePath: String, in project: SVNProject) {
         let url = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath)
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized(.ui.unable.toOpenFile, relativePath)
+            errorMessage = AppLanguage.current.localized(.ui.error.unableOpenFile, relativePath)
             return
         }
     }
 
     func openWorkspaceURL(_ url: URL) {
         guard workspaceOpener.open(url) else {
-            errorMessage = AppLanguage.current.localized(.ui.could.notOpenTheFile)
+            errorMessage = AppLanguage.current.localized(.ui.common.couldNotOpenFile)
             return
         }
     }
@@ -1775,7 +1775,7 @@ final class ProjectStore {
             guard unavailableProjectID != project.id else { return false }
             unavailableProjectID = project.id
             automaticRefreshBlockedProjectID = project.id
-            errorMessage = AppLanguage.current.localized(.ui.the.workingFolderNoLongerExistsRestoreThe, project.name, project.path)
+            errorMessage = AppLanguage.current.localized(.ui.repository.workingFolderNoLongerExistsRestoreFolderRemoveItList, project.name, project.path)
             return false
         }
         if unavailableProjectID == project.id {

@@ -50,7 +50,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized(.ui.added.ignoreRuleCommitTheDirectoryProperty, pattern)
+            notice = AppLanguage.current.localized(.ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam, pattern)
             await refresh()
             await loadIgnoreRules()
         } catch {
@@ -62,7 +62,7 @@ extension ProjectStore {
     func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
         guard let project = selectedProject else { return }
         guard rule.inheritedFrom == nil else {
-            errorMessage = AppLanguage.current.localized(.ui.inherited.rulesCanOnlyBeRemovedFromThePar)
+            errorMessage = AppLanguage.current.localized(.ui.ignore.inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty)
             return
         }
         let operationID = beginOperation(.ignore(project.id))
@@ -76,7 +76,7 @@ extension ProjectStore {
                 credentials: nil
             )
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized(.ui.removed.ignoreRule, rule.pattern)
+            notice = AppLanguage.current.localized(.ui.ignore.removedIgnoreRule, rule.pattern)
             await refresh()
             await loadIgnoreRules()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
@@ -89,7 +89,7 @@ extension ProjectStore {
     func compareGitIgnore() async {
         guard let project = selectedProject else { return }
         guard pathCollisions.isEmpty else {
-            errorMessage = AppLanguage.current.localized(.ui.resolve.unicodePathConflictsBeforeComparing)
+            errorMessage = AppLanguage.current.localized(.ui.ignore.resolveUnicodePathConflictsBeforeComparingGitRulesSoProperty)
             return
         }
         let projectRoot = URL(fileURLWithPath: project.path, isDirectory: true)
@@ -194,7 +194,7 @@ extension ProjectStore {
                 )
             }
             guard selectedProjectID == project.id else { return }
-            notice = AppLanguage.current.localized(.ui.applied.gitRuleSToSvnIgnorePropertiesComm, proposals.count)
+            notice = AppLanguage.current.localized(.ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare, proposals.count)
             await refreshLocalWorkingCopy()
             await compareGitIgnore()
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }

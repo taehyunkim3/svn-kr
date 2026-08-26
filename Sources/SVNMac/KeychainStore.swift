@@ -121,10 +121,10 @@ enum KeychainStoreError: LocalizedError {
 
     var errorDescription: String? {
         guard case let .operationFailed(status) = self else {
-            return AppLanguage.current.localized(.ui.keychain.accessWasDenied)
+            return AppLanguage.current.localized(.ui.authentication.keychainAccessDenied)
         }
         let detail = SecCopyErrorMessageString(status, nil) as String?
-            ?? AppLanguage.current.localized(.ui.unknown.error)
-        return AppLanguage.current.localized(.ui.keychain.operationFailed, detail)
+            ?? AppLanguage.current.localized(.ui.error.unknownError)
+        return AppLanguage.current.localized(.ui.authentication.keychainOperationFailed, detail)
     }
 }

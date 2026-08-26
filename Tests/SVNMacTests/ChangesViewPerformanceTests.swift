@@ -38,14 +38,14 @@ struct ChangesViewPerformanceTests {
         let changesView = try source(named: "ChangesView.swift", in: sources)
         let commitControls = try source(named: "CommitControlsView.swift", in: sources)
 
-        #expect(!changesView.contains(".ui.locally.missingActionRequired"))
+        #expect(!changesView.contains(".ui.recovery.locallyMissingActionRequired"))
         #expect(changesView.contains(".ui.cleanup.needed"))
-        #expect(changesView.contains(".ui.unicode.pathConflict"))
+        #expect(changesView.contains(".ui.changes.unicodePathConflict"))
         #expect(changesView.contains("entry.isSelectableForCommit"))
         #expect(changesView.contains("entry.canScheduleRepositoryDeletion"))
-        #expect(changesView.contains("case .missing: appLanguage.localized(.ui.pending.deletionPrimary)"))
-        #expect(changesView.contains(".ui.delete.fromRepository"))
-        #expect(changesView.contains(".ui.restore.selectedPendingDeletions"))
+        #expect(changesView.contains("case .missing: appLanguage.localized(.ui.changes.pendingDeletionStatus)"))
+        #expect(changesView.contains(".ui.changes.deleteRepository"))
+        #expect(changesView.contains(".ui.changes.restorePendingDeletions"))
         #expect(changesView.contains("store.requestSelectedDeletionRestore()"))
         #expect(commitControls.contains("store.selectAllStatusPaths"))
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
@@ -55,7 +55,7 @@ struct ChangesViewPerformanceTests {
     @Test func unversionedDirectoryExplainsRecursiveCommit() throws {
         let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
 
-        #expect(changesView.contains(".ui.files.insideThisFolderWillBeAddedTogether"))
+        #expect(changesView.contains(".ui.changes.filesInsideFolderAddedTogether"))
         #expect(changesView.contains("entry.item == .unversioned && entry.nodeKind == .directory"))
     }
 
@@ -65,7 +65,7 @@ struct ChangesViewPerformanceTests {
         let commitControls = try source(named: "CommitControlsView.swift", in: sources)
 
         #expect(changesView.contains("TemporaryFilePolicy.isTemporaryFile(entry)"))
-        #expect(changesView.contains(".ui.temporary.label"))
+        #expect(changesView.contains(".ui.changes.temporary"))
         #expect(commitControls.contains("store.selectAllStatusPaths"))
         #expect(commitControls.contains("store.selectedPaths.removeAll()"))
     }
@@ -83,10 +83,10 @@ struct ChangesViewPerformanceTests {
     @Test func collisionActionsUseAggregateRepairabilityAndManualServerGuidance() throws {
         let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
 
-        #expect(changesView.contains(".ui.clean.upEquivalentPath"))
+        #expect(changesView.contains(".ui.cleanup.cleanUpEquivalentPath"))
         #expect(changesView.contains("store.canRepairCanonicalAliases"))
         #expect(changesView.contains("await store.repairCanonicalAliases()"))
-        #expect(changesView.contains(".ui.resolve.duplicateServerPathsManually"))
+        #expect(changesView.contains(".ui.changes.resolveDuplicateServerPathsManually"))
         #expect(!changesView.contains("if collision.repairableRawPath != nil"))
         #expect(!changesView.contains("await store.beginPathRecovery()"))
     }
@@ -94,23 +94,23 @@ struct ChangesViewPerformanceTests {
     @Test func conflictResolutionOffersThreeSafeBinaryChoicesAndPathNotice() throws {
         let view = try source(named: "ConflictResolutionView.swift", in: try svnMacSources())
 
-        #expect(view.contains(".ui.localizationOpen.myFile"))
-        #expect(view.contains(".ui.localizationOpen.serverFile"))
-        #expect(view.contains(".ui.use.myFilePrimary"))
-        #expect(view.contains(".ui.use.serverFilePrimary"))
-        #expect(view.contains(".ui.use.currentWorkingFilePrimary"))
+        #expect(view.contains(".ui.conflict.openMyFile"))
+        #expect(view.contains(".ui.conflict.openServerFile"))
+        #expect(view.contains(".ui.conflict.useMineAction"))
+        #expect(view.contains(".ui.conflict.useServerAction"))
+        #expect(view.contains(".ui.conflict.useWorkingFileAction"))
         #expect(view.contains("pendingChoice = .working"))
         #expect(view.contains("session.wasCanonicallyResolved"))
-        #expect(view.contains(".ui.the.macosUnicodePathWasMatchedToTheActual"))
-        #expect(view.contains(".ui.localizationOpen.backupFolder"))
+        #expect(view.contains(".ui.conflict.macosUnicodePathMatchedActualSvnManagedPath"))
+        #expect(view.contains(".ui.conflict.openBackupFolder"))
         #expect(view.contains("session.details.path"))
-        #expect(view.contains(".ui.when.youChooseAVersionTheCurrentWorkingFi"))
+        #expect(view.contains(".ui.conflict.whenChooseVersionCurrentWorkingFilePreservedSeparatelyHiddenRecovery"))
         #expect(view.contains("interactiveDismissDisabled(store.isResolvingConflict)"))
         #expect(view.contains("store.isResolvingConflict"))
-        #expect(view.contains(".ui.cancel.label"))
+        #expect(view.contains(".ui.common.cancel"))
         #expect(view.components(separatedBy: ".disabled(store.isResolvingConflict)").count - 1 == 5)
-        #expect(!view.contains(".ui.close.label"))
-        #expect(view.contains(".ui.both.versionsWereCopiedToABackupFolderEdi"))
+        #expect(!view.contains(".ui.common.close"))
+        #expect(view.contains(".ui.conflict.bothVersionsCopiedBackupFolderEditingCopiesDoesNotChange"))
         #expect(!view.contains("enum ConflictResolutionCopy"))
         #expect(!view.contains("두 버전 모두 원본 옆에 보관"))
         #expect(!view.contains("현재 파일로 충돌 해결 완료"))

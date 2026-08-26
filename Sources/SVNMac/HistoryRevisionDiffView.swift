@@ -14,7 +14,7 @@ struct HistoryRevisionDiffView: View {
                     Label("r\(revision)", systemImage: "doc.text.magnifyingglass")
                         .font(.headline.monospacedDigit())
                 } else {
-                    Label(appLanguage.localized(.ui.commit.changes), systemImage: "doc.text.magnifyingglass")
+                    Label(appLanguage.localized(.ui.revision.commitChanges), systemImage: "doc.text.magnifyingglass")
                         .font(.headline)
                 }
                 Spacer()
@@ -54,16 +54,16 @@ struct HistoryRevisionDiffView: View {
         .opacity(selectedEntry == nil ? 0 : 1)
         .overlay {
             if store.logs.isEmpty, store.isHistoryLoading {
-                ProgressView(appLanguage.localized(.ui.loading.commitHistory))
+                ProgressView(appLanguage.localized(.ui.history.loadingCommitHistory))
             } else if store.selectedHistoryRevision == nil {
                 ContentUnavailableView(
-                    appLanguage.localized(.ui.select.aCommit),
+                    appLanguage.localized(.ui.revision.selectCommit),
                     systemImage: "clock.arrow.circlepath",
-                    description: Text(appLanguage.localized(.ui.choose.viewChangesInTheHistoryToDisplayTh))
+                    description: Text(appLanguage.localized(.ui.revision.chooseViewChangesHistoryDisplayActualDiff))
                 )
             } else if selectedEntry == nil {
                 ContentUnavailableView(
-                    appLanguage.localized(.ui.commit.notFound),
+                    appLanguage.localized(.ui.revision.commitNotFound),
                     systemImage: "exclamationmark.magnifyingglass"
                 )
             }
@@ -119,7 +119,7 @@ struct HistoryRevisionDiffView: View {
         .overlay {
             if files.isEmpty {
                 ContentUnavailableView(
-                    appLanguage.localized(.ui.no.changedFiles),
+                    appLanguage.localized(.ui.revision.noChangedFiles),
                     systemImage: "doc"
                 )
             }
@@ -130,14 +130,14 @@ struct HistoryRevisionDiffView: View {
     private var selectedPathDiff: some View {
         if store.selectedHistoryPath == nil {
             ContentUnavailableView(
-                appLanguage.localized(.ui.select.aFile),
+                appLanguage.localized(.ui.revision.selectFile),
                 systemImage: "doc.text.magnifyingglass",
-                description: Text(appLanguage.localized(.ui.choose.aChangedFileAboveToDisplayOnlyThat))
+                description: Text(appLanguage.localized(.ui.revision.chooseChangedFileAboveDisplayOnlyThatFileDiff))
             )
         } else if isLoading {
             VStack {
                 Spacer()
-                ProgressView(appLanguage.localized(.ui.loading.changes))
+                ProgressView(appLanguage.localized(.ui.revision.loadingChanges))
                 Spacer()
             }
             .frame(maxWidth: .infinity)
@@ -145,7 +145,7 @@ struct HistoryRevisionDiffView: View {
             diffText(value)
         } else if case let .failure(message) = store.historyDiffContent {
             ContentUnavailableView(
-                appLanguage.localized(.ui.unable.toLoadChanges),
+                appLanguage.localized(.ui.error.unableLoadChanges),
                 systemImage: "lock.trianglebadge.exclamationmark",
                 description: Text(historyDiffFailureDescription(message))
             )
@@ -159,7 +159,7 @@ struct HistoryRevisionDiffView: View {
 
     private func historyDiffFailureDescription(_ message: String) -> String {
         if message.contains("E175013") || message.localizedCaseInsensitiveContains("forbidden") {
-            return appLanguage.localized(.ui.the.svnServerDeniedReadAccessToThisFileC, message)
+            return appLanguage.localized(.ui.authentication.svnServerDeniedReadAccessFileCheckProjectCredentialsServer, message)
         }
         return message
     }

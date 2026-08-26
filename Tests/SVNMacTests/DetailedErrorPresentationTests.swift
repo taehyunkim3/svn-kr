@@ -37,7 +37,7 @@ import Testing
         "FileHistoryView.swift",
     ]
 
-    #expect(!content.contains(".alert(appLanguage.localized(.ui.error.label)"))
+    #expect(!content.contains(".alert(appLanguage.localized(.ui.error.error)"))
     #expect(content.contains("errorMessage: $store.errorMessage"))
     #expect(content.contains("isEnabled: !store.hasContextualErrorPresentationOwner"))
 
@@ -81,8 +81,8 @@ import Testing
     )
 
     #expect(source.contains("!store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true"))
-    #expect(source.contains(".ui.server.changesInsideAPendingDeletionMayNot"))
-    #expect(source.contains(".ui.run.update"))
+    #expect(source.contains(".ui.update.serverChangesInsidePendingDeletionMayNotAppearListRun"))
+    #expect(source.contains(".ui.update.runUpdate"))
 }
 
 private func svnMacSources() -> URL {

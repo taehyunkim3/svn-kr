@@ -42,13 +42,13 @@ struct ErrorCopyButton: View {
     var body: some View {
         Button(
             didCopy
-                ? appLanguage.localized(.ui.copied.label)
-                : appLanguage.localized(.ui.copy.errorDetails),
+                ? appLanguage.localized(.ui.error.copied)
+                : appLanguage.localized(.ui.error.copyErrorDetails),
             systemImage: didCopy ? "checkmark" : "doc.on.doc"
         ) {
             didCopy = ErrorClipboard.copy(message)
         }
-        .help(appLanguage.localized(.ui.copy.allDisplayedErrorDetailsToTheClipboar))
+        .help(appLanguage.localized(.ui.error.copyAllDisplayedErrorDetailsClipboard))
         .onChange(of: message) { _, _ in didCopy = false }
     }
 }
@@ -62,7 +62,7 @@ struct DetailedErrorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(appLanguage.localized(.ui.error.label), systemImage: "exclamationmark.triangle.fill")
+            Label(appLanguage.localized(.ui.error.error), systemImage: "exclamationmark.triangle.fill")
                 .font(.title2.bold())
                 .foregroundStyle(.red)
 
@@ -71,7 +71,7 @@ struct DetailedErrorView: View {
             HStack {
                 ErrorCopyButton(message: message)
                 Spacer()
-                Button(appLanguage.localized(.ui.close.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.close), role: .cancel) {
                     onDismiss()
                 }
                 .keyboardShortcut(.cancelAction)

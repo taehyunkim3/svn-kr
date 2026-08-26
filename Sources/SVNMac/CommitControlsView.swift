@@ -15,17 +15,17 @@ struct CommitControlsView: View {
                 .focused($isCommitMessageFocused)
                 .onSubmit { submitCommitAfterEndingTextInput() }
             HStack {
-                Button(appLanguage.localized(.ui.select.allSelectAll2)) {
+                Button(appLanguage.localized(.ui.commit.selectAll)) {
                     store.selectedPaths = store.selectAllStatusPaths
                 }
-                .help(appLanguage.localized(.ui.select.allCurrentlyChangedFilesForCommit))
-                Button(appLanguage.localized(.ui.clear.selection)) { store.selectedPaths.removeAll() }
-                    .help(appLanguage.localized(.ui.clear.allSelectedCommitTargets))
+                .help(appLanguage.localized(.ui.commit.selectAllCurrentlyChangedFilesCommit))
+                Button(appLanguage.localized(.ui.commit.clearSelection)) { store.selectedPaths.removeAll() }
+                    .help(appLanguage.localized(.ui.commit.clearAllSelectedCommitTargets))
                 Spacer()
-                Text(appLanguage.localized(.ui.selected.label, store.selectedPaths.count))
+                Text(appLanguage.localized(.ui.common.selectedCount, store.selectedPaths.count))
                     .foregroundStyle(.secondary)
                 if store.scheduledDeletionCount > 0 {
-                    Text(appLanguage.localized(.ui.pending.deletionFormatted, store.scheduledDeletionCount))
+                    Text(appLanguage.localized(.ui.commit.pendingDeletionCount, store.scheduledDeletionCount))
                     .foregroundStyle(.red)
                 }
                 Button(action: submitCommitAfterEndingTextInput) {
@@ -34,7 +34,7 @@ struct CommitControlsView: View {
                             ProgressView().controlSize(.small)
                         }
                         Text(store.isCommittingSelectedProject
-                            ? appLanguage.localized(.ui.committing.label)
+                            ? appLanguage.localized(.ui.commit.committing)
                             : appLanguage.localized(.ui.commit.selected))
                     }
                 }
@@ -44,7 +44,7 @@ struct CommitControlsView: View {
                         || store.isSelectedProjectActionBlocked
                         || store.recoveryState.commitSubmissionID != nil
                 )
-                .help(appLanguage.localized(.ui.commit.theSelectedFilesToTheSvnServerWith))
+                .help(appLanguage.localized(.ui.commit.selectedFilesSvnServerEnteredMessage))
             }
         }
         .padding()

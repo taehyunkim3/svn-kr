@@ -8,7 +8,7 @@ struct DestructiveReturnKeyTests {
         let source = try source(named: "CommitConfirmationView.swift")
         let confirmButton = try modifierBlock(
             in: source,
-            after: ".ui.confirm.commit",
+            after: ".ui.commit.confirm",
             endingWith: ".disabled(store.isSelectedProjectActionBlocked)"
         )
 
@@ -34,7 +34,7 @@ struct DestructiveReturnKeyTests {
         let confirmation = String(source[confirmationStart.lowerBound...])
         let runButton = try modifierBlock(
             in: confirmation,
-            after: ".repository.pathNormalizationConfirmationRun",
+            after: ".repository.pathNormalization.confirmationRun",
             endingWith: ".disabled(!store.canConfirmRepositoryPathNormalization)"
         )
 

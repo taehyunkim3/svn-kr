@@ -11,27 +11,27 @@ struct WorkingCopyRecoveryView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Label(
-                    appLanguage.localized(.ui.automatic.unicodePathRecovery),
+                    appLanguage.localized(.ui.recovery.automaticUnicodePathRecovery),
                     systemImage: "cross.case"
                 )
                 .font(.headline)
                 Spacer()
-                Button(appLanguage.localized(.ui.close.label)) {
+                Button(appLanguage.localized(.ui.common.close)) {
                     store.isShowingPathRecovery = false
                 }
                 .disabled(store.isPathRecoveryRunning)
             }
 
-            Text(appLanguage.localized(.ui.a.cleanWorkingCopyIsCheckedOutFromTheSer))
+            Text(appLanguage.localized(.ui.recovery.cleanWorkingCopyCheckedOutServerOnlyRealLocalChanges))
             .foregroundStyle(.secondary)
 
             if let preview = store.pathRecoveryPreview {
                 GroupBox(appLanguage.localized(.ui.recovery.preview)) {
                     Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
-                        previewRow(appLanguage.localized(.ui.modified.labelPrimary), value: preview.modifiedCount)
-                        previewRow(appLanguage.localized(.ui.new.label), value: preview.addedCount)
-                        previewRow(appLanguage.localized(.ui.locally.missing), value: preview.deletedCount)
-                        previewRow(appLanguage.localized(.ui.localizationFalse.aliasesExcluded), value: preview.ignoredAliasCount)
+                        previewRow(appLanguage.localized(.ui.status.modified), value: preview.modifiedCount)
+                        previewRow(appLanguage.localized(.ui.recovery.new), value: preview.addedCount)
+                        previewRow(appLanguage.localized(.ui.recovery.locallyMissing), value: preview.deletedCount)
+                        previewRow(appLanguage.localized(.ui.recovery.falseAliasesExcluded), value: preview.ignoredAliasCount)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
@@ -40,7 +40,7 @@ struct WorkingCopyRecoveryView: View {
                 if !preview.blockingPaths.isEmpty {
                     Label(
                         appLanguage.localized(
-                            .recovery.reviewPaths,
+                            .recovery.path.reviewPaths,
                             preview.blockingPaths.joined(separator: ", ")
                         ),
                         systemImage: "exclamationmark.triangle.fill"
@@ -49,14 +49,14 @@ struct WorkingCopyRecoveryView: View {
                 }
             }
 
-            GroupBox(appLanguage.localized(.ui.new.workingFolder)) {
+            GroupBox(appLanguage.localized(.ui.recovery.newWorkingFolder)) {
                 HStack {
-                    Text(destinationURL?.path ?? appLanguage.localized(.ui.choose.anEmptyFolder))
+                    Text(destinationURL?.path ?? appLanguage.localized(.ui.recovery.chooseEmptyFolder))
                         .foregroundStyle(destinationURL == nil ? .secondary : .primary)
                         .lineLimit(2)
                         .textSelection(.enabled)
                     Spacer()
-                    Button(appLanguage.localized(.ui.choose.folder), systemImage: "folder") {
+                    Button(appLanguage.localized(.ui.recovery.chooseFolder), systemImage: "folder") {
                         chooseDestination()
                     }
                     .disabled(store.isPathRecoveryRunning)
@@ -66,7 +66,7 @@ struct WorkingCopyRecoveryView: View {
 
             if let error = store.errorMessage {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label(appLanguage.localized(.ui.error.label), systemImage: "exclamationmark.triangle.fill")
+                    Label(appLanguage.localized(.ui.error.error), systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.red)
                     ErrorDetailsText(
                         message: error,
@@ -82,12 +82,12 @@ struct WorkingCopyRecoveryView: View {
             Spacer()
 
             HStack {
-                Text(appLanguage.localized(.ui.on.successBothTheOriginalAndRecoveredCopie))
+                Text(appLanguage.localized(.ui.recovery.successBothOriginalRecoveredCopiesRemainSidebar))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 Spacer()
                 if store.isPathRecoveryRunning { ProgressView().controlSize(.small) }
-                Button(appLanguage.localized(.ui.recover.toNewWorkingFolder)) {
+                Button(appLanguage.localized(.ui.recovery.recoverNewWorkingFolder)) {
                     Task { _ = await store.recoverWorkingCopy(to: destinationURL) }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -112,7 +112,7 @@ struct WorkingCopyRecoveryView: View {
 
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = appLanguage.localized(.ui.choose.anEmptyRecoveryFolder)
+        panel.title = appLanguage.localized(.ui.recovery.chooseEmptyRecoveryFolder)
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true

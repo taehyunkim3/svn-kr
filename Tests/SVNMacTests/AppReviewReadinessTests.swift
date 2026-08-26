@@ -62,9 +62,9 @@ struct AppReviewReadinessTests {
     @Test func firstRunRepositorySheetExposesSampleProjectEntry() throws {
         let source = try repositorySource("RepositoryDialogs.swift")
 
-        #expect(source.contains(".ui.browse.sampleProject"))
-        #expect(AppLanguage.korean.localized(.ui.browse.sampleProject) == "샘플 프로젝트 둘러보기")
-        #expect(AppLanguage.english.localized(.ui.browse.sampleProject) == "Browse Sample Project")
+        #expect(source.contains(".ui.demo.browseSampleProject"))
+        #expect(AppLanguage.korean.localized(.ui.demo.browseSampleProject) == "샘플 프로젝트 둘러보기")
+        #expect(AppLanguage.english.localized(.ui.demo.browseSampleProject) == "Browse Sample Project")
         #expect(source.contains("onBrowseDemo()"))
     }
 
@@ -77,7 +77,7 @@ struct AppReviewReadinessTests {
 
         #expect(source.contains("@AppStorage(AppSettings.languageKey)"))
         #expect(source.contains("ForEach(AppLanguage.allCases"))
-        #expect(source.contains("appLanguage.localized(.ui.language.label)"))
+        #expect(source.contains("appLanguage.localized(.ui.settings.language)"))
         #expect(source.contains("systemImage: \"globe\""))
     }
 
@@ -86,9 +86,9 @@ struct AppReviewReadinessTests {
         let viewStart = try #require(file.range(of: "struct AddRepositoryView: View"))
         let viewEnd = try #require(file.range(of: "struct CredentialsView: View"))
         let source = String(file[viewStart.lowerBound..<viewEnd.lowerBound])
-        let register = try #require(source.range(of: "Button(appLanguage.localized(.ui.register.existingLocalFolder"))
-        let sample = try #require(source.range(of: "Button(appLanguage.localized(.ui.browse.sampleProject"))
-        let cancel = try #require(source.range(of: "Button(appLanguage.localized(.ui.cancel.label"))
+        let register = try #require(source.range(of: "Button(appLanguage.localized(.ui.repository.registerExistingLocalFolder"))
+        let sample = try #require(source.range(of: "Button(appLanguage.localized(.ui.demo.browseSampleProject"))
+        let cancel = try #require(source.range(of: "Button(appLanguage.localized(.ui.common.cancel"))
         let spacer = register.lowerBound < sample.lowerBound
             ? source.range(of: "Spacer()", range: register.upperBound..<sample.lowerBound)
             : nil
@@ -100,9 +100,9 @@ struct AppReviewReadinessTests {
 
     @Test func demoExitUsesVisibleOrangeTextButton() throws {
         let source = try repositorySource("ContentView.swift")
-        let start = try #require(source.range(of: "Button(appLanguage.localized(.ui.exit.demo))"))
+        let start = try #require(source.range(of: "Button(appLanguage.localized(.ui.demo.exitDemo))"))
         let end = try #require(source.range(
-            of: "Text(appLanguage.localized(.ui.refresh.label))",
+            of: "Text(appLanguage.localized(.ui.common.refresh))",
             range: start.upperBound..<source.endIndex
         ))
         let demoButton = String(source[start.lowerBound..<end.lowerBound])

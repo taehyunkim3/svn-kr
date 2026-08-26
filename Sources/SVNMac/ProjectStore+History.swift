@@ -220,7 +220,7 @@ extension ProjectStore {
             )
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
-                .ui.saved.historicalRevision,
+                .ui.revision.savedR,
                 request.revision,
                 request.destinationURL.path
             )
@@ -280,7 +280,7 @@ extension ProjectStore {
             await loadWorkingCopyFiles()
             guard canApplyHistoryRevisionOperation(operation) else { return false }
             notice = AppLanguage.current.localized(
-                .ui.restored.revisionCommitRequired,
+                .ui.revision.restoredRNowLocalChangeCommitItUpdateServer,
                 request.relativePath,
                 request.revision
             )

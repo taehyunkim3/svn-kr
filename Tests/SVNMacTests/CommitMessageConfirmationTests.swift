@@ -6,21 +6,21 @@ import Testing
 @Suite("CommitMessageConfirmationTests")
 struct CommitMessageConfirmationTests {
     private let localizationKeys: [(key: LocalizationKey, sourceExpression: String)] = [
-        (.ui.commit.withoutAMessage, ".ui.commit.withoutAMessage"),
-        (.ui.the.commitWillBeRecordedWithAnEmptyMessag, ".ui.the.commitWillBeRecordedWithAnEmptyMessag"),
-        (.ui.review.commit, ".ui.review.commit"),
-        (.ui.server.deletionCount, ".ui.server.deletionCount"),
-        (.ui.server.deletionWarning, ".ui.server.deletionWarning"),
-        (.ui.restore.selectedServerFiles, ".ui.restore.selectedServerFiles"),
-        (.ui.restore.selectedFilesConfirmation, ".ui.restore.selectedFilesConfirmation"),
-        (.ui.restore.selectedFilesCount, ".ui.restore.selectedFilesCount"),
-        (.ui.restore.selectedFilesAction, ".ui.restore.selectedFilesAction"),
-        (.ui.commit.deletionRestorePartial, ".ui.commit.deletionRestorePartial"),
-        (.ui.restore.targetNotDeleted, ".ui.restore.targetNotDeleted"),
-        (.ui.restored.selectedServerFiles, ".ui.restored.selectedServerFiles"),
-        (.ui.no.serverDeletionsRemaining, ".ui.no.serverDeletionsRemaining"),
-        (.ui.confirm.commit, ".ui.confirm.commit"),
-        (.ui.no.label, ".ui.no.label"),
+        (.ui.commit.withoutMessage, ".ui.commit.withoutMessage"),
+        (.ui.commit.recordedEmptyMessage, ".ui.commit.recordedEmptyMessage"),
+        (.ui.commit.reviewCommit, ".ui.commit.reviewCommit"),
+        (.ui.commit.itemDeletedServer, ".ui.commit.itemDeletedServer"),
+        (.ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould, ".ui.commit.someFilesDeletedReviewListBelowConfirmThatTheyShould"),
+        (.ui.commit.restoreSelectedFilesAction, ".ui.commit.restoreSelectedFilesAction"),
+        (.ui.commit.restoreSelectedFilesConfirmationTitle, ".ui.commit.restoreSelectedFilesConfirmationTitle"),
+        (.ui.commit.restoreSelectedDeletionFileServer, ".ui.commit.restoreSelectedDeletionFileServer"),
+        (.ui.commit.restoreServer, ".ui.commit.restoreServer"),
+        (.ui.file.restoredButFailed, ".ui.file.restoredButFailed"),
+        (.ui.file.noLongerMarkedDeleted, ".ui.file.noLongerMarkedDeleted"),
+        (.ui.file.restoredSelectedDeletionFileServer, ".ui.file.restoredSelectedDeletionFileServer"),
+        (.ui.commit.noFilesDeleted, ".ui.commit.noFilesDeleted"),
+        (.ui.commit.confirm, ".ui.commit.confirm"),
+        (.ui.commit.no, ".ui.commit.no"),
     ]
 
     @Test func emptyMessageKeepsCommitButtonEnabled() throws {
@@ -45,8 +45,8 @@ struct CommitMessageConfirmationTests {
 
         #expect(commitControls.contains("store.prepareCommitConfirmation(message: message)"))
         #expect(commitControls.contains("store.commitConfirmationRequest"))
-        #expect(confirmation.contains(".ui.commit.withoutAMessage"))
-        #expect(confirmation.contains(".ui.the.commitWillBeRecordedWithAnEmptyMessag"))
+        #expect(confirmation.contains(".ui.commit.withoutMessage"))
+        #expect(confirmation.contains(".ui.commit.recordedEmptyMessage"))
         for entry in localizationKeys {
             #expect(
                 commitControls.contains(entry.sourceExpression)
@@ -76,7 +76,7 @@ struct CommitMessageConfirmationTests {
         #expect(confirmation.contains(".commitDeletionRestoreConfirmation()"))
         #expect(restoreConfirmation.contains("store.confirmCommitDeletionRestore(restoreRequest)"))
         #expect(restoreConfirmation.contains("restoreRequest.paths.count"))
-        #expect(confirmation.contains(".ui.no.serverDeletionsRemaining"))
+        #expect(confirmation.contains(".ui.commit.noFilesDeleted"))
         #expect(confirmation.contains("AppLayout.commitConfirmationSheetMinimumSize"))
         #expect(!confirmation.contains("DisclosureGroup"))
     }

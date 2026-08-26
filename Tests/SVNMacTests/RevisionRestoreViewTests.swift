@@ -8,8 +8,8 @@ import Testing
         contentsOf: sources.appendingPathComponent("FileHistoryView.swift"),
         encoding: .utf8
     )
-    let saveKey = ".ui.save.thisRevisionAs"
-    let restoreKey = ".ui.restore.workingFileToRevision"
+    let saveKey = ".ui.revision.saveRevision"
+    let restoreKey = ".ui.revision.restoreWorkingFileRevision"
 
     let savePosition = try #require(view.range(of: saveKey)?.lowerBound)
     let restorePosition = try #require(view.range(of: restoreKey)?.lowerBound)
@@ -76,22 +76,22 @@ import Testing
 
 @Test func revisionRestoreStringsExistInEveryLocalizationResource() throws {
     let keys = [
-        "ui.save.this.revision.as.3e8d79a1",
-        "ui.saving.revision.4fb2c8d0",
-        "ui.restore.working.file.to.revision.79c4a2e6",
-        "ui.restoring.revision.c840d51f",
-        "ui.restore.working.file.confirmation.0ab7e3c9",
-        "ui.restore.working.file.warning.62d159af",
-        "ui.restored.revision.commit.required.f9346b20",
-        "ui.saved.historical.revision.76ec18b4",
-        "ui.revision.restore.missing.working.file.346db8a7",
-        "ui.revision.restore.unsafe.working.file.4a960fb3",
-        "ui.revision.restore.path.outside.working.copy.87d5e210",
-        "ui.revision.restore.backup.inside.working.copy.107e9c6a",
-        "ui.revision.restore.backup.verification.failed.d9152a6c",
-        "ui.revision.restore.replacement.verification.failed.b8714e35",
-        "ui.revision.save.invalid.destination.5f4d2c81",
-        "ui.revision.history.client.unavailable.5d7a91c2",
+        "ui.revision.saveRevision",
+        "ui.revision.savingRevision",
+        "ui.revision.restoreWorkingFileRevision",
+        "ui.revision.restoringRevision",
+        "ui.revision.restoreWorkingFile",
+        "ui.revision.currentContentsDiscardedReplacedRRecoveryCopySavedFirstResult",
+        "ui.revision.restoredRNowLocalChangeCommitItUpdateServer",
+        "ui.revision.savedR",
+        "ui.revision.currentWorkingFileCouldNotFoundSoRecoveryCopyCould",
+        "ui.revision.workingFileMustRegularFileNotSymbolicLink",
+        "ui.revision.filePathPointsOutsideLocalWorkingFolder",
+        "ui.revision.recoveryCopiesMustStoredOutsideLocalWorkingFolder",
+        "ui.revision.currentWorkingFileCouldNotVerifiedRecoveryCopySoIt",
+        "ui.revision.restoredFileDidNotMatchSelectedRevisionByteByteRecovery",
+        "ui.revision.selectedSaveLocationNotSafeRegularFileDestination",
+        "ui.revision.projectSvnClientDoesNotSupportReadingHistoricalFileRevisions",
     ]
     let resources = try revisionRestoreSources().appendingPathComponent("Resources", isDirectory: true)
     let localizationFiles = [
@@ -108,7 +108,7 @@ import Testing
     }
 
     #expect(
-        AppLanguage.english.localized(.ui.restored.revisionCommitRequired, "report.xlsx", "17")
+        AppLanguage.english.localized(.ui.revision.restoredRNowLocalChangeCommitItUpdateServer, "report.xlsx", "17")
             == "Restored report.xlsx to r17. This is now a local change. Commit it to update the server."
     )
 }

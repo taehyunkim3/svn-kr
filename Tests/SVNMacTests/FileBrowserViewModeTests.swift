@@ -78,10 +78,10 @@ import Testing
 
 @Test func sharedFileBrowserColumnKeysAreLocalizedInKoreanAndEnglish() throws {
     let expectedValues: [(key: LocalizationKey, korean: String, english: String)] = [
-        (.ui.file.browserNameColumn, "이름", "Name"),
-        (.ui.file.browserModifiedColumn, "수정일", "Date Modified"),
-        (.ui.file.browserSizeColumn, "크기", "Size"),
-        (.ui.file.browserKindColumn, "종류", "Kind"),
+        (.ui.browser.name, "이름", "Name"),
+        (.ui.browser.dateModified, "수정일", "Date Modified"),
+        (.ui.browser.size, "크기", "Size"),
+        (.ui.browser.kind, "종류", "Kind"),
     ]
     let koreanStrings = try source(at: "Sources/SVNMac/Resources/ko.lproj/Localizable.strings")
     let englishStrings = try source(at: "Sources/SVNMac/Resources/en.lproj/Localizable.strings")

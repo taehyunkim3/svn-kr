@@ -78,7 +78,7 @@ extension ProjectStore {
         if !conflicts.isEmpty {
             recoveryState.outOfDateCommitRecoveryRequest?.conflictedPaths = conflicts
             notice = AppLanguage.current.localized(
-                .ui.update.createdConflictsCommitNotRetried,
+                .ui.update.createdConflictsSoCommitNotRetried,
                 conflicts.joined(separator: ", ")
             )
             return
@@ -88,7 +88,7 @@ extension ProjectStore {
         guard retryPaths.isSubset(of: selectableStatusPaths) else {
             isShowingUpdatePreview = false
             errorMessage = AppLanguage.current.localized(
-                .ui.saved.commitSelectionNoLongerAvailable
+                .ui.update.someSavedCommitSelectionsDisappearedChangeListAfterUpdateReview
             )
             return
         }
@@ -192,7 +192,7 @@ extension ProjectStore {
                         failures.append(TemporaryFileCleanupFailure(
                             path: path,
                             reason: AppLanguage.current.localized(
-                                .ui.cleanup.reasonLockedBy,
+                                .ui.update.lockedRepository,
                                 lock.owner
                             )
                         ))
@@ -232,7 +232,7 @@ extension ProjectStore {
                 guard selectedProjectID == project.id else { return }
                 isShowingTemporaryFileCleanup = false
                 notice = AppLanguage.current.localized(
-                    .ui.cleaned.repositoryTemporaryFiles,
+                    .ui.update.cleanedRepositoryTemporaryFile,
                     scheduledPaths.count,
                     result
                 )
@@ -255,14 +255,14 @@ extension ProjectStore {
                 }
                 temporaryFileCleanupFailures = failures
                 errorMessage = AppLanguage.current.localized(
-                    .ui.cleanup.commitFailedUpdateSucceeded,
+                    .ui.update.succeededButCleanupCommitFailedScheduledDeletionsRestored,
                     reason
                 )
             }
         } catch {
             guard selectedProjectID == project.id else { return }
             errorMessage = AppLanguage.current.localized(
-                .ui.cleanup.couldNotStartUpdateSucceeded,
+                .ui.update.succeededButCleanupCouldNotStart,
                 localizedError(error)
             )
         }
@@ -275,6 +275,6 @@ extension ProjectStore {
     private func cleanupFailureMessage(_ failures: [TemporaryFileCleanupFailure]) -> String? {
         guard !failures.isEmpty else { return nil }
         let details = failures.map { "\($0.path): \($0.reason)" }.joined(separator: "\n")
-        return AppLanguage.current.localized(.ui.cleanup.someItemsFailed, details)
+        return AppLanguage.current.localized(.ui.update.someTemporaryFilesNotCleaned, details)
     }
 }

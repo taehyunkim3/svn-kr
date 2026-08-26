@@ -65,34 +65,34 @@ enum VersionedFileActionValidation {
 
 enum RepositoryMaintenanceLocalization {
     static let requiredKeys: [LocalizationKey] = [
-        .ui.current.repositoryUrl,
-        .ui.change.repositoryLocation,
-        .ui.repository.mayHaveMoved,
-        .ui.localizationOpen.repositoryRelocation,
-        .ui.new.repositoryUrl,
-        .ui.local.changesArePreserved,
-        .ui.review.repositoryRelocation,
-        .ui.confirm.repositoryRelocation,
-        .ui.repository.relocationSummary,
-        .ui.relocate.repository,
-        .ui.relocating.repository,
-        .ui.repository.relocationFailedRecovery,
-        .ui.repository.relocated,
-        .ui.rename.withHistory,
-        .ui.copy.withHistory,
-        .ui.new.fileName,
-        .ui.file.actionCommitRequired,
-        .ui.needs.lockEnable,
-        .ui.needs.lockDisable,
-        .ui.needs.lockEnabled,
-        .ui.needs.lockCommitRequired,
-        .ui.invalid.fileName,
-        .ui.source.isNotVersioned,
-        .ui.source.isNotFile,
-        .ui.destination.alreadyExists,
-        .ui.destination.matchesSource,
-        .ui.invalid.repositoryUrl,
-        .ui.repository.urlUnchanged,
+        .ui.repository.currentRepositoryUrl,
+        .ui.repository.changeRepositoryLocation,
+        .ui.repository.mayMovedRelocateNewUrlRestoreRemoteOperations,
+        .ui.repository.openRepositoryRelocation,
+        .ui.repository.newRepositoryUrl,
+        .ui.repository.relocationPreservesAllUncommittedLocalChanges,
+        .ui.repository.reviewRelocation,
+        .ui.repository.relocationConfirmationTitle,
+        .ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges,
+        .ui.repository.relocateAction,
+        .ui.repository.relocatingRepository,
+        .ui.repository.relocationFailedCheckCurrentUrlRelocateCorrectNewUrlIf,
+        .ui.repository.relocatedRepositoryConnectionLocalChangesPreserved,
+        .ui.history.renameHistory,
+        .ui.history.copyHistory,
+        .ui.repository.newFileName,
+        .ui.repository.commitChangeApplyItServer,
+        .ui.lock.requireLockBeforeEditing,
+        .ui.lock.removeRequiredLock,
+        .ui.lock.requiredBeforeEditing,
+        .ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther,
+        .ui.repository.enterValidFileNameWithoutFolderPath,
+        .ui.repository.notSvnVersionedFile,
+        .ui.repository.onlyRegularFilesCanRenamedCopiedAssignedRequiredLockProperty,
+        .ui.repository.destinationNameAlreadyExists,
+        .ui.repository.newFileNameMatchesCurrentName,
+        .ui.repository.enterValidRepositoryUrlIncludingItsScheme,
+        .ui.repository.newRepositoryUrlMatchesCurrentUrl,
     ]
 }
 
@@ -182,13 +182,13 @@ extension ProjectStore {
             clearAutomaticRefreshBlock(for: project.id)
             await refreshSelectedProject(manual: true)
             guard selectedProjectID == project.id else { return false }
-            notice = AppLanguage.current.localized(.ui.repository.relocated, newURL)
+            notice = AppLanguage.current.localized(.ui.repository.relocatedRepositoryConnectionLocalChangesPreserved, newURL)
             return true
         } catch {
             guard selectedProjectID == project.id else { return false }
             let details = localizedError(error)
             recoveryState.repositoryRelocationFailureMessage = AppLanguage.current.localized(
-                .ui.repository.relocationFailedRecovery,
+                .ui.repository.relocationFailedCheckCurrentUrlRelocateCorrectNewUrlIf,
                 details
             )
             if let currentURL = try? await client.workingCopyRepositoryURL(
@@ -278,7 +278,7 @@ extension ProjectStore {
             await loadWorkingCopyFiles()
             guard selectedProjectID == project.id else { return false }
             notice = AppLanguage.current.localized(
-                .ui.file.actionCommitRequired,
+                .ui.repository.commitChangeApplyItServer,
                 destinationPath
             )
             return true
@@ -366,7 +366,7 @@ extension ProjectStore {
             await refreshLocalWorkingCopy()
             guard selectedProjectID == project.id else { return false }
             notice = AppLanguage.current.localized(
-                .ui.needs.lockCommitRequired,
+                .ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther,
                 paths.count
             )
             return true
@@ -382,19 +382,19 @@ extension ProjectStore {
     private func repositoryMaintenanceMessage(for error: Error) -> String {
         switch error {
         case VersionedFileActionError.invalidDestinationName:
-            AppLanguage.current.localized(.ui.invalid.fileName)
+            AppLanguage.current.localized(.ui.repository.enterValidFileNameWithoutFolderPath)
         case let VersionedFileActionError.sourceIsNotVersioned(path):
-            AppLanguage.current.localized(.ui.source.isNotVersioned, path)
+            AppLanguage.current.localized(.ui.repository.notSvnVersionedFile, path)
         case let VersionedFileActionError.sourceIsNotFile(path):
-            AppLanguage.current.localized(.ui.source.isNotFile, path)
+            AppLanguage.current.localized(.ui.repository.onlyRegularFilesCanRenamedCopiedAssignedRequiredLockProperty, path)
         case let VersionedFileActionError.destinationExists(path):
-            AppLanguage.current.localized(.ui.destination.alreadyExists, path)
+            AppLanguage.current.localized(.ui.repository.destinationNameAlreadyExists, path)
         case VersionedFileActionError.destinationMatchesSource:
-            AppLanguage.current.localized(.ui.destination.matchesSource)
+            AppLanguage.current.localized(.ui.repository.newFileNameMatchesCurrentName)
         case RepositoryRelocationError.invalidURL:
-            AppLanguage.current.localized(.ui.invalid.repositoryUrl)
+            AppLanguage.current.localized(.ui.repository.enterValidRepositoryUrlIncludingItsScheme)
         case RepositoryRelocationError.unchangedURL:
-            AppLanguage.current.localized(.ui.repository.urlUnchanged)
+            AppLanguage.current.localized(.ui.repository.newRepositoryUrlMatchesCurrentUrl)
         default:
             localizedError(error)
         }

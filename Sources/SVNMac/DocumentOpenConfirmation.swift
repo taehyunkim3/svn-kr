@@ -23,7 +23,7 @@ private struct DocumentOpenConfirmationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
-                appLanguage.localized(.ui.lock.thisFileBeforeOpening),
+                appLanguage.localized(.ui.lock.fileBeforeOpening),
                 systemImage: "lock.doc"
             )
             .font(.title2.bold())
@@ -33,14 +33,14 @@ private struct DocumentOpenConfirmationView: View {
             Spacer()
 
             Toggle(
-                appLanguage.localized(.ui.localizationOpen.withoutLockAndDoNotAskAgain),
+                appLanguage.localized(.ui.lock.openWithoutLockingDonTAskAgain),
                 isOn: $remembersOpenWithoutLock
             )
             .toggleStyle(.checkbox)
 
             HStack {
                 Spacer()
-                Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+                Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.documentOpenRequest = nil
                 }
                 .keyboardShortcut(.cancelAction)
@@ -48,14 +48,14 @@ private struct DocumentOpenConfirmationView: View {
                 if request.existingLock == nil {
                     // 다시 묻지 않기를 켜면 앞으로 잠그지 않고 여는 선택이므로
                     // 이 자리에서 잠그고 열기를 고를 수 없게 합니다.
-                    Button(appLanguage.localized(.ui.lock.andOpen)) {
+                    Button(appLanguage.localized(.ui.lock.lockAndOpenAction)) {
                         Task { await store.lockAndOpen(request) }
                     }
                     .disabled(remembersOpenWithoutLock)
                 }
 
                 // 잠그고 열기는 다른 사람의 편집을 막으므로 Return 기본 동작으로 두지 않습니다.
-                Button(appLanguage.localized(.ui.localizationOpen.withoutLock)) {
+                Button(appLanguage.localized(.ui.lock.openWithoutLock)) {
                     store.openWithoutLock(
                         request,
                         rememberingChoice: remembersOpenWithoutLock
@@ -72,19 +72,19 @@ private struct DocumentOpenConfirmationView: View {
     private var requestMessage: some View {
         if request.lockInformationWasUnavailable {
             Label(
-                appLanguage.localized(.ui.lock.informationCouldNotBeCheckedYouCanOp),
+                appLanguage.localized(.ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.orange)
         } else if let lock = request.existingLock {
             Text(
                 appLanguage.localized(
-                    .ui.this.fileIsCurrentlyLockedByOpeningWithout,
+                    .ui.lock.fileCurrentlyLockedOpeningWithoutLockMayPreventCommittingCause,
                     lock.owner
                 )
             )
         } else {
-            Text(appLanguage.localized(.ui.locking.preventsConcurrentCommitsByOtherUse))
+            Text(appLanguage.localized(.ui.lock.lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful))
         }
     }
 }

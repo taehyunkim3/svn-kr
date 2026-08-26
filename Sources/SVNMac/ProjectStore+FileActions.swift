@@ -22,7 +22,7 @@ struct CommitDeletionRestoreResult: Equatable {
             .map { "\($0.path): \($0.message)" }
             .joined(separator: "\n")
         return language.localized(
-            .ui.commit.deletionRestorePartial,
+            .ui.file.restoredButFailed,
             restoredPaths.count,
             failures.count,
             details
@@ -105,7 +105,7 @@ extension ProjectStore {
                 failures.append(CommitDeletionRestoreFailure(
                     path: path,
                     message: AppLanguage.current.localized(
-                        .ui.restore.targetNotDeleted
+                        .ui.file.noLongerMarkedDeleted
                     )
                 ))
                 continue
@@ -145,7 +145,7 @@ extension ProjectStore {
         commitDeletionRestoreFailureMessage = result.localizedFailureMessage(.current)
         if failures.isEmpty {
             notice = AppLanguage.current.localized(
-                .ui.restored.selectedServerFiles,
+                .ui.file.restoredSelectedDeletionFileServer,
                 restoredPaths.count
             )
         }
@@ -182,7 +182,7 @@ extension ProjectStore {
                 projectID: request.projectID
             ) else { return }
             selectedPaths.remove(request.entry.path)
-            notice = AppLanguage.current.localized(.ui.reverted.localChanges, request.entry.path)
+            notice = AppLanguage.current.localized(.ui.file.revertedLocalChanges, request.entry.path)
             await refresh()
         } catch {
             guard canApplyRequest(
@@ -244,6 +244,6 @@ extension ProjectStore {
         let path = URL(fileURLWithPath: project.path, isDirectory: true).appendingPathComponent(relativePath).path
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects([path as NSString])
-        notice = AppLanguage.current.localized(.ui.copied.theFilePath)
+        notice = AppLanguage.current.localized(.ui.file.copiedFilePath)
     }
 }

@@ -30,7 +30,7 @@ struct TreeConflictResolutionView: View {
                 pendingChoice = nil
                 Task { await store.resolveActiveTreeConflict(using: choice) }
             }
-            Button(appLanguage.localized(.ui.cancel.label), role: .cancel) {
+            Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                 pendingChoice = nil
             }
         } message: {
@@ -44,7 +44,7 @@ struct TreeConflictResolutionView: View {
     private var header: some View {
         HStack {
             Label(
-                appLanguage.localized(.ui.tree.conflict),
+                appLanguage.localized(.ui.conflict.treeConflict),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.title2.bold())
@@ -57,7 +57,7 @@ struct TreeConflictResolutionView: View {
         VStack(alignment: .leading, spacing: 14) {
             if session.wasCanonicallyResolved {
                 Label(
-                    appLanguage.localized(.ui.the.macosUnicodePathWasMatchedToTheActual),
+                    appLanguage.localized(.ui.conflict.macosUnicodePathMatchedActualSvnManagedPath),
                     systemImage: "checkmark.circle"
                 )
                 .font(.caption)
@@ -68,25 +68,25 @@ struct TreeConflictResolutionView: View {
                 .lineLimit(1)
                 .textSelection(.enabled)
 
-            Text(appLanguage.localized(.ui.tree.conflictIsNotAChoiceBetweenTwoFiles))
+            Text(appLanguage.localized(.ui.conflict.treeConflictConcernsPathStateNotFileContentsNotChoice))
                 .foregroundStyle(.secondary)
 
             HStack(alignment: .top, spacing: 14) {
                 choiceCard(
-                    title: appLanguage.localized(.ui.keep.myChange),
-                    description: appLanguage.localized(.ui.confirm.currentWorkingCopyState),
+                    title: appLanguage.localized(.ui.conflict.keepMyChange),
+                    description: appLanguage.localized(.ui.conflict.confirmCurrentWorkingCopyState),
                     warning: appLanguage.localized(
-                        .ui.local.deletionWillRemainAndACommitWillDe
+                        .ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer
                     ),
                     choice: .keepWorkingState
                 )
 
                 choiceCard(
-                    title: appLanguage.localized(.ui.restore.fileFromServerVersion),
+                    title: appLanguage.localized(.ui.conflict.restoreFileServerVersion),
                     description: appLanguage.localized(
-                        .ui.discard.localChangeAndRestoreServerFile
+                        .ui.conflict.discardLocalChangeRestoreServerFile
                     ),
-                    warning: appLanguage.localized(.ui.local.changesWillBeDiscarded),
+                    warning: appLanguage.localized(.ui.conflict.uncommittedLocalChangesDiscarded),
                     choice: .restoreServerVersion
                 )
             }
@@ -113,7 +113,7 @@ struct TreeConflictResolutionView: View {
                     } label: {
                         ActionProgressLabel(
                             title: title,
-                            inProgressTitle: appLanguage.localized(.ui.resolving.label),
+                            inProgressTitle: appLanguage.localized(.ui.conflict.resolving),
                             isInProgress: store.isResolvingConflict
                         )
                     }
@@ -139,16 +139,16 @@ struct TreeConflictResolutionView: View {
     private func title(for choice: TreeConflictResolutionChoice) -> String {
         switch choice {
         case .keepWorkingState:
-            appLanguage.localized(.ui.keep.myChange)
+            appLanguage.localized(.ui.conflict.keepMyChange)
         case .restoreServerVersion:
-            appLanguage.localized(.ui.restore.fileFromServerVersion)
+            appLanguage.localized(.ui.conflict.restoreFileServerVersion)
         }
     }
 
     private func warningMessage(for choice: TreeConflictResolutionChoice) -> String {
         switch choice {
         case .keepWorkingState:
-            return appLanguage.localized(.ui.local.deletionWillRemainAndACommitWillDe)
+            return appLanguage.localized(.ui.conflict.ifDeletedItLocallyDeletionRemainsCommitDeleteItServer)
         case .restoreServerVersion:
             return restoreWarningMessage(store.activeTreeConflictSession?.restoreImpact)
         }
@@ -158,19 +158,19 @@ struct TreeConflictResolutionView: View {
     /// 저장소에 없는 파일이 먼저 오게 해서 영구 손실 항목을 눈에 띄게 합니다.
     private func restoreWarningMessage(_ impact: TreeConflictRestoreImpact?) -> String {
         guard let impact, !impact.isEmpty else {
-            return appLanguage.localized(.ui.local.changesWillBeDiscarded)
+            return appLanguage.localized(.ui.conflict.uncommittedLocalChangesDiscarded)
         }
-        var lines = [appLanguage.localized(.ui.restore.serverVersionRemovesTheseItems)]
+        var lines = [appLanguage.localized(.ui.conflict.revertingRemovesItemsBelowWorkingFolderTheyCopiedBackupFolder)]
         lines += pathSection(
             title: appLanguage.localized(
-                .ui.files.notInRepositoryCount,
+                .ui.conflict.fileThatNotRepository,
                 String(impact.unversionedPaths.count)
             ),
             paths: impact.unversionedPaths
         )
         lines += pathSection(
             title: appLanguage.localized(
-                .ui.uncommitted.changesCount,
+                .ui.conflict.uncommittedChange,
                 String(impact.uncommittedPaths.count)
             ),
             paths: impact.uncommittedPaths
@@ -185,7 +185,7 @@ struct TreeConflictResolutionView: View {
         lines += listed.map { "  " + $0.precomposedStringWithCanonicalMapping }
         if paths.count > listed.count {
             lines.append("  " + appLanguage.localized(
-                .ui.and.moreItemsCount,
+                .ui.conflict.more,
                 String(paths.count - listed.count)
             ))
         }
@@ -194,11 +194,11 @@ struct TreeConflictResolutionView: View {
 
     private var footer: some View {
         HStack {
-            Text(appLanguage.localized(.ui.this.fileCannotBeCommittedUntilItIsMarked))
+            Text(appLanguage.localized(.ui.conflict.fileCannotCommittedUntilItMarkedResolved))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(appLanguage.localized(.ui.cancel.label)) { dismiss() }
+            Button(appLanguage.localized(.ui.common.cancel)) { dismiss() }
                 .keyboardShortcut(.cancelAction)
                 .disabled(store.isResolvingConflict)
         }

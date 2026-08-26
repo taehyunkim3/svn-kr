@@ -116,7 +116,7 @@ struct WorkingCopySplitBrowserView: View {
         .overlay {
             if loadingDirectoryGenerations[""] == cacheGeneration
                 && !browserState.isDirectoryCached("") {
-                ProgressView(appLanguage.localized(.ui.loading.files))
+                ProgressView(appLanguage.localized(.ui.browser.loadingFiles))
             }
         }
         .overlay { focusBorder(for: .folders) }
@@ -141,7 +141,7 @@ struct WorkingCopySplitBrowserView: View {
             synchronizeFolderSelection()
             return .handled
         }
-        .accessibilityLabel(appLanguage.localized(.ui.folder.label))
+        .accessibilityLabel(appLanguage.localized(.ui.common.folder))
     }
 
     private var contentsPanel: some View {
@@ -154,7 +154,7 @@ struct WorkingCopySplitBrowserView: View {
                     .help(currentFolderDisplayPath)
                 Spacer()
                 Text(appLanguage.localized(
-                    .ui.file.browserItemsCount,
+                    .ui.browser.items,
                     sortedTableRows.count
                 ))
                     .font(.caption)
@@ -167,7 +167,7 @@ struct WorkingCopySplitBrowserView: View {
 
             Table(sortedTableRows, selection: contentSelection, sortOrder: $sortOrder) {
                 TableColumn(
-                    appLanguage.localized(.ui.file.browserNameColumn),
+                    appLanguage.localized(.ui.browser.name),
                     value: \.name
                 ) { row in
                     contextualCell(for: row.node) {
@@ -179,7 +179,7 @@ struct WorkingCopySplitBrowserView: View {
                     ideal: AppLayout.fileBrowserNameColumnIdealWidth
                 )
                 TableColumn(
-                    appLanguage.localized(.ui.file.browserKindColumn),
+                    appLanguage.localized(.ui.browser.kind),
                     value: \.kind
                 ) { row in
                     contextualCell(for: row.node) {
@@ -187,7 +187,7 @@ struct WorkingCopySplitBrowserView: View {
                     }
                 }
                 TableColumn(
-                    appLanguage.localized(.ui.file.browserSizeColumn),
+                    appLanguage.localized(.ui.browser.size),
                     value: \.fileSizeSortValue
                 ) { row in
                     contextualCell(for: row.node) {
@@ -195,7 +195,7 @@ struct WorkingCopySplitBrowserView: View {
                     }
                 }
                 TableColumn(
-                    appLanguage.localized(.ui.file.browserModifiedColumn),
+                    appLanguage.localized(.ui.browser.dateModified),
                     value: \.modificationDateSortValue
                 ) { row in
                     contextualCell(for: row.node) {
@@ -203,7 +203,7 @@ struct WorkingCopySplitBrowserView: View {
                             .monospacedDigit()
                     }
                 }
-                TableColumn(appLanguage.localized(.ui.file.browserActions)) { row in
+                TableColumn(appLanguage.localized(.ui.browser.actions)) { row in
                     contextualCell(for: row.node) {
                         rowActions(row.node)
                     }
@@ -223,11 +223,11 @@ struct WorkingCopySplitBrowserView: View {
             }
             .overlay {
                 if isLoadingCurrentDirectory && !browserState.isDirectoryCached(browserState.currentDirectoryPath) {
-                    ProgressView(appLanguage.localized(.ui.loading.files))
+                    ProgressView(appLanguage.localized(.ui.browser.loadingFiles))
                 } else if browserState.isDirectoryCached(browserState.currentDirectoryPath)
                             && sortedTableRows.isEmpty {
                     ContentUnavailableView(
-                        appLanguage.localized(.ui.no.files),
+                        appLanguage.localized(.ui.browser.noFiles),
                         systemImage: "folder"
                     )
                 }
@@ -254,7 +254,7 @@ struct WorkingCopySplitBrowserView: View {
             Task { await loadDirectory(browserState.currentDirectoryPath) }
             return .handled
         }
-        .accessibilityLabel(appLanguage.localized(.ui.files.label))
+        .accessibilityLabel(appLanguage.localized(.ui.browser.files))
     }
 
     private func folderRow(_ row: WorkingCopySplitBrowserState.FolderRow) -> some View {
@@ -323,10 +323,10 @@ struct WorkingCopySplitBrowserView: View {
             if let node = folderNode(at: row.relativePath) {
                 contextMenuItems(for: node)
             } else {
-                Button(appLanguage.localized(.ui.reveal.inFinder)) {
+                Button(appLanguage.localized(.ui.common.revealFinder)) {
                     store.revealInFinder("")
                 }
-                Button(appLanguage.localized(.ui.copy.fullPath)) {
+                Button(appLanguage.localized(.ui.common.copyFullPath)) {
                     store.copyPath("")
                 }
             }
@@ -355,12 +355,12 @@ struct WorkingCopySplitBrowserView: View {
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.needs.lockEnabled))
+                    .help(appLanguage.localized(.ui.lock.requiredBeforeEditing))
             }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.symbolic.link))
+                    .help(appLanguage.localized(.ui.browser.symbolicLink))
             }
         }
     }
@@ -368,17 +368,17 @@ struct WorkingCopySplitBrowserView: View {
     private func rowActions(_ node: WorkingCopyFileNode) -> some View {
         HStack {
             if !node.isDirectory {
-                Button(appLanguage.localized(.ui.localizationOpen.file)) {
+                Button(appLanguage.localized(.ui.common.openFile)) {
                     Task { await openFile(node) }
                 }
                 // 열 폭이 좁아 이름이 줄어들 수 있으므로 전체 이름을 툴팁으로 남깁니다.
-                .help(appLanguage.localized(.ui.localizationOpen.file))
+                .help(appLanguage.localized(.ui.common.openFile))
                 .fixedSize()
             }
-            Button(appLanguage.localized(.ui.reveal.inFinder)) {
+            Button(appLanguage.localized(.ui.common.revealFinder)) {
                 store.revealInFinder(node.relativePath)
             }
-            .help(appLanguage.localized(.ui.reveal.inFinder))
+            .help(appLanguage.localized(.ui.common.revealFinder))
             .fixedSize()
         }
     }
@@ -407,21 +407,21 @@ struct WorkingCopySplitBrowserView: View {
     @ViewBuilder
     private func contextMenuItems(for node: WorkingCopyFileNode) -> some View {
         if !node.isDirectory {
-            Button(appLanguage.localized(.ui.localizationOpen.file)) {
+            Button(appLanguage.localized(.ui.common.openFile)) {
                 Task { await openFile(node) }
             }
             if let lock = lockInfo(for: node),
                lock.owner == store.selectedProject?.username {
-                Button(appLanguage.localized(.ui.release.lock)) {
+                Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                     Task { await store.unlock(lock) }
                 }
                 .disabled(store.isSelectedProjectActionBlocked)
             }
         }
-        Button(appLanguage.localized(.ui.reveal.inFinder)) {
+        Button(appLanguage.localized(.ui.common.revealFinder)) {
             store.revealInFinder(node.relativePath)
         }
-        Button(appLanguage.localized(.ui.copy.fullPath)) {
+        Button(appLanguage.localized(.ui.common.copyFullPath)) {
             store.copyPath(node.relativePath)
         }
         if node.isRegularFile, node.isVersioned {
@@ -429,27 +429,27 @@ struct WorkingCopySplitBrowserView: View {
             if lockInfo(for: node)?.owner != store.selectedProject?.username {
                 Button(
                     lockInfo(for: node) == nil
-                        ? appLanguage.localized(.ui.lock.fileExplicitly)
-                        : appLanguage.localized(.ui.review.forceLock)
+                        ? appLanguage.localized(.ui.lock.file)
+                        : appLanguage.localized(.ui.lock.reviewForceLock)
                 ) {
                     Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                 }
             }
-            Button(appLanguage.localized(.ui.file.commitHistoryFileCommitHistory)) {
+            Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
                 Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
             }
-            Button(appLanguage.localized(.ui.rename.withHistory)) {
+            Button(appLanguage.localized(.ui.history.renameHistory)) {
                 store.requestVersionedFileAction(.move, path: node.relativePath)
             }
-            Button(appLanguage.localized(.ui.copy.withHistory)) {
+            Button(appLanguage.localized(.ui.history.copyHistory)) {
                 store.requestVersionedFileAction(.copy, path: node.relativePath)
             }
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
-                Button(appLanguage.localized(.ui.needs.lockDisable)) {
+                Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
                     Task { _ = await store.setNeedsLock(false, paths: [node.relativePath]) }
                 }
             } else {
-                Button(appLanguage.localized(.ui.needs.lockEnable)) {
+                Button(appLanguage.localized(.ui.lock.requireLockBeforeEditing)) {
                     Task { _ = await store.setNeedsLock(true, paths: [node.relativePath]) }
                 }
             }
@@ -457,7 +457,7 @@ struct WorkingCopySplitBrowserView: View {
     }
 
     private var rootFolderName: String {
-        store.selectedProject?.name ?? appLanguage.localized(.ui.file.browserWorkingCopyRoot)
+        store.selectedProject?.name ?? appLanguage.localized(.ui.browser.workingCopy)
     }
 
     private var currentFolderDisplayPath: String {
@@ -709,7 +709,7 @@ struct WorkingCopySplitBrowserView: View {
 
     private func kindDescription(_ node: WorkingCopyFileNode) -> String {
         node.typeDescription ?? appLanguage.localized(
-            node.isDirectory ? .ui.folder.label : .ui.file.labelFile2
+            node.isDirectory ? .ui.common.folder : .ui.common.fileType
         )
     }
 
@@ -745,11 +745,11 @@ struct WorkingCopySplitBrowserView: View {
     private func visibleStatus(for node: WorkingCopyFileNode) -> String? {
         guard let status = node.svnEntry?.status, status != "normal" else { return nil }
         switch status {
-        case "modified": return appLanguage.localized(.ui.modified.labelPrimary)
-        case "added": return appLanguage.localized(.ui.added.label)
-        case "unversioned": return appLanguage.localized(.ui.unversioned.label)
-        case "ignored": return appLanguage.localized(.ui.ignored.label)
-        case "conflicted": return appLanguage.localized(.ui.conflict.label)
+        case "modified": return appLanguage.localized(.ui.status.modified)
+        case "added": return appLanguage.localized(.ui.status.added)
+        case "unversioned": return appLanguage.localized(.ui.status.unversioned)
+        case "ignored": return appLanguage.localized(.ui.status.ignored)
+        case "conflicted": return appLanguage.localized(.ui.conflict.conflict)
         default: return status
         }
     }
@@ -760,9 +760,9 @@ struct WorkingCopySplitBrowserView: View {
 
     private func lockDescription(_ lock: SVNLockInfo) -> String {
         if lock.owner == store.selectedProject?.username {
-            return appLanguage.localized(.ui.locked.byYou)
+            return appLanguage.localized(.ui.lock.lockedByCurrentUser)
         }
-        return appLanguage.localized(.ui.locked.by, lock.owner)
+        return appLanguage.localized(.ui.lock.lockedByOwner, lock.owner)
     }
 }
 
