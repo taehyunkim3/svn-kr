@@ -46,6 +46,48 @@ import Testing
     #expect(status.contains { $0.path == fileName && $0.item == .conflicted })
 }
 
+/// 삭제 예약은 복구 뒤 "누락"으로, 추가 예약은 "미등록"으로 격하되면 사용자가 예약을
+/// 다시 해야 하고, 누락 상태는 커밋 자체를 막습니다. 복구가 예약을 다시 세워야 합니다.
+@Test func realSVNRecoveryKeepsScheduledDeletionAndAdditionInsteadOfDemotingThem() async throws {
+    let fixture = try SVNRecoveryIntegrationFixture()
+    defer { fixture.remove() }
+
+    let deletedName = "삭제예정.txt"
+    let addedName = "새 문서.txt"
+    let addedFolderName = "새 폴더"
+    let ignoredChildName = "새 폴더/미등록.txt"
+
+    try Data("r1\n".utf8).write(to: fixture.source.appendingPathComponent(deletedName))
+    _ = try runSVNRecoveryCommand(fixture.svnPath, ["add", deletedName], currentDirectory: fixture.source)
+    _ = try runSVNRecoveryCommand(fixture.svnPath, ["commit", "-m", "r1"], currentDirectory: fixture.source)
+
+    _ = try runSVNRecoveryCommand(fixture.svnPath, ["delete", deletedName], currentDirectory: fixture.source)
+    try Data("새 내용\n".utf8).write(to: fixture.source.appendingPathComponent(addedName))
+    _ = try runSVNRecoveryCommand(fixture.svnPath, ["add", addedName], currentDirectory: fixture.source)
+    try FileManager.default.createDirectory(
+        at: fixture.source.appendingPathComponent(addedFolderName, isDirectory: true),
+        withIntermediateDirectories: true
+    )
+    _ = try runSVNRecoveryCommand(fixture.svnPath, ["add", "--depth", "empty", addedFolderName], currentDirectory: fixture.source)
+    try Data("미등록\n".utf8).write(to: fixture.source.appendingPathComponent(ignoredChildName))
+
+    let destination = fixture.root.appendingPathComponent("recovered", isDirectory: true)
+    let result = try await fixture.client.recoverWorkingCopy(
+        from: fixture.source.path,
+        to: destination.path
+    )
+
+    let statusByPath = Dictionary(
+        result.snapshot.statuses.map { ($0.path, $0.item) },
+        uniquingKeysWith: { first, _ in first }
+    )
+    #expect(statusByPath[deletedName] == .deleted)
+    #expect(statusByPath[addedName] == .added)
+    #expect(statusByPath[addedFolderName] == .added)
+    // 추가 예약 폴더 아래 미등록 파일까지 끌어들이면 안 된다.
+    #expect(statusByPath[ignoredChildName] == .unversioned)
+}
+
 private struct SVNRecoveryIntegrationFixture {
     let root: URL
     let source: URL

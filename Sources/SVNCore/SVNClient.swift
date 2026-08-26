@@ -698,6 +698,11 @@ public actor SVNClient {
                 allowedServerCertificateFailures: allowedServerCertificateFailures
             )
             try SVNWorkingCopyRecovery.apply(preview, from: source, to: destination)
+            try await restoreRecoveryScheduling(
+                preview,
+                at: destination,
+                credentials: credentials
+            )
 
             let recoveredSnapshot = try await workingCopySnapshot(at: destination.path, credentials: credentials)
             guard !recoveredSnapshot.hasPathCollisions else {
@@ -713,6 +718,59 @@ public actor SVNClient {
             SVNWorkingCopyRecovery.rollbackDestination(preparation, at: destination)
             throw error
         }
+    }
+
+    /// 파일 복사만으로는 삭제·추가 예약이 재현되지 않습니다. 삭제 예약은 새 작업 복사본에서
+    /// "누락"으로, 추가 예약은 "미등록"으로 격하되어 사용자가 예약을 처음부터 다시 해야 하고,
+    /// 누락 상태는 커밋 자체를 막습니다. 예약을 svn 명령으로 다시 세웁니다.
+    private func restoreRecoveryScheduling(
+        _ preview: SVNRecoveryPreview,
+        at destination: URL,
+        credentials: SVNCredentials?
+    ) async throws {
+        // 상위 경로를 먼저 추가해야 하위 경로를 추가할 수 있습니다. `--depth empty`는
+        // 추가 예약 폴더 아래의 미등록 파일을 함께 끌어들이지 않게 합니다. 방금 복사한
+        // 파일이므로 디스크에 실제로 만들어진 이름을 그대로 넘깁니다.
+        let additions = Self.recoverySchedulingTargets(in: preview, status: .added, path: \.destinationPath)
+            .compactMap {
+                SVNWorkingCopyRecovery.onDiskRelativePath(for: $0, below: destination)
+            }
+        if !additions.isEmpty {
+            _ = try await checkedRunWithMultipleWorkingCopyPathArguments(
+                ["add", "--depth", "empty"],
+                projectRelativePaths: additions,
+                at: destination.path,
+                credentials: credentials
+            )
+        }
+
+        // 삭제 예약 대상은 저장소가 가진 원문 경로로 체크아웃되어 있습니다. NFC로 접은
+        // 대상 경로를 넘기면 저장소 이름이 NFD일 때 "버전 관리 대상이 아니다"가 됩니다.
+        let deletions = Self.recoverySchedulingTargets(in: preview, status: .deleted, path: \.sourcePath)
+        if !deletions.isEmpty {
+            _ = try await checkedRunWithMultipleWorkingCopyPathArguments(
+                ["delete"],
+                projectRelativePaths: deletions,
+                at: destination.path,
+                credentials: credentials
+            )
+        }
+    }
+
+    private static func recoverySchedulingTargets(
+        in preview: SVNRecoveryPreview,
+        status: SVNStatusKind,
+        path: KeyPath<SVNRecoveryPathMapping, String>
+    ) -> [String] {
+        preview.mappings
+            .filter { $0.status == status }
+            .map { $0[keyPath: path] }
+            .sorted {
+                let leftDepth = $0.split(separator: "/").count
+                let rightDepth = $1.split(separator: "/").count
+                if leftDepth != rightDepth { return leftDepth < rightDepth }
+                return $0 < $1
+            }
     }
 
     /// 혼합 리비전 작업 복사본은 경로마다 BASE가 다릅니다. 가장 낮은 리비전으로 체크아웃한

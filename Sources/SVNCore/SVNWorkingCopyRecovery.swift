@@ -200,6 +200,33 @@ enum SVNWorkingCopyRecovery {
         }
     }
 
+    /// Foundation은 파일 시스템 경로를 NFD로 바꿔 쓰므로, NFC 상대 경로로 복사해도
+    /// 디스크에는 NFD 이름이 남습니다. `svn add`에 NFC 원문을 넘기면 wc.db에는 NFC가,
+    /// 디스크에는 NFD가 있어 같은 파일이 "누락"과 "미등록"으로 갈라집니다. 복사한 뒤
+    /// 디스크에 실제로 만들어진 이름을 그대로 찾아 svn에 넘깁니다.
+    static func onDiskRelativePath(
+        for relativePath: String,
+        below root: URL,
+        fileManager: FileManager = .default
+    ) -> String? {
+        var current = root
+        var resolved: [String] = []
+        for component in relativePath.split(separator: "/", omittingEmptySubsequences: true).map(String.init) {
+            guard let names = try? fileManager.contentsOfDirectory(atPath: current.path) else { return nil }
+            let wanted = Data(component.utf8)
+            let canonicalWanted = Data(component.precomposedStringWithCanonicalMapping.utf8)
+            guard let match = names.first(where: { Data($0.utf8) == wanted })
+                ?? names.first(where: {
+                    Data($0.precomposedStringWithCanonicalMapping.utf8) == canonicalWanted
+                }) else {
+                return nil
+            }
+            resolved.append(match)
+            current = current.appendingPathComponent(match)
+        }
+        return resolved.isEmpty ? nil : resolved.joined(separator: "/")
+    }
+
     private static func mergeCopy(from source: URL, to destination: URL, fileManager: FileManager) throws {
         let values = try source.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
         if values.isSymbolicLink == true {
