@@ -30,17 +30,17 @@ import Testing
     #expect(state.commits[0].changedPaths == changedPaths)
 }
 
-@Test func updatePreviewCommitsStartCollapsedAndCanToggle() {
+@Test func updatePreviewCommitsStartExpandedAndCanToggle() {
     var state = UpdatePreviewState()
     state.receive([makeUpdatePreviewCommit(revision: "42")])
 
-    #expect(!state.isExpanded("42"))
-
-    state.setExpanded(true, revision: "42")
     #expect(state.isExpanded("42"))
 
     state.setExpanded(false, revision: "42")
     #expect(!state.isExpanded("42"))
+
+    state.setExpanded(true, revision: "42")
+    #expect(state.isExpanded("42"))
 }
 
 @Test func updatePreviewFailureStillAllowsUpdateAttempt() {

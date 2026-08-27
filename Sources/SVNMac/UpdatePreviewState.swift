@@ -25,7 +25,8 @@ struct UpdatePreviewState {
     mutating func receive(_ incomingCommits: [SVNLogEntry]) {
         totalCommitCount = incomingCommits.count
         commits = Array(incomingCommits.prefix(Self.maximumVisibleCommitCount))
-        expandedRevisions.formIntersection(commits.map(\.revision))
+        // 업데이트로 내려올 내용을 먼저 확인시키는 화면이므로 변경 경로를 처음부터 보여줍니다.
+        expandedRevisions = Set(commits.map(\.revision))
     }
 
     mutating func recordFailure(_ message: String) {
