@@ -41,12 +41,17 @@ import Testing
 }
 
 @Test func changesDisclosureHitTargetExceedsIconAndStopsBeforeToggle() {
+    #expect(AppLayout.changesDisclosureIconSize.width == 18)
+    #expect(AppLayout.changesDisclosureIconSize.height == 18)
+    #expect(AppLayout.changesDisclosureHitTargetSize.width >= 28)
+    #expect(AppLayout.changesDisclosureHitTargetSize.height >= 28)
     #expect(AppLayout.changesDisclosureHitTargetSize.width > AppLayout.changesDisclosureIconSize.width)
     #expect(AppLayout.changesDisclosureHitTargetSize.height > AppLayout.changesDisclosureIconSize.height)
 
-    let disclosureTrailingEdge = AppLayout.changesDisclosureHitTargetSize.width
-    let toggleLeadingEdge = disclosureTrailingEdge + AppLayout.changesRowSpacing
-    #expect(disclosureTrailingEdge < toggleLeadingEdge)
+    let horizontalHitExpansion = (
+        AppLayout.changesDisclosureHitTargetSize.width - AppLayout.changesDisclosureIconSize.width
+    ) / 2
+    #expect(horizontalHitExpansion < AppLayout.changesRowSpacing)
 }
 
 @Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {
