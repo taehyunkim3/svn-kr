@@ -20,7 +20,7 @@ enum ManualIgnoreRuleValidation {
         propertyKind: SVNIgnorePropertyKind,
         existingRules: [SVNIgnoreRule]
     ) throws -> ManualIgnoreRuleInput {
-        let pattern = pattern.trimmingCharacters(in: .whitespaces)
+        let pattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDirectory = directory.trimmingCharacters(in: .whitespacesAndNewlines)
         let directory = trimmedDirectory.isEmpty ? "." : trimmedDirectory
         guard !pattern.isEmpty else {
