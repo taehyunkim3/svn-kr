@@ -99,17 +99,27 @@ struct IgnoreRulesView: View {
     private var manualRuleInputRow: some View {
         @Bindable var store = store
         return HStack {
+            Text(appLanguage.localized(.ui.ignore.pattern))
+                .foregroundStyle(.secondary)
             TextField(
                 appLanguage.localized(.ui.ignore.pattern),
                 text: $store.manualIgnorePattern,
                 prompt: Text("*.log")
             )
             .font(.body.monospaced())
+            .textFieldStyle(.roundedBorder)
+            .labelsHidden()
+            Text(appLanguage.localized(.ui.ignore.directory))
+                .foregroundStyle(.secondary)
+            // 비워 두면 작업 복사본 루트(.)로 처리하므로 기본값을 채우지 않고 예시만 보여줍니다.
             TextField(
                 appLanguage.localized(.ui.ignore.directory),
-                text: $store.manualIgnoreDirectory
+                text: $store.manualIgnoreDirectory,
+                prompt: Text(".")
             )
             .font(.body.monospaced())
+            .textFieldStyle(.roundedBorder)
+            .labelsHidden()
             Picker(
                 appLanguage.localized(.ui.ignore.propertyKind),
                 selection: $store.manualIgnorePropertyKind

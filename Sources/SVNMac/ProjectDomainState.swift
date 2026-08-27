@@ -9,7 +9,7 @@ final class ProjectChangesStore {
     var ignoredStatuses: [SVNStatusEntry] = []
     var ignoreRules: [SVNIgnoreRule] = []
     var manualIgnorePattern = ""
-    var manualIgnoreDirectory = "."
+    var manualIgnoreDirectory = ""
     var manualIgnorePropertyKind: SVNIgnorePropertyKind = .local
     var gitIgnoreImportItems: [IgnoreImportItem] = []
     var selectedGitIgnoreImportIDs: Set<IgnoreImportItem.ID> = []

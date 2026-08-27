@@ -145,7 +145,7 @@ extension ProjectStore {
             if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
             guard selectedProjectID == project.id else { return }
             manualIgnorePattern = ""
-            manualIgnoreDirectory = "."
+            manualIgnoreDirectory = ""
             manualIgnorePropertyKind = .local
         } catch {
             guard selectedProjectID == project.id else { return }
