@@ -223,6 +223,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.changes.includeCommit,
         Self.ui.changes.includeExcludeFileNextCommit,
         Self.ui.changes.localChangesRefreshed,
+        Self.ui.changes.loadingChangeList,
         Self.ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose,
         Self.ui.changes.noChanges,
         Self.ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination,
@@ -1065,6 +1066,7 @@ struct LocalizationUIChangesKeys {
     let includeCommit = LocalizationKey("ui.changes.includeCommit")
     let includeExcludeFileNextCommit = LocalizationKey("ui.changes.includeExcludeFileNextCommit")
     let localChangesRefreshed = LocalizationKey("ui.changes.localChangesRefreshed")
+    let loadingChangeList = LocalizationKey("ui.changes.loadingChangeList")
     let multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose = LocalizationKey("ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose")
     let noChanges = LocalizationKey("ui.changes.noChanges")
     let pathPointsDifferentRepositoryLocationVerifyCommitDestination = LocalizationKey("ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination")

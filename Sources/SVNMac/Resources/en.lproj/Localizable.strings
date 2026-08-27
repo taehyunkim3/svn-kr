@@ -243,6 +243,7 @@
 "ui.lock.loadingRepositoryLocks" = "Loading repository locks…";
 "ui.history.localChanges" = "%1$@ local changes";
 "ui.changes.localChangesRefreshed" = "%1$@ local changes refreshed";
+"ui.changes.loadingChangeList" = "Loading changes…";
 "ui.repository.localFolder" = "Local folder";
 "ui.repository.localWorkingFolders" = "Local working folders";
 "ui.recovery.locallyMissingActionRequired" = "Locally Missing · Action Required";

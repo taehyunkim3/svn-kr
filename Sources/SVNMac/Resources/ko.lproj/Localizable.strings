@@ -243,6 +243,7 @@
 "ui.lock.loadingRepositoryLocks" = "잠금 목록 불러오는 중…";
 "ui.history.localChanges" = "로컬 변경 %1$@개";
 "ui.changes.localChangesRefreshed" = "%1$@ 로컬 변경 사항 확인 완료";
+"ui.changes.loadingChangeList" = "변경 목록 불러오는 중…";
 "ui.repository.localFolder" = "로컬 폴더";
 "ui.repository.localWorkingFolders" = "로컬 작업 폴더";
 "ui.recovery.locallyMissingActionRequired" = "로컬 누락 · 처리 필요";
