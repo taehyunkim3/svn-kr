@@ -95,7 +95,12 @@ extension ProjectStore {
         selectedPaths = retryPaths
         // 삭제(missing) 항목은 커밋 전에 저장소 삭제 예약이 필요합니다.
         // commit(message:)는 그 항목을 거부하므로 예약을 포함한 경로로 재시도합니다.
-        _ = await commitSelectedChanges(message: recovery.message)
+        let didCommit = await commitSelectedChanges(message: recovery.message)
+        // 재시도가 성공하면 시트를 닫습니다. 닫지 않으면 커밋이 끝난 뒤에도
+        // 같은 안내가 남아 아직 처리할 일이 있는 것처럼 보입니다.
+        if didCommit, recoveryState.outOfDateCommitRecoveryRequest == nil {
+            isShowingUpdatePreview = false
+        }
     }
 
     func previewUpdate() async {

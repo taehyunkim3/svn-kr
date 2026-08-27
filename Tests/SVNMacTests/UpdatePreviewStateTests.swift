@@ -293,3 +293,28 @@ private final class UpdatePreviewProjectPersistence: ProjectPersisting {
 
     func saveProjects(_: [SVNProject]) {}
 }
+
+@Test func updatePreviewTreatsRejectedCommitAsOutOfDateWorkingCopy() {
+    #expect(UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
+        hasCommitRecovery: true,
+        isWorkingCopyOutOfDate: nil
+    ))
+    #expect(UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
+        hasCommitRecovery: true,
+        isWorkingCopyOutOfDate: false
+    ))
+    #expect(UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
+        hasCommitRecovery: false,
+        isWorkingCopyOutOfDate: true
+    ))
+    #expect(!UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
+        hasCommitRecovery: false,
+        isWorkingCopyOutOfDate: false
+    ))
+}
+
+@Test func updatePreviewRunsUpdateWhenOnlyCommitRejectionKnown() {
+    let state = UpdatePreviewState()
+    #expect(state.canRunUpdate(hasRemoteChanges: false, isWorkingCopyOutOfDate: true))
+    #expect(!state.canRunUpdate(hasRemoteChanges: false, isWorkingCopyOutOfDate: false))
+}

@@ -80,7 +80,8 @@ import Testing
         encoding: .utf8
     )
 
-    #expect(source.contains("!store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true"))
+    #expect(source.contains("!store.remoteChanges.isEmpty || treatsAsOutOfDate"))
+    #expect(source.contains("UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate("))
     #expect(source.contains(".ui.update.serverChangesInsidePendingDeletionMayNotAppearListRun"))
     #expect(source.contains(".ui.update.runUpdate"))
 }
