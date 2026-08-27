@@ -40,7 +40,10 @@ struct RepositoryPathNormalizationView: View {
             Button(appLanguage.localized(.ui.common.close), role: .cancel) {
                 store.isShowingRepositoryPathNormalization = false
             }
-            .keyboardShortcut(.cancelAction)
+            .confirmationKeyboardShortcut(
+                for: .cancel,
+                behavior: .repositoryPathNormalizationDismissal
+            )
             .disabled(store.isRepositoryPathNormalizationRunning)
         }
         .padding()
@@ -369,13 +372,19 @@ struct RepositoryPathNormalizationView: View {
                 Button(appLanguage.localized(.repository.pathNormalization.scanAgain)) {
                     Task { await store.beginRepositoryPathNormalization() }
                 }
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(
+                    for: .rescanRepositoryPaths,
+                    behavior: .repositoryPathNormalizationRescan
+                )
                 .disabled(store.isRepositoryPathNormalizationRunning)
             } else {
                 Button(appLanguage.localized(.repository.pathNormalization.reviewAction)) {
                     store.requestRepositoryPathNormalizationConfirmation()
                 }
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(
+                    for: .reviewRepositoryPathNormalization,
+                    behavior: .repositoryPathNormalizationReview
+                )
                 .disabled(!store.canConfirmRepositoryPathNormalization)
             }
         }
@@ -447,8 +456,10 @@ private struct RepositoryPathNormalizationConfirmationView: View {
                 Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.isConfirmingRepositoryPathNormalization = false
                 }
-                // 경로마다 삭제+추가 커밋이 올라간다. Return은 취소만 실행한다.
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(
+                    for: .cancel,
+                    behavior: .repositoryPathNormalization
+                )
                 Button {
                     Task { await store.normalizeSelectedRepositoryPaths() }
                 } label: {

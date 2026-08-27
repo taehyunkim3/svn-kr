@@ -55,6 +55,7 @@ private struct CommitDeletionRestoreConfirmationModifier: ViewModifier {
             Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                 store.cancelCommitDeletionRestore()
             }
+            .confirmationKeyboardShortcut(for: .cancel, behavior: .commitDeletionRestore)
         } message: { restoreRequest in
             Text(appLanguage.localized(
                 .ui.commit.restoreSelectedDeletionFileServer,

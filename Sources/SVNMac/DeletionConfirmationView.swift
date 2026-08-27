@@ -38,8 +38,7 @@ struct DeletionConfirmationView: View {
                 Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.cancelDeletion()
                 }
-                // 저장소 삭제 예약은 Return으로 확정하지 않는다. Escape는 취소 역할이 맡는다.
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(for: .cancel, behavior: .deletion)
                 Button(role: .destructive) {
                     Task { await store.confirmDeletion(request) }
                 } label: {

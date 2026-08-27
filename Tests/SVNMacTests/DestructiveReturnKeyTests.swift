@@ -4,92 +4,138 @@ import Testing
 
 @Suite("DestructiveReturnKeyTests")
 struct DestructiveReturnKeyTests {
-    @Test func commitConfirmationBindsReturnToConfirmOnlyWhenNoServerDeletions() throws {
-        let source = try source(named: "CommitConfirmationView.swift")
-        let confirmButton = try modifierBlock(
-            in: source,
-            after: ".ui.commit.confirm",
-            endingWith: ".disabled(store.isSelectedProjectActionBlocked)"
+    @Test(
+        "Commit confirmation keyboard behavior",
+        arguments: [CommitServerDeletionState.none, .present],
+        [CommitMessageState.empty, .present]
+    )
+    func commitConfirmationKeyboardBehavior(
+        serverDeletions: CommitServerDeletionState,
+        message: CommitMessageState
+    ) {
+        let behavior = ConfirmationKeyboardBehavior.commitConfirmation(
+            serverDeletions: serverDeletions,
+            message: message
         )
 
-        #expect(confirmButton.contains("serverDeletionEntries.isEmpty"))
-        let returnIsGated = !confirmButton.contains(".keyboardShortcut(.defaultAction)")
-            || confirmButton.contains("isEmpty")
-        #expect(returnIsGated)
+        #expect(
+            behavior.returnAction
+                == (serverDeletions == .none ? .confirmCommit : nil),
+            "서버 삭제가 있으면 Return이 어떤 동작도 실행하면 안 된다."
+        )
+        #expect(behavior.escapeAction == .cancel)
     }
 
-    @Test func commitConfirmationKeepsEscapeOnCancel() throws {
-        let source = try source(named: "CommitConfirmationView.swift")
-        let cancelButton = try modifierBlock(
-            in: source,
-            after: "Button(appLanguage.localized(.ui.commit.no), role: .cancel)",
-            endingWith: "Button(appLanguage.localized(.ui.commit.confirm))"
+    @Test func pathNormalizationConfirmationKeyboardBehavior() {
+        let behavior = ConfirmationKeyboardBehavior.repositoryPathNormalization
+
+        #expect(behavior.returnAction == .cancel)
+        #expect(behavior.escapeAction == .cancel)
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationDismissal.returnAction == nil)
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationDismissal.escapeAction == .cancel)
+        #expect(
+            ConfirmationKeyboardBehavior.repositoryPathNormalizationRescan.returnAction
+                == .rescanRepositoryPaths
+        )
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationRescan.escapeAction == nil)
+        #expect(
+            ConfirmationKeyboardBehavior.repositoryPathNormalizationReview.returnAction
+                == .reviewRepositoryPathNormalization
+        )
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationReview.escapeAction == nil)
+    }
+
+    @Test func deletionConfirmationKeyboardBehavior() {
+        let behavior = ConfirmationKeyboardBehavior.deletion
+
+        #expect(behavior.returnAction == .cancel)
+        #expect(behavior.escapeAction == .cancel)
+    }
+
+    @Test func revertConfirmationKeyboardBehavior() {
+        let behavior = ConfirmationKeyboardBehavior.revert
+
+        #expect(behavior.returnAction == nil)
+        #expect(behavior.escapeAction == .cancel)
+    }
+
+    @Test func commitDeletionRestoreKeyboardBehavior() {
+        let behavior = ConfirmationKeyboardBehavior.commitDeletionRestore
+
+        #expect(behavior.returnAction == nil)
+        #expect(behavior.escapeAction == .cancel)
+    }
+
+    @Test(
+        "Document open confirmation keyboard behavior",
+        arguments: [DocumentLockState.unlocked, .locked, .unavailable],
+        [RememberOpenWithoutLockState.disabled, .enabled]
+    )
+    func documentOpenConfirmationKeyboardBehavior(
+        lock: DocumentLockState,
+        rememberOpenWithoutLock: RememberOpenWithoutLockState
+    ) {
+        let behavior = ConfirmationKeyboardBehavior.documentOpenConfirmation(
+            lock: lock,
+            rememberOpenWithoutLock: rememberOpenWithoutLock
         )
 
-        #expect(cancelButton.contains("role: .cancel"))
-        #expect(cancelButton.contains(".keyboardShortcut(.cancelAction)"))
-        #expect(!cancelButton.contains(".defaultAction"))
-    }
-
-    @Test func pathNormalizationConfirmationDoesNotBindReturnToCommit() throws {
-        let source = try source(named: "RepositoryPathNormalizationView.swift")
-        let confirmationStart = try #require(
-            source.range(of: "private struct RepositoryPathNormalizationConfirmationView")
+        #expect(
+            behavior.returnAction == .openWithoutLock,
+            "문서 열기 확인의 Return은 잠금 없이 열기를 실행해야 한다."
         )
-        let confirmation = String(source[confirmationStart.lowerBound...])
-        let runButton = try modifierBlock(
-            in: confirmation,
-            after: ".repository.pathNormalization.confirmationRun",
-            endingWith: ".disabled(!store.canConfirmRepositoryPathNormalization)"
+        #expect(behavior.escapeAction == .cancel)
+    }
+
+    @Test func destructiveAndRecoveryButtonRolesRemainExplicit() throws {
+        let commit = try source(named: "CommitConfirmationView.swift")
+        let normalization = try source(named: "RepositoryPathNormalizationView.swift")
+        let deletion = try source(named: "DeletionConfirmationView.swift")
+        let revert = try source(named: "RevertConfirmation.swift")
+        let restore = try source(named: "CommitDeletionRestoreConfirmation.swift")
+        let normalizationConfirmationStart = try #require(
+            normalization.range(
+                of: "private struct RepositoryPathNormalizationConfirmationView"
+            )
         )
+        let normalizationConfirmation = normalization[normalizationConfirmationStart.lowerBound...]
 
-        #expect(!runButton.contains(".keyboardShortcut(.defaultAction)"))
-        #expect(confirmation.contains("role: .cancel"))
-        let keepsKeyboardCancel = confirmation.contains(".keyboardShortcut(.cancelAction)")
-            || confirmation.contains(".keyboardShortcut(.defaultAction)")
-        #expect(keepsKeyboardCancel)
+        #expect(commit.contains("Button(appLanguage.localized(.ui.commit.no), role: .cancel)"))
+        #expect(normalizationConfirmation.contains("role: .cancel"))
+        #expect(deletion.contains("Button(role: .destructive)"))
+        #expect(deletion.contains("role: .cancel"))
+        #expect(revert.contains("role: .destructive"))
+        #expect(revert.contains("role: .cancel"))
+        #expect(!restore.contains("role: .destructive"))
+        #expect(restore.contains("role: .cancel"))
     }
 
-    @Test func deletionConfirmationDoesNotBindReturnToMarkForDeletion() throws {
-        let source = try source(named: "DeletionConfirmationView.swift")
-        let destructiveButton = try modifierBlock(
-            in: source,
-            after: "Button(role: .destructive)",
-            endingWith: ".disabled(store.isSelectedProjectActionBlocked)"
+    @Test(
+        "Confirmation views use only value-driven keyboard shortcuts",
+        arguments: [
+            "CommitConfirmationView.swift",
+            "RepositoryPathNormalizationView.swift",
+            "DeletionConfirmationView.swift",
+            "RevertConfirmation.swift",
+            "CommitDeletionRestoreConfirmation.swift",
+            "DocumentOpenConfirmation.swift",
+        ]
+    )
+    func confirmationViewsUseOnlyValueDrivenKeyboardShortcuts(fileName: String) throws {
+        let viewSource = try source(named: fileName)
+
+        #expect(
+            viewSource.contains(".confirmationKeyboardShortcut("),
+            "\(fileName)은 값 기반 단축키 modifier를 사용해야 한다."
         )
-
-        #expect(!destructiveButton.contains(".keyboardShortcut(.defaultAction)"))
-        #expect(source.contains("role: .cancel"))
-        let keepsKeyboardCancel = source.contains(".keyboardShortcut(.cancelAction)")
-            || source.contains(".keyboardShortcut(.defaultAction)")
-        #expect(keepsKeyboardCancel)
-    }
-
-    @Test func revertConfirmationUsesDestructiveRoleWithoutReturnBinding() throws {
-        let source = try source(named: "RevertConfirmation.swift")
-
-        #expect(source.contains("role: .destructive"))
-        #expect(source.contains("role: .cancel"))
-        #expect(!source.contains(".keyboardShortcut(.defaultAction)"))
-    }
-
-    @Test func commitDeletionRestoreIsRecoveryNotDestructiveDefault() throws {
-        let source = try source(named: "CommitDeletionRestoreConfirmation.swift")
-
-        #expect(!source.contains("role: .destructive"))
-        #expect(source.contains("role: .cancel"))
-        #expect(!source.contains(".keyboardShortcut(.defaultAction)"))
-    }
-
-    private func modifierBlock(
-        in source: String,
-        after marker: String,
-        endingWith suffix: String
-    ) throws -> String {
-        let start = try #require(source.range(of: marker))
-        let fromMarker = source[start.lowerBound...]
-        let end = try #require(fromMarker.range(of: suffix))
-        return String(fromMarker[..<end.upperBound])
+        #expect(
+            !viewSource.contains(".keyboardShortcut(.defaultAction)"),
+            "\(fileName)에 raw defaultAction 단축키를 붙이면 안 된다."
+        )
+        #expect(
+            !viewSource.contains(".keyboardShortcut(.cancelAction)"),
+            "\(fileName)에 raw cancelAction 단축키를 붙이면 안 된다."
+        )
     }
 
     private func source(named name: String) throws -> String {
