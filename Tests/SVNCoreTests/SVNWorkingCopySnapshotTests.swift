@@ -89,6 +89,20 @@ struct SVNWorkingCopySnapshotTests {
         ))
     }
 
+    @Test func preservesNormalTreeConflictAsVisibleConflict() throws {
+        let xml = """
+        <?xml version="1.0"?><status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="충돌 폴더"><wc-status item="normal" revision="13302" props="none" tree-conflicted="true" switched="false"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.statuses == [
+            SVNStatusEntry(path: "충돌 폴더", item: .conflicted, revision: "13302"),
+        ])
+    }
+
     @Test func preservesTopLevelNFDNewPathBytes() throws {
         let rawPath = "최상위 새 폴더".decomposedStringWithCanonicalMapping
         let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
