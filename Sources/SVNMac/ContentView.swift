@@ -133,7 +133,7 @@ struct ContentView: View {
                 .disabled(store.selectedProject == nil || store.isSelectedProjectActionBlocked)
                 .help(appLanguage.localized(.ui.history.reloadLocalChangesLatestServerCommitHistory))
                 Button {
-                    Task { await store.previewUpdate() }
+                    Task { await store.previewUpdate(mode: .regularUpdate) }
                 } label: {
                     HStack(spacing: 5) {
                         if isUpdateInProgress {

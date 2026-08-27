@@ -2005,7 +2005,7 @@ final class ProjectStore {
             await refreshRemoteHistory(for: request.projectID)
         case .update:
             if recoveryState.outOfDateCommitRecoveryRequest?.projectID == request.projectID {
-                await previewUpdate()
+                await previewUpdate(mode: .outOfDateCommitRecovery)
             } else {
                 await update()
             }

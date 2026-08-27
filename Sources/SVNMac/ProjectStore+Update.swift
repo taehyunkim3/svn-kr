@@ -5,8 +5,14 @@ extension ProjectStore {
     func update() async {
         guard let project = selectedProject,
               !activeOperations.contains(where: { $0.kind == .update(project.id) }) else { return }
-        let commitRecovery = recoveryState.outOfDateCommitRecoveryRequest.flatMap {
-            $0.projectID == project.id ? $0 : nil
+        let commitRecovery: OutOfDateCommitRecoveryRequest? = if recoveryState.updatePreviewMode
+            == .outOfDateCommitRecovery
+        {
+            recoveryState.outOfDateCommitRecoveryRequest.flatMap {
+                $0.projectID == project.id ? $0 : nil
+            }
+        } else {
+            nil
         }
         let cleanupCandidatePaths = repositoryTemporaryFileCleanupCandidates.map(\.path)
         let preparesCleanup = cleansRepositoryTemporaryFilesAfterUpdate && !cleanupCandidatePaths.isEmpty
@@ -66,7 +72,7 @@ extension ProjectStore {
             details: details
         )
         errorMessage = nil
-        await previewUpdate()
+        await previewUpdate(mode: .outOfDateCommitRecovery)
     }
 
     private func retryCommitAfterUpdate(_ recovery: OutOfDateCommitRecoveryRequest) async {
@@ -103,8 +109,17 @@ extension ProjectStore {
         }
     }
 
-    func previewUpdate() async {
+    func previewUpdate(mode: UpdatePreviewMode) async {
         guard let project = selectedProject else { return }
+        switch mode {
+        case .regularUpdate:
+            recoveryState.outOfDateCommitRecoveryRequest = nil
+        case .outOfDateCommitRecovery:
+            guard recoveryState.outOfDateCommitRecoveryRequest?.projectID == project.id else {
+                return
+            }
+        }
+        recoveryState.updatePreviewMode = mode
         let requestID = beginRequest(.updatePreview)
         let operationID = beginOperation(.previewUpdate(project.id))
         defer {
@@ -154,11 +169,17 @@ extension ProjectStore {
         guard canApplyRequest(requestID, kind: .updatePreview, projectID: project.id) else { return }
         updateRemoteSummary(
             for: project.id,
-            needsUpdate: recoveryState.outOfDateCommitRecoveryRequest != nil
+            needsUpdate: mode == .outOfDateCommitRecovery
                 || recoveryState.updatePreview.totalCommitCount > 0
                 || !remoteChanges.isEmpty
         )
         isShowingUpdatePreview = workingCopyCleanupRequest == nil && authenticationRequest == nil
+    }
+
+    func dismissUpdatePreview() {
+        recoveryState.outOfDateCommitRecoveryRequest = nil
+        recoveryState.updatePreviewMode = .regularUpdate
+        isShowingUpdatePreview = false
     }
 
     private func recordUpdatePreviewFailure(_ error: Error, project: SVNProject) {
