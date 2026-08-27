@@ -23,8 +23,11 @@ import Testing
     #expect(AppLayout.windowMinimumWidth <= AppLayout.windowDefaultWidth)
     #expect(AppLayout.windowMinimumHeight <= AppLayout.windowDefaultHeight)
     #expect(AppLayout.toolbarItemHorizontalPadding > 0)
-    #expect(AppLayout.changesDisclosureSize.width > 0)
-    #expect(AppLayout.changesDisclosureSize.height > 0)
+    #expect(AppLayout.changesDisclosureIconSize.width > 0)
+    #expect(AppLayout.changesDisclosureIconSize.height > 0)
+    #expect(AppLayout.changesDisclosureHitTargetSize.width > 0)
+    #expect(AppLayout.changesDisclosureHitTargetSize.height > 0)
+    #expect(AppLayout.changesRowSpacing > 0)
     #expect(AppLayout.untrackedChildIndentation > 0)
     #expect(AppLayout.aboutWindowSize.width > 0)
     #expect(AppLayout.aboutWindowSize.height > 0)
@@ -35,6 +38,20 @@ import Testing
     #expect(AppLayout.credentialFieldMinimumWidth <= AppLayout.credentialsSheetWidth)
     #expect(AppLayout.logMessagePopoverMinimumWidth <= AppLayout.logMessagePopoverIdealWidth)
     #expect(AppLayout.logMessagePopoverIdealWidth <= AppLayout.logMessagePopoverMaximumWidth)
+}
+
+@Test func changesDisclosureHitTargetExceedsIconAndStopsBeforeToggle() {
+    #expect(AppLayout.changesDisclosureIconSize.width == 18)
+    #expect(AppLayout.changesDisclosureIconSize.height == 18)
+    #expect(AppLayout.changesDisclosureHitTargetSize.width >= 28)
+    #expect(AppLayout.changesDisclosureHitTargetSize.height >= 28)
+    #expect(AppLayout.changesDisclosureHitTargetSize.width > AppLayout.changesDisclosureIconSize.width)
+    #expect(AppLayout.changesDisclosureHitTargetSize.height > AppLayout.changesDisclosureIconSize.height)
+
+    let horizontalHitExpansion = (
+        AppLayout.changesDisclosureHitTargetSize.width - AppLayout.changesDisclosureIconSize.width
+    ) / 2
+    #expect(horizontalHitExpansion < AppLayout.changesRowSpacing)
 }
 
 @Test func sheetMinimumSizesRemainPositiveAndFitInsideDefaultWindow() {
