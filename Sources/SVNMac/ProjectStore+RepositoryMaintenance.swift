@@ -13,6 +13,12 @@ struct VersionedFileActionRequest: Identifiable, Equatable {
     let sourceRelativePath: String
 }
 
+struct FilePropertiesEditRequest: Identifiable, Equatable {
+    let id = UUID()
+    let projectID: SVNProject.ID
+    let relativePath: String
+}
+
 struct RepositoryRelocationRequest: Identifiable, Equatable {
     let id = UUID()
     let projectID: SVNProject.ID
@@ -82,7 +88,11 @@ enum RepositoryMaintenanceLocalization {
         .ui.history.copyHistory,
         .ui.repository.newFileName,
         .ui.repository.commitChangeApplyItServer,
+        .ui.repository.editFileProperties,
+        .ui.repository.filePropertiesLoadFailed,
         .ui.lock.requireLockBeforeEditing,
+        .ui.lock.requireBeforeEditingProperty,
+        .ui.lock.propertyChangeCommitRequired,
         .ui.lock.removeRequiredLock,
         .ui.lock.requiredBeforeEditing,
         .ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther,
@@ -310,6 +320,66 @@ extension ProjectStore {
                 return
             }
         }
+    }
+
+    func requestFilePropertiesEdit(path: String) {
+        guard let project = selectedProject else { return }
+        recoveryState.filePropertiesEditFailureMessage = nil
+        recoveryState.filePropertiesEditRequest = FilePropertiesEditRequest(
+            projectID: project.id,
+            relativePath: path
+        )
+    }
+
+    func dismissFilePropertiesEdit() {
+        recoveryState.filePropertiesEditRequest = nil
+        recoveryState.filePropertiesEditFailureMessage = nil
+    }
+
+    func loadNeedsLockState(for request: FilePropertiesEditRequest) async -> Bool? {
+        guard let project = selectedProject,
+              request.projectID == project.id,
+              recoveryState.filePropertiesEditRequest?.id == request.id else { return nil }
+        do {
+            let properties = try await client.properties(
+                at: project.path,
+                relativePath: request.relativePath,
+                credentials: nil
+            )
+            guard selectedProjectID == project.id,
+                  recoveryState.filePropertiesEditRequest?.id == request.id else { return nil }
+            let isEnabled = properties.contains { $0.name == "svn:needs-lock" }
+            if isEnabled {
+                recoveryState.needsLockPaths.insert(request.relativePath)
+            } else {
+                recoveryState.needsLockPaths.remove(request.relativePath)
+            }
+            return isEnabled
+        } catch {
+            guard selectedProjectID == project.id,
+                  recoveryState.filePropertiesEditRequest?.id == request.id else { return nil }
+            recoveryState.filePropertiesEditFailureMessage = localizedError(error)
+            return nil
+        }
+    }
+
+    @discardableResult
+    func saveFileProperties(
+        _ request: FilePropertiesEditRequest,
+        needsLock: Bool
+    ) async -> Bool {
+        guard recoveryState.filePropertiesEditRequest?.id == request.id else { return false }
+        recoveryState.filePropertiesEditFailureMessage = nil
+        let succeeded = await setNeedsLock(needsLock, paths: [request.relativePath])
+        guard recoveryState.filePropertiesEditRequest?.id == request.id else { return false }
+        if succeeded {
+            dismissFilePropertiesEdit()
+        } else {
+            recoveryState.filePropertiesEditFailureMessage = errorMessage
+                ?? AppLanguage.current.localized(.ui.repository.filePropertiesLoadFailed)
+            errorMessage = nil
+        }
+        return succeeded
     }
 
     @discardableResult

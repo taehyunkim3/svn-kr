@@ -235,6 +235,10 @@ struct ContentView: View {
             WorkingCopyRecoveryView()
                 .environment(store)
         }
+        .sheet(item: $store.recoveryState.filePropertiesEditRequest) { request in
+            FilePropertiesEditView(request: request)
+                .environment(store)
+        }
         .sheet(item: rootAuthenticationRequest) { request in
             AuthenticationRequiredView(request: request)
                 .environment(store)

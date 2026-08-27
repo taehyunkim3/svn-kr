@@ -164,12 +164,14 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.browser.browseSvnRepository,
         Self.ui.browser.checkFoldersFilesBeforeChoosingRepositoryPathCheckOut,
         Self.ui.browser.chooseHowFilesDisplayed,
+        Self.ui.browser.collapseFolder,
         Self.ui.browser.couldNotConnectRepository,
         Self.ui.browser.couldNotLoadRepositoryContents,
         Self.ui.browser.dateModified,
         Self.ui.browser.directory,
         Self.ui.browser.directoryEmpty,
         Self.ui.browser.enterRepositoryUrlBrowse,
+        Self.ui.browser.expandFolder,
         Self.ui.browser.fileAccessibilityLabel,
         Self.ui.browser.files,
         Self.ui.browser.items,
@@ -216,6 +218,7 @@ struct LocalizationKey: Hashable, Sendable {
     private static let uiChangesKeys: [LocalizationKey] = [
         Self.ui.changes.affected,
         Self.ui.changes.cancelDeletionRestore,
+        Self.ui.changes.cannotIncludeCommit,
         Self.ui.changes.collapseFolder,
         Self.ui.changes.deletePendingItems,
         Self.ui.changes.deleteRepository,
@@ -581,6 +584,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.openWithoutLockingDonTAskAgain,
         Self.ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict,
         Self.ui.lock.openingFileLocked,
+        Self.ui.lock.propertyChangeCommitRequired,
         Self.ui.lock.releaseAllAction,
         Self.ui.lock.releaseAllConfirmationTitle,
         Self.ui.lock.releaseFromBrowserAction,
@@ -594,6 +598,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.removeRequiredLock,
         Self.ui.lock.repositoryLockForceReleased,
         Self.ui.lock.repositoryLocks,
+        Self.ui.lock.requireBeforeEditingProperty,
         Self.ui.lock.requireLockBeforeEditing,
         Self.ui.lock.requiredBeforeEditing,
         Self.ui.lock.reviewForceLock,
@@ -653,9 +658,11 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.repository.currentRepositoryUrl,
         Self.ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges,
         Self.ui.repository.destinationNameAlreadyExists,
+        Self.ui.repository.editFileProperties,
         Self.ui.repository.enterValidFileNameWithoutFolderPath,
         Self.ui.repository.enterValidRepositoryUrlIncludingItsScheme,
         Self.ui.repository.filePanelPrompt,
+        Self.ui.repository.filePropertiesLoadFailed,
         Self.ui.repository.localFolder,
         Self.ui.repository.localFolderPickerAction,
         Self.ui.repository.localWorkingFolders,
@@ -766,12 +773,14 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.update.checkingUpdates,
         Self.ui.update.checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating,
         Self.ui.update.cleanedRepositoryTemporaryFile,
+        Self.ui.update.collapseCommitDetails,
         Self.ui.update.commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts,
         Self.ui.update.completeUpdatePreviewCouldNotLoadedCanStillTryUpdate,
         Self.ui.update.continueUpdating,
         Self.ui.update.createdConflictsSoCommitNotRetried,
         Self.ui.update.createdConflictsSoCommitNotRetriedResolvePathsFirst,
         Self.ui.update.downloadLatestServerChangesCurrentLocalWorkingFolder,
+        Self.ui.update.expandCommitDetails,
         Self.ui.update.goConflictResolution,
         Self.ui.update.incomingChangesThatOverlapLocalEditsMayCreateSvnConflict,
         Self.ui.update.incomplete,
@@ -1008,12 +1017,14 @@ struct LocalizationUIBrowserKeys {
     let browseSvnRepository = LocalizationKey("ui.browser.browseSvnRepository")
     let checkFoldersFilesBeforeChoosingRepositoryPathCheckOut = LocalizationKey("ui.browser.checkFoldersFilesBeforeChoosingRepositoryPathCheckOut")
     let chooseHowFilesDisplayed = LocalizationKey("ui.browser.chooseHowFilesDisplayed")
+    let collapseFolder = LocalizationKey("ui.browser.collapseFolder")
     let couldNotConnectRepository = LocalizationKey("ui.browser.couldNotConnectRepository")
     let couldNotLoadRepositoryContents = LocalizationKey("ui.browser.couldNotLoadRepositoryContents")
     let dateModified = LocalizationKey("ui.browser.dateModified")
     let directory = LocalizationKey("ui.browser.directory")
     let directoryEmpty = LocalizationKey("ui.browser.directoryEmpty")
     let enterRepositoryUrlBrowse = LocalizationKey("ui.browser.enterRepositoryUrlBrowse")
+    let expandFolder = LocalizationKey("ui.browser.expandFolder")
     let fileAccessibilityLabel = LocalizationKey("ui.browser.fileAccessibilityLabel")
     let files = LocalizationKey("ui.browser.files")
     let items = LocalizationKey("ui.browser.items")
@@ -1060,6 +1071,7 @@ struct LocalizationUICertificateKeys {
 struct LocalizationUIChangesKeys {
     let affected = LocalizationKey("ui.changes.affected")
     let cancelDeletionRestore = LocalizationKey("ui.changes.cancelDeletionRestore")
+    let cannotIncludeCommit = LocalizationKey("ui.changes.cannotIncludeCommit")
     let collapseFolder = LocalizationKey("ui.changes.collapseFolder")
     let deletePendingItems = LocalizationKey("ui.changes.deletePendingItems")
     let deleteRepository = LocalizationKey("ui.changes.deleteRepository")
@@ -1425,6 +1437,7 @@ struct LocalizationUILockKeys {
     let openWithoutLockingDonTAskAgain = LocalizationKey("ui.lock.openWithoutLockingDonTAskAgain")
     let openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict = LocalizationKey("ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict")
     let openingFileLocked = LocalizationKey("ui.lock.openingFileLocked")
+    let propertyChangeCommitRequired = LocalizationKey("ui.lock.propertyChangeCommitRequired")
     let releaseAllAction = LocalizationKey("ui.lock.releaseAllAction")
     let releaseAllConfirmationTitle = LocalizationKey("ui.lock.releaseAllConfirmationTitle")
     let releaseFromBrowserAction = LocalizationKey("ui.lock.releaseFromBrowserAction")
@@ -1438,6 +1451,7 @@ struct LocalizationUILockKeys {
     let removeRequiredLock = LocalizationKey("ui.lock.removeRequiredLock")
     let repositoryLockForceReleased = LocalizationKey("ui.lock.repositoryLockForceReleased")
     let repositoryLocks = LocalizationKey("ui.lock.repositoryLocks")
+    let requireBeforeEditingProperty = LocalizationKey("ui.lock.requireBeforeEditingProperty")
     let requireLockBeforeEditing = LocalizationKey("ui.lock.requireLockBeforeEditing")
     let requiredBeforeEditing = LocalizationKey("ui.lock.requiredBeforeEditing")
     let reviewForceLock = LocalizationKey("ui.lock.reviewForceLock")
@@ -1497,9 +1511,11 @@ struct LocalizationUIRepositoryKeys {
     let currentRepositoryUrl = LocalizationKey("ui.repository.currentRepositoryUrl")
     let currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges = LocalizationKey("ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges")
     let destinationNameAlreadyExists = LocalizationKey("ui.repository.destinationNameAlreadyExists")
+    let editFileProperties = LocalizationKey("ui.repository.editFileProperties")
     let enterValidFileNameWithoutFolderPath = LocalizationKey("ui.repository.enterValidFileNameWithoutFolderPath")
     let enterValidRepositoryUrlIncludingItsScheme = LocalizationKey("ui.repository.enterValidRepositoryUrlIncludingItsScheme")
     let filePanelPrompt = LocalizationKey("ui.repository.filePanelPrompt")
+    let filePropertiesLoadFailed = LocalizationKey("ui.repository.filePropertiesLoadFailed")
     let localFolder = LocalizationKey("ui.repository.localFolder")
     let localFolderPickerAction = LocalizationKey("ui.repository.localFolderPickerAction")
     let localWorkingFolders = LocalizationKey("ui.repository.localWorkingFolders")
@@ -1610,12 +1626,14 @@ struct LocalizationUIUpdateKeys {
     let checkingUpdates = LocalizationKey("ui.update.checkingUpdates")
     let checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating = LocalizationKey("ui.update.checkoutUpdateInterruptedDoNotRevertLocalChangesContinueUpdating")
     let cleanedRepositoryTemporaryFile = LocalizationKey("ui.update.cleanedRepositoryTemporaryFile")
+    let collapseCommitDetails = LocalizationKey("ui.update.collapseCommitDetails")
     let commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts = LocalizationKey("ui.update.commitMessageSelectedItemSavedIfUpdateCreatesNoConflicts")
     let completeUpdatePreviewCouldNotLoadedCanStillTryUpdate = LocalizationKey("ui.update.completeUpdatePreviewCouldNotLoadedCanStillTryUpdate")
     let continueUpdating = LocalizationKey("ui.update.continueUpdating")
     let createdConflictsSoCommitNotRetried = LocalizationKey("ui.update.createdConflictsSoCommitNotRetried")
     let createdConflictsSoCommitNotRetriedResolvePathsFirst = LocalizationKey("ui.update.createdConflictsSoCommitNotRetriedResolvePathsFirst")
     let downloadLatestServerChangesCurrentLocalWorkingFolder = LocalizationKey("ui.update.downloadLatestServerChangesCurrentLocalWorkingFolder")
+    let expandCommitDetails = LocalizationKey("ui.update.expandCommitDetails")
     let goConflictResolution = LocalizationKey("ui.update.goConflictResolution")
     let incomingChangesThatOverlapLocalEditsMayCreateSvnConflict = LocalizationKey("ui.update.incomingChangesThatOverlapLocalEditsMayCreateSvnConflict")
     let incomplete = LocalizationKey("ui.update.incomplete")

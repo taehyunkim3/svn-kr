@@ -266,6 +266,18 @@ struct WorkingCopySplitBrowserView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(appLanguage.localized(
+                    browserState.expandedDirectoryPaths.contains(row.relativePath)
+                        ? .ui.browser.collapseFolder
+                        : .ui.browser.expandFolder,
+                    row.name
+                ))
+                .accessibilityLabel(appLanguage.localized(
+                    browserState.expandedDirectoryPaths.contains(row.relativePath)
+                        ? .ui.browser.collapseFolder
+                        : .ui.browser.expandFolder,
+                    row.name
+                ))
             } else {
                 Image(systemName: "chevron.right")
                     .frame(
@@ -452,6 +464,9 @@ struct WorkingCopySplitBrowserView: View {
             }
             Button(appLanguage.localized(.ui.history.copyHistory)) {
                 store.requestVersionedFileAction(.copy, path: node.relativePath)
+            }
+            Button(appLanguage.localized(.ui.repository.editFileProperties)) {
+                store.requestFilePropertiesEdit(path: node.relativePath)
             }
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                 Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {

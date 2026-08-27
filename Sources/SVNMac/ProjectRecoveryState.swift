@@ -55,6 +55,8 @@ struct ProjectRecoveryState {
     var revertImpactContext: RevertImpactContext?
     var versionedFileActionRequest: VersionedFileActionRequest?
     var versionedFileActionFailureMessage: String?
+    var filePropertiesEditRequest: FilePropertiesEditRequest?
+    var filePropertiesEditFailureMessage: String?
     var needsLockPaths: Set<String> = []
     var loadedNeedsLockPaths: Set<String> = []
     var explicitLockRequest: ExplicitLockRequest?

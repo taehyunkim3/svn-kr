@@ -198,6 +198,9 @@ struct WorkingCopyBrowserView: View {
                 Button(appLanguage.localized(.ui.history.copyHistory)) {
                     store.requestVersionedFileAction(.copy, path: node.relativePath)
                 }
+                Button(appLanguage.localized(.ui.repository.editFileProperties)) {
+                    store.requestFilePropertiesEdit(path: node.relativePath)
+                }
                 if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                     Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
                         Task { _ = await store.setNeedsLock(false, paths: [node.relativePath]) }

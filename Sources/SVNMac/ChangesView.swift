@@ -219,7 +219,9 @@ struct ChangesView: View {
                 .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, entry.path))
                 .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             } else {
-                Image(systemName: "eye.slash").frame(width: 18)
+                Image(systemName: "eye.slash")
+                    .frame(width: 18)
+                    .help(appLanguage.localized(.ui.changes.cannotIncludeCommit))
             }
             statusBadge(entry)
             if WorkingCopyStatusPolicy.showsSwitchedWarning(entry) {
@@ -392,6 +394,12 @@ struct ChangesView: View {
                     : .ui.changes.expandFolder,
                 path
             ))
+            .help(appLanguage.localized(
+                store.expandedUntrackedDirectoryPaths.contains(path)
+                    ? .ui.changes.collapseFolder
+                    : .ui.changes.expandFolder,
+                path
+            ))
         } else {
             Color.clear
                 .frame(
@@ -469,6 +477,9 @@ struct ChangesView: View {
             }
             Button(appLanguage.localized(.ui.history.copyHistory)) {
                 store.requestVersionedFileAction(.copy, path: entry.path)
+            }
+            Button(appLanguage.localized(.ui.repository.editFileProperties)) {
+                store.requestFilePropertiesEdit(path: entry.path)
             }
             if store.recoveryState.needsLockPaths.contains(entry.path) {
                 Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
