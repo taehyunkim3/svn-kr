@@ -5900,6 +5900,23 @@
         }
       }
     },
+    "ui.changes.loadingChangeList": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading changes…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 목록 불러오는 중…"
+          }
+        }
+      }
+    },
     "ui.conflict.uncommittedLocalChangesDiscarded": {
       "extractionState": "manual",
       "localizations": {

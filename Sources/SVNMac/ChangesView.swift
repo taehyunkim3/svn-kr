@@ -1,6 +1,36 @@
 import SwiftUI
 import SVNCore
 
+enum ChangesListOverlayState: Equatable {
+    enum IgnoredFileVisibility {
+        case hidden
+        case shown
+    }
+
+    enum RefreshActivity {
+        case idle
+        case refreshing
+    }
+
+    case hidden
+    case loading
+    case empty
+
+    static func resolve(
+        pathCollisionCount: Int,
+        visibleStatusCount: Int,
+        visibleIgnoredStatusCount: Int,
+        ignoredFileVisibility: IgnoredFileVisibility,
+        refreshActivity: RefreshActivity
+    ) -> ChangesListOverlayState {
+        let hasVisibleItems = pathCollisionCount > 0
+            || visibleStatusCount > 0
+            || (ignoredFileVisibility == .shown && visibleIgnoredStatusCount > 0)
+        guard !hasVisibleItems else { return .hidden }
+        return refreshActivity == .refreshing ? .loading : .empty
+    }
+}
+
 /// 변경 파일 선택, diff 확인, 선택 커밋 입력을 담당하는 전용 화면입니다.
 /// 커밋 입력 상태를 이 화면 안에 두어 ContentView가 탭 내부 동작을 알 필요가 없게 합니다.
 struct ChangesView: View {
@@ -79,6 +109,13 @@ struct ChangesView: View {
     private var changedFileList: some View {
         let visibleStatuses = store.visibleStatuses
         let visibleIgnoredStatuses = store.visibleIgnoredStatuses
+        let overlayState = ChangesListOverlayState.resolve(
+            pathCollisionCount: store.pathCollisions.count,
+            visibleStatusCount: visibleStatuses.count,
+            visibleIgnoredStatusCount: visibleIgnoredStatuses.count,
+            ignoredFileVisibility: store.showsIgnoredFiles ? .shown : .hidden,
+            refreshActivity: store.isRefreshingSelectedProject ? .refreshing : .idle
+        )
 
         return List {
             ForEach(store.pathCollisions) { collision in
@@ -99,7 +136,12 @@ struct ChangesView: View {
             }
         }
         .overlay {
-            if store.pathCollisions.isEmpty && visibleStatuses.isEmpty && (!store.showsIgnoredFiles || visibleIgnoredStatuses.isEmpty) {
+            switch overlayState {
+            case .hidden:
+                EmptyView()
+            case .loading:
+                ProgressView(appLanguage.localized(.ui.changes.loadingChangeList))
+            case .empty:
                 ContentUnavailableView(
                     appLanguage.localized(.ui.changes.noChanges),
                     systemImage: "checkmark.circle",
