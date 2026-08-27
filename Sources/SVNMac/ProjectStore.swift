@@ -1485,6 +1485,12 @@ final class ProjectStore {
         }
         do {
             projectCredentials = try credentials(for: project)
+            _ = await directoryRevisionUpdateFailure(
+                project: project,
+                paths: directoryRevisionUpdatePaths,
+                credentials: projectCredentials
+            )
+            guard selectedProjectID == project.id else { return false }
             let result = try await client.commit(
                 at: project.path,
                 paths: paths,
@@ -1505,7 +1511,7 @@ final class ProjectStore {
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if selectedProjectID == project.id { notice = result }
-            let directoryRevisionUpdateFailure = await postCommitDirectoryRevisionUpdateFailure(
+            let directoryRevisionUpdateFailure = await directoryRevisionUpdateFailure(
                 project: project,
                 paths: directoryRevisionUpdatePaths,
                 credentials: projectCredentials
@@ -1534,7 +1540,7 @@ final class ProjectStore {
                     .filter { !$0.isEmpty }
                     .joined(separator: "\n\n")
             }
-            let directoryRevisionUpdateFailure = await postCommitDirectoryRevisionUpdateFailure(
+            let directoryRevisionUpdateFailure = await directoryRevisionUpdateFailure(
                 project: project,
                 paths: directoryRevisionUpdatePaths,
                 credentials: projectCredentials
@@ -1614,7 +1620,7 @@ final class ProjectStore {
         return parent.isEmpty ? "." : String(parent)
     }
 
-    private func postCommitDirectoryRevisionUpdateFailure(
+    private func directoryRevisionUpdateFailure(
         project: SVNProject,
         paths: [String],
         credentials: SVNCredentials?
@@ -2005,7 +2011,7 @@ final class ProjectStore {
             await refreshRemoteHistory(for: request.projectID)
         case .update:
             if recoveryState.outOfDateCommitRecoveryRequest?.projectID == request.projectID {
-                await previewUpdate()
+                await previewUpdate(mode: .outOfDateCommitRecovery)
             } else {
                 await update()
             }

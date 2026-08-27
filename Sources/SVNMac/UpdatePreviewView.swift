@@ -5,14 +5,19 @@ import SwiftUI
 struct UpdatePreviewView: View {
     @Environment(ProjectStore.self) private var store
     @Environment(\.appLanguage) private var appLanguage
-    @Environment(\.dismiss) private var dismiss
     @AppStorage(AppSettings.historyTimeZoneKey)
     private var historyTimeZoneIdentifier = AppSettings.defaultHistoryTimeZone
 
     var body: some View {
         @Bindable var store = store
         let preview = store.recoveryState.updatePreview
-        let commitRecovery = store.recoveryState.outOfDateCommitRecoveryRequest
+        let commitRecovery: OutOfDateCommitRecoveryRequest? = if store.recoveryState
+            .updatePreviewMode == .outOfDateCommitRecovery
+        {
+            store.recoveryState.outOfDateCommitRecoveryRequest
+        } else {
+            nil
+        }
         let treatsAsOutOfDate = UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
             hasCommitRecovery: commitRecovery != nil,
             isWorkingCopyOutOfDate: store.isWorkingCopyOutOfDate
@@ -22,7 +27,7 @@ struct UpdatePreviewView: View {
             HStack {
                 Text(sheetTitle(commitRecovery)).font(.title2.bold())
                 Spacer()
-                Button(appLanguage.localized(.ui.common.close)) { dismiss() }
+                Button(appLanguage.localized(.ui.common.close)) { store.dismissUpdatePreview() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(store.isUpdatingSelectedProject)
             }
@@ -244,7 +249,7 @@ struct UpdatePreviewView: View {
     }
 
     private var emptyStateTitle: String {
-        if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
+        if store.recoveryState.updatePreviewMode == .outOfDateCommitRecovery {
             return appLanguage.localized(.ui.update.beforeRetryingCommit)
         }
         if store.isWorkingCopyOutOfDate == true {
@@ -254,7 +259,7 @@ struct UpdatePreviewView: View {
     }
 
     private var emptyStateDescription: String {
-        if store.recoveryState.outOfDateCommitRecoveryRequest != nil {
+        if store.recoveryState.updatePreviewMode == .outOfDateCommitRecovery {
             return appLanguage.localized(.ui.update.svnRequiresWorkingCopyUpdateConfirmUpdateRetryCommitSaved)
         }
         if store.isWorkingCopyOutOfDate == true {

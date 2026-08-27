@@ -88,7 +88,7 @@ import Testing
 }
 
 @MainActor
-@Test func directoryPropertyCommitCanUpdateAndRetryWithoutLosingCommitInput() async throws {
+@Test func directoryPropertyCommitUpdatesRevisionBeforeCommitWithoutLosingInput() async throws {
     let fixture = try MixedRevisionUpdateFixture()
     defer { fixture.remove() }
 
@@ -111,16 +111,11 @@ import Testing
     await store.refresh()
     store.selectedPaths = ["."]
 
-    #expect(!(await store.commit(message: "무시 규칙 추가")))
-    let recovery = try #require(store.recoveryState.outOfDateCommitRecoveryRequest)
-    #expect(recovery.message == "무시 규칙 추가")
-    #expect(recovery.paths == ["."])
-    #expect(store.isShowingUpdatePreview)
-    #expect(store.errorMessage == nil)
-
-    await store.update()
+    #expect(await store.commit(message: "무시 규칙 추가"))
 
     #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
+    #expect(!store.isShowingUpdatePreview)
+    #expect(store.errorMessage == nil)
     #expect(store.lastCompletedCommitMessage == "무시 규칙 추가")
     #expect(store.selectedPaths.isEmpty)
     _ = try await fixture.client.update(at: fixture.otherWorkingCopy.path)

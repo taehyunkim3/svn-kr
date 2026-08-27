@@ -64,7 +64,7 @@ import Testing
     )
     let store = makeUpdatePreviewFailureStore(project: project, error: error)
 
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
 
     #expect(store.workingCopyCleanupRequest?.projectID == project.id)
     #expect(store.workingCopyCleanupRequest?.originalMessage.contains("E155004") == true)
@@ -87,7 +87,7 @@ import Testing
         mode: .incomingAndRemote
     )
 
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
 
     #expect(store.authenticationRequest?.projectID == project.id)
     #expect(store.authenticationRequest?.action == .update)
@@ -108,7 +108,7 @@ import Testing
     )
     let store = makeUpdatePreviewFailureStore(project: project, error: error)
 
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
 
     #expect(store.isShowingUpdatePreview)
     #expect(store.recoveryState.updatePreview.errorMessage?.contains("E170013") == true)
@@ -143,6 +143,7 @@ import Testing
     )
 
     #expect(view.contains("Task { await store.update() }"))
+    #expect(view.contains("store.dismissUpdatePreview()"))
     #expect(view.contains("$store.cleansRepositoryTemporaryFilesAfterUpdate"))
     #expect(update.contains("let preparesCleanup = cleansRepositoryTemporaryFilesAfterUpdate"))
     #expect(update.contains("try await client.update("))

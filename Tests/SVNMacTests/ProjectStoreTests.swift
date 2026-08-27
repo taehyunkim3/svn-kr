@@ -593,7 +593,7 @@ import Testing
     )
     let store = makeStore(projects: [first, second], client: client)
 
-    let task = Task { await store.previewUpdate() }
+    let task = Task { await store.previewUpdate(mode: .regularUpdate) }
     try? await Task.sleep(for: .milliseconds(10))
     store.selectedProjectID = second.id
     await task.value
@@ -602,6 +602,49 @@ import Testing
     #expect(store.remoteChanges.isEmpty)
     #expect(!store.isShowingUpdatePreview)
     #expect(store.errorMessage == nil)
+}
+
+@MainActor
+@Test func regularUpdatePreviewDiscardsPendingCommitRecoveryWithoutChangingSelection() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/regular-update-preview")
+    let store = makeStore(projects: [project])
+    store.statuses = [SVNStatusEntry(path: "보고서.txt", item: .modified)]
+    store.selectedPaths = ["보고서.txt"]
+    store.recoveryState.outOfDateCommitRecoveryRequest = OutOfDateCommitRecoveryRequest(
+        projectID: project.id,
+        message: "이전 커밋",
+        paths: ["보고서.txt"],
+        details: "svn: E170004: Directory is out of date"
+    )
+
+    await store.previewUpdate(mode: .regularUpdate)
+
+    #expect(store.recoveryState.updatePreviewMode == .regularUpdate)
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
+    #expect(store.selectedPaths == ["보고서.txt"])
+    #expect(store.isShowingUpdatePreview)
+}
+
+@MainActor
+@Test func closingUpdatePreviewDiscardsCommitRecoveryWithoutChangingSelection() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/close-update-preview")
+    let store = makeStore(projects: [project])
+    store.selectedPaths = ["보고서.txt"]
+    store.recoveryState.updatePreviewMode = .outOfDateCommitRecovery
+    store.recoveryState.outOfDateCommitRecoveryRequest = OutOfDateCommitRecoveryRequest(
+        projectID: project.id,
+        message: "유지할 커밋 메시지",
+        paths: ["보고서.txt"],
+        details: "svn: E170004: Directory is out of date"
+    )
+    store.isShowingUpdatePreview = true
+
+    store.dismissUpdatePreview()
+
+    #expect(store.recoveryState.outOfDateCommitRecoveryRequest == nil)
+    #expect(store.recoveryState.updatePreviewMode == .regularUpdate)
+    #expect(store.selectedPaths == ["보고서.txt"])
+    #expect(!store.isShowingUpdatePreview)
 }
 
 @MainActor
@@ -630,9 +673,9 @@ import Testing
     )
     let store = makeStore(projects: [project], client: client)
 
-    let first = Task { await store.previewUpdate() }
+    let first = Task { await store.previewUpdate(mode: .regularUpdate) }
     await firstGate.waitUntilEntered()
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
     await firstGate.release()
     await first.value
 
@@ -831,7 +874,7 @@ import Testing
     _ = await commit.value
 
     #expect(store.notice == "둘째 프로젝트 알림")
-    #expect(await client.requestedDirectoryRevisionUpdates() == [["."]])
+    #expect(await client.requestedDirectoryRevisionUpdates() == [["."], ["."]])
 }
 
 @MainActor
@@ -2702,7 +2745,7 @@ import Testing
     #expect(store.lastCompletedCommitMessage == "완료 후 검증")
     #expect(store.notice?.contains("다시 커밋하지") == true)
     #expect(await client.snapshotRequestCount() == 1)
-    #expect(await client.requestedDirectoryRevisionUpdates() == [["."]])
+    #expect(await client.requestedDirectoryRevisionUpdates() == [["."], ["."]])
 }
 
 @Test func postCommitDirectoryRevisionUpdatePathsUseDirectoriesAndDeletedParents() {
@@ -2728,7 +2771,7 @@ import Testing
 }
 
 @MainActor
-@Test func successfulCommitUpdatesDirectoryRevisionsOnceBeforeRefresh() async {
+@Test func successfulCommitUpdatesDirectoryRevisionsBeforeAndAfterCommit() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/post-commit-directory-update")
     let statuses = [
         SVNStatusEntry(path: "docs/first.txt", item: .modified, nodeKind: .file),
@@ -2743,14 +2786,15 @@ import Testing
 
     #expect(await store.commit(message: "변경 커밋"))
 
-    #expect(await client.requestedDirectoryRevisionUpdates() == [[
-        ".", "assets", "docs", "removed",
-    ]])
-    #expect(await client.commitAndDirectoryUpdateEvents().prefix(2) == ["commit", "directory-update"])
+    let expectedPaths = [".", "assets", "docs", "removed"]
+    #expect(await client.requestedDirectoryRevisionUpdates() == [expectedPaths, expectedPaths])
+    #expect(await client.commitAndDirectoryUpdateEvents() == [
+        "directory-update", "commit", "directory-update",
+    ])
 }
 
 @MainActor
-@Test func directoryRevisionUpdateFailureKeepsCommitSuccessfulAndReportsNotice() async throws {
+@Test func directoryRevisionUpdateFailureDoesNotBlockCommitAndReportsPostCommitNotice() async throws {
     let projectDirectory = FileManager.default.temporaryDirectory
         .appendingPathComponent("post-commit-directory-update-failure-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
@@ -2776,7 +2820,41 @@ import Testing
     #expect(store.lastCompletedCommitMessage == "보고서 수정")
     #expect(store.notice?.contains("committed") == true)
     #expect(store.notice?.contains("revision update failed") == true)
+    #expect(await client.commitRequestCount() == 1)
+    #expect(await client.requestedDirectoryRevisionUpdates() == [
+        [".", "docs"], [".", "docs"],
+    ])
+    #expect(await client.commitAndDirectoryUpdateEvents() == [
+        "directory-update", "commit", "directory-update",
+    ])
+}
+
+@MainActor
+@Test func preCommitDirectoryRevisionUpdateFailureDoesNotReplaceCommitFailure() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/pre-commit-update-failure")
+    let entry = SVNStatusEntry(path: "docs/report.txt", item: .modified, nodeKind: .file)
+    let client = StubSVNClient(
+        directoryRevisionUpdateError: SVNError.commandFailed(
+            command: "svn update",
+            message: "pre-commit update failed"
+        ),
+        commitError: SVNError.commandFailed(
+            command: "svn commit",
+            message: "commit failed"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [entry]
+    store.selectedPaths = [entry.path]
+
+    let succeeded = await store.commit(message: "보고서 수정")
+
+    #expect(!succeeded)
+    #expect(await client.commitRequestCount() == 1)
     #expect(await client.requestedDirectoryRevisionUpdates() == [[".", "docs"]])
+    #expect(await client.commitAndDirectoryUpdateEvents() == ["directory-update", "commit"])
+    #expect(store.errorMessage?.contains("commit failed") == true)
+    #expect(store.errorMessage?.contains("pre-commit update failed") == false)
 }
 
 @MainActor
@@ -2802,6 +2880,7 @@ import Testing
     #expect(store.lastCompletedCommitMessage == nil)
     #expect(store.errorMessage == nil)
     #expect(store.isShowingUpdatePreview)
+    #expect(store.recoveryState.updatePreviewMode == .outOfDateCommitRecovery)
     #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.message == "디렉터리 삭제")
     #expect(store.recoveryState.outOfDateCommitRecoveryRequest?.paths == ["generated"])
     #expect(store.localizedError(
@@ -4176,7 +4255,7 @@ import Testing
     let client = StubSVNClient(remoteChangesByPath: [project.path: changes])
     let store = makeStore(projects: [project], client: client)
 
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
     #expect(store.shouldOfferRepositoryTemporaryFileCleanup)
     #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
 
@@ -4239,7 +4318,7 @@ import Testing
     ]])
     let store = makeStore(projects: [project], client: client)
 
-    await store.previewUpdate()
+    await store.previewUpdate(mode: .regularUpdate)
 
     #expect(!store.shouldOfferRepositoryTemporaryFileCleanup)
     #expect(!store.cleansRepositoryTemporaryFilesAfterUpdate)
