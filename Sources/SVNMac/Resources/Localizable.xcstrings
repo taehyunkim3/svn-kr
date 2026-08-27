@@ -11509,6 +11509,91 @@
           }
         }
       }
+    },
+    "ui.changes.cannotIncludeCommit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This item cannot be included in a commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목은 커밋에 포함할 수 없습니다."
+          }
+        }
+      }
+    },
+    "ui.browser.expandFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 펼치기"
+          }
+        }
+      }
+    },
+    "ui.browser.collapseFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapse %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 접기"
+          }
+        }
+      }
+    },
+    "ui.update.expandCommitDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand changes in r%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "r%1$@ 변경 내역 펼치기"
+          }
+        }
+      }
+    },
+    "ui.update.collapseCommitDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapse changes in r%1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "r%1$@ 변경 내역 접기"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

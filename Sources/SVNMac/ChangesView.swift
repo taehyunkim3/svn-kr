@@ -171,7 +171,9 @@ struct ChangesView: View {
                 .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, entry.path))
                 .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             } else {
-                Image(systemName: "eye.slash").frame(width: 18)
+                Image(systemName: "eye.slash")
+                    .frame(width: 18)
+                    .help(appLanguage.localized(.ui.changes.cannotIncludeCommit))
             }
             statusBadge(entry)
             if WorkingCopyStatusPolicy.showsSwitchedWarning(entry) {
@@ -326,6 +328,12 @@ struct ChangesView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(appLanguage.localized(
+                store.expandedUntrackedDirectoryPaths.contains(path)
+                    ? .ui.changes.collapseFolder
+                    : .ui.changes.expandFolder,
+                path
+            ))
+            .help(appLanguage.localized(
                 store.expandedUntrackedDirectoryPaths.contains(path)
                     ? .ui.changes.collapseFolder
                     : .ui.changes.expandFolder,

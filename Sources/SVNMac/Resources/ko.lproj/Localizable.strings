@@ -675,3 +675,8 @@
 "ui.repository.filePropertiesLoadFailed" = "파일 속성을 불러오지 못했습니다.";
 "ui.lock.requireBeforeEditingProperty" = "편집 전 잠금 필요 (svn:needs-lock)";
 "ui.lock.propertyChangeCommitRequired" = "속성 변경을 커밋해야 다른 사용자에게 적용됩니다.";
+"ui.changes.cannotIncludeCommit" = "이 항목은 커밋에 포함할 수 없습니다.";
+"ui.browser.expandFolder" = "%1$@ 펼치기";
+"ui.browser.collapseFolder" = "%1$@ 접기";
+"ui.update.expandCommitDetails" = "r%1$@ 변경 내역 펼치기";
+"ui.update.collapseCommitDetails" = "r%1$@ 변경 내역 접기";

@@ -266,6 +266,18 @@ struct WorkingCopySplitBrowserView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(appLanguage.localized(
+                    browserState.expandedDirectoryPaths.contains(row.relativePath)
+                        ? .ui.browser.collapseFolder
+                        : .ui.browser.expandFolder,
+                    row.name
+                ))
+                .accessibilityLabel(appLanguage.localized(
+                    browserState.expandedDirectoryPaths.contains(row.relativePath)
+                        ? .ui.browser.collapseFolder
+                        : .ui.browser.expandFolder,
+                    row.name
+                ))
             } else {
                 Image(systemName: "chevron.right")
                     .frame(

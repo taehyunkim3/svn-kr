@@ -158,6 +158,12 @@ struct UpdatePreviewView: View {
                         width: AppLayout.updatePreviewCommitDisclosureSize.width,
                         height: AppLayout.updatePreviewCommitDisclosureSize.height
                     )
+                    .help(appLanguage.localized(
+                        isExpanded
+                            ? .ui.update.collapseCommitDetails
+                            : .ui.update.expandCommitDetails,
+                        entry.revision
+                    ))
                 Text("r\(entry.revision)").font(.headline.monospacedDigit())
                 Spacer()
                 if let date = entry.date {

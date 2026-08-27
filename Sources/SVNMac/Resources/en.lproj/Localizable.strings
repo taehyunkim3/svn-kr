@@ -675,3 +675,8 @@
 "ui.repository.filePropertiesLoadFailed" = "Could not load the file properties.";
 "ui.lock.requireBeforeEditingProperty" = "Require lock before editing (svn:needs-lock)";
 "ui.lock.propertyChangeCommitRequired" = "Commit property changes to apply them for other users.";
+"ui.changes.cannotIncludeCommit" = "This item cannot be included in a commit.";
+"ui.browser.expandFolder" = "Expand %1$@";
+"ui.browser.collapseFolder" = "Collapse %1$@";
+"ui.update.expandCommitDetails" = "Expand changes in r%1$@";
+"ui.update.collapseCommitDetails" = "Collapse changes in r%1$@";
