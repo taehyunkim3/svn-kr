@@ -381,6 +381,9 @@ struct ChangesView: View {
                 Button(appLanguage.localized(.ui.history.copyHistory)) {
                     store.requestVersionedFileAction(.copy, path: entry.path)
                 }
+                Button(appLanguage.localized(.ui.repository.editFileProperties)) {
+                    store.requestFilePropertiesEdit(path: entry.path)
+                }
                 if store.recoveryState.needsLockPaths.contains(entry.path) {
                     Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
                         Task { _ = await store.setNeedsLock(false, paths: [entry.path]) }

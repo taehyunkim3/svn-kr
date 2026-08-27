@@ -671,3 +671,7 @@
 "ui.conflict.propertyValuesKeptWell" = "내 속성 값이 그대로 유지됩니다.";
 "ui.commit.outputAppearsHereAfterCommitStarts" = "커밋을 시작하면 SVN 출력이 여기에 표시됩니다.";
 "ui.commit.progressLog" = "커밋 로그";
+"ui.repository.editFileProperties" = "파일 속성 편집";
+"ui.repository.filePropertiesLoadFailed" = "파일 속성을 불러오지 못했습니다.";
+"ui.lock.requireBeforeEditingProperty" = "편집 전 잠금 필요 (svn:needs-lock)";
+"ui.lock.propertyChangeCommitRequired" = "속성 변경을 커밋해야 다른 사용자에게 적용됩니다.";

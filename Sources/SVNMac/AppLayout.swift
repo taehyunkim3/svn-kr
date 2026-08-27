@@ -76,6 +76,7 @@ enum AppLayout {
     static let updatePreviewSheetMinimumSize = CGSize(width: 720, height: 480)
     static let temporaryFileCleanupSheetMinimumSize = CGSize(width: 720, height: 520)
     static let fileHistorySheetMinimumSize = CGSize(width: 760, height: 520)
+    static let filePropertiesSheetMinimumSize = CGSize(width: 520, height: 300)
     static let conflictResolutionSheetMinimumSize = CGSize(width: 680, height: 480)
     static let pathRecoverySheetMinimumSize = CGSize(width: 700, height: 520)
     static let repositoryPathNormalizationSheetMinimumSize = CGSize(width: 820, height: 620)

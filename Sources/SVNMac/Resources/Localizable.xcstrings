@@ -6308,6 +6308,40 @@
         }
       }
     },
+    "ui.lock.requireBeforeEditingProperty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Require lock before editing (svn:needs-lock)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집 전 잠금 필요 (svn:needs-lock)"
+          }
+        }
+      }
+    },
+    "ui.lock.propertyChangeCommitRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit property changes to apply them for other users."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "속성 변경을 커밋해야 다른 사용자에게 적용됩니다."
+          }
+        }
+      }
+    },
     "ui.lock.requiredBeforeEditing": {
       "extractionState": "manual",
       "localizations": {
@@ -11438,6 +11472,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "내 속성 값이 그대로 유지됩니다."
+          }
+        }
+      }
+    },
+    "ui.repository.editFileProperties": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit File Properties"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 속성 편집"
+          }
+        }
+      }
+    },
+    "ui.repository.filePropertiesLoadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not load the file properties."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 속성을 불러오지 못했습니다."
           }
         }
       }

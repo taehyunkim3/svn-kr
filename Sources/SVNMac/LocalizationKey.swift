@@ -565,6 +565,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.openWithoutLockingDonTAskAgain,
         Self.ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict,
         Self.ui.lock.openingFileLocked,
+        Self.ui.lock.propertyChangeCommitRequired,
         Self.ui.lock.releaseAllAction,
         Self.ui.lock.releaseAllConfirmationTitle,
         Self.ui.lock.releaseFromBrowserAction,
@@ -578,6 +579,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.removeRequiredLock,
         Self.ui.lock.repositoryLockForceReleased,
         Self.ui.lock.repositoryLocks,
+        Self.ui.lock.requireBeforeEditingProperty,
         Self.ui.lock.requireLockBeforeEditing,
         Self.ui.lock.requiredBeforeEditing,
         Self.ui.lock.reviewForceLock,
@@ -637,9 +639,11 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.repository.currentRepositoryUrl,
         Self.ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges,
         Self.ui.repository.destinationNameAlreadyExists,
+        Self.ui.repository.editFileProperties,
         Self.ui.repository.enterValidFileNameWithoutFolderPath,
         Self.ui.repository.enterValidRepositoryUrlIncludingItsScheme,
         Self.ui.repository.filePanelPrompt,
+        Self.ui.repository.filePropertiesLoadFailed,
         Self.ui.repository.localFolder,
         Self.ui.repository.localFolderPickerAction,
         Self.ui.repository.localWorkingFolders,
@@ -1393,6 +1397,7 @@ struct LocalizationUILockKeys {
     let openWithoutLockingDonTAskAgain = LocalizationKey("ui.lock.openWithoutLockingDonTAskAgain")
     let openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict = LocalizationKey("ui.lock.openedWithoutLockConcurrentCommitAnotherUserMayCauseConflict")
     let openingFileLocked = LocalizationKey("ui.lock.openingFileLocked")
+    let propertyChangeCommitRequired = LocalizationKey("ui.lock.propertyChangeCommitRequired")
     let releaseAllAction = LocalizationKey("ui.lock.releaseAllAction")
     let releaseAllConfirmationTitle = LocalizationKey("ui.lock.releaseAllConfirmationTitle")
     let releaseFromBrowserAction = LocalizationKey("ui.lock.releaseFromBrowserAction")
@@ -1406,6 +1411,7 @@ struct LocalizationUILockKeys {
     let removeRequiredLock = LocalizationKey("ui.lock.removeRequiredLock")
     let repositoryLockForceReleased = LocalizationKey("ui.lock.repositoryLockForceReleased")
     let repositoryLocks = LocalizationKey("ui.lock.repositoryLocks")
+    let requireBeforeEditingProperty = LocalizationKey("ui.lock.requireBeforeEditingProperty")
     let requireLockBeforeEditing = LocalizationKey("ui.lock.requireLockBeforeEditing")
     let requiredBeforeEditing = LocalizationKey("ui.lock.requiredBeforeEditing")
     let reviewForceLock = LocalizationKey("ui.lock.reviewForceLock")
@@ -1465,9 +1471,11 @@ struct LocalizationUIRepositoryKeys {
     let currentRepositoryUrl = LocalizationKey("ui.repository.currentRepositoryUrl")
     let currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges = LocalizationKey("ui.repository.currentUrlNewUrlOnlyWorkingCopyRepositoryConnectionChanges")
     let destinationNameAlreadyExists = LocalizationKey("ui.repository.destinationNameAlreadyExists")
+    let editFileProperties = LocalizationKey("ui.repository.editFileProperties")
     let enterValidFileNameWithoutFolderPath = LocalizationKey("ui.repository.enterValidFileNameWithoutFolderPath")
     let enterValidRepositoryUrlIncludingItsScheme = LocalizationKey("ui.repository.enterValidRepositoryUrlIncludingItsScheme")
     let filePanelPrompt = LocalizationKey("ui.repository.filePanelPrompt")
+    let filePropertiesLoadFailed = LocalizationKey("ui.repository.filePropertiesLoadFailed")
     let localFolder = LocalizationKey("ui.repository.localFolder")
     let localFolderPickerAction = LocalizationKey("ui.repository.localFolderPickerAction")
     let localWorkingFolders = LocalizationKey("ui.repository.localWorkingFolders")

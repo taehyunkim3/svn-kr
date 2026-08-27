@@ -46,6 +46,7 @@ import Testing
         AppLayout.documentOpenConfirmationSheetMinimumSize,
         AppLayout.updatePreviewSheetMinimumSize,
         AppLayout.fileHistorySheetMinimumSize,
+        AppLayout.filePropertiesSheetMinimumSize,
         AppLayout.conflictResolutionSheetMinimumSize,
         AppLayout.pathRecoverySheetMinimumSize,
         AppLayout.repositoryPathNormalizationSheetMinimumSize,

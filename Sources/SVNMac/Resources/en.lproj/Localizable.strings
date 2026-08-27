@@ -671,3 +671,7 @@
 "ui.conflict.propertyValuesKeptWell" = "Your property values are kept as well.";
 "ui.commit.outputAppearsHereAfterCommitStarts" = "SVN output appears here after the commit starts.";
 "ui.commit.progressLog" = "Commit Log";
+"ui.repository.editFileProperties" = "Edit File Properties";
+"ui.repository.filePropertiesLoadFailed" = "Could not load the file properties.";
+"ui.lock.requireBeforeEditingProperty" = "Require lock before editing (svn:needs-lock)";
+"ui.lock.propertyChangeCommitRequired" = "Commit property changes to apply them for other users.";

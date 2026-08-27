@@ -104,6 +104,45 @@ import Testing
     #expect(!unlockedProperties.contains { $0.name == "svn:needs-lock" })
 }
 
+@MainActor
+@Test func filePropertiesRequestReloadsNeedsLockFromSVN() async throws {
+    let fixture = try RepositoryMaintenanceFixture()
+    defer { fixture.remove() }
+    try fixture.write("원본", relativePath: "report.hwp")
+    try fixture.addAndCommit(message: "원본 문서")
+    _ = try await fixture.client.setProperty(
+        named: "svn:needs-lock",
+        value: Data("*".utf8),
+        at: fixture.workingCopy.path,
+        relativePath: "report.hwp"
+    )
+    let store = fixture.makeStore()
+
+    store.requestFilePropertiesEdit(path: "report.hwp")
+    let request = try #require(store.recoveryState.filePropertiesEditRequest)
+
+    #expect(await store.loadNeedsLockState(for: request) == true)
+    #expect(store.recoveryState.needsLockPaths == ["report.hwp"])
+
+    #expect(await store.saveFileProperties(request, needsLock: false))
+    #expect(store.recoveryState.filePropertiesEditRequest == nil)
+    let propertiesAfterRemoval = try await fixture.client.properties(
+        at: fixture.workingCopy.path,
+        relativePath: "report.hwp"
+    )
+    #expect(!propertiesAfterRemoval.contains { $0.name == "svn:needs-lock" })
+
+    store.requestFilePropertiesEdit(path: "report.hwp")
+    let secondRequest = try #require(store.recoveryState.filePropertiesEditRequest)
+    #expect(await store.loadNeedsLockState(for: secondRequest) == false)
+    #expect(await store.saveFileProperties(secondRequest, needsLock: true))
+    let propertiesAfterSetting = try await fixture.client.properties(
+        at: fixture.workingCopy.path,
+        relativePath: "report.hwp"
+    )
+    #expect(propertiesAfterSetting.contains { $0.name == "svn:needs-lock" })
+}
+
 @Test func repositoryRelocationEntryBelongsToFolderSettingsNotChangesOrAddSheet() throws {
     let sources = try repositoryMaintenanceSources()
     let changes = try String(
@@ -158,6 +197,14 @@ import Testing
         contentsOf: sources.appendingPathComponent("WorkingCopyBrowserView.swift"),
         encoding: .utf8
     )
+    let splitBrowser = try String(
+        contentsOf: sources.appendingPathComponent("WorkingCopySplitBrowserView.swift"),
+        encoding: .utf8
+    )
+    let content = try String(
+        contentsOf: sources.appendingPathComponent("ContentView.swift"),
+        encoding: .utf8
+    )
     let dialogs = try String(
         contentsOf: sources.appendingPathComponent("RepositoryDialogs.swift"),
         encoding: .utf8
@@ -166,6 +213,12 @@ import Testing
     #expect(changes.contains("requestVersionedFileAction(.move"))
     #expect(changes.contains("setNeedsLock(true"))
     #expect(browser.contains("requestVersionedFileAction(.copy"))
+    for source in [changes, browser, splitBrowser] {
+        #expect(source.contains("requestFilePropertiesEdit"))
+        #expect(source.contains(".ui.repository.editFileProperties"))
+    }
+    #expect(content.contains("FilePropertiesEditView"))
+    #expect(content.contains("filePropertiesEditRequest"))
     #expect(dialogs.contains("RepositoryRelocationView"))
     #expect(dialogs.contains("repositoryRelocationRequest"))
 
