@@ -142,8 +142,10 @@ struct WorkingCopyBrowserView: View {
     @ViewBuilder
     private func rowMenu(for ids: Set<String>) -> some View {
         if let id = ids.first, ids.count == 1, let node = displayedState.node(at: id) {
+            let existingLock = lockInfo(for: node)
             let lockActionAvailability = FileLockActionAvailability.resolve(
                 path: node.relativePath,
+                hasLock: existingLock != nil,
                 needsLockPaths: store.recoveryState.needsLockPaths,
                 loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
             )
@@ -151,7 +153,7 @@ struct WorkingCopyBrowserView: View {
                 Button(appLanguage.localized(.ui.common.openFile)) {
                     open(node)
                 }
-                if let lock = lockInfo(for: node),
+                if let lock = existingLock,
                    lock.owner == store.selectedProject?.username {
                     Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                         Task { await store.unlock(lock) }
@@ -171,9 +173,9 @@ struct WorkingCopyBrowserView: View {
             }
             if node.isRegularFile, node.isVersioned {
                 Divider()
-                if lockInfo(for: node)?.owner != store.selectedProject?.username {
+                if existingLock?.owner != store.selectedProject?.username {
                     Button(
-                        lockInfo(for: node) == nil
+                        existingLock == nil
                             ? appLanguage.localized(.ui.lock.file)
                             : appLanguage.localized(.ui.lock.reviewForceLock)
                     ) {
@@ -182,7 +184,7 @@ struct WorkingCopyBrowserView: View {
                     .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
                     .help(lockActionAvailability.helpMessage(
                         language: appLanguage,
-                        fallback: lockInfo(for: node) == nil
+                        fallback: existingLock == nil
                             ? appLanguage.localized(.ui.lock.file)
                             : appLanguage.localized(.ui.lock.reviewForceLock)
                     ))

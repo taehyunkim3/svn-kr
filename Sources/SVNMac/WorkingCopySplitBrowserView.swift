@@ -397,8 +397,10 @@ struct WorkingCopySplitBrowserView: View {
 
     @ViewBuilder
     private func contextMenuItems(for node: WorkingCopyFileNode) -> some View {
+        let existingLock = lockInfo(for: node)
         let lockActionAvailability = FileLockActionAvailability.resolve(
             path: node.relativePath,
+            hasLock: existingLock != nil,
             needsLockPaths: store.recoveryState.needsLockPaths,
             loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
         )
@@ -406,7 +408,7 @@ struct WorkingCopySplitBrowserView: View {
             Button(appLanguage.localized(.ui.common.openFile)) {
                 Task { await openFile(node) }
             }
-            if let lock = lockInfo(for: node),
+            if let lock = existingLock,
                lock.owner == store.selectedProject?.username {
                 Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                     Task { await store.unlock(lock) }
@@ -426,9 +428,9 @@ struct WorkingCopySplitBrowserView: View {
         }
         if node.isRegularFile, node.isVersioned {
             Divider()
-            if lockInfo(for: node)?.owner != store.selectedProject?.username {
+            if existingLock?.owner != store.selectedProject?.username {
                 Button(
-                    lockInfo(for: node) == nil
+                    existingLock == nil
                         ? appLanguage.localized(.ui.lock.file)
                         : appLanguage.localized(.ui.lock.reviewForceLock)
                 ) {
@@ -437,7 +439,7 @@ struct WorkingCopySplitBrowserView: View {
                 .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
                 .help(lockActionAvailability.helpMessage(
                     language: appLanguage,
-                    fallback: lockInfo(for: node) == nil
+                    fallback: existingLock == nil
                         ? appLanguage.localized(.ui.lock.file)
                         : appLanguage.localized(.ui.lock.reviewForceLock)
                 ))

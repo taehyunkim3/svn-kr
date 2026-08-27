@@ -342,109 +342,111 @@ struct ChangesView: View {
 
     @ViewBuilder
     private func changedFileContextMenu(_ entry: SVNStatusEntry) -> some View {
-            let lockActionAvailability = FileLockActionAvailability.resolve(
-                path: entry.path,
-                needsLockPaths: store.recoveryState.needsLockPaths,
-                loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
-            )
-            Button(appLanguage.localized(.ui.common.openFile)) {
-                Task {
-                    await store.prepareToOpen(
-                        path: entry.path,
-                        isVersioned: entry.item != .unversioned
-                            && entry.item != .ignored
-                            && entry.item != .added,
-                        isRegularFile: entry.nodeKind == .file
-                    )
+        let existingLock = lockInfo(for: entry)
+        let lockActionAvailability = FileLockActionAvailability.resolve(
+            path: entry.path,
+            hasLock: existingLock != nil,
+            needsLockPaths: store.recoveryState.needsLockPaths,
+            loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
+        )
+        Button(appLanguage.localized(.ui.common.openFile)) {
+            Task {
+                await store.prepareToOpen(
+                    path: entry.path,
+                    isVersioned: entry.item != .unversioned
+                        && entry.item != .ignored
+                        && entry.item != .added,
+                    isRegularFile: entry.nodeKind == .file
+                )
+            }
+        }
+        Button(appLanguage.localized(.ui.common.revealFinder)) {
+            store.revealInFinder(entry.path)
+        }
+        Button(appLanguage.localized(.ui.common.copyFullPath)) {
+            store.copyPath(entry.path)
+        }
+        if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
+            Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
+                Task { await store.loadFileHistory(for: entry.path) }
+            }
+        }
+        if isVersionedFile(entry) {
+            Divider()
+            if existingLock?.owner != store.selectedProject?.username {
+                Button(
+                    existingLock == nil
+                        ? appLanguage.localized(.ui.lock.file)
+                        : appLanguage.localized(.ui.lock.reviewForceLock)
+                ) {
+                    Task { await store.prepareExplicitLock(paths: [lockPath(for: entry)]) }
+                }
+                .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                .help(lockActionAvailability.helpMessage(
+                    language: appLanguage,
+                    fallback: existingLock == nil
+                        ? appLanguage.localized(.ui.lock.file)
+                        : appLanguage.localized(.ui.lock.reviewForceLock)
+                ))
+            }
+            Button(appLanguage.localized(.ui.history.renameHistory)) {
+                store.requestVersionedFileAction(.move, path: entry.path)
+            }
+            Button(appLanguage.localized(.ui.history.copyHistory)) {
+                store.requestVersionedFileAction(.copy, path: entry.path)
+            }
+            if store.recoveryState.needsLockPaths.contains(entry.path) {
+                Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
+                    Task { _ = await store.setNeedsLock(false, paths: [entry.path]) }
+                }
+            } else {
+                Button(appLanguage.localized(.ui.lock.requireLockBeforeEditing)) {
+                    Task { _ = await store.setNeedsLock(true, paths: [entry.path]) }
                 }
             }
-            Button(appLanguage.localized(.ui.common.revealFinder)) {
-                store.revealInFinder(entry.path)
-            }
-            Button(appLanguage.localized(.ui.common.copyFullPath)) {
-                store.copyPath(entry.path)
-            }
-            if entry.item != .unversioned && entry.item != .ignored && entry.item != .added {
-                Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
-                    Task { await store.loadFileHistory(for: entry.path) }
-                }
-            }
-            if isVersionedFile(entry) {
-                Divider()
-                if lockInfo(for: entry)?.owner != store.selectedProject?.username {
-                    Button(
-                        lockInfo(for: entry) == nil
-                            ? appLanguage.localized(.ui.lock.file)
-                            : appLanguage.localized(.ui.lock.reviewForceLock)
-                    ) {
-                        Task { await store.prepareExplicitLock(paths: [lockPath(for: entry)]) }
-                    }
-                    .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
-                    .help(lockActionAvailability.helpMessage(
-                        language: appLanguage,
-                        fallback: lockInfo(for: entry) == nil
-                            ? appLanguage.localized(.ui.lock.file)
-                            : appLanguage.localized(.ui.lock.reviewForceLock)
-                    ))
-                }
-                Button(appLanguage.localized(.ui.history.renameHistory)) {
-                    store.requestVersionedFileAction(.move, path: entry.path)
-                }
-                Button(appLanguage.localized(.ui.history.copyHistory)) {
-                    store.requestVersionedFileAction(.copy, path: entry.path)
-                }
-                if store.recoveryState.needsLockPaths.contains(entry.path) {
-                    Button(appLanguage.localized(.ui.lock.removeRequiredLock)) {
-                        Task { _ = await store.setNeedsLock(false, paths: [entry.path]) }
-                    }
-                } else {
-                    Button(appLanguage.localized(.ui.lock.requireLockBeforeEditing)) {
-                        Task { _ = await store.setNeedsLock(true, paths: [entry.path]) }
-                    }
-                }
+        }
+        Divider()
+        if entry.item == .conflicted || entry.propertyState == .conflicted {
+            Button(appLanguage.localized(.ui.conflict.openResolutionAction)) {
+                Task { await store.prepareConflictResolution(for: entry.path) }
             }
             Divider()
-            if entry.item == .conflicted || entry.propertyState == .conflicted {
-                Button(appLanguage.localized(.ui.conflict.openResolutionAction)) {
-                    Task { await store.prepareConflictResolution(for: entry.path) }
-                }
-                Divider()
+        }
+        if entry.item == .unversioned {
+            Button(appLanguage.localized(.ui.ignore.item)) {
+                Task { await store.ignore(path: entry.path, byExtension: false) }
             }
-            if entry.item == .unversioned {
-                Button(appLanguage.localized(.ui.ignore.item)) {
-                    Task { await store.ignore(path: entry.path, byExtension: false) }
-                }
-                if !(entry.path as NSString).pathExtension.isEmpty {
-                    Button(appLanguage.localized(.ui.ignore.fileExtension)) {
-                        Task { await store.ignore(path: entry.path, byExtension: true) }
-                    }
+            if !(entry.path as NSString).pathExtension.isEmpty {
+                Button(appLanguage.localized(.ui.ignore.fileExtension)) {
+                    Task { await store.ignore(path: entry.path, byExtension: true) }
                 }
             }
-            if entry.canScheduleRepositoryDeletion {
-                Divider()
-                Button(appLanguage.localized(.ui.changes.restoreLocalFile)) {
-                    store.requestRevert(entry)
-                }
-                Button(appLanguage.localized(.ui.changes.deleteRepository), role: .destructive) {
-                    store.requestDeletion(entry)
-                }
+        }
+        if entry.canScheduleRepositoryDeletion {
+            Divider()
+            Button(appLanguage.localized(.ui.changes.restoreLocalFile)) {
+                store.requestRevert(entry)
             }
-            if entry.item != .unversioned
-                && entry.item != .ignored
-                && entry.item != .missing
-                && WorkingCopyStatusPolicy.allowsRevert(entry) {
-                Divider()
-                Button(
-                    entry.item == .conflicted || entry.propertyState == .conflicted
-                        ? appLanguage.localized(.ui.changes.revertConflictLocalChanges)
-                        : entry.item == .deleted
-                        ? appLanguage.localized(.ui.changes.cancelDeletionRestore)
-                        : appLanguage.localized(.ui.commit.revertLocalChangesAction),
-                    role: .destructive
-                ) {
-                    store.requestRevert(entry)
-                }
+            Button(appLanguage.localized(.ui.changes.deleteRepository), role: .destructive) {
+                store.requestDeletion(entry)
             }
+        }
+        if entry.item != .unversioned
+            && entry.item != .ignored
+            && entry.item != .missing
+            && WorkingCopyStatusPolicy.allowsRevert(entry) {
+            Divider()
+            Button(
+                entry.item == .conflicted || entry.propertyState == .conflicted
+                    ? appLanguage.localized(.ui.changes.revertConflictLocalChanges)
+                    : entry.item == .deleted
+                    ? appLanguage.localized(.ui.changes.cancelDeletionRestore)
+                    : appLanguage.localized(.ui.commit.revertLocalChangesAction),
+                role: .destructive
+            ) {
+                store.requestRevert(entry)
+            }
+        }
     }
 
     private func isUntrackedDirectory(_ entry: SVNStatusEntry) -> Bool {

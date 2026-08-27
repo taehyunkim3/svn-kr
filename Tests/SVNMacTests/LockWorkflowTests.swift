@@ -61,24 +61,33 @@ import SVNCore
     ) == baseMessage)
 }
 
-@Test func fileLockActionAvailabilityDistinguishesNeedsLockStates() {
+@Test func fileLockActionAvailabilityDistinguishesNeedsLockAndExistingLockStates() {
     let path = "Documents/report.hwp"
 
     #expect(FileLockActionAvailability.resolve(
         path: path,
+        hasLock: false,
         needsLockPaths: [path],
         loadedNeedsLockPaths: [path]
     ) == .enabled)
     #expect(FileLockActionAvailability.resolve(
         path: path,
+        hasLock: false,
         needsLockPaths: [],
         loadedNeedsLockPaths: [path]
     ) == .needsLockMissing)
     #expect(FileLockActionAvailability.resolve(
         path: path,
+        hasLock: false,
         needsLockPaths: [],
         loadedNeedsLockPaths: []
     ) == .checkingNeedsLock)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        hasLock: true,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: []
+    ) == .enabled)
     #expect(FileLockActionAvailability.needsLockMissing.helpMessage(
         language: .korean,
         fallback: ""

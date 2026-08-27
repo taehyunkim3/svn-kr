@@ -7,9 +7,11 @@ enum FileLockActionAvailability: Equatable {
 
     static func resolve(
         path: String,
+        hasLock: Bool,
         needsLockPaths: Set<String>,
         loadedNeedsLockPaths: Set<String>
     ) -> Self {
+        guard !hasLock else { return .enabled }
         guard loadedNeedsLockPaths.contains(path) else { return .checkingNeedsLock }
         return needsLockPaths.contains(path) ? .enabled : .needsLockMissing
     }
