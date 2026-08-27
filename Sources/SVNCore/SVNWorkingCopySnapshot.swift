@@ -288,7 +288,10 @@ public struct SVNWorkingCopySnapshot: Sendable {
     ) -> [SVNStatusEntry] {
         let changed = entries.filter { entry in
             guard entry.status != "external" && entry.status != "ignored" else { return false }
-            return entry.status != "normal" || entry.propertyState != .none || entry.isSwitched
+            return entry.status != "normal"
+                || entry.treeConflicted
+                || entry.propertyState != .none
+                || entry.isSwitched
         }
         let filtered = changed.filter { entry in
             let key = canonicalKey(entry.path)

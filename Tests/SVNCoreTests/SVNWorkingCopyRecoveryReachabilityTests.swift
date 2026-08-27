@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import SVNCore
 
-@Test func realSVNUnrepairableCanonicalAliasCanHaveUnblockedRecovery() async throws {
+@Test func realSVNNormalTreeConflictIsVisibleAndBlocksRecovery() async throws {
     let fileManager = FileManager.default
     let svnPath = try #require(reachabilityExecutable(at: [
         "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
@@ -134,8 +134,10 @@ import Testing
     #expect(snapshot.collisions.count == 1)
     #expect(snapshot.collisions[0].canonicalPath == composedRoot)
     #expect(snapshot.collisions[0].repairableRawPath == nil)
-    #expect(!snapshot.statuses.contains { $0.item == .conflicted })
-    #expect(preview.blockingPaths.isEmpty)
+    #expect(snapshot.statuses.contains {
+        $0.item == .conflicted && Data($0.path.utf8) == conflictPathBytes
+    })
+    #expect(preview.blockingPaths == [conflictPath])
     #expect(preview.mappings.contains { $0.destinationPath == trackedPath && $0.status == .modified })
 }
 
