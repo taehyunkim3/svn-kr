@@ -22,7 +22,9 @@ enum AppLayout {
 
     static let changesPrimaryMinimumWidth: CGFloat = 380
     static let changesDetailMinimumWidth: CGFloat = 400
-    static let changesDisclosureSize = CGSize(width: 18, height: 18)
+    static let changesDisclosureIconSize = CGSize(width: 18, height: 18)
+    static let changesDisclosureHitTargetSize = CGSize(width: 28, height: 28)
+    static let changesRowSpacing: CGFloat = 8
     static let untrackedChildIndentation: CGFloat = 18
     static let historyPrimaryMinimumWidth: CGFloat = 520
     static let historyDetailMinimumWidth: CGFloat = 380

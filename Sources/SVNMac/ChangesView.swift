@@ -193,7 +193,7 @@ struct ChangesView: View {
     }
 
     private func changedFileRow(_ entry: SVNStatusEntry) -> some View {
-        HStack {
+        HStack(spacing: AppLayout.changesRowSpacing) {
             untrackedDirectoryDisclosure(path: entry.path, isDirectory: isUntrackedDirectory(entry))
             if entry.isSelectableForCommit || entry.canScheduleRepositoryDeletion {
                 Toggle("", isOn: Binding(
@@ -295,7 +295,7 @@ struct ChangesView: View {
             item: child.isIgnored ? .ignored : .unversioned,
             nodeKind: child.isDirectory ? .directory : .file
         )
-        return HStack {
+        return HStack(spacing: AppLayout.changesRowSpacing) {
             untrackedDirectoryDisclosure(path: child.path, isDirectory: child.isDirectory)
             Toggle("", isOn: Binding(
                 get: {
@@ -362,9 +362,14 @@ struct ChangesView: View {
                     ? "chevron.down"
                     : "chevron.right")
                     .frame(
-                        width: AppLayout.changesDisclosureSize.width,
-                        height: AppLayout.changesDisclosureSize.height
+                        width: AppLayout.changesDisclosureIconSize.width,
+                        height: AppLayout.changesDisclosureIconSize.height
                     )
+                    .frame(
+                        width: AppLayout.changesDisclosureHitTargetSize.width,
+                        height: AppLayout.changesDisclosureHitTargetSize.height
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(appLanguage.localized(
@@ -376,8 +381,8 @@ struct ChangesView: View {
         } else {
             Color.clear
                 .frame(
-                    width: AppLayout.changesDisclosureSize.width,
-                    height: AppLayout.changesDisclosureSize.height
+                    width: AppLayout.changesDisclosureHitTargetSize.width,
+                    height: AppLayout.changesDisclosureHitTargetSize.height
                 )
         }
     }
