@@ -15,6 +15,10 @@ enum SVNErrorLocalization {
         case needsCleanup
         case remainsInConflict(path: String)
         case notLockedInWorkingCopy
+        case forceUnlockOwnerOnlyHook
+        case authenticationRequiredOrFailed(code: String)
+        case accessForbidden
+        case other(code: String)
     }
 
     static func message(for error: SVNError, language: AppLanguage) -> String {
@@ -44,7 +48,11 @@ enum SVNErrorLocalization {
                     .ui.error.lockTokenDoesNotBelongCurrentWorkingCopyReviewOwner,
                     message
                 )
-            case nil:
+            case .forceUnlockOwnerOnlyHook,
+                 .authenticationRequiredOrFailed,
+                 .accessForbidden,
+                 .other,
+                 nil:
                 return language.localized(.ui.error.failed, command, message)
             }
         case let .workingCopyOutOfDate(details):
@@ -132,13 +140,51 @@ enum SVNErrorLocalization {
         return failureCode(in: message) == .notLockedInWorkingCopy
     }
 
+    static func forceUnlockFailureMessage(
+        for error: Error,
+        localizedMessage: String,
+        language: AppLanguage
+    ) -> String {
+        guard case let SVNError.commandFailed(_, message) = error,
+              let code = svnFailureCode(in: message) else { return localizedMessage }
+        let detail: String
+        switch failureCode(in: message) {
+        case .forceUnlockOwnerOnlyHook:
+            detail = language.localized(.ui.lock.forceUnlockOwnerOnlyHook, code)
+        case .authenticationRequiredOrFailed:
+            detail = language.localized(.ui.lock.forceUnlockAuthenticationRequiredOrFailed, code)
+        case .accessForbidden:
+            detail = language.localized(.ui.lock.forceUnlockAccessForbidden, code)
+        default:
+            detail = language.localized(.ui.lock.forceUnlockFailureCode, code)
+        }
+        return "\(localizedMessage)\n\n\(detail)"
+    }
+
     private static func failureCode(in message: String) -> FailureCode? {
         if SVNClient.needsCleanup(message) { return .needsCleanup }
         if message.contains("E155015") {
             return .remainsInConflict(path: conflictPath(in: message) ?? message)
         }
         if message.contains("E195013") { return .notLockedInWorkingCopy }
-        return nil
+        guard let code = svnFailureCode(in: message) else { return nil }
+        switch code {
+        case "E165001": return .forceUnlockOwnerOnlyHook
+        case "E170001", "E215004": return .authenticationRequiredOrFailed(code: code)
+        case "E175013": return .accessForbidden
+        default: return .other(code: code)
+        }
+    }
+
+    private static func svnFailureCode(in message: String) -> String? {
+        let pattern = #"\bE\d{6}\b"#
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let match = expression.firstMatch(
+                  in: message,
+                  range: NSRange(message.startIndex..., in: message)
+              ),
+              let range = Range(match.range, in: message) else { return nil }
+        return String(message[range])
     }
 
     private static func conflictPath(in message: String) -> String? {

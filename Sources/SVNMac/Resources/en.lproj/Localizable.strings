@@ -533,6 +533,10 @@
 "ui.lock.forceReleaseLock" = "Force Release Lock";
 "ui.lock.notAvailable" = "Not available";
 "ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked" = "Force releasing can interrupt someone else's work.\n\nPath: %1$@\nOwner: %2$@\nLocked at: %3$@\nComment: %4$@\n\nOriginal error:\n%5$@";
+"ui.lock.forceUnlockAccessForbidden" = "%1$@: The server denied access (HTTP 403).";
+"ui.lock.forceUnlockAuthenticationRequiredOrFailed" = "%1$@: Authentication is required or failed.";
+"ui.lock.forceUnlockFailureCode" = "SVN error code: %1$@";
+"ui.lock.forceUnlockOwnerOnlyHook" = "%1$@: The server's pre-unlock hook allows only the lock owner to release it.";
 "ui.cleanup.workingCopyCleanup" = "Working Copy Cleanup";
 "ui.cleanup.operationInterruptedLikeCleanUpWorkingCopyTryAgainCleanup" = "The operation was interrupted. Would you like to clean up the working copy and then try again? Cleanup does not delete your changes, but it may take some time.";
 "ui.cleanup.runCleanup" = "Run Cleanup";
@@ -630,6 +634,8 @@
 "ui.changes.switchedPath" = "Switched Path";
 "ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination" = "This path points to a different repository location. Verify the commit destination.";
 "ui.lock.alreadyHoldLocksAllSelectedFiles" = "You already hold locks for all selected files.";
+"ui.lock.actionRequiresNeedsLockProperty" = "This file does not have the svn:needs-lock property. Set Require Lock Before Editing and commit the property change first.";
+"ui.lock.checkingNeedsLockProperty" = "Checking the svn:needs-lock property.";
 "ui.lock.releasedAllLocks" = "Released all %1$@ of your locks.";
 "ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking" = "The current SVN client does not support forced multi-file locking.";
 "ui.lock.takeAnotherUserLock" = "Take Another User's Lock?";

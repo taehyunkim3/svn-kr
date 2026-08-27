@@ -359,7 +359,11 @@ extension ProjectStore {
             guard selectedProjectID == project.id else { return }
             forceUnlockRequest = nil
             if !offerWorkingCopyCleanup(for: error, projectID: project.id) {
-                errorMessage = localizedError(error)
+                errorMessage = SVNErrorLocalization.forceUnlockFailureMessage(
+                    for: error,
+                    localizedMessage: localizedError(error),
+                    language: .current
+                )
             }
         }
     }

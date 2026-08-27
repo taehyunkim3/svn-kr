@@ -545,8 +545,10 @@ struct LocalizationKey: Hashable, Sendable {
     ]
 
     private static let uiLockKeys: [LocalizationKey] = [
+        Self.ui.lock.actionRequiresNeedsLockProperty,
         Self.ui.lock.alreadyHoldLocksAllSelectedFiles,
         Self.ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther,
+        Self.ui.lock.checkingNeedsLockProperty,
         Self.ui.lock.countAccessibilityLabel,
         Self.ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking,
         Self.ui.lock.editingDocumentSvnKr,
@@ -559,6 +561,10 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.forceReleaseLock,
         Self.ui.lock.forceReleaseRepositoryLock,
         Self.ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked,
+        Self.ui.lock.forceUnlockAccessForbidden,
+        Self.ui.lock.forceUnlockAuthenticationRequiredOrFailed,
+        Self.ui.lock.forceUnlockFailureCode,
+        Self.ui.lock.forceUnlockOwnerOnlyHook,
         Self.ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt,
         Self.ui.lock.loadingRepositoryLocks,
         Self.ui.lock.lockAndOpenAction,
@@ -1381,8 +1387,10 @@ struct LocalizationUIIgnoreKeys {
 }
 
 struct LocalizationUILockKeys {
+    let actionRequiresNeedsLockProperty = LocalizationKey("ui.lock.actionRequiresNeedsLockProperty")
     let alreadyHoldLocksAllSelectedFiles = LocalizationKey("ui.lock.alreadyHoldLocksAllSelectedFiles")
     let changedRequiredLockPropertyFileCommitItApplyChangeOther = LocalizationKey("ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther")
+    let checkingNeedsLockProperty = LocalizationKey("ui.lock.checkingNeedsLockProperty")
     let countAccessibilityLabel = LocalizationKey("ui.lock.countAccessibilityLabel")
     let currentSvnClientDoesNotSupportForcedMultiFileLocking = LocalizationKey("ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking")
     let editingDocumentSvnKr = LocalizationKey("ui.lock.editingDocumentSvnKr")
@@ -1395,6 +1403,10 @@ struct LocalizationUILockKeys {
     let forceReleaseLock = LocalizationKey("ui.lock.forceReleaseLock")
     let forceReleaseRepositoryLock = LocalizationKey("ui.lock.forceReleaseRepositoryLock")
     let forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked = LocalizationKey("ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked")
+    let forceUnlockAccessForbidden = LocalizationKey("ui.lock.forceUnlockAccessForbidden")
+    let forceUnlockAuthenticationRequiredOrFailed = LocalizationKey("ui.lock.forceUnlockAuthenticationRequiredOrFailed")
+    let forceUnlockFailureCode = LocalizationKey("ui.lock.forceUnlockFailureCode")
+    let forceUnlockOwnerOnlyHook = LocalizationKey("ui.lock.forceUnlockOwnerOnlyHook")
     let informationCouldNotCheckedCanOpenFileWithoutLockingIt = LocalizationKey("ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt")
     let loadingRepositoryLocks = LocalizationKey("ui.lock.loadingRepositoryLocks")
     let lockAndOpenAction = LocalizationKey("ui.lock.lockAndOpenAction")

@@ -303,6 +303,7 @@ extension ProjectStore {
                 if properties.contains(where: { $0.name == "svn:needs-lock" }) {
                     recoveryState.needsLockPaths.insert(path)
                 }
+                recoveryState.loadedNeedsLockPaths.insert(path)
             } catch {
                 guard selectedProjectID == project.id else { return }
                 errorMessage = localizedError(error)
@@ -363,6 +364,7 @@ extension ProjectStore {
             } else {
                 recoveryState.needsLockPaths.subtract(paths)
             }
+            recoveryState.loadedNeedsLockPaths.formUnion(paths)
             await refreshLocalWorkingCopy()
             guard selectedProjectID == project.id else { return false }
             notice = AppLanguage.current.localized(

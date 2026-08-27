@@ -3,6 +3,101 @@ import Testing
 import SVNCore
 @testable import SVNMac
 
+@Test func forceUnlockFailuresExplainKnownCodesAndPreserveUnknownCodes() {
+    let baseMessage = "잠금 강제 해제 실패"
+
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "svn: E165001: Lock owner mismatch"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == "잠금 강제 해제 실패\n\nE165001: 서버의 pre-unlock 훅이 잠금 소유자만 해제하도록 제한했습니다.")
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "svn: E170001: Authentication required"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == "잠금 강제 해제 실패\n\nE170001: 인증이 필요하거나 실패했습니다.")
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "svn: E215004: No more credentials"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == "잠금 강제 해제 실패\n\nE215004: 인증이 필요하거나 실패했습니다.")
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "svn: E175013: Access forbidden"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == "잠금 강제 해제 실패\n\nE175013: 서버가 접근을 거부했습니다(HTTP 403).")
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "svn: E200009: Could not unlock"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == "잠금 강제 해제 실패\n\nSVN 오류 코드: E200009")
+}
+
+@Test func forceUnlockFailureWithoutCodeKeepsExistingLocalizedMessage() {
+    let baseMessage = "잠금 강제 해제 실패"
+
+    #expect(SVNErrorLocalization.forceUnlockFailureMessage(
+        for: SVNError.commandFailed(
+            command: "svn unlock --force",
+            message: "Could not unlock"
+        ),
+        localizedMessage: baseMessage,
+        language: .korean
+    ) == baseMessage)
+}
+
+@Test func fileLockActionAvailabilityDistinguishesNeedsLockAndExistingLockStates() {
+    let path = "Documents/report.hwp"
+
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        hasLock: false,
+        needsLockPaths: [path],
+        loadedNeedsLockPaths: [path]
+    ) == .enabled)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        hasLock: false,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: [path]
+    ) == .needsLockMissing)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        hasLock: false,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: []
+    ) == .checkingNeedsLock)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        hasLock: true,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: []
+    ) == .enabled)
+    #expect(FileLockActionAvailability.needsLockMissing.helpMessage(
+        language: .korean,
+        fallback: ""
+    ) == "이 파일에는 svn:needs-lock 속성이 없어 잠금 기능을 사용할 수 없습니다. 먼저 ‘편집 전 잠금 강제’를 설정하고 커밋하세요.")
+    #expect(FileLockActionAvailability.checkingNeedsLock.helpMessage(
+        language: .english,
+        fallback: ""
+    ) == "Checking the svn:needs-lock property.")
+}
+
 @Test func unlockedPathsRunOneExplicitMultiPathLockCommand() async throws {
     let client = RecordingMultiplePathLocker()
     let command = ExplicitLockCommand(

@@ -397,16 +397,27 @@ struct WorkingCopySplitBrowserView: View {
 
     @ViewBuilder
     private func contextMenuItems(for node: WorkingCopyFileNode) -> some View {
+        let existingLock = lockInfo(for: node)
+        let lockActionAvailability = FileLockActionAvailability.resolve(
+            path: node.relativePath,
+            hasLock: existingLock != nil,
+            needsLockPaths: store.recoveryState.needsLockPaths,
+            loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
+        )
         if !node.isDirectory {
             Button(appLanguage.localized(.ui.common.openFile)) {
                 Task { await openFile(node) }
             }
-            if let lock = lockInfo(for: node),
+            if let lock = existingLock,
                lock.owner == store.selectedProject?.username {
                 Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                     Task { await store.unlock(lock) }
                 }
-                .disabled(store.isSelectedProjectActionBlocked)
+                .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                .help(lockActionAvailability.helpMessage(
+                    language: appLanguage,
+                    fallback: appLanguage.localized(.ui.lock.releaseFromBrowserAction)
+                ))
             }
         }
         Button(appLanguage.localized(.ui.common.revealFinder)) {
@@ -417,14 +428,21 @@ struct WorkingCopySplitBrowserView: View {
         }
         if node.isRegularFile, node.isVersioned {
             Divider()
-            if lockInfo(for: node)?.owner != store.selectedProject?.username {
+            if existingLock?.owner != store.selectedProject?.username {
                 Button(
-                    lockInfo(for: node) == nil
+                    existingLock == nil
                         ? appLanguage.localized(.ui.lock.file)
                         : appLanguage.localized(.ui.lock.reviewForceLock)
                 ) {
                     Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                 }
+                .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                .help(lockActionAvailability.helpMessage(
+                    language: appLanguage,
+                    fallback: existingLock == nil
+                        ? appLanguage.localized(.ui.lock.file)
+                        : appLanguage.localized(.ui.lock.reviewForceLock)
+                ))
             }
             Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
                 Task { await store.loadFileHistory(for: node.repositoryRelativePath) }
