@@ -252,6 +252,7 @@ final class ProjectStore {
     var isConfirmingRepositoryPathNormalization = false
     var repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = []
     var selectedRepositoryPathNormalizationTargets: Set<SVNRepositoryPathNormalizationTarget> = []
+    var canBatchNormalizeRepositoryPaths = false
     var repositoryPathNormalizationCommitMessage = ""
     var repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult?
     var repositoryPathNormalizationIssue: RepositoryPathNormalizationIssue?
@@ -2090,6 +2091,7 @@ final class ProjectStore {
         isConfirmingRepositoryPathNormalization = false
         repositoryPathNormalizationTargets = []
         selectedRepositoryPathNormalizationTargets = []
+        canBatchNormalizeRepositoryPaths = false
         repositoryPathNormalizationCommitMessage = ""
         repositoryPathNormalizationResult = nil
         repositoryPathNormalizationIssue = nil

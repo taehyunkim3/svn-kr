@@ -416,13 +416,22 @@ private struct RepositoryPathNormalizationConfirmationView: View {
             .font(.title2.bold())
             .foregroundStyle(.orange)
 
-            warning(
-                appLanguage.localized(
-                    .repository.pathNormalization.confirmationCommits,
-                    selectedCount
-                ),
-                systemImage: "shippingbox.and.arrow.backward"
-            )
+            if store.canBatchNormalizeRepositoryPaths {
+                warning(
+                    appLanguage.localized(
+                        .repository.pathNormalization.confirmationBatchCommit
+                    ),
+                    systemImage: "shippingbox.and.arrow.backward"
+                )
+            } else {
+                warning(
+                    appLanguage.localized(
+                        .repository.pathNormalization.confirmationCommits,
+                        selectedCount
+                    ),
+                    systemImage: "shippingbox.and.arrow.backward"
+                )
+            }
             warning(
                 appLanguage.localized(
                     .repository.pathNormalization.confirmationDeleteAdd

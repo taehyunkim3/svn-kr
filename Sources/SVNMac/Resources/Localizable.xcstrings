@@ -290,6 +290,23 @@
         }
       }
     },
+    "repository.pathNormalization.confirmationBatchCommit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This renames all selected paths together in one repository commit."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 경로를 한 번에 개명하며, 저장소에 커밋 1개가 생성됩니다."
+          }
+        }
+      }
+    },
     "repository.pathNormalization.confirmationCommits": {
       "extractionState": "manual",
       "localizations": {

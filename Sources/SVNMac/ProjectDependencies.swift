@@ -19,6 +19,7 @@ protocol SVNClientServing: Sendable {
     func recoveryPreview(at path: String, credentials: SVNCredentials?) async throws -> SVNRecoveryPreview
     func recoverWorkingCopy(from sourcePath: String, to destinationPath: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRecoveryResult
     func repositoryPathsNeedingNormalization(at path: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryPathNormalizationTarget]
+    func canBatchNormalizeRepositoryPaths() async -> Bool
     func repositoryEntries(at repositoryURL: String, revision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry]
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult
     func ignoredStatus(at path: String, credentials: SVNCredentials?) async throws -> [SVNStatusEntry]
@@ -59,6 +60,8 @@ protocol SVNClientServing: Sendable {
 }
 
 extension SVNClientServing {
+    func canBatchNormalizeRepositoryPaths() async -> Bool { false }
+
     func checkout(
         repositoryURL: String,
         destinationPath: String,

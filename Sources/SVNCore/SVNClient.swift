@@ -454,7 +454,7 @@ public actor SVNClient {
         return SVNRepositoryPathNormalization.targets(from: entries)
     }
 
-    public func canBatchNormalizeRepositoryPaths() -> Bool {
+    public func canBatchNormalizeRepositoryPaths() async -> Bool {
         svnmuccExecutableURL() != nil
     }
 

@@ -16,6 +16,7 @@
 "repository.pathNormalization.before" = "Before";
 "repository.pathNormalization.codepointsDetail" = "%1$@, %2$@ scalars";
 "repository.pathNormalization.confirmationCommits" = "This creates %1$@ repository commit(s), one for each selected path.";
+"repository.pathNormalization.confirmationBatchCommit" = "This renames all selected paths together in one repository commit.";
 "repository.pathNormalization.confirmationDeleteAdd" = "In other team members' working copies, these changes appear as file deletions and additions.";
 "repository.pathNormalization.confirmationDirectory" = "Renaming a folder moves everything below it together.";
 "repository.pathNormalization.confirmationRun" = "Create %1$@ Commit(s)";
