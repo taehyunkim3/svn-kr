@@ -43,7 +43,7 @@ private struct DocumentOpenConfirmationView: View {
                 Button(appLanguage.localized(.ui.common.cancel), role: .cancel) {
                     store.documentOpenRequest = nil
                 }
-                .keyboardShortcut(.cancelAction)
+                .confirmationKeyboardShortcut(for: .cancel, behavior: keyboardBehavior)
 
                 if request.existingLock == nil {
                     // 다시 묻지 않기를 켜면 앞으로 잠그지 않고 여는 선택이므로
@@ -54,14 +54,13 @@ private struct DocumentOpenConfirmationView: View {
                     .disabled(remembersOpenWithoutLock)
                 }
 
-                // 잠그고 열기는 다른 사람의 편집을 막으므로 Return 기본 동작으로 두지 않습니다.
                 Button(appLanguage.localized(.ui.lock.openWithoutLock)) {
                     store.openWithoutLock(
                         request,
                         rememberingChoice: remembersOpenWithoutLock
                     )
                 }
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(for: .openWithoutLock, behavior: keyboardBehavior)
             }
         }
         .padding()
@@ -86,6 +85,18 @@ private struct DocumentOpenConfirmationView: View {
         } else {
             Text(appLanguage.localized(.ui.lock.lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful))
         }
+    }
+
+    private var keyboardBehavior: ConfirmationKeyboardBehavior {
+        .documentOpenConfirmation(
+            lock: documentLockState,
+            rememberOpenWithoutLock: remembersOpenWithoutLock ? .enabled : .disabled
+        )
+    }
+
+    private var documentLockState: DocumentLockState {
+        if request.lockInformationWasUnavailable { return .unavailable }
+        return request.existingLock == nil ? .unlocked : .locked
     }
 }
 

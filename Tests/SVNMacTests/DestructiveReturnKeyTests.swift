@@ -54,6 +54,27 @@ struct DestructiveReturnKeyTests {
         #expect(behavior.escapeAction == .cancel)
     }
 
+    @Test(
+        "Document open confirmation keyboard behavior",
+        arguments: [DocumentLockState.unlocked, .locked, .unavailable],
+        [RememberOpenWithoutLockState.disabled, .enabled]
+    )
+    func documentOpenConfirmationKeyboardBehavior(
+        lock: DocumentLockState,
+        rememberOpenWithoutLock: RememberOpenWithoutLockState
+    ) {
+        let behavior = ConfirmationKeyboardBehavior.documentOpenConfirmation(
+            lock: lock,
+            rememberOpenWithoutLock: rememberOpenWithoutLock
+        )
+
+        #expect(
+            behavior.returnAction == .openWithoutLock,
+            "문서 열기 확인의 Return은 잠금 없이 열기를 실행해야 한다."
+        )
+        #expect(behavior.escapeAction == .cancel)
+    }
+
     @Test func destructiveAndRecoveryButtonRolesRemainExplicit() throws {
         let deletion = try source(named: "DeletionConfirmationView.swift")
         let revert = try source(named: "RevertConfirmation.swift")
