@@ -154,7 +154,7 @@ struct RepositoryBrowserView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: entry.kind == .directory ? "folder.fill" : "doc")
                 .foregroundStyle(entry.kind == .directory ? .blue : .secondary)
-                .accessibilityLabel(appLanguage.localized(
+                .iconHelp(appLanguage.localized(
                     entry.kind == .directory
                         ? .ui.browser.directory
                         : .ui.browser.fileAccessibilityLabel

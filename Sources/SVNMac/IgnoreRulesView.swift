@@ -171,6 +171,7 @@ struct IgnoreRulesView: View {
             ))
             .labelsHidden()
             .disabled(!item.isSelectable)
+            .iconHelp(appLanguage.localized(.ui.ignore.includeRule, item.rule.rawPattern))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

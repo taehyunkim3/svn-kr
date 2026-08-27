@@ -158,7 +158,7 @@ struct UpdatePreviewView: View {
                         width: AppLayout.updatePreviewCommitDisclosureSize.width,
                         height: AppLayout.updatePreviewCommitDisclosureSize.height
                     )
-                    .help(appLanguage.localized(
+                    .iconHelp(appLanguage.localized(
                         isExpanded
                             ? .ui.update.collapseCommitDetails
                             : .ui.update.expandCommitDetails,

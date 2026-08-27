@@ -64,7 +64,7 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
-                    .help(appLanguage.localized(.ui.checkout.checkOutNewSvnRepositoryRegisterExistingLocalWorkingFolder))
+                    .iconHelp(appLanguage.localized(.ui.checkout.checkOutNewSvnRepositoryRegisterExistingLocalWorkingFolder))
 
                     Button(action: { projectPendingRemoval = store.selectedProject }) {
                         Image(systemName: "minus")
@@ -74,7 +74,7 @@ struct ContentView: View {
                     .controlSize(.small)
                     .frame(width: 30, height: 24)
                     .disabled(store.selectedProject == nil)
-                    .help(appLanguage.localized(.ui.repository.removeSelectedWorkingFolderAppLocalFilesNotDeleted))
+                    .iconHelp(appLanguage.localized(.ui.repository.removeSelectedWorkingFolderAppLocalFilesNotDeleted))
 
                     // 전체 설정은 상단 메뉴에만 있어 찾기 어려우므로 사이드바에도 노출합니다.
                     SettingsLink {

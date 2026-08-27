@@ -14,24 +14,27 @@ struct ProjectStatusBadges: View {
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .foregroundStyle(.orange)
-                    .help(appLanguage.localized(.ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames))
+                    .iconHelp(appLanguage.localized(.ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames))
                 }
                 if let summary {
                     if summary.conflictCount > 0 {
                         Label("\(summary.conflictCount)", systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
+                            .iconHelp(appLanguage.localized(.ui.status.conflictedFiles, summary.conflictCount))
                     } else if summary.localChangeCount > 0 {
                         Label("\(summary.localChangeCount)", systemImage: "pencil")
                             .foregroundStyle(.orange)
+                            .iconHelp(appLanguage.localized(.ui.history.localChanges, summary.localChangeCount))
                     }
                     if summary.lockCount > 0 {
                         Label("\(summary.lockCount)", systemImage: "lock.fill")
                             .foregroundStyle(.blue)
-                            .help(appLanguage.localized(.ui.status.lockedFiles, summary.lockCount))
+                            .iconHelp(appLanguage.localized(.ui.status.lockedFiles, summary.lockCount))
                     }
                     if summary.needsUpdate {
                         Label(appLanguage.localized(.ui.update.update), systemImage: "arrow.down.circle.fill")
                             .foregroundStyle(.orange)
+                            .iconHelp(appLanguage.localized(.ui.update.sidebarAvailableBadge))
                     }
                 }
             }

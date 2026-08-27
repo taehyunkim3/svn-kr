@@ -59,6 +59,7 @@ struct RepositoryLocksView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(lock.path).font(.body.monospaced())
                         Label(lock.owner, systemImage: "person")
+                            .iconHelp(appLanguage.localized(.ui.lock.lockedByOwner, lock.owner))
                         if let comment = lock.comment, !comment.isEmpty {
                             Text(comment).foregroundStyle(.secondary)
                         }

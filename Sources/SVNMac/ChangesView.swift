@@ -168,12 +168,12 @@ struct ChangesView: View {
                 ))
                 .labelsHidden()
                 .disabled(store.isCommitInteractionLocked)
+                .iconHelp(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
                 .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, entry.path))
-                .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             } else {
                 Image(systemName: "eye.slash")
                     .frame(width: 18)
-                    .help(appLanguage.localized(.ui.changes.cannotIncludeCommit))
+                    .iconHelp(appLanguage.localized(.ui.changes.cannotIncludeCommit))
             }
             statusBadge(entry)
             if WorkingCopyStatusPolicy.showsSwitchedWarning(entry) {
@@ -187,7 +187,7 @@ struct ChangesView: View {
             if store.recoveryState.needsLockPaths.contains(entry.path) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.lock.requiredBeforeEditing))
+                    .iconHelp(appLanguage.localized(.ui.lock.requiredBeforeEditing))
             }
             if let lock = lockInfo(for: entry) {
                 Label(lock.owner, systemImage: "lock.fill")
@@ -195,7 +195,7 @@ struct ChangesView: View {
                     .foregroundStyle(
                         lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange
                     )
-                    .help(lockDescription(lock))
+                    .iconHelp(lockDescription(lock))
             }
             Button {
                 Task { await store.loadDiff(for: entry.path) }
@@ -277,8 +277,8 @@ struct ChangesView: View {
             .labelsHidden()
             .disabled(store.isCommitInteractionLocked ||
                 store.isUntrackedChildSelectionDisabled(in: row.parentDirectory))
+            .iconHelp(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             .accessibilityLabel(appLanguage.localized(.ui.changes.includeCommit, child.path))
-            .help(appLanguage.localized(.ui.changes.includeExcludeFileNextCommit))
             statusBadge(entry)
             Button {
                 Task { await store.loadDiff(for: child.path) }
@@ -327,13 +327,7 @@ struct ChangesView: View {
                     )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(appLanguage.localized(
-                store.expandedUntrackedDirectoryPaths.contains(path)
-                    ? .ui.changes.collapseFolder
-                    : .ui.changes.expandFolder,
-                path
-            ))
-            .help(appLanguage.localized(
+            .iconHelp(appLanguage.localized(
                 store.expandedUntrackedDirectoryPaths.contains(path)
                     ? .ui.changes.collapseFolder
                     : .ui.changes.expandFolder,
@@ -455,6 +449,7 @@ struct ChangesView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
                 .frame(width: 18)
+                .iconHelp(appLanguage.localized(.ui.changes.unicodePathConflict))
             StatusBadge(
                 label: appLanguage.localized(.ui.changes.unicodePathConflict),
                 color: .orange
