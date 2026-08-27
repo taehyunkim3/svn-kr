@@ -30,14 +30,34 @@ public actor SVNClient {
     }
 
     private let executablePath: String?
+    private let svnmuccExecutablePath: String?
     private let configDirectoryPath: String?
+    private let executableFileChecker: @Sendable (String) -> Bool
     private var svnProjectPathPrefixByLocalProjectPath: [
         SVNPathIdentity: ProjectPathPrefixCacheEntry
     ] = [:]
 
-    public init(executablePath: String? = nil, configDirectoryPath: String? = nil) {
+    public init(
+        executablePath: String? = nil,
+        svnmuccExecutablePath: String? = nil,
+        configDirectoryPath: String? = nil
+    ) {
         self.executablePath = executablePath
+        self.svnmuccExecutablePath = svnmuccExecutablePath
         self.configDirectoryPath = configDirectoryPath
+        executableFileChecker = { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    init(
+        executablePath: String? = nil,
+        svnmuccExecutablePath: String? = nil,
+        configDirectoryPath: String? = nil,
+        executableFileChecker: @escaping @Sendable (String) -> Bool
+    ) {
+        self.executablePath = executablePath
+        self.svnmuccExecutablePath = svnmuccExecutablePath
+        self.configDirectoryPath = configDirectoryPath
+        self.executableFileChecker = executableFileChecker
     }
 
     // MARK: - 사용자가 실행하는 SVN 기능
@@ -3037,7 +3057,7 @@ public actor SVNClient {
             .appendingPathComponent("Helpers", isDirectory: true)
             .appendingPathComponent("svn", isDirectory: false)
             .path
-        if FileManager.default.isExecutableFile(atPath: helper) {
+        if executableFileChecker(helper) {
             candidates.append(helper)
         }
         if let bundled = Bundle.main.url(forResource: "svn", withExtension: nil, subdirectory: "bin")?.path {
@@ -3048,9 +3068,40 @@ public actor SVNClient {
             "/usr/local/bin/svn",
             "/usr/bin/svn",
         ]
-        guard let path = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+        guard let path = candidates.first(where: executableFileChecker) else {
             throw SVNError.svnExecutableNotFound
         }
+        return URL(fileURLWithPath: path)
+    }
+
+    func svnmuccExecutableURL() -> URL? {
+        var candidates: [String] = []
+        if let svnmuccExecutablePath { candidates.append(svnmuccExecutablePath) }
+        if let override = ProcessInfo.processInfo.environment["SVNMUCC_EXECUTABLE"],
+           !override.isEmpty {
+            candidates.append(override)
+        }
+        let helper = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("Helpers", isDirectory: true)
+            .appendingPathComponent("svnmucc", isDirectory: false)
+            .path
+        if executableFileChecker(helper) {
+            candidates.append(helper)
+        }
+        if let bundled = Bundle.main.url(
+            forResource: "svnmucc",
+            withExtension: nil,
+            subdirectory: "bin"
+        )?.path {
+            candidates.append(bundled)
+        }
+        candidates += [
+            "/opt/homebrew/bin/svnmucc",
+            "/usr/local/bin/svnmucc",
+            "/usr/bin/svnmucc",
+        ]
+        guard let path = candidates.first(where: executableFileChecker) else { return nil }
         return URL(fileURLWithPath: path)
     }
 
