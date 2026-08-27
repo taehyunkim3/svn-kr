@@ -6,12 +6,11 @@ import Testing
 @Test func realSVNNormalizesMinimalRepositoryPathSetAndUpdateCleansWorkingCopy() async throws {
     let fixture = try RepositoryNormalizationFixture()
     defer { fixture.remove() }
-    let nfcFile = "루트파일.txt"
+    let nfcFile = "루트@파일.txt"
     let nfdFile = nfcFile.decomposedStringWithCanonicalMapping
     let nfcDirectory = "한글폴더"
     let nfdDirectory = nfcDirectory.decomposedStringWithCanonicalMapping
     let nfcChild = "하위파일.txt"
-    let nfdChild = nfcChild.decomposedStringWithCanonicalMapping
     let nfcSibling = "완성형파일.txt"
 
     try writeRepositoryNormalizationFile(
@@ -23,7 +22,7 @@ import Testing
     )
     try writeRepositoryNormalizationFile(
         Data("child".utf8),
-        atPath: fixture.workingCopy.path + "/" + nfdDirectory + "/" + nfdChild
+        atPath: fixture.workingCopy.path + "/" + nfdDirectory + "/" + nfcChild
     )
     try writeRepositoryNormalizationFile(
         Data("sibling".utf8),
@@ -41,13 +40,10 @@ import Testing
     let targets = try await fixture.client.repositoryPathsNeedingNormalization(
         at: fixture.workingCopy.path
     )
-    #expect(targets.count == 3)
-    #expect(targets.map { $0.repositoryPath.split(separator: "/").count } == [1, 1, 2])
+    #expect(targets.count == 2)
+    #expect(targets.map { $0.repositoryPath.split(separator: "/").count } == [1, 1])
     #expect(targets.contains { Data($0.repositoryPath.utf8) == Data(nfdFile.utf8) })
     #expect(targets.contains { Data($0.repositoryPath.utf8) == Data(nfdDirectory.utf8) })
-    #expect(targets.contains {
-        Data($0.repositoryPath.utf8) == Data((nfdDirectory + "/" + nfdChild).utf8)
-    })
     #expect(!targets.contains {
         Data($0.repositoryPath.utf8) == Data((nfdDirectory + "/" + nfcSibling).utf8)
     })
@@ -62,8 +58,9 @@ import Testing
 
     #expect(result.renamedTargets == targets)
     #expect(result.skippedTargets.isEmpty)
-    #expect(result.committedRevisions.count == 3)
-    #expect(revisionAfter - revisionBefore == 3)
+    #expect(result.committedRevisions.count == 1)
+    #expect(!result.didUseIndividualMoveFallback)
+    #expect(revisionAfter - revisionBefore == 1)
 
     let repositoryPaths = try fixture.repositoryPaths()
     #expect(repositoryPaths.allSatisfy {
@@ -126,6 +123,7 @@ import Testing
     #expect(result.renamedTargets == targets)
     #expect(result.skippedTargets.isEmpty)
     #expect(result.committedRevisions.count == 3)
+    #expect(result.didUseIndividualMoveFallback)
     let repositoryPaths = try fixture.repositoryPaths()
     #expect(repositoryPaths.allSatisfy {
         Data($0.utf8) == Data($0.precomposedStringWithCanonicalMapping.utf8)
@@ -143,6 +141,40 @@ import Testing
         ["status", fixture.workingCopy.path]
     )
     #expect(status.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+}
+
+@Test func missingSVNMuccFallsBackToIndividualRepositoryMoves() async throws {
+    let fixture = try RepositoryNormalizationFixture(canFindSVNMucc: false)
+    defer { fixture.remove() }
+    let first = "첫폴더".decomposedStringWithCanonicalMapping
+    let second = "둘째폴더".decomposedStringWithCanonicalMapping
+
+    _ = try runRepositoryNormalizationCommand(
+        fixture.svnPath,
+        [
+            "mkdir",
+            fixture.encodedRepositoryURL(appending: first),
+            fixture.encodedRepositoryURL(appending: second),
+            "-m",
+            "NFD seed",
+        ]
+    )
+    let targets = try await fixture.client.repositoryPathsNeedingNormalization(
+        at: fixture.workingCopy.path
+    )
+    let revisionBefore = try fixture.repositoryRevision()
+
+    let result = try await fixture.client.normalizeRepositoryPaths(
+        targets,
+        at: fixture.workingCopy.path,
+        message: "fallback"
+    )
+
+    #expect(targets.count == 2)
+    #expect(result.renamedTargets == targets)
+    #expect(result.committedRevisions.count == 2)
+    #expect(result.didUseIndividualMoveFallback)
+    #expect(try fixture.repositoryRevision() - revisionBefore == 2)
 }
 
 @Test func realSVNRejectsRepositoryNormalizationWhenTargetTreeHasLocalChanges() async throws {
@@ -347,7 +379,7 @@ private struct RepositoryNormalizationFixture {
     let svnPath: String
     let client: SVNClient
 
-    init() throws {
+    init(canFindSVNMucc: Bool = true) throws {
         let fileManager = FileManager.default
         svnPath = try #require(repositoryNormalizationExecutable(at: [
             "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
@@ -368,9 +400,27 @@ private struct RepositoryNormalizationFixture {
             svnPath,
             ["checkout", repositoryURL, workingCopy.path]
         )
+        let svnmuccPath: String?
+        if canFindSVNMucc {
+            guard let executable = repositoryNormalizationExecutable(at: [
+                "/opt/homebrew/bin/svnmucc",
+                "/usr/local/bin/svnmucc",
+                "/usr/bin/svnmucc",
+            ]) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            svnmuccPath = executable
+        } else {
+            svnmuccPath = nil
+        }
         client = SVNClient(
             executablePath: svnPath,
-            configDirectoryPath: root.appendingPathComponent("svn-config", isDirectory: true).path
+            svnmuccExecutablePath: svnmuccPath,
+            configDirectoryPath: root.appendingPathComponent("svn-config", isDirectory: true).path,
+            executableFileChecker: { candidate in
+                if candidate.hasSuffix("/svnmucc") && !canFindSVNMucc { return false }
+                return FileManager.default.isExecutableFile(atPath: candidate)
+            }
         )
     }
 
