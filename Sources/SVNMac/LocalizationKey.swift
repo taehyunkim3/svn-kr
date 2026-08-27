@@ -559,6 +559,10 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.lock.forceReleaseLock,
         Self.ui.lock.forceReleaseRepositoryLock,
         Self.ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked,
+        Self.ui.lock.forceUnlockAccessForbidden,
+        Self.ui.lock.forceUnlockAuthenticationRequiredOrFailed,
+        Self.ui.lock.forceUnlockFailureCode,
+        Self.ui.lock.forceUnlockOwnerOnlyHook,
         Self.ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt,
         Self.ui.lock.loadingRepositoryLocks,
         Self.ui.lock.lockAndOpenAction,
@@ -1395,6 +1399,10 @@ struct LocalizationUILockKeys {
     let forceReleaseLock = LocalizationKey("ui.lock.forceReleaseLock")
     let forceReleaseRepositoryLock = LocalizationKey("ui.lock.forceReleaseRepositoryLock")
     let forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked = LocalizationKey("ui.lock.forceReleasingCanInterruptSomeoneElseWorkPathOwnerLocked")
+    let forceUnlockAccessForbidden = LocalizationKey("ui.lock.forceUnlockAccessForbidden")
+    let forceUnlockAuthenticationRequiredOrFailed = LocalizationKey("ui.lock.forceUnlockAuthenticationRequiredOrFailed")
+    let forceUnlockFailureCode = LocalizationKey("ui.lock.forceUnlockFailureCode")
+    let forceUnlockOwnerOnlyHook = LocalizationKey("ui.lock.forceUnlockOwnerOnlyHook")
     let informationCouldNotCheckedCanOpenFileWithoutLockingIt = LocalizationKey("ui.lock.informationCouldNotCheckedCanOpenFileWithoutLockingIt")
     let loadingRepositoryLocks = LocalizationKey("ui.lock.loadingRepositoryLocks")
     let lockAndOpenAction = LocalizationKey("ui.lock.lockAndOpenAction")

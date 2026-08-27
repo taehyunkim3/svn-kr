@@ -4948,6 +4948,74 @@
         }
       }
     },
+    "ui.lock.forceUnlockAccessForbidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: The server denied access (HTTP 403)."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: 서버가 접근을 거부했습니다(HTTP 403)."
+          }
+        }
+      }
+    },
+    "ui.lock.forceUnlockAuthenticationRequiredOrFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: Authentication is required or failed."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: 인증이 필요하거나 실패했습니다."
+          }
+        }
+      }
+    },
+    "ui.lock.forceUnlockFailureCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN error code: %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SVN 오류 코드: %1$@"
+          }
+        }
+      }
+    },
+    "ui.lock.forceUnlockOwnerOnlyHook": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: The server's pre-unlock hook allows only the lock owner to release it."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: 서버의 pre-unlock 훅이 잠금 소유자만 해제하도록 제한했습니다."
+          }
+        }
+      }
+    },
     "ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust": {
       "extractionState": "manual",
       "localizations": {
