@@ -46,6 +46,47 @@ import Testing
     #expect(incoming.map(\.message) == ["remote"])
 }
 
+@Test func directoryRevisionUpdateAllowsNextDirectoryCommitWithoutPullingRemoteFiles() async throws {
+    let fixture = try MixedRevisionUpdateFixture()
+    defer { fixture.remove() }
+
+    try fixture.modify("folder/added.txt", in: fixture.workingCopy, contents: "added\n")
+    _ = try await fixture.client.commit(
+        at: fixture.workingCopy.path,
+        paths: ["folder/added.txt"],
+        message: "add child"
+    )
+    try fixture.modify("folder/base.txt", in: fixture.otherWorkingCopy, contents: "remote\n")
+    try fixture.commit("folder/base.txt", in: fixture.otherWorkingCopy, message: "remote file")
+    _ = try await fixture.client.setProperty(
+        named: "svn:ignore",
+        value: Data("build\n".utf8),
+        at: fixture.workingCopy.path,
+        relativePath: "folder"
+    )
+
+    await #expect(throws: SVNError.self) {
+        _ = try await fixture.client.commit(
+            at: fixture.workingCopy.path,
+            paths: ["folder"],
+            message: "directory property"
+        )
+    }
+
+    _ = try await fixture.client.updateDirectoryRevisions(
+        at: fixture.workingCopy.path,
+        relativePaths: [".", "folder"]
+    )
+
+    #expect(try fixture.contents(of: "folder/base.txt", in: fixture.workingCopy) == "base-folder\n")
+    let output = try await fixture.client.commit(
+        at: fixture.workingCopy.path,
+        paths: ["folder"],
+        message: "directory property"
+    )
+    #expect(output.contains("Committed revision 4"))
+}
+
 @MainActor
 @Test func directoryPropertyCommitCanUpdateAndRetryWithoutLosingCommitInput() async throws {
     let fixture = try MixedRevisionUpdateFixture()
@@ -114,8 +155,15 @@ private final class MixedRevisionUpdateFixture: @unchecked Sendable {
         workingCopy = root.appendingPathComponent("working-copy", isDirectory: true)
         otherWorkingCopy = root.appendingPathComponent("other-working-copy", isDirectory: true)
         try fileManager.createDirectory(at: imported, withIntermediateDirectories: true)
+        try fileManager.createDirectory(
+            at: imported.appendingPathComponent("folder", isDirectory: true),
+            withIntermediateDirectories: true
+        )
         try Data("base-a\n".utf8).write(to: imported.appendingPathComponent("a.txt"))
         try Data("base-b\n".utf8).write(to: imported.appendingPathComponent("b.txt"))
+        try Data("base-folder\n".utf8).write(
+            to: imported.appendingPathComponent("folder/base.txt")
+        )
         _ = try Self.run(svnadminPath, ["create", repository.path], at: root)
         let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
         _ = try Self.run(svnPath, ["import", imported.path, repositoryURL, "-m", "initial"], at: root)
@@ -129,6 +177,10 @@ private final class MixedRevisionUpdateFixture: @unchecked Sendable {
 
     func modify(_ path: String, in workingCopy: URL, contents: String) throws {
         try Data(contents.utf8).write(to: workingCopy.appendingPathComponent(path))
+    }
+
+    func contents(of path: String, in workingCopy: URL) throws -> String {
+        String(decoding: try Data(contentsOf: workingCopy.appendingPathComponent(path)), as: UTF8.self)
     }
 
     func commit(_ path: String, in workingCopy: URL, message: String) throws {
