@@ -38,6 +38,12 @@ struct RepositoryPathNormalizationIssue {
 }
 
 extension ProjectStore {
+    var repositoryPathNormalizationExpectedCommitCount: Int {
+        canBatchNormalizeRepositoryPaths
+            ? 1
+            : selectedRepositoryPathNormalizationTargets.count
+    }
+
     var allRepositoryPathNormalizationTargetsAreSelected: Bool {
         !repositoryPathNormalizationTargets.isEmpty
             && selectedRepositoryPathNormalizationTargets.count
@@ -59,6 +65,7 @@ extension ProjectStore {
         repositoryPathNormalizationSourceProjectID = project.id
         repositoryPathNormalizationTargets = []
         selectedRepositoryPathNormalizationTargets = []
+        canBatchNormalizeRepositoryPaths = false
         repositoryPathNormalizationCommitMessage = AppLanguage.current.localized(
             .repository.pathNormalization.defaultCommitMessage
         )
@@ -70,6 +77,7 @@ extension ProjectStore {
         let operationID = beginOperation(.scanRepositoryPaths(project.id))
         defer { endOperation(operationID) }
         do {
+            let canBatchNormalize = await client.canBatchNormalizeRepositoryPaths()
             let targets = try await client.repositoryPathsNeedingNormalization(
                 at: project.path,
                 credentials: credentials(for: project),
@@ -87,6 +95,7 @@ extension ProjectStore {
             }
             repositoryPathNormalizationTargets = targets
             selectedRepositoryPathNormalizationTargets = Set(targets)
+            canBatchNormalizeRepositoryPaths = canBatchNormalize
             isShowingRepositoryPathNormalization = true
         } catch {
             guard selectedProjectID == project.id else { return }

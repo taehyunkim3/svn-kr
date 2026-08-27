@@ -22,6 +22,10 @@ assert_equal "arm64" "$SVN_RUNTIME_ARCHITECTURE" "pins the runtime architecture"
   print -u2 "runtime manifest must contain the pinned SQLite source"
   exit 1
 }
+[[ "$(runtime_manifest_contents)" == *"tools=svn,svnmucc"* ]] || {
+  print -u2 "runtime manifest must contain svn and svnmucc"
+  exit 1
+}
 
 for source_name in subversion sqlite apr apr-util serf openssl expat lz4 utf8proc scons; do
   url="$(runtime_source_url "$source_name")"

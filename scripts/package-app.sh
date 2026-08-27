@@ -53,7 +53,8 @@ function build_app_bundle() {
 
 function validate_app_bundle_runtime() {
   local binary minos dependency resource_plist resource_bundle_id
-  for binary in "$APP/Contents/MacOS/SVNMac" "$APP/Contents/Helpers/svn" "$APP"/Contents/Frameworks/*.dylib(N); do
+  for binary in "$APP/Contents/MacOS/SVNMac" "$APP/Contents/Helpers/svn" \
+    "$APP/Contents/Helpers/svnmucc" "$APP"/Contents/Frameworks/*.dylib(N); do
     minos="$(vtool -show-build "$binary" | awk '/minos/ {print $2; exit}')"
     [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
       print -u2 "Packaged binary requires macOS ${minos:-unknown}, expected $SVN_RUNTIME_DEPLOYMENT_TARGET or lower: $binary"
@@ -135,15 +136,18 @@ function sign_app_bundle() {
 
   if [[ "$DISTRIBUTION" == "app-store" ]]; then
     codesign "${SIGN_ARGUMENTS[@]}" --entitlements "$ROOT/Resources/SVNHelper.entitlements" "$APP/Contents/Helpers/svn"
+    codesign "${SIGN_ARGUMENTS[@]}" --entitlements "$ROOT/Resources/SVNHelper.entitlements" "$APP/Contents/Helpers/svnmucc"
     codesign "${SIGN_ARGUMENTS[@]}" --entitlements "$APP_ENTITLEMENTS" "$APP"
   else
     codesign "${SIGN_ARGUMENTS[@]}" "$APP/Contents/Helpers/svn"
+    codesign "${SIGN_ARGUMENTS[@]}" "$APP/Contents/Helpers/svnmucc"
     codesign "${SIGN_ARGUMENTS[@]}" "$APP"
   fi
 
   codesign --verify --deep --strict "$APP"
   if [[ "$DISTRIBUTION" != "app-store" ]]; then
     "$APP/Contents/Helpers/svn" --version --quiet
+    "$APP/Contents/Helpers/svnmucc" --version >/dev/null
   fi
 }
 

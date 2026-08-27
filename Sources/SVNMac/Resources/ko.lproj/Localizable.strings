@@ -16,6 +16,7 @@
 "repository.pathNormalization.before" = "개명 전";
 "repository.pathNormalization.codepointsDetail" = "%1$@, %2$@자";
 "repository.pathNormalization.confirmationCommits" = "선택한 경로마다 하나씩, 저장소에 커밋 %1$@개가 생성됩니다.";
+"repository.pathNormalization.confirmationBatchCommit" = "선택한 경로를 한 번에 개명하며, 저장소에 커밋 1개가 생성됩니다.";
 "repository.pathNormalization.confirmationDeleteAdd" = "다른 팀원의 작업 복사본에서는 이 변경이 파일 삭제와 추가로 보입니다.";
 "repository.pathNormalization.confirmationDirectory" = "폴더를 개명하면 그 아래의 모든 항목이 함께 이동합니다.";
 "repository.pathNormalization.confirmationRun" = "커밋 %1$@개 생성";

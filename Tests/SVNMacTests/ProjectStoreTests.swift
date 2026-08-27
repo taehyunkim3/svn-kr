@@ -301,6 +301,7 @@ import Testing
     let scanGate = AsyncTestGate()
     let client = StubSVNClient(
         repositoryPathNormalizationTargets: targets,
+        canBatchNormalizeRepositoryPaths: true,
         repositoryPathNormalizationScanGate: scanGate
     )
     let store = makeStore(projects: [project], client: client)
@@ -321,6 +322,7 @@ import Testing
     #expect(store.isShowingRepositoryPathNormalization)
     #expect(store.repositoryPathNormalizationTargets == targets)
     #expect(store.selectedRepositoryPathNormalizationTargets == Set(targets))
+    #expect(store.canBatchNormalizeRepositoryPaths)
     #expect(store.allRepositoryPathNormalizationTargetsAreSelected)
 
     store.toggleRepositoryPathNormalizationTarget(targets[0])
@@ -331,6 +333,22 @@ import Testing
     #expect(store.selectedRepositoryPathNormalizationTargets.isEmpty)
     store.setAllRepositoryPathNormalizationTargetsSelected(true)
     #expect(store.selectedRepositoryPathNormalizationTargets == Set(targets))
+}
+
+@MainActor
+@Test func repositoryPathNormalizationExpectedCommitCountUsesBatchCapability() {
+    let store = makeStore(projects: [])
+    let targets = [
+        makeRepositoryPathNormalizationTarget("문서/첫 안내.md"),
+        makeRepositoryPathNormalizationTarget("문서/둘째 안내.md"),
+    ]
+    store.selectedRepositoryPathNormalizationTargets = Set(targets)
+
+    #expect(store.repositoryPathNormalizationExpectedCommitCount == 2)
+
+    store.canBatchNormalizeRepositoryPaths = true
+
+    #expect(store.repositoryPathNormalizationExpectedCommitCount == 1)
 }
 
 @MainActor
@@ -4712,6 +4730,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let commitError: SVNError?
     private var commitErrors: [SVNError]
     let repositoryPathNormalizationTargetsValue: [SVNRepositoryPathNormalizationTarget]
+    let canBatchNormalizeRepositoryPathsValue: Bool
     let repositoryPathNormalizationResultValue: SVNRepositoryPathNormalizationResult?
     let repositoryPathNormalizationError: SVNRepositoryPathNormalizationError?
     let repositoryPathNormalizationScanError: Error?
@@ -4814,6 +4833,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         commitErrors: [SVNError] = [],
         updateErrors: [KeychainStoreError] = [],
         repositoryPathNormalizationTargets: [SVNRepositoryPathNormalizationTarget] = [],
+        canBatchNormalizeRepositoryPaths: Bool = false,
         repositoryPathNormalizationResult: SVNRepositoryPathNormalizationResult? = nil,
         repositoryPathNormalizationError: SVNRepositoryPathNormalizationError? = nil,
         repositoryPathNormalizationScanError: Error? = nil,
@@ -4871,6 +4891,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.commitErrors = commitErrors
         self.updateErrors = updateErrors
         repositoryPathNormalizationTargetsValue = repositoryPathNormalizationTargets
+        canBatchNormalizeRepositoryPathsValue = canBatchNormalizeRepositoryPaths
         repositoryPathNormalizationResultValue = repositoryPathNormalizationResult
         self.repositoryPathNormalizationError = repositoryPathNormalizationError
         self.repositoryPathNormalizationScanError = repositoryPathNormalizationScanError
@@ -5003,6 +5024,9 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         await repositoryPathNormalizationScanGate?.wait()
         if let repositoryPathNormalizationScanError { throw repositoryPathNormalizationScanError }
         return repositoryPathNormalizationTargetsValue
+    }
+    func canBatchNormalizeRepositoryPaths() async -> Bool {
+        canBatchNormalizeRepositoryPathsValue
     }
     func repositoryEntries(at repositoryURL: String, revision: String?, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> [SVNRepositoryEntry] { [] }
     func normalizeRepositoryPaths(_ targets: [SVNRepositoryPathNormalizationTarget], at path: String, message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> SVNRepositoryPathNormalizationResult {

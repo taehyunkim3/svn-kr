@@ -67,3 +67,55 @@ import Testing
         Data(shallow.utf8), Data(medium.utf8), Data(deep.utf8),
     ])
 }
+
+@Test func svnmuccArgumentsPutDeepMovesFirstAndPercentEncodeAtSigns() {
+    let shallowSource = "얕은@폴더".decomposedStringWithCanonicalMapping
+    let shallowDestination = "얕은@폴더"
+    let deepSource = "plain/깊은@파일.txt".decomposedStringWithCanonicalMapping
+    let deepDestination = "plain/깊은@파일.txt"
+
+    let arguments = SVNRepositoryPathNormalization.svnmuccMoveArguments(
+        for: [
+            SVNRepositoryPathNormalizationTarget(
+                repositoryPath: shallowSource,
+                normalizedPath: shallowDestination,
+                isDirectory: true
+            ),
+            SVNRepositoryPathNormalizationTarget(
+                repositoryPath: deepSource,
+                normalizedPath: deepDestination,
+                isDirectory: false
+            ),
+        ],
+        repositoryURL: "https://example.com/repository"
+    )
+
+    #expect(arguments == [
+        "mv",
+        SVNRepositoryPathNormalization.repositoryURL(
+            "https://example.com/repository",
+            appending: deepSource
+        ),
+        SVNRepositoryPathNormalization.repositoryURL(
+            "https://example.com/repository",
+            appending: deepDestination
+        ),
+        "mv",
+        SVNRepositoryPathNormalization.repositoryURL(
+            "https://example.com/repository",
+            appending: shallowSource
+        ),
+        SVNRepositoryPathNormalization.repositoryURL(
+            "https://example.com/repository",
+            appending: shallowDestination
+        ),
+    ])
+    #expect(arguments[1].contains("%40"))
+    #expect(!arguments[1].hasSuffix("@"))
+}
+
+@Test func parsesSVNMuccCommittedRevision() {
+    #expect(SVNRepositoryPathNormalization.committedSVNMuccRevision(
+        from: "r1847 committed by user at 2026-08-27T04:50:20.490312Z\n"
+    ) == "1847")
+}

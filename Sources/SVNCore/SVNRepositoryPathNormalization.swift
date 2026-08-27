@@ -30,15 +30,18 @@ public struct SVNRepositoryPathNormalizationResult: Sendable {
     public let renamedTargets: [SVNRepositoryPathNormalizationTarget]
     public let skippedTargets: [SVNRepositoryPathNormalizationTarget]
     public let committedRevisions: [String]
+    public let didUseIndividualMoveFallback: Bool
 
     public init(
         renamedTargets: [SVNRepositoryPathNormalizationTarget],
         skippedTargets: [SVNRepositoryPathNormalizationTarget],
-        committedRevisions: [String]
+        committedRevisions: [String],
+        didUseIndividualMoveFallback: Bool = false
     ) {
         self.renamedTargets = renamedTargets
         self.skippedTargets = skippedTargets
         self.committedRevisions = committedRevisions
+        self.didUseIndividualMoveFallback = didUseIndividualMoveFallback
     }
 }
 
@@ -167,6 +170,34 @@ enum SVNRepositoryPathNormalization {
             return nil
         }
         return String(output[revisionRange])
+    }
+
+    static func committedSVNMuccRevision(from output: String) -> String? {
+        guard let expression = try? NSRegularExpression(
+            pattern: #"(?m)^r([0-9]+) committed by "#
+        ) else { return nil }
+        let range = NSRange(output.startIndex..., in: output)
+        guard let match = expression.firstMatch(in: output, range: range),
+              let revisionRange = Range(match.range(at: 1), in: output) else {
+            return nil
+        }
+        return String(output[revisionRange])
+    }
+
+    static func svnmuccMoveArguments(
+        for targets: [SVNRepositoryPathNormalizationTarget],
+        repositoryURL: String
+    ) -> [String] {
+        targets.enumerated().sorted { lhs, rhs in
+            let lhsDepth = rawComponents(lhs.element.repositoryPath).count
+            let rhsDepth = rawComponents(rhs.element.repositoryPath).count
+            if lhsDepth != rhsDepth { return lhsDepth > rhsDepth }
+            return lhs.offset < rhs.offset
+        }.flatMap { _, target in
+            let sourceURL = Self.repositoryURL(repositoryURL, appending: target.repositoryPath)
+            let destinationURL = Self.repositoryURL(repositoryURL, appending: target.normalizedPath)
+            return ["mv", sourceURL, destinationURL]
+        }
     }
 
     private static func rawComponents(_ path: String) -> [String] {

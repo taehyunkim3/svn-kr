@@ -58,6 +58,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.repository.pathNormalization.after,
         Self.repository.pathNormalization.before,
         Self.repository.pathNormalization.codepointsDetail,
+        Self.repository.pathNormalization.confirmationBatchCommit,
         Self.repository.pathNormalization.confirmationCommits,
         Self.repository.pathNormalization.confirmationDeleteAdd,
         Self.repository.pathNormalization.confirmationDirectory,
@@ -880,6 +881,7 @@ struct LocalizationRepositoryPathNormalizationKeys {
     let after = LocalizationKey("repository.pathNormalization.after")
     let before = LocalizationKey("repository.pathNormalization.before")
     let codepointsDetail = LocalizationKey("repository.pathNormalization.codepointsDetail")
+    let confirmationBatchCommit = LocalizationKey("repository.pathNormalization.confirmationBatchCommit")
     let confirmationCommits = LocalizationKey("repository.pathNormalization.confirmationCommits")
     let confirmationDeleteAdd = LocalizationKey("repository.pathNormalization.confirmationDeleteAdd")
     let confirmationDirectory = LocalizationKey("repository.pathNormalization.confirmationDirectory")

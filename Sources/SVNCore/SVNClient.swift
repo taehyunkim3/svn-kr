@@ -30,14 +30,34 @@ public actor SVNClient {
     }
 
     private let executablePath: String?
+    private let svnmuccExecutablePath: String?
     private let configDirectoryPath: String?
+    private let executableFileChecker: @Sendable (String) -> Bool
     private var svnProjectPathPrefixByLocalProjectPath: [
         SVNPathIdentity: ProjectPathPrefixCacheEntry
     ] = [:]
 
-    public init(executablePath: String? = nil, configDirectoryPath: String? = nil) {
+    public init(
+        executablePath: String? = nil,
+        svnmuccExecutablePath: String? = nil,
+        configDirectoryPath: String? = nil
+    ) {
         self.executablePath = executablePath
+        self.svnmuccExecutablePath = svnmuccExecutablePath
         self.configDirectoryPath = configDirectoryPath
+        executableFileChecker = { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    init(
+        executablePath: String? = nil,
+        svnmuccExecutablePath: String? = nil,
+        configDirectoryPath: String? = nil,
+        executableFileChecker: @escaping @Sendable (String) -> Bool
+    ) {
+        self.executablePath = executablePath
+        self.svnmuccExecutablePath = svnmuccExecutablePath
+        self.configDirectoryPath = configDirectoryPath
+        self.executableFileChecker = executableFileChecker
     }
 
     // MARK: - 사용자가 실행하는 SVN 기능
@@ -434,6 +454,10 @@ public actor SVNClient {
         return SVNRepositoryPathNormalization.targets(from: entries)
     }
 
+    public func canBatchNormalizeRepositoryPaths() async -> Bool {
+        svnmuccExecutableURL() != nil
+    }
+
     public func repositoryEntries(
         at repositoryURL: String,
         revision: String? = nil,
@@ -562,6 +586,52 @@ public actor SVNClient {
         }
         var renamedTargets: [SVNRepositoryPathNormalizationTarget] = []
         var committedRevisions: [String] = []
+        let svnmuccExecutable = svnmuccExecutableURL()
+        var didUseIndividualMoveFallback = svnmuccExecutable == nil && !pending.isEmpty
+
+        if let svnmuccExecutable, !pending.isEmpty {
+            let arguments = SVNRepositoryPathNormalization.svnmuccMoveArguments(
+                for: pending.map(\.original),
+                repositoryURL: repositoryURL
+            )
+            do {
+                let result = try await run(
+                    ["--file", messageFile.path],
+                    svnPathArguments: arguments,
+                    executableURL: svnmuccExecutable,
+                    at: path,
+                    credentials: credentials,
+                    allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                    allowedServerCertificateFailures: allowedServerCertificateFailures
+                )
+                if result.exitCode == 0 {
+                    guard let revision = SVNRepositoryPathNormalization
+                        .committedSVNMuccRevision(from: result.output) else {
+                        throw SVNRepositoryPathNormalizationError.failed(
+                            result: SVNRepositoryPathNormalizationResult(
+                                renamedTargets: pending.map(\.original),
+                                skippedTargets: skippedTargets,
+                                committedRevisions: []
+                            ),
+                            failedTarget: pending[0].original,
+                            details: result.output
+                        )
+                    }
+                    return SVNRepositoryPathNormalizationResult(
+                        renamedTargets: pending.map(\.original),
+                        skippedTargets: skippedTargets,
+                        committedRevisions: [revision]
+                    )
+                }
+                didUseIndividualMoveFallback = true
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as SVNRepositoryPathNormalizationError {
+                throw error
+            } catch {
+                didUseIndividualMoveFallback = true
+            }
+        }
 
         while !pending.isEmpty {
             let current = pending.removeFirst()
@@ -591,7 +661,8 @@ public actor SVNClient {
                     result: SVNRepositoryPathNormalizationResult(
                         renamedTargets: renamedTargets,
                         skippedTargets: skippedTargets,
-                        committedRevisions: committedRevisions
+                        committedRevisions: committedRevisions,
+                        didUseIndividualMoveFallback: didUseIndividualMoveFallback
                     ),
                     failedTarget: current.original,
                     details: String(describing: error)
@@ -606,7 +677,8 @@ public actor SVNClient {
                     result: SVNRepositoryPathNormalizationResult(
                         renamedTargets: renamedTargets,
                         skippedTargets: skippedTargets,
-                        committedRevisions: committedRevisions
+                        committedRevisions: committedRevisions,
+                        didUseIndividualMoveFallback: didUseIndividualMoveFallback
                     ),
                     failedTarget: current.original,
                     details: detail.isEmpty ? result.output : detail
@@ -632,7 +704,8 @@ public actor SVNClient {
         return SVNRepositoryPathNormalizationResult(
             renamedTargets: renamedTargets,
             skippedTargets: skippedTargets,
-            committedRevisions: committedRevisions
+            committedRevisions: committedRevisions,
+            didUseIndividualMoveFallback: didUseIndividualMoveFallback
         )
     }
 
@@ -2817,6 +2890,7 @@ public actor SVNClient {
         svnPathArgument: String? = nil,
         svnPathArguments: [String]? = nil,
         outputDestinationURL: URL? = nil,
+        executableURL: URL? = nil,
         at workingDirectoryPath: String,
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
@@ -2824,7 +2898,7 @@ public actor SVNClient {
         progress: SVNOutputHandler? = nil
     ) async throws -> SVNCommandResult {
         let process = Process()
-        let svnExecutable = try svnExecutableURL()
+        let svnExecutable = try executableURL ?? svnExecutableURL()
         // Finder/Dock에서 실행한 GUI 앱은 LANG/LC_ALL이 없을 수 있습니다.
         // SVN은 명령행 인자를 현재 로케일에서 UTF-8로 변환하므로, 로케일이
         // 비어 있으면 한글 커밋 메시지가 mojibake 상태로 저장될 수 있습니다.
@@ -3037,7 +3111,7 @@ public actor SVNClient {
             .appendingPathComponent("Helpers", isDirectory: true)
             .appendingPathComponent("svn", isDirectory: false)
             .path
-        if FileManager.default.isExecutableFile(atPath: helper) {
+        if executableFileChecker(helper) {
             candidates.append(helper)
         }
         if let bundled = Bundle.main.url(forResource: "svn", withExtension: nil, subdirectory: "bin")?.path {
@@ -3048,9 +3122,40 @@ public actor SVNClient {
             "/usr/local/bin/svn",
             "/usr/bin/svn",
         ]
-        guard let path = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+        guard let path = candidates.first(where: executableFileChecker) else {
             throw SVNError.svnExecutableNotFound
         }
+        return URL(fileURLWithPath: path)
+    }
+
+    func svnmuccExecutableURL() -> URL? {
+        var candidates: [String] = []
+        if let svnmuccExecutablePath { candidates.append(svnmuccExecutablePath) }
+        if let override = ProcessInfo.processInfo.environment["SVNMUCC_EXECUTABLE"],
+           !override.isEmpty {
+            candidates.append(override)
+        }
+        let helper = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("Helpers", isDirectory: true)
+            .appendingPathComponent("svnmucc", isDirectory: false)
+            .path
+        if executableFileChecker(helper) {
+            candidates.append(helper)
+        }
+        if let bundled = Bundle.main.url(
+            forResource: "svnmucc",
+            withExtension: nil,
+            subdirectory: "bin"
+        )?.path {
+            candidates.append(bundled)
+        }
+        candidates += [
+            "/opt/homebrew/bin/svnmucc",
+            "/usr/local/bin/svnmucc",
+            "/usr/bin/svnmucc",
+        ]
+        guard let path = candidates.first(where: executableFileChecker) else { return nil }
         return URL(fileURLWithPath: path)
     }
 
