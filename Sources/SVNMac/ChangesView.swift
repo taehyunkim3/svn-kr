@@ -31,6 +31,12 @@ enum ChangesListOverlayState: Equatable {
     }
 }
 
+enum UntrackedPathDoubleClick {
+    static func shouldToggleExpansion(isDirectory: Bool) -> Bool {
+        isDirectory
+    }
+}
+
 /// 변경 파일 선택, diff 확인, 선택 커밋 입력을 담당하는 전용 화면입니다.
 /// 커밋 입력 상태를 이 화면 안에 두어 ContentView가 탭 내부 동작을 알 필요가 없게 합니다.
 struct ChangesView: View {
@@ -266,6 +272,14 @@ struct ChangesView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded {
+                    handleUntrackedPathDoubleClick(
+                        path: entry.path,
+                        isDirectory: isUntrackedDirectory(entry)
+                    )
+                }
+            )
             .accessibilityHint(appLanguage.localized(.ui.changes.showsDiffFile))
             Spacer()
             if store.loadingUntrackedDirectoryPaths.contains(entry.path) {
@@ -334,6 +348,11 @@ struct ChangesView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(
+                TapGesture(count: 2).onEnded {
+                    handleUntrackedPathDoubleClick(path: child.path, isDirectory: child.isDirectory)
+                }
+            )
             .accessibilityHint(appLanguage.localized(.ui.changes.showsDiffFile))
             Spacer()
             if store.loadingUntrackedDirectoryPaths.contains(child.path) {
@@ -351,12 +370,7 @@ struct ChangesView: View {
     private func untrackedDirectoryDisclosure(path: String, isDirectory: Bool) -> some View {
         if isDirectory {
             Button {
-                Task {
-                    await store.setUntrackedDirectoryExpanded(
-                        path,
-                        expanded: !store.expandedUntrackedDirectoryPaths.contains(path)
-                    )
-                }
+                toggleUntrackedDirectoryExpansion(path)
             } label: {
                 Image(systemName: store.expandedUntrackedDirectoryPaths.contains(path)
                     ? "chevron.down"
@@ -384,6 +398,20 @@ struct ChangesView: View {
                     width: AppLayout.changesDisclosureHitTargetSize.width,
                     height: AppLayout.changesDisclosureHitTargetSize.height
                 )
+        }
+    }
+
+    private func handleUntrackedPathDoubleClick(path: String, isDirectory: Bool) {
+        guard UntrackedPathDoubleClick.shouldToggleExpansion(isDirectory: isDirectory) else { return }
+        toggleUntrackedDirectoryExpansion(path)
+    }
+
+    private func toggleUntrackedDirectoryExpansion(_ path: String) {
+        Task {
+            await store.setUntrackedDirectoryExpanded(
+                path,
+                expanded: !store.expandedUntrackedDirectoryPaths.contains(path)
+            )
         }
     }
 
