@@ -71,6 +71,7 @@ function runtime_manifest_contents() {
   local source_name
   print "deployment_target=$SVN_RUNTIME_DEPLOYMENT_TARGET"
   print "architecture=$SVN_RUNTIME_ARCHITECTURE"
+  print "tools=svn,svnmucc"
   for source_name in expat openssl apr apr-util lz4 utf8proc scons serf sqlite subversion; do
     print "$source_name=$(runtime_source_version "$source_name") sha256=$(runtime_source_sha256 "$source_name")"
   done

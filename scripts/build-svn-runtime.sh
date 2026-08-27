@@ -126,35 +126,36 @@ function deployment_target() {
 }
 
 function validate_runtime() {
-  local svn_binary="$OUTPUT_ROOT/bin/svn"
-  [[ -x "$svn_binary" ]] || {
-    print -u2 "SVN runtime was not produced: $svn_binary"
-    return 1
-  }
-
-  file "$svn_binary" | grep -q 'arm64' || {
-    print -u2 "SVN runtime is not arm64: $svn_binary"
-    return 1
-  }
-
-  local minos
-  minos="$(deployment_target "$svn_binary")"
-  [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
-    print -u2 "SVN runtime deployment target must be macOS $SVN_RUNTIME_DEPLOYMENT_TARGET or lower, got: ${minos:-unknown}"
-    return 1
-  }
-
-  local dependency
-  while IFS= read -r dependency; do
-    [[ -z "$dependency" ]] && continue
-    if is_forbidden_runtime_dependency "$dependency"; then
-      print -u2 "SVN runtime links a build-machine dependency: $dependency"
+  local binary minos dependency
+  for binary in "$OUTPUT_ROOT/bin/svn" "$OUTPUT_ROOT/bin/svnmucc"; do
+    [[ -x "$binary" ]] || {
+      print -u2 "SVN runtime was not produced: $binary"
       return 1
-    fi
-  done < <(dependencies "$svn_binary")
+    }
 
-  "$svn_binary" --version --verbose
-  print "Validated SVN runtime: $svn_binary (arm64, macOS $minos)"
+    file "$binary" | grep -q 'arm64' || {
+      print -u2 "SVN runtime is not arm64: $binary"
+      return 1
+    }
+
+    minos="$(deployment_target "$binary")"
+    [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
+      print -u2 "SVN runtime deployment target must be macOS $SVN_RUNTIME_DEPLOYMENT_TARGET or lower, got: ${minos:-unknown}"
+      return 1
+    }
+
+    while IFS= read -r dependency; do
+      [[ -z "$dependency" ]] && continue
+      if is_forbidden_runtime_dependency "$dependency"; then
+        print -u2 "SVN runtime links a build-machine dependency: $dependency"
+        return 1
+      fi
+    done < <(dependencies "$binary")
+  done
+
+  "$OUTPUT_ROOT/bin/svn" --version --verbose
+  "$OUTPUT_ROOT/bin/svnmucc" --version
+  print "Validated SVN runtime tools (arm64, macOS $minos)"
 }
 
 function copy_license_group() {
@@ -269,10 +270,12 @@ function main() {
       --with-expat="$PREFIX/include:$PREFIX/lib:expat" \
       --with-lz4="$PREFIX" --with-utf8proc="$PREFIX"
     make mkdir-init
-    make -j "$JOBS" svn
+    make -j "$JOBS" svn svnmucc
   )
   cp "$BUILD_ROOT/build-subversion/subversion/svn/svn" "$OUTPUT_ROOT/bin/svn"
-  chmod 755 "$OUTPUT_ROOT/bin/svn"
+  cp "$BUILD_ROOT/build-subversion/tools/client-side/svnmucc/svnmucc" \
+    "$OUTPUT_ROOT/bin/svnmucc"
+  chmod 755 "$OUTPUT_ROOT/bin/svn" "$OUTPUT_ROOT/bin/svnmucc"
 
   for source_name in "${SOURCE_NAMES[@]}"; do
     copy_license_group "$source_name" "${sources[$source_name]}"

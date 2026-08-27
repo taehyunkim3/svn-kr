@@ -24,11 +24,15 @@ function is_allowed_runtime_dependency() {
 function validate_runtime_source() {
   local runtime_dir="$1"
   local svn_binary="$runtime_dir/bin/svn"
-  [[ -x "$svn_binary" ]] || {
-    print -u2 "Validated SVN runtime is missing: $svn_binary"
-    print -u2 "Build it first with: ./scripts/build-svn-runtime.sh"
-    return 1
-  }
+  local svnmucc_binary="$runtime_dir/bin/svnmucc"
+  local binary
+  for binary in "$svn_binary" "$svnmucc_binary"; do
+    [[ -x "$binary" ]] || {
+      print -u2 "Validated SVN runtime is missing: $binary"
+      print -u2 "Build it first with: ./scripts/build-svn-runtime.sh"
+      return 1
+    }
+  done
   [[ -f "$runtime_dir/runtime-manifest.txt" ]] || {
     print -u2 "SVN runtime manifest is missing: $runtime_dir/runtime-manifest.txt"
     return 1
@@ -38,26 +42,27 @@ function validate_runtime_source() {
     return 1
   }
 
-  file "$svn_binary" | grep -q "Mach-O 64-bit executable $SVN_RUNTIME_ARCHITECTURE" || {
-    print -u2 "SVN runtime architecture must be $SVN_RUNTIME_ARCHITECTURE: $svn_binary"
-    return 1
-  }
-
-  local minos
-  minos="$(vtool -show-build "$svn_binary" | awk '/minos/ {print $2; exit}')"
-  [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
-    print -u2 "SVN runtime deployment target must be macOS $SVN_RUNTIME_DEPLOYMENT_TARGET or lower, got: ${minos:-unknown}"
-    return 1
-  }
-
-  local dependency
-  while IFS= read -r dependency; do
-    [[ -z "$dependency" ]] && continue
-    [[ "$(is_allowed_runtime_dependency "$dependency")" == true ]] || {
-      print -u2 "SVN runtime contains a non-system dependency: $dependency"
+  local minos dependency
+  for binary in "$svn_binary" "$svnmucc_binary"; do
+    file "$binary" | grep -q "Mach-O 64-bit executable $SVN_RUNTIME_ARCHITECTURE" || {
+      print -u2 "SVN runtime architecture must be $SVN_RUNTIME_ARCHITECTURE: $binary"
       return 1
     }
-  done < <(dependencies "$svn_binary")
+
+    minos="$(vtool -show-build "$binary" | awk '/minos/ {print $2; exit}')"
+    [[ -n "$minos" ]] && version_is_at_most "$minos" "$SVN_RUNTIME_DEPLOYMENT_TARGET" || {
+      print -u2 "SVN runtime deployment target must be macOS $SVN_RUNTIME_DEPLOYMENT_TARGET or lower, got: ${minos:-unknown}"
+      return 1
+    }
+
+    while IFS= read -r dependency; do
+      [[ -z "$dependency" ]] && continue
+      [[ "$(is_allowed_runtime_dependency "$dependency")" == true ]] || {
+        print -u2 "SVN runtime contains a non-system dependency: $dependency"
+        return 1
+      }
+    done < <(dependencies "$binary")
+  done
 
   local version_output sqlite_version
   version_output="$("$svn_binary" --version --verbose)"
@@ -67,7 +72,8 @@ function validate_runtime_source() {
     return 1
   }
 
-  print "Validated bundled SVN $("$svn_binary" --version --quiet), SQLite $sqlite_version, macOS $minos"
+  "$svnmucc_binary" --version >/dev/null
+  print "Validated bundled SVN tools $("$svn_binary" --version --quiet), SQLite $sqlite_version, macOS $minos"
 }
 
 function main() {
@@ -79,11 +85,13 @@ function main() {
   local resources_dir="$app/Contents/Resources"
   mkdir -p "$helper_dir" "$resources_dir/Licenses"
   cp "$runtime_dir/bin/svn" "$helper_dir/svn"
+  cp "$runtime_dir/bin/svnmucc" "$helper_dir/svnmucc"
   cp "$runtime_dir/runtime-manifest.txt" "$resources_dir/SVNRuntimeManifest.txt"
   cp -R "$runtime_dir/licenses/." "$resources_dir/Licenses/"
-  chmod 755 "$helper_dir/svn"
+  chmod 755 "$helper_dir/svn" "$helper_dir/svnmucc"
 
   codesign --force --sign - "$helper_dir/svn"
+  codesign --force --sign - "$helper_dir/svnmucc"
   print "Embedded validated SVN runtime from: $runtime_dir"
 }
 
