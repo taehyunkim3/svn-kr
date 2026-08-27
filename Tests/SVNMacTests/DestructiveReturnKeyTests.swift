@@ -76,11 +76,22 @@ struct DestructiveReturnKeyTests {
     }
 
     @Test func destructiveAndRecoveryButtonRolesRemainExplicit() throws {
+        let commit = try source(named: "CommitConfirmationView.swift")
+        let normalization = try source(named: "RepositoryPathNormalizationView.swift")
         let deletion = try source(named: "DeletionConfirmationView.swift")
         let revert = try source(named: "RevertConfirmation.swift")
         let restore = try source(named: "CommitDeletionRestoreConfirmation.swift")
+        let normalizationConfirmationStart = try #require(
+            normalization.range(
+                of: "private struct RepositoryPathNormalizationConfirmationView"
+            )
+        )
+        let normalizationConfirmation = normalization[normalizationConfirmationStart.lowerBound...]
 
+        #expect(commit.contains("Button(appLanguage.localized(.ui.commit.no), role: .cancel)"))
+        #expect(normalizationConfirmation.contains("role: .cancel"))
         #expect(deletion.contains("Button(role: .destructive)"))
+        #expect(deletion.contains("role: .cancel"))
         #expect(revert.contains("role: .destructive"))
         #expect(revert.contains("role: .cancel"))
         #expect(!restore.contains("role: .destructive"))
