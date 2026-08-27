@@ -61,6 +61,14 @@
 "ui.repository.addSvnRepository" = "Add SVN Repository";
 "ui.status.added" = "Added";
 "ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam" = "Added ignore rule '%1$@'. Commit the directory property to share it with the team.";
+"ui.ignore.addRule" = "Add";
+"ui.ignore.addingRule" = "Adding…";
+"ui.ignore.directory" = "Directory";
+"ui.ignore.duplicateRule" = "The same ignore rule already exists.";
+"ui.ignore.enterPattern" = "Enter an ignore pattern.";
+"ui.ignore.pattern" = "Pattern";
+"ui.ignore.patternMustNotContainSlashOrLineBreak" = "An ignore pattern cannot contain a slash or line break.";
+"ui.ignore.propertyKind" = "Property";
 "ui.history.additionalRevisionProperties" = "%1$@ additional revision properties";
 "ui.changes.affected" = "%1$@ affected";
 "ui.conflict.afterReviewingBothBackupsKeepContentCurrentlySavedWorkingFile" = "After reviewing both backups, keep the content currently saved in the working file.";

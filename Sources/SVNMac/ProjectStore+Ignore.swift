@@ -1,6 +1,50 @@
 import Foundation
 import SVNCore
 
+enum ManualIgnoreRuleValidationError: Error, Equatable {
+    case emptyPattern
+    case invalidPattern
+    case duplicateRule
+}
+
+struct ManualIgnoreRuleInput: Equatable {
+    let pattern: String
+    let directory: String
+    let propertyKind: SVNIgnorePropertyKind
+}
+
+enum ManualIgnoreRuleValidation {
+    static func validate(
+        pattern: String,
+        directory: String,
+        propertyKind: SVNIgnorePropertyKind,
+        existingRules: [SVNIgnoreRule]
+    ) throws -> ManualIgnoreRuleInput {
+        let pattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDirectory = directory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let directory = trimmedDirectory.isEmpty ? "." : trimmedDirectory
+        guard !pattern.isEmpty else {
+            throw ManualIgnoreRuleValidationError.emptyPattern
+        }
+        guard !pattern.contains("/"),
+              pattern.rangeOfCharacter(from: .newlines) == nil else {
+            throw ManualIgnoreRuleValidationError.invalidPattern
+        }
+        guard !existingRules.contains(where: {
+            $0.directory == directory
+                && $0.propertyKind == propertyKind
+                && $0.pattern == pattern
+        }) else {
+            throw ManualIgnoreRuleValidationError.duplicateRule
+        }
+        return ManualIgnoreRuleInput(
+            pattern: pattern,
+            directory: directory,
+            propertyKind: propertyKind
+        )
+    }
+}
+
 extension ProjectStore {
     var selectableGitIgnoreImportIDs: Set<IgnoreImportItem.ID> {
         Set(gitIgnoreImportItems.lazy.filter(\.isSelectable).map(\.id))
@@ -53,6 +97,56 @@ extension ProjectStore {
             notice = AppLanguage.current.localized(.ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam, pattern)
             await refresh()
             await loadIgnoreRules()
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
+    }
+
+    func addIgnoreRule(
+        pattern: String,
+        directory: String,
+        propertyKind: SVNIgnorePropertyKind
+    ) async {
+        guard let project = selectedProject else { return }
+        let input: ManualIgnoreRuleInput
+        do {
+            input = try ManualIgnoreRuleValidation.validate(
+                pattern: pattern,
+                directory: directory,
+                propertyKind: propertyKind,
+                existingRules: ignoreRules
+            )
+        } catch let error as ManualIgnoreRuleValidationError {
+            errorMessage = manualIgnoreRuleValidationMessage(for: error)
+            return
+        } catch {
+            errorMessage = localizedError(error)
+            return
+        }
+
+        let operationID = beginOperation(.ignore(project.id))
+        defer { endOperation(operationID) }
+        do {
+            try await client.addIgnoreRule(
+                at: project.path,
+                directory: input.directory,
+                pattern: input.pattern,
+                propertyKind: input.propertyKind,
+                credentials: nil
+            )
+            guard selectedProjectID == project.id else { return }
+            notice = AppLanguage.current.localized(
+                .ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam,
+                input.pattern
+            )
+            await refresh()
+            await loadIgnoreRules()
+            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
+            guard selectedProjectID == project.id else { return }
+            manualIgnorePattern = ""
+            manualIgnoreDirectory = "."
+            manualIgnorePropertyKind = .local
         } catch {
             guard selectedProjectID == project.id else { return }
             errorMessage = localizedError(error)
@@ -210,6 +304,19 @@ extension ProjectStore {
             errorMessage = localizedError(applicationError)
         } else {
             notice = AppLanguage.current.localized(.ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare, proposals.count)
+        }
+    }
+
+    private func manualIgnoreRuleValidationMessage(
+        for error: ManualIgnoreRuleValidationError
+    ) -> String {
+        switch error {
+        case .emptyPattern:
+            AppLanguage.current.localized(.ui.ignore.enterPattern)
+        case .invalidPattern:
+            AppLanguage.current.localized(.ui.ignore.patternMustNotContainSlashOrLineBreak)
+        case .duplicateRule:
+            AppLanguage.current.localized(.ui.ignore.duplicateRule)
         }
     }
 }

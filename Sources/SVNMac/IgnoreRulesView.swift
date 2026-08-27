@@ -20,6 +20,7 @@ struct IgnoreRulesView: View {
 
             List {
                 Section(appLanguage.localized(.ui.ignore.svnIgnoreRules)) {
+                    manualRuleInputRow
                     if store.ignoreRules.isEmpty {
                         Text(appLanguage.localized(.ui.ignore.noSvnIgnoreRulesConfigured))
                         .foregroundStyle(.secondary)
@@ -92,6 +93,55 @@ struct IgnoreRulesView: View {
             }
         } message: {
             Text(appLanguage.localized(.ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply))
+        }
+    }
+
+    private var manualRuleInputRow: some View {
+        @Bindable var store = store
+        return HStack {
+            TextField(
+                appLanguage.localized(.ui.ignore.pattern),
+                text: $store.manualIgnorePattern,
+                prompt: Text("*.log")
+            )
+            .font(.body.monospaced())
+            TextField(
+                appLanguage.localized(.ui.ignore.directory),
+                text: $store.manualIgnoreDirectory
+            )
+            .font(.body.monospaced())
+            Picker(
+                appLanguage.localized(.ui.ignore.propertyKind),
+                selection: $store.manualIgnorePropertyKind
+            ) {
+                ForEach(
+                    [SVNIgnorePropertyKind.local, .global],
+                    id: \.self
+                ) { propertyKind in
+                    Text(propertyKind.propertyName).tag(propertyKind)
+                }
+            }
+            Button {
+                Task {
+                    await store.addIgnoreRule(
+                        pattern: store.manualIgnorePattern,
+                        directory: store.manualIgnoreDirectory,
+                        propertyKind: store.manualIgnorePropertyKind
+                    )
+                }
+            } label: {
+                ActionProgressLabel(
+                    title: appLanguage.localized(.ui.ignore.addRule),
+                    inProgressTitle: appLanguage.localized(.ui.ignore.addingRule),
+                    isInProgress: store.isIgnoringSelectedProject
+                )
+            }
+            .disabled(
+                store.isSelectedProjectActionBlocked
+                    || store.manualIgnorePattern
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .isEmpty
+            )
         }
     }
 
