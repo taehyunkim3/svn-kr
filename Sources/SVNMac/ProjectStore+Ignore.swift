@@ -1,6 +1,50 @@
 import Foundation
 import SVNCore
 
+enum ManualIgnoreRuleValidationError: Error, Equatable {
+    case emptyPattern
+    case invalidPattern
+    case duplicateRule
+}
+
+struct ManualIgnoreRuleInput: Equatable {
+    let pattern: String
+    let directory: String
+    let propertyKind: SVNIgnorePropertyKind
+}
+
+enum ManualIgnoreRuleValidation {
+    static func validate(
+        pattern: String,
+        directory: String,
+        propertyKind: SVNIgnorePropertyKind,
+        existingRules: [SVNIgnoreRule]
+    ) throws -> ManualIgnoreRuleInput {
+        let pattern = pattern.trimmingCharacters(in: .whitespaces)
+        let trimmedDirectory = directory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let directory = trimmedDirectory.isEmpty ? "." : trimmedDirectory
+        guard !pattern.isEmpty else {
+            throw ManualIgnoreRuleValidationError.emptyPattern
+        }
+        guard !pattern.contains("/"),
+              pattern.rangeOfCharacter(from: .newlines) == nil else {
+            throw ManualIgnoreRuleValidationError.invalidPattern
+        }
+        guard !existingRules.contains(where: {
+            $0.directory == directory
+                && $0.propertyKind == propertyKind
+                && $0.pattern == pattern
+        }) else {
+            throw ManualIgnoreRuleValidationError.duplicateRule
+        }
+        return ManualIgnoreRuleInput(
+            pattern: pattern,
+            directory: directory,
+            propertyKind: propertyKind
+        )
+    }
+}
+
 extension ProjectStore {
     var selectableGitIgnoreImportIDs: Set<IgnoreImportItem.ID> {
         Set(gitIgnoreImportItems.lazy.filter(\.isSelectable).map(\.id))
