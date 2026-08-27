@@ -1449,6 +1449,11 @@ final class ProjectStore {
         guard let project = selectedProject, canCommitSelectedPaths else { return false }
         let selectedCommitPaths = selectedCommitPaths()
         let paths = selectedCommitPaths.sorted()
+        let directoryRevisionUpdatePaths = Self.postCommitDirectoryRevisionUpdatePaths(
+            committedPaths: paths,
+            statuses: statuses,
+            untrackedChildren: Array(untrackedChildrenByDirectory.values.joined())
+        )
         let missingPaths = statuses.lazy
             .filter { $0.item == .missing && selectedCommitPaths.contains($0.path) }
             .map(\.path)
@@ -1469,6 +1474,7 @@ final class ProjectStore {
         hasFailedCommitLog = false
         let progressBuffer = CheckoutProgressBuffer()
         let operationID = beginOperation(.commit(project.id))
+        var projectCredentials: SVNCredentials?
         defer {
             publishCommitLog(
                 progressBuffer.output,
@@ -1478,11 +1484,12 @@ final class ProjectStore {
             endOperation(operationID)
         }
         do {
+            projectCredentials = try credentials(for: project)
             let result = try await client.commit(
                 at: project.path,
                 paths: paths,
                 message: message,
-                credentials: credentials(for: project),
+                credentials: projectCredentials,
                 allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
                 allowedServerCertificateFailures: allowedServerCertificateFailures(for: project),
                 progress: { [weak self] output in
@@ -1497,26 +1504,52 @@ final class ProjectStore {
                 }
             )
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            if selectedProjectID == project.id { notice = result }
+            let directoryRevisionUpdateFailure = await postCommitDirectoryRevisionUpdateFailure(
+                project: project,
+                paths: directoryRevisionUpdatePaths,
+                credentials: projectCredentials
+            )
             guard selectedProjectID == project.id else { return true }
-            notice = result
             selectedPaths.subtract(paths)
             selectedUntrackedChildPaths.subtract(paths)
             lastCompletedCommitMessage = message
             recoveryState.outOfDateCommitRecoveryRequest = nil
             await refresh()
+            guard selectedProjectID == project.id else { return true }
+            if let directoryRevisionUpdateFailure {
+                notice = [result, directoryRevisionUpdateFailure]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "\n\n")
+            }
             return true
-        } catch let SVNError.commitSucceededWithValidationWarning(_, details) {
-            guard selectedProjectID == project.id else { return true }
-            selectedPaths.subtract(paths)
-            selectedUntrackedChildPaths.subtract(paths)
-            lastCompletedCommitMessage = message
-            recoveryState.outOfDateCommitRecoveryRequest = nil
-            await refresh()
-            guard selectedProjectID == project.id else { return true }
-            notice = localizedError(SVNError.commitSucceededWithValidationWarning(
+        } catch let SVNError.commitSucceededWithValidationWarning(output, details) {
+            let commitResult = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            let validationWarning = localizedError(SVNError.commitSucceededWithValidationWarning(
                 output: "",
                 details: details
             ))
+            if selectedProjectID == project.id {
+                notice = [commitResult, validationWarning]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "\n\n")
+            }
+            let directoryRevisionUpdateFailure = await postCommitDirectoryRevisionUpdateFailure(
+                project: project,
+                paths: directoryRevisionUpdatePaths,
+                credentials: projectCredentials
+            )
+            guard selectedProjectID == project.id else { return true }
+            selectedPaths.subtract(paths)
+            selectedUntrackedChildPaths.subtract(paths)
+            lastCompletedCommitMessage = message
+            recoveryState.outOfDateCommitRecoveryRequest = nil
+            await refresh()
+            guard selectedProjectID == project.id else { return true }
+            notice = [commitResult, validationWarning, directoryRevisionUpdateFailure]
+                .compactMap { $0 }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n\n")
             return true
         } catch let error as SVNError {
             if selectedProjectID == project.id {
@@ -1540,6 +1573,72 @@ final class ProjectStore {
                 handleRemoteError(error, project: project, action: .commit(message: message))
             }
             return false
+        }
+    }
+
+    nonisolated static func postCommitDirectoryRevisionUpdatePaths(
+        committedPaths: [String],
+        statuses: [SVNStatusEntry],
+        untrackedChildren: [SVNUntrackedChild]
+    ) -> [String] {
+        let statusesByPath = Dictionary(
+            statuses.map { (SVNPathIdentity(rawPath: $0.path), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let untrackedChildrenByPath = Dictionary(
+            untrackedChildren.map { (SVNPathIdentity(rawPath: $0.path), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var pathsByIdentity = [SVNPathIdentity(rawPath: "."): "."]
+
+        for committedPath in committedPaths {
+            let identity = SVNPathIdentity(rawPath: committedPath)
+            let status = statusesByPath[identity]
+            let isDeleted = status?.item == .deleted
+            let isDirectory = status?.nodeKind == .directory
+                || untrackedChildrenByPath[identity]?.isDirectory == true
+            let directoryPath = isDeleted || !isDirectory
+                ? Self.parentDirectory(of: committedPath)
+                : committedPath
+            pathsByIdentity[SVNPathIdentity(rawPath: directoryPath)] = directoryPath
+        }
+
+        return pathsByIdentity.values.sorted()
+    }
+
+    private nonisolated static func parentDirectory(of relativePath: String) -> String {
+        guard relativePath != ".", let separator = relativePath.lastIndex(of: "/") else {
+            return "."
+        }
+        let parent = relativePath[..<separator]
+        return parent.isEmpty ? "." : String(parent)
+    }
+
+    private func postCommitDirectoryRevisionUpdateFailure(
+        project: SVNProject,
+        paths: [String],
+        credentials: SVNCredentials?
+    ) async -> String? {
+        do {
+            _ = try await client.updateDirectoryRevisions(
+                at: project.path,
+                relativePaths: paths,
+                credentials: credentials,
+                allowUntrustedServerCertificate: project.allowsUntrustedServerCertificate == true,
+                allowedServerCertificateFailures: allowedServerCertificateFailures(for: project)
+            )
+            return nil
+        } catch {
+            let details = if let svnError = error as? SVNError {
+                SVNErrorLocalization.message(for: svnError, language: .current)
+            } else {
+                error.localizedDescription
+            }
+            return AppLanguage.current.localized(
+                .ui.error.failed,
+                "svn update --depth empty",
+                details
+            )
         }
     }
 

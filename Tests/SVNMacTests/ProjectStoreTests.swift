@@ -831,6 +831,7 @@ import Testing
     _ = await commit.value
 
     #expect(store.notice == "둘째 프로젝트 알림")
+    #expect(await client.requestedDirectoryRevisionUpdates() == [["."]])
 }
 
 @MainActor
@@ -2701,6 +2702,81 @@ import Testing
     #expect(store.lastCompletedCommitMessage == "완료 후 검증")
     #expect(store.notice?.contains("다시 커밋하지") == true)
     #expect(await client.snapshotRequestCount() == 1)
+    #expect(await client.requestedDirectoryRevisionUpdates() == [["."]])
+}
+
+@Test func postCommitDirectoryRevisionUpdatePathsUseDirectoriesAndDeletedParents() {
+    let statuses = [
+        SVNStatusEntry(path: "root.txt", item: .modified, nodeKind: .file),
+        SVNStatusEntry(path: "docs/first.txt", item: .modified, nodeKind: .file),
+        SVNStatusEntry(path: "docs/second.txt", item: .added, nodeKind: .file),
+        SVNStatusEntry(path: "assets", item: .modified, nodeKind: .directory),
+        SVNStatusEntry(path: "removed/directory", item: .deleted),
+    ]
+    let untrackedChildren = [
+        SVNUntrackedChild(path: "new/files/data.bin", isDirectory: false, isIgnored: false),
+        SVNUntrackedChild(path: "new/folder", isDirectory: true, isIgnored: false),
+    ]
+
+    let paths = ProjectStore.postCommitDirectoryRevisionUpdatePaths(
+        committedPaths: statuses.map(\.path) + untrackedChildren.map(\.path),
+        statuses: statuses,
+        untrackedChildren: untrackedChildren
+    )
+
+    #expect(paths == [".", "assets", "docs", "new/files", "new/folder", "removed"])
+}
+
+@MainActor
+@Test func successfulCommitUpdatesDirectoryRevisionsOnceBeforeRefresh() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/post-commit-directory-update")
+    let statuses = [
+        SVNStatusEntry(path: "docs/first.txt", item: .modified, nodeKind: .file),
+        SVNStatusEntry(path: "docs/second.txt", item: .modified, nodeKind: .file),
+        SVNStatusEntry(path: "assets", item: .modified, nodeKind: .directory),
+        SVNStatusEntry(path: "removed/directory", item: .deleted),
+    ]
+    let client = StubSVNClient(statusesByPath: [project.path: []])
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = statuses
+    store.selectedPaths = Set(statuses.map(\.path))
+
+    #expect(await store.commit(message: "변경 커밋"))
+
+    #expect(await client.requestedDirectoryRevisionUpdates() == [[
+        ".", "assets", "docs", "removed",
+    ]])
+    #expect(await client.commitAndDirectoryUpdateEvents().prefix(2) == ["commit", "directory-update"])
+}
+
+@MainActor
+@Test func directoryRevisionUpdateFailureKeepsCommitSuccessfulAndReportsNotice() async throws {
+    let projectDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("post-commit-directory-update-failure-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: projectDirectory) }
+    let project = SVNProject(name: "프로젝트", path: projectDirectory.path)
+    let entry = SVNStatusEntry(path: "docs/report.txt", item: .modified, nodeKind: .file)
+    let client = StubSVNClient(
+        statusesByPath: [project.path: []],
+        directoryRevisionUpdateError: SVNError.commandFailed(
+            command: "svn update",
+            message: "revision update failed"
+        )
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [entry]
+    store.selectedPaths = [entry.path]
+
+    let succeeded = await store.commit(message: "보고서 수정")
+
+    #expect(succeeded)
+    #expect(store.errorMessage == nil)
+    #expect(store.selectedPaths.isEmpty)
+    #expect(store.lastCompletedCommitMessage == "보고서 수정")
+    #expect(store.notice?.contains("committed") == true)
+    #expect(store.notice?.contains("revision update failed") == true)
+    #expect(await client.requestedDirectoryRevisionUpdates() == [[".", "docs"]])
 }
 
 @MainActor
@@ -4719,6 +4795,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     let recoveryPreviewValue: SVNRecoveryPreview
     let recoveryResultValue: SVNRecoveryResult
     let commitCompletedWarning: (output: String, details: String)?
+    let directoryRevisionUpdateError: Error?
     let conflictDetailsValue: SVNConflictDetails?
     let conflictDetailsByRelativePath: [String: SVNConflictDetails]
     let conflictDetailsGatesByRelativePath: [String: AsyncTestGate]
@@ -4779,6 +4856,8 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var recordedUpdateAllowedCertificateFailures: [Set<SVNServerCertificateFailure>] = []
     private var repositoryCleanupDeletionPaths: [String] = []
     private var commitRequests: [CommitRequest] = []
+    private var directoryRevisionUpdateRequests: [[String]] = []
+    private var commitAndDirectoryUpdateEventNames: [String] = []
     private var commitProgressHandlers: [SVNOutputHandler?] = []
     private var cleanupRequests = 0
     private var unlockForces: [Bool] = []
@@ -4821,6 +4900,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         ),
         recoveryResult: SVNRecoveryResult? = nil,
         commitCompletedWarning: (output: String, details: String)? = nil,
+        directoryRevisionUpdateError: Error? = nil,
         conflictDetailsValue: SVNConflictDetails? = nil,
         conflictDetailsByRelativePath: [String: SVNConflictDetails] = [:],
         conflictDetailsGatesByRelativePath: [String: AsyncTestGate] = [:],
@@ -4882,6 +4962,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.repairedSnapshotsByPath = repairedSnapshotsByPath
         self.postDeletionSnapshotsByPath = postDeletionSnapshotsByPath
         self.commitCompletedWarning = commitCompletedWarning
+        self.directoryRevisionUpdateError = directoryRevisionUpdateError
         self.conflictDetailsValue = conflictDetailsValue
         self.conflictDetailsByRelativePath = conflictDetailsByRelativePath
         self.conflictDetailsGatesByRelativePath = conflictDetailsGatesByRelativePath
@@ -5235,6 +5316,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     func commit(at path: String, paths: [String], message: String, credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>, progress: SVNOutputHandler?) async throws -> String {
         let requestIndex = commitRequests.count
         commitRequests.append(CommitRequest(paths: paths, message: message))
+        commitAndDirectoryUpdateEventNames.append("commit")
         commitProgressHandlers.append(progress)
         if commitProgressByRequest.indices.contains(requestIndex) {
             for output in commitProgressByRequest[requestIndex] { progress?(output) }
@@ -5253,6 +5335,14 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         if let commitError { throw commitError }
         return "committed"
     }
+    func updateDirectoryRevisions(at path: String, relativePaths: [String], credentials: SVNCredentials?, allowUntrustedServerCertificate: Bool, allowedServerCertificateFailures: Set<SVNServerCertificateFailure>) async throws -> String {
+        directoryRevisionUpdateRequests.append(relativePaths)
+        commitAndDirectoryUpdateEventNames.append("directory-update")
+        if let directoryRevisionUpdateError { throw directoryRevisionUpdateError }
+        return "updated"
+    }
+    func requestedDirectoryRevisionUpdates() -> [[String]] { directoryRevisionUpdateRequests }
+    func commitAndDirectoryUpdateEvents() -> [String] { commitAndDirectoryUpdateEventNames }
     func lastCommitRequest() -> CommitRequest? { commitRequests.last }
     func commitRequestCount() -> Int { commitRequests.count }
     func emitCommitProgress(_ output: String, requestIndex: Int) {

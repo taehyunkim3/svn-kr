@@ -2030,6 +2030,24 @@ public actor SVNClient {
         ).output
     }
 
+    public func updateDirectoryRevisions(
+        at path: String,
+        relativePaths: [String],
+        credentials: SVNCredentials? = nil,
+        allowUntrustedServerCertificate: Bool = false,
+        allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = []
+    ) async throws -> String {
+        try await checkedRunWithMultipleWorkingCopyPathArguments(
+            ["update", "--depth", "empty"],
+            projectRelativePaths: relativePaths,
+            at: path,
+            credentials: credentials,
+            allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+            allowedServerCertificateFailures: allowedServerCertificateFailures,
+            pathTransport: .commandArguments
+        ).output
+    }
+
     public func diff(at path: String, relativePath: String? = nil, credentials: SVNCredentials? = nil) async throws -> String {
         guard let relativePath else {
             return try await checkedRun(["diff"], at: path, credentials: credentials).output
@@ -2631,9 +2649,14 @@ public actor SVNClient {
         return result
     }
 
-    /// 여러 작업 복사본 경로는 `--targets` 파일에 원문 UTF-8로 기록합니다.
-    /// Foundation `Process.arguments`를 거치면 한글이 NFD로 변할 수 있으므로,
-    /// 커밋·add·delete·revert 대상은 이 함수 밖에서 직접 인자로 만들지 않습니다.
+    private enum MultipleWorkingCopyPathTransport {
+        case targetsFile
+        case commandArguments
+    }
+
+    /// 여러 작업 복사본 경로를 같은 루트 기준 원문 표기로 해석합니다.
+    /// 기본은 `--targets` 파일에 UTF-8로 기록하고, `--targets`를 지원하지
+    /// 않는 명령만 raw 인자 전송을 사용합니다.
     private func checkedRunWithMultipleWorkingCopyPathArguments(
         _ arguments: [String],
         projectRelativePaths: [String],
@@ -2641,7 +2664,8 @@ public actor SVNClient {
         credentials: SVNCredentials? = nil,
         allowUntrustedServerCertificate: Bool = false,
         allowedServerCertificateFailures: Set<SVNServerCertificateFailure> = [],
-        progress: SVNOutputHandler? = nil
+        progress: SVNOutputHandler? = nil,
+        pathTransport: MultipleWorkingCopyPathTransport = .targetsFile
     ) async throws -> SVNCommandResult {
         guard !projectRelativePaths.isEmpty else {
             throw SVNClientArgumentError.emptyTargets(command: arguments.first ?? "")
@@ -2660,6 +2684,18 @@ public actor SVNClient {
         let svnPathsRelativeToWorkingCopyRoot = workingCopyCommandPaths.map(
             \.svnPathRelativeToWorkingCopyRoot
         )
+        if pathTransport == .commandArguments {
+            return try await checkedRunWithSVNPathArguments(
+                arguments,
+                svnPathArguments: svnPathsRelativeToWorkingCopyRoot,
+                escapePegSyntax: Array(repeating: true, count: svnPathsRelativeToWorkingCopyRoot.count),
+                at: workingCopyRootPath,
+                credentials: credentials,
+                allowUntrustedServerCertificate: allowUntrustedServerCertificate,
+                allowedServerCertificateFailures: allowedServerCertificateFailures,
+                progress: progress
+            )
+        }
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("svn-mac-targets-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
