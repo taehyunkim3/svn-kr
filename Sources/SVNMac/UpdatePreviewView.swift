@@ -13,7 +13,11 @@ struct UpdatePreviewView: View {
         @Bindable var store = store
         let preview = store.recoveryState.updatePreview
         let commitRecovery = store.recoveryState.outOfDateCommitRecoveryRequest
-        let hasRemoteUpdate = !store.remoteChanges.isEmpty || store.isWorkingCopyOutOfDate == true
+        let treatsAsOutOfDate = UpdatePreviewCommitRecoveryPolicy.treatsWorkingCopyAsOutOfDate(
+            hasCommitRecovery: commitRecovery != nil,
+            isWorkingCopyOutOfDate: store.isWorkingCopyOutOfDate
+        )
+        let hasRemoteUpdate = !store.remoteChanges.isEmpty || treatsAsOutOfDate
         VStack(spacing: 0) {
             HStack {
                 Text(sheetTitle(commitRecovery)).font(.title2.bold())
@@ -62,7 +66,7 @@ struct UpdatePreviewView: View {
                 } else if preview.commits.isEmpty {
                     ContentUnavailableView(
                         emptyStateTitle,
-                        systemImage: store.isWorkingCopyOutOfDate == true ? "arrow.down.circle" : "checkmark.circle",
+                        systemImage: treatsAsOutOfDate ? "arrow.down.circle" : "checkmark.circle",
                         description: Text(emptyStateDescription)
                     )
                 }
@@ -90,7 +94,7 @@ struct UpdatePreviewView: View {
                         .buttonStyle(.borderedProminent)
                     } else if preview.canRunUpdate(
                         hasRemoteChanges: hasRemoteUpdate,
-                        isWorkingCopyOutOfDate: false
+                        isWorkingCopyOutOfDate: treatsAsOutOfDate
                     ) {
                         Button {
                             Task { await store.update() }
@@ -123,6 +127,18 @@ struct UpdatePreviewView: View {
     }
 
     private func commitRecoveryNotice(_ recovery: OutOfDateCommitRecoveryRequest) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            commitRecoverySummary(recovery)
+            // 어떤 경로가 뒤처졌는지는 SVN 원문에만 있습니다. 그것이 없으면
+            // 서버 변경이 없어 보이는데도 커밋이 거절된 이유를 추적할 수 없습니다.
+            Text(recovery.details)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+        }
+    }
+
+    private func commitRecoverySummary(_ recovery: OutOfDateCommitRecoveryRequest) -> some View {
         Label {
             if recovery.conflictedPaths.isEmpty {
                 Text(appLanguage.localized(

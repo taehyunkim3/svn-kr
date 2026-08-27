@@ -49,3 +49,15 @@ struct UpdatePreviewState {
         !commits.isEmpty || hasRemoteChanges || isWorkingCopyOutOfDate || errorMessage != nil
     }
 }
+
+/// 서버가 커밋을 out-of-date로 거절했으면 미리보기가 비어 있어도 업데이트를 실행할 수 있어야 합니다.
+/// 거절 사실 자체가 작업 복사본이 뒤처졌다는 서버의 최종 판정입니다.
+enum UpdatePreviewCommitRecoveryPolicy {
+    static func treatsWorkingCopyAsOutOfDate(
+        hasCommitRecovery: Bool,
+        isWorkingCopyOutOfDate: Bool?
+    ) -> Bool {
+        hasCommitRecovery || isWorkingCopyOutOfDate == true
+    }
+}
+
