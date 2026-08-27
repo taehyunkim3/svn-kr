@@ -40,6 +40,9 @@
 - `SVNClient.run`은 경로에만 원문 UTF-8 운반 계약을 적용한다. `CredentialFieldsGrid`와 `SVNCredentials`는 사용자명을 일반 `String`으로 넘긴다. UI·Core 사이에 사용자명 바이트 보존과 NUL 거부 계약이 없다.
 - `SVNWorkingCopySnapshot`은 canonical alias를 숨기고 `SVNClient`가 BASE 내용으로 상태를 확정한다. 뒤 단계가 실패해도 앞 단계의 숨김을 되돌리지 않아 오류가 사용자 상태에서 사라진다.
 - `SVNClient.recoverWorkingCopy`는 저장소 HEAD를 새로 checkout한 뒤 원본 작업 복사본의 변경 파일을 덮어쓴다(`Sources/SVNCore/SVNClient.swift:645-678`). 현재 production 화면에는 `beginPathRecovery()` 호출점이 없어 도달하지 않는다. 다시 연결하면 원본 base revision과 HEAD가 다른 파일의 3-way 병합 또는 차단 계약이 먼저 필요하다.
+
+> **정정 (2026-08-27):** `recoverWorkingCopy`가 저장소 HEAD를 checkout한다는 설명은 틀렸다. 현재 구현은 원본 작업 복사본의 BASE 리비전으로 checkout하며, HEAD를 받으면 그 사이 서버 커밋이 새 BASE가 되어 out-of-date 검사 없이 다른 사람 변경이 사라질 수 있다. 근거: `Sources/SVNCore/SVNClient.swift:688-698`.
+
 - 로그 메시지 임시 파일 처리가 `normalizeRepositoryPaths`, `commit`, `withSVNLogMessageFile` 세 곳에 중복된다(`Sources/SVNCore/SVNClient.swift:449-457`, `1724-1732`, `2102-2115`). 현재 NUL 거부와 atomic write는 일치한다. 한 구현만 바뀌면 다시 갈라질 수 있다.
 
 ## 검증 공백
