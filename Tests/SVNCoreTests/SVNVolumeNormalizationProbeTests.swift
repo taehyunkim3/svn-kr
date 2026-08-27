@@ -61,28 +61,39 @@ import Testing
     #expect(try fileManager.contentsOfDirectory(atPath: directory.path) == [".keep"])
 }
 
-@Test func normalizationProbeDetectsHFSPlusWhenDiskImagesAreAvailable() throws {
+@Test(
+    .enabled(
+        if: FileManager.default.isExecutableFile(atPath: systemHDIUtilPath),
+        "hdiutil is unavailable"
+    )
+)
+func normalizationProbeDetectsHFSPlusWhenDiskImagesAreAvailable() throws {
     let fileManager = FileManager.default
-    let hdiutil = "/usr/bin/hdiutil"
-    guard fileManager.isExecutableFile(atPath: hdiutil) else { return }
+    let hdiutil = ProcessInfo.processInfo.environment["SVN_TEST_HDIUTIL"] ?? systemHDIUtilPath
 
     let base = fileManager.temporaryDirectory
         .appendingPathComponent("svn-normalization-hfs-\(UUID().uuidString)", isDirectory: true)
     let image = base.appendingPathExtension("dmg")
     let mount = base.appendingPathComponent("mount", isDirectory: true)
     try fileManager.createDirectory(at: mount, withIntermediateDirectories: true)
-
-    guard run(hdiutil, ["create", "-size", "20m", "-fs", "HFS+", "-volname", "NFDPROBE", "-quiet", image.path]),
-          run(hdiutil, ["attach", image.path, "-mountpoint", mount.path, "-nobrowse", "-quiet"]) else {
-        try? fileManager.removeItem(at: base)
-        try? fileManager.removeItem(at: image)
-        return
-    }
+    var isAttached = false
     defer {
-        detachDiskImage(hdiutil, mountPath: mount.path)
+        if isAttached {
+            detachDiskImage(hdiutil, mountPath: mount.path)
+        }
         try? fileManager.removeItem(at: base)
         try? fileManager.removeItem(at: image)
     }
+
+    try runDiskImageCommand(
+        hdiutil,
+        ["create", "-size", "20m", "-fs", "HFS+", "-volname", "NFDPROBE", "-quiet", image.path]
+    )
+    try runDiskImageCommand(
+        hdiutil,
+        ["attach", image.path, "-mountpoint", mount.path, "-nobrowse", "-quiet"]
+    )
+    isAttached = true
 
     let probe = SVNVolumeNormalizationProbe()
     #expect(probe.preservesPrecomposedFilenames(at: mount.path) == false)
@@ -90,6 +101,12 @@ import Testing
     // 볼륨 루트의 `.TemporaryItems`는 macOS가 만드는 폴더라 대상에서 제외합니다.
     let remaining = (try? fileManager.contentsOfDirectory(atPath: mount.path)) ?? []
     #expect(!remaining.contains { $0.hasPrefix(".svn-mac-normalization-probe-") })
+}
+
+@Test func diskImageCommandLaunchFailureThrows() {
+    #expect(throws: DiskImageCommandError.self) {
+        try runDiskImageCommand("/definitely/missing/hdiutil", ["create"])
+    }
 }
 
 @Test func normalizationProbeDiskImageDetachRetriesBeforeWarning() {
@@ -115,6 +132,7 @@ import Testing
 
 private let diskImageDetachAttemptCount = 3
 private let diskImageDetachRetryInterval: TimeInterval = 0.5
+private let systemHDIUtilPath = "/usr/bin/hdiutil"
 
 private func detachDiskImage(
     _ executablePath: String,
@@ -132,16 +150,51 @@ private func detachDiskImage(
     warning("hdiutil detach failed after \(diskImageDetachAttemptCount) attempts: \(mountPath)")
 }
 
-private func run(_ executable: String, _ arguments: [String]) -> Bool {
+private func runDiskImageCommand(_ executable: String, _ arguments: [String]) throws {
     let process = Process()
+    let output = Pipe()
+    let error = Pipe()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
-    process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
+    process.standardOutput = output
+    process.standardError = error
     do {
         try process.run()
-        process.waitUntilExit()
-        return process.terminationStatus == 0
+    } catch let launchError {
+        throw DiskImageCommandError(
+            executable: executable,
+            arguments: arguments,
+            detail: String(describing: launchError)
+        )
+    }
+    process.waitUntilExit()
+    guard process.terminationStatus == 0 else {
+        let outputData = output.fileHandleForReading.readDataToEndOfFile()
+        let errorData = error.fileHandleForReading.readDataToEndOfFile()
+        let commandOutput = String(decoding: outputData + errorData, as: UTF8.self)
+        throw DiskImageCommandError(
+            executable: executable,
+            arguments: arguments,
+            detail: "exit \(process.terminationStatus): \(commandOutput)"
+        )
+    }
+}
+
+private struct DiskImageCommandError: Error, CustomStringConvertible {
+    let executable: String
+    let arguments: [String]
+    let detail: String
+
+    var description: String {
+        let command = ([executable] + arguments).joined(separator: " ")
+        return "disk image command failed: \(command): \(detail)"
+    }
+}
+
+private func run(_ executable: String, _ arguments: [String]) -> Bool {
+    do {
+        try runDiskImageCommand(executable, arguments)
+        return true
     } catch {
         return false
     }
