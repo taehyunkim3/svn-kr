@@ -2919,6 +2919,28 @@ import Testing
 }
 
 @MainActor
+@Test func commitProgressLogVisibilityIgnoresNonCommitOperations() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let store = makeStore(projects: [selected])
+
+    let refreshID = store.beginOperation(.refresh(selected.id))
+
+    #expect(!store.showsCommitProgressLog)
+    store.endOperation(refreshID)
+}
+
+@MainActor
+@Test func commitProgressLogVisibilityTracksSelectedCommit() {
+    let selected = SVNProject(name: "선택", path: "/tmp/selected")
+    let store = makeStore(projects: [selected])
+
+    let commitID = store.beginOperation(.commit(selected.id))
+
+    #expect(store.showsCommitProgressLog)
+    store.endOperation(commitID)
+}
+
+@MainActor
 @Test func commitInteractionsPreserveExistingBlocksAndLockDuringCommit() {
     let selected = SVNProject(name: "선택", path: "/tmp/selected")
     let other = SVNProject(name: "다른", path: "/tmp/other")
@@ -3226,6 +3248,7 @@ import Testing
 
     #expect(await store.commit(message: "첫 커밋"))
     #expect(store.commitLog == "Sending        Sources/App.swift\nTransmitting file data .")
+    #expect(!store.showsCommitProgressLog)
 
     store.selectedPaths = [status.path]
     #expect(await store.commit(message: "두 번째 커밋"))
@@ -3251,6 +3274,65 @@ import Testing
 
     #expect(!(await store.commit(message: "실패 커밋")))
     #expect(store.commitLog == "Sending        Sources/App.swift\n")
+    #expect(store.showsCommitProgressLog)
+}
+
+@MainActor
+@Test func startingCommitClearsPreviousFailedCommitLog() async {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/retry-commit-progress")
+    let status = SVNStatusEntry(path: "Sources/App.swift", item: .modified)
+    let firstGate = AsyncTestGate()
+    let secondGate = AsyncTestGate()
+    await firstGate.release()
+    let client = StubSVNClient(
+        commitProgressByRequest: [["failed output\n"], ["retry output\n"]],
+        commitErrors: [.commandFailed(command: "svn commit", message: "network failed")],
+        commitGatesByRequest: [firstGate, secondGate]
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.statuses = [status]
+    store.selectedPaths = [status.path]
+    #expect(!(await store.commit(message: "실패 커밋")))
+    #expect(store.hasFailedCommitLog)
+
+    store.selectedPaths = [status.path]
+    let retry = Task { await store.commit(message: "재시도 커밋") }
+    await secondGate.waitUntilEntered()
+
+    #expect(store.isCommittingSelectedProject)
+    #expect(!store.hasFailedCommitLog)
+    #expect(store.commitLog == "retry output\n")
+
+    await secondGate.release()
+    #expect(await retry.value)
+}
+
+@MainActor
+@Test func refreshAndProjectSelectionClearFailedCommitLogVisibility() async {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/first-failed-commit")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/second-project")
+    let status = SVNStatusEntry(path: "Sources/App.swift", item: .modified)
+    let client = StubSVNClient(
+        statusesByPath: [first.path: [status]],
+        commitProgressByRequest: [["failed output\n"], ["failed again\n"]],
+        commitError: .commandFailed(command: "svn commit", message: "network failed")
+    )
+    let store = makeStore(projects: [first, second], client: client)
+    store.statuses = [status]
+    store.selectedPaths = [status.path]
+    #expect(!(await store.commit(message: "실패 커밋")))
+    #expect(store.showsCommitProgressLog)
+
+    await store.refresh()
+    #expect(!store.showsCommitProgressLog)
+
+    store.selectedPaths = [status.path]
+    #expect(!(await store.commit(message: "다시 실패")))
+    #expect(store.showsCommitProgressLog)
+    store.selectedProjectID = second.id
+
+    #expect(!store.showsCommitProgressLog)
+    #expect(store.commitLog.isEmpty)
 }
 
 @MainActor
@@ -4641,6 +4723,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var revertGatesByRequest: [AsyncTestGate]
     private var revertErrorsByRequest: [TestError?]
     let commitGate: AsyncTestGate?
+    private var commitGatesByRequest: [AsyncTestGate]
     let recoveryGate: AsyncTestGate?
     let multiplePathLockGate: AsyncTestGate?
     private var updatePreviewCommitsByRequest: [[SVNLogEntry]]
@@ -4742,6 +4825,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         revertGatesByRequest: [AsyncTestGate] = [],
         revertErrorsByRequest: [TestError?] = [],
         commitGate: AsyncTestGate? = nil,
+        commitGatesByRequest: [AsyncTestGate] = [],
         recoveryGate: AsyncTestGate? = nil,
         multiplePathLockGate: AsyncTestGate? = nil,
         untrackedChildrenByDirectory: [String: [SVNUntrackedChild]] = [:],
@@ -4798,6 +4882,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         self.revertGatesByRequest = revertGatesByRequest
         self.revertErrorsByRequest = revertErrorsByRequest
         self.commitGate = commitGate
+        self.commitGatesByRequest = commitGatesByRequest
         self.recoveryGate = recoveryGate
         self.multiplePathLockGate = multiplePathLockGate
         self.untrackedChildrenByDirectory = untrackedChildrenByDirectory
@@ -5130,7 +5215,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         if commitProgressByRequest.indices.contains(requestIndex) {
             for output in commitProgressByRequest[requestIndex] { progress?(output) }
         }
-        await commitGate?.wait()
+        let requestGate = commitGatesByRequest.indices.contains(requestIndex)
+            ? commitGatesByRequest[requestIndex]
+            : commitGate
+        await requestGate?.wait()
         if let commitCompletedWarning {
             throw SVNError.commitSucceededWithValidationWarning(
                 output: commitCompletedWarning.output,

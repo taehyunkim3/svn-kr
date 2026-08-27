@@ -272,6 +272,7 @@ final class ProjectStore {
     var errorMessage: String?
     private(set) var checkoutLog = ""
     private(set) var commitLog = ""
+    private(set) var hasFailedCommitLog = false
     var selectedProjectID: SVNProject.ID? {
         didSet {
             guard selectedProjectID != oldValue else { return }
@@ -570,6 +571,10 @@ final class ProjectStore {
 
     var isCommitInteractionLocked: Bool {
         isSelectedProjectActionBlocked || isCommittingSelectedProject
+    }
+
+    var showsCommitProgressLog: Bool {
+        isCommittingSelectedProject || hasFailedCommitLog
     }
 
     var isLoadingSelectedProjectLocks: Bool {
@@ -1309,6 +1314,7 @@ final class ProjectStore {
     }
 
     private func registerRefreshRequest() -> UUID {
+        hasFailedCommitLog = false
         discardUntrackedChildrenState()
         return beginRequest(.refresh)
     }
@@ -1433,6 +1439,7 @@ final class ProjectStore {
         let commitLogSessionID = UUID()
         self.commitLogSessionID = commitLogSessionID
         commitLog = ""
+        hasFailedCommitLog = false
         let progressBuffer = CheckoutProgressBuffer()
         let operationID = beginOperation(.commit(project.id))
         defer {
@@ -1486,6 +1493,7 @@ final class ProjectStore {
             return true
         } catch let error as SVNError {
             if selectedProjectID == project.id {
+                hasFailedCommitLog = true
                 if case let .workingCopyOutOfDate(details) = error {
                     isWorkingCopyOutOfDate = true
                     await prepareOutOfDateCommitRecovery(
@@ -1501,6 +1509,7 @@ final class ProjectStore {
             return false
         } catch {
             if selectedProjectID == project.id {
+                hasFailedCommitLog = true
                 handleRemoteError(error, project: project, action: .commit(message: message))
             }
             return false
@@ -2023,6 +2032,7 @@ final class ProjectStore {
         latestRequestIDs.removeAll()
         commitLogSessionID = UUID()
         commitLog = ""
+        hasFailedCommitLog = false
         failedRefreshCycleIDs = []
         automaticRefreshBlockedProjectID = nil
         changesState = ProjectChangesStore()

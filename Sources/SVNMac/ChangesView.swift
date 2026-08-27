@@ -17,7 +17,7 @@ struct ChangesView: View {
                 changesToolbar
                 Divider()
                 changedFileList
-                if store.isCommitInteractionLocked || !store.commitLog.isEmpty {
+                if store.showsCommitProgressLog {
                     Divider()
                     commitProgressLog
                 }
@@ -112,10 +112,10 @@ struct ChangesView: View {
     private var commitProgressLog: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                if store.isCommitInteractionLocked {
+                if store.isCommittingSelectedProject {
                     ProgressView().controlSize(.small)
                 }
-                Text(store.isCommitInteractionLocked
+                Text(store.isCommittingSelectedProject
                     ? appLanguage.localized(.ui.commit.committing)
                     : appLanguage.localized(.ui.commit.progressLog))
                     .font(.caption)
