@@ -48,6 +48,22 @@ import Testing
     #expect(mismatched.isEmpty, "서식 지정자 개수 불일치: \(mismatched.joined(separator: ", "))")
 }
 
+@Test func stringCatalogValuesMatchLegacyLocalizationResources() throws {
+    let sources = localizationSourcesDirectory()
+    let catalogURL = sources.appendingPathComponent("Resources/Localizable.xcstrings")
+
+    for language in ["ko", "en"] {
+        let catalog = try catalogLocalizationEntries(at: catalogURL, language: language)
+        let legacy = try propertyListLocalizationEntries(
+            at: sources.appendingPathComponent("Resources/\(language).lproj/Localizable.strings")
+        )
+        let mismatched = Set(catalog.keys).union(legacy.keys)
+            .filter { catalog[$0] != legacy[$0] }
+            .sorted()
+        #expect(mismatched.isEmpty, "\(language) String Catalog 값 불일치: \(mismatched.joined(separator: ", "))")
+    }
+}
+
 private func localizationSourcesDirectory() -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -61,6 +77,30 @@ private func catalogLocalizationKeys(at url: URL) throws -> Set<String> {
     let catalog = try #require(object as? [String: Any])
     let strings = try #require(catalog["strings"] as? [String: Any])
     return Set(strings.keys)
+}
+
+private func catalogLocalizationEntries(at url: URL, language: String) throws -> [String: String] {
+    let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+    let catalog = try #require(object as? [String: Any])
+    let strings = try #require(catalog["strings"] as? [String: Any])
+    var entries: [String: String] = [:]
+    for (key, rawEntry) in strings {
+        let entry = try #require(rawEntry as? [String: Any])
+        let localizations = try #require(entry["localizations"] as? [String: Any])
+        let localization = try #require(localizations[language] as? [String: Any])
+        let stringUnit = try #require(localization["stringUnit"] as? [String: Any])
+        entries[key] = try #require(stringUnit["value"] as? String)
+    }
+    return entries
+}
+
+private func propertyListLocalizationEntries(at url: URL) throws -> [String: String] {
+    let propertyList = try PropertyListSerialization.propertyList(
+        from: Data(contentsOf: url),
+        options: [],
+        format: nil
+    )
+    return try #require(propertyList as? [String: String])
 }
 
 private func localizationEntries(at url: URL) throws -> [String: String] {

@@ -4710,6 +4710,40 @@
         }
       }
     },
+    "ui.ignore.includeRule": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include ignore rule %1$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "무시 규칙 %1$@ 포함"
+          }
+        }
+      }
+    },
+    "ui.status.conflictedFiles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ conflicted files"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 파일 %1$@개"
+          }
+        }
+      }
+    },
     "ui.browser.files": {
       "extractionState": "manual",
       "localizations": {

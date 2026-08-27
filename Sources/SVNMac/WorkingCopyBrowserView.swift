@@ -104,6 +104,9 @@ struct WorkingCopyBrowserView: View {
         HStack(spacing: 8) {
             Image(systemName: iconName(for: node))
                 .foregroundStyle(node.isDirectory ? Color.accentColor : Color.secondary)
+                .iconHelp(appLanguage.localized(
+                    node.isDirectory ? .ui.browser.directory : .ui.browser.fileAccessibilityLabel
+                ))
             Text(node.name).lineLimit(1)
             if let status = visibleStatus(for: node) {
                 Text(status)
@@ -119,17 +122,17 @@ struct WorkingCopyBrowserView: View {
                 Label(lock.owner, systemImage: "lock.fill")
                     .font(.caption)
                     .foregroundStyle(lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange)
-                    .help(lockDescription(lock))
+                    .iconHelp(lockDescription(lock))
             }
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.lock.requiredBeforeEditing))
+                    .iconHelp(appLanguage.localized(.ui.lock.requiredBeforeEditing))
             }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.browser.symbolicLink))
+                    .iconHelp(appLanguage.localized(.ui.browser.symbolicLink))
             }
         }
         // 셀에 탭 제스처를 붙이면 이름 열을 클릭할 때 Table의 행 선택이 가려집니다.

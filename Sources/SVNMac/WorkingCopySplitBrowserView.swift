@@ -266,13 +266,7 @@ struct WorkingCopySplitBrowserView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(appLanguage.localized(
-                    browserState.expandedDirectoryPaths.contains(row.relativePath)
-                        ? .ui.browser.collapseFolder
-                        : .ui.browser.expandFolder,
-                    row.name
-                ))
-                .accessibilityLabel(appLanguage.localized(
+                .iconHelp(appLanguage.localized(
                     browserState.expandedDirectoryPaths.contains(row.relativePath)
                         ? .ui.browser.collapseFolder
                         : .ui.browser.expandFolder,
@@ -295,6 +289,7 @@ struct WorkingCopySplitBrowserView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
                         .foregroundStyle(Color.accentColor)
+                        .iconHelp(appLanguage.localized(.ui.browser.directory))
                     Text(row.name).fixedSize(horizontal: true, vertical: false)
                     if let node = folderNode(at: row.relativePath),
                        let status = visibleStatus(for: node) {
@@ -340,6 +335,9 @@ struct WorkingCopySplitBrowserView: View {
         HStack(spacing: 6) {
             Image(systemName: iconName(for: node))
                 .foregroundStyle(node.isDirectory ? Color.accentColor : Color.secondary)
+                .iconHelp(appLanguage.localized(
+                    node.isDirectory ? .ui.browser.directory : .ui.browser.fileAccessibilityLabel
+                ))
             Text(node.name).lineLimit(1)
             if let status = visibleStatus(for: node) {
                 Text(status)
@@ -353,17 +351,17 @@ struct WorkingCopySplitBrowserView: View {
                     .foregroundStyle(
                         lock.owner == store.selectedProject?.username ? Color.accentColor : Color.orange
                     )
-                    .help(lockDescription(lock))
+                    .iconHelp(lockDescription(lock))
             }
             if store.recoveryState.needsLockPaths.contains(node.relativePath) {
                 Image(systemName: "lock.square")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.lock.requiredBeforeEditing))
+                    .iconHelp(appLanguage.localized(.ui.lock.requiredBeforeEditing))
             }
             if node.isSymbolicLink {
                 Image(systemName: "arrow.triangle.turn.up.right.diamond")
                     .foregroundStyle(.secondary)
-                    .help(appLanguage.localized(.ui.browser.symbolicLink))
+                    .iconHelp(appLanguage.localized(.ui.browser.symbolicLink))
             }
         }
     }

@@ -71,11 +71,17 @@ struct CommitConfirmationView: View {
                             }
                         ))
                         .labelsHidden()
+                        .iconHelp(appLanguage.localized(.ui.commit.includeRestore, entry.path))
                         .accessibilityLabel(appLanguage.localized(
                             .ui.commit.includeRestore,
                             entry.path
                         ))
                         Image(systemName: entry.nodeKind == .directory ? "folder" : "doc")
+                            .iconHelp(appLanguage.localized(
+                                entry.nodeKind == .directory
+                                    ? .ui.browser.directory
+                                    : .ui.browser.fileAccessibilityLabel
+                            ))
                         Text(entry.path.precomposedStringWithCanonicalMapping)
                             .font(.body.monospaced())
                     }

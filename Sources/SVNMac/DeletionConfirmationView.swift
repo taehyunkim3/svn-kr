@@ -26,6 +26,11 @@ struct DeletionConfirmationView: View {
             List(request.entries) { entry in
                 HStack {
                     Image(systemName: entry.nodeKind == .directory ? "folder" : "doc")
+                        .iconHelp(appLanguage.localized(
+                            entry.nodeKind == .directory
+                                ? .ui.browser.directory
+                                : .ui.browser.fileAccessibilityLabel
+                        ))
                     Text(entry.path.precomposedStringWithCanonicalMapping)
                         .font(.body.monospaced())
                 }

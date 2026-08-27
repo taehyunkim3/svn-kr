@@ -858,10 +858,7 @@ private struct CredentialFieldsGrid: View {
                                 .frame(width: 14, height: 14)
                         }
                         .buttonStyle(.bordered)
-                        .help(isPasswordRevealed
-                            ? appLanguage.localized(.ui.authentication.hidePassword)
-                            : appLanguage.localized(.ui.authentication.showPassword))
-                        .accessibilityLabel(isPasswordRevealed
+                        .iconHelp(isPasswordRevealed
                             ? appLanguage.localized(.ui.authentication.hidePassword)
                             : appLanguage.localized(.ui.authentication.showPassword))
                     }

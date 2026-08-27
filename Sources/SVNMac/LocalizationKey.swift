@@ -527,6 +527,7 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust,
         Self.ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply,
         Self.ui.ignore.importGitRules,
+        Self.ui.ignore.includeRule,
         Self.ui.ignore.inherited,
         Self.ui.ignore.inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty,
         Self.ui.ignore.item,
@@ -752,6 +753,7 @@ struct LocalizationKey: Hashable, Sendable {
 
     private static let uiStatusKeys: [LocalizationKey] = [
         Self.ui.status.added,
+        Self.ui.status.conflictedFiles,
         Self.ui.status.deleted,
         Self.ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames,
         Self.ui.status.filenameWarning,
@@ -1380,6 +1382,7 @@ struct LocalizationUIIgnoreKeys {
     let gitignoreNotModifiedImportOneWaySvnPropertyChangesMust = LocalizationKey("ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust")
     let globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply = LocalizationKey("ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply")
     let importGitRules = LocalizationKey("ui.ignore.importGitRules")
+    let includeRule = LocalizationKey("ui.ignore.includeRule")
     let inherited = LocalizationKey("ui.ignore.inherited")
     let inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty = LocalizationKey("ui.ignore.inheritedRulesCanOnlyRemovedParentDirectoryThatOwnsProperty")
     let item = LocalizationKey("ui.ignore.item")
@@ -1605,6 +1608,7 @@ struct LocalizationUISettingsKeys {
 
 struct LocalizationUIStatusKeys {
     let added = LocalizationKey("ui.status.added")
+    let conflictedFiles = LocalizationKey("ui.status.conflictedFiles")
     let deleted = LocalizationKey("ui.status.deleted")
     let diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames = LocalizationKey("ui.status.diskContainingFolderStoresKoreanFilenamesOnlyDecomposedFormFilenames")
     let filenameWarning = LocalizationKey("ui.status.filenameWarning")

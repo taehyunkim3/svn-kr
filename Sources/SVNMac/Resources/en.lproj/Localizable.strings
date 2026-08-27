@@ -254,6 +254,7 @@
 "ui.lock.fileBeforeOpening" = "Lock This File Before Opening?";
 "ui.lock.lockedByOwner" = "Locked by %1$@";
 "ui.lock.lockedByCurrentUser" = "Locked by you";
+"ui.status.conflictedFiles" = "%1$@ conflicted files";
 "ui.status.lockedFiles" = "%1$@ locked files";
 "ui.settings.otherUsersCannotModifyLockedFileUntilCommitItRelease" = "Other users cannot modify a locked file until you commit it or release it from the lock list.";
 "ui.lock.lockingPreventsConcurrentCommitsOtherUsersReducesDocumentConflictsSuccessful" = "Locking prevents concurrent commits by other users and reduces document conflicts. A successful commit automatically releases the lock.";
@@ -365,6 +366,7 @@
 "ui.revision.selectCommit" = "Select a Commit";
 "ui.revision.selectFile" = "Select a File";
 "ui.ignore.selectAll" = "Select All";
+"ui.ignore.includeRule" = "Include ignore rule %1$@";
 "ui.commit.selectAllCurrentlyChangedFilesCommit" = "Select all currently changed files for commit.";
 "ui.commit.selectAll" = "Select All";
 "ui.common.selectedCount" = "%1$@ selected";
@@ -605,7 +607,7 @@
 "ui.certificate.notYetValidCheckServerMacClocksCertificateStartDate" = "The certificate is not yet valid. Check the server and Mac clocks and the certificate start date before allowing it; correcting the clocks is safer than trusting the certificate.";
 "ui.certificate.svnReportedCertificateProblemButDidNotIdentifySupportedReason" = "SVN reported a certificate problem but did not identify a supported reason. The app cannot safely create a specific exception. Contact the server administrator and replace or repair the certificate.";
 "ui.certificate.exceptionNotAllowedNoProjectSettingChanged" = "The certificate exception was not allowed. No project setting changed.";
-"ui.certificate.savedCertificateExceptionRetrySvnOperation" = "Saved the certificate exception for %@. Retry the SVN operation.";
+"ui.certificate.savedCertificateExceptionRetrySvnOperation" = "Saved the certificate exception for %1$@. Retry the SVN operation.";
 "ui.certificate.serverCertificateProblem" = "Server Certificate Problem";
 "ui.certificate.svnRejectedServerCertificateReviewDetectedProblemBeforeDeciding" = "SVN rejected the server certificate. Review the detected problem before deciding.";
 "ui.certificate.exceptionSecurityWarning" = "Allowing this exception weakens server identity verification for this project. A malicious server could impersonate your SVN server.";
