@@ -3015,6 +3015,47 @@ import Testing
 }
 
 @MainActor
+@Test func collapsingUntrackedDirectoryHidesDescendantsAndPreservesNestedExpansion() async {
+    let project = SVNProject(name: "선택", path: "/tmp/selected")
+    let directory = "kofa-user/.git/cursor/crepe/hash"
+    let nestedDirectory = SVNUntrackedChild(
+        path: "\(directory)/nested",
+        isDirectory: true,
+        isIgnored: false
+    )
+    let nestedFile = SVNUntrackedChild(
+        path: "\(nestedDirectory.path)/document.txt",
+        isDirectory: false,
+        isIgnored: false
+    )
+    let client = StubSVNClient(untrackedChildrenByDirectory: [
+        directory: [nestedDirectory],
+        nestedDirectory.path: [nestedFile],
+    ])
+    let store = makeStore(projects: [project], client: client)
+
+    await store.setUntrackedDirectoryExpanded(directory, expanded: true)
+    #expect(store.visibleUntrackedDescendants(in: directory).map(\.child.path) == [
+        nestedDirectory.path,
+    ])
+
+    await store.setUntrackedDirectoryExpanded(nestedDirectory.path, expanded: true)
+    #expect(store.visibleUntrackedDescendants(in: directory).map(\.child.path) == [
+        nestedDirectory.path,
+        nestedFile.path,
+    ])
+
+    await store.setUntrackedDirectoryExpanded(directory, expanded: false)
+    #expect(store.visibleUntrackedDescendants(in: directory).isEmpty)
+
+    await store.setUntrackedDirectoryExpanded(directory, expanded: true)
+    #expect(store.visibleUntrackedDescendants(in: directory).map(\.child.path) == [
+        nestedDirectory.path,
+        nestedFile.path,
+    ])
+}
+
+@MainActor
 @Test func refreshingWorkingCopyDiscardsUntrackedChildrenCacheAndSelection() async {
     let project = SVNProject(name: "선택", path: "/tmp/selected")
     let directory = SVNStatusEntry(path: "새 폴더", item: .unversioned, nodeKind: .directory)
