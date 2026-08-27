@@ -27,6 +27,12 @@ assert_equal "arm64" "$SVN_RUNTIME_ARCHITECTURE" "pins the runtime architecture"
   exit 1
 }
 
+build_script="$(<"$ROOT/scripts/build-svn-runtime.sh")"
+[[ "$build_script" == *'build-subversion/subversion/svnmucc/svnmucc'* ]] || {
+  print -u2 "runtime builder must copy svnmucc from the Subversion build output"
+  exit 1
+}
+
 for source_name in subversion sqlite apr apr-util serf openssl expat lz4 utf8proc scons; do
   url="$(runtime_source_url "$source_name")"
   checksum="$(runtime_source_sha256 "$source_name")"
