@@ -41,6 +41,7 @@ extension ProjectStore {
     }
 
     func visibleUntrackedDescendants(in directory: String) -> [VisibleUntrackedChild] {
+        guard expandedUntrackedDirectoryPaths.contains(directory) else { return [] }
         var result: [VisibleUntrackedChild] = []
         var pending = visibleUntrackedChildren(in: directory).reversed().map {
             VisibleUntrackedChild(child: $0, parentDirectory: directory, depth: 1)
