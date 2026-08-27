@@ -54,3 +54,63 @@ import Testing
     #expect(differences.map(\.componentIndex) == [0, 2])
     #expect(differences.map(\.normalizedComponent) == ["한글", "기"])
 }
+
+@Test func highlightsOnlyKoreanCharactersWithDifferentUTF8Bytes() {
+    let repositoryPath = "공통/0720 기획서/완료".decomposedStringWithCanonicalMapping
+    let normalizedPath = "공통/0720 기획서/완료"
+    let repositorySegments = repositoryPathDifferenceSegments(
+        path: repositoryPath,
+        comparedTo: normalizedPath
+    )
+    let normalizedSegments = repositoryPathDifferenceSegments(
+        path: normalizedPath,
+        comparedTo: repositoryPath
+    )
+
+    #expect(repositorySegments.map(\.isDifferent) == [true, false, true, false, true])
+    #expect(normalizedSegments.map(\.isDifferent) == [true, false, true, false, true])
+    #expect(repositorySegments.filter(\.isDifferent).map(\.text) == [
+        "공통".decomposedStringWithCanonicalMapping,
+        "기획서".decomposedStringWithCanonicalMapping,
+        "완료".decomposedStringWithCanonicalMapping,
+    ])
+    #expect(normalizedSegments.filter(\.isDifferent).map(\.text) == ["공통", "기획서", "완료"])
+    expectSegments(repositorySegments, restore: repositoryPath)
+    expectSegments(normalizedSegments, restore: normalizedPath)
+}
+
+@Test func leavesIdenticalPathUnhighlighted() {
+    let path = "공통/기획서/완료"
+    let segments = repositoryPathDifferenceSegments(path: path, comparedTo: path)
+
+    #expect(segments.allSatisfy { !$0.isDifferent })
+    expectSegments(segments, restore: path)
+}
+
+@Test func highlightsEntireComponentsWhenCharacterCountsDiffer() {
+    let shorterPath = "공통/기획/완료"
+    let longerPath = "공통/기획서/완료"
+    let shorterSegments = repositoryPathDifferenceSegments(
+        path: shorterPath,
+        comparedTo: longerPath
+    )
+    let longerSegments = repositoryPathDifferenceSegments(
+        path: longerPath,
+        comparedTo: shorterPath
+    )
+
+    #expect(shorterSegments.filter(\.isDifferent).map(\.text) == ["기획"])
+    #expect(longerSegments.filter(\.isDifferent).map(\.text) == ["기획서"])
+    #expect(shorterSegments.filter { $0.text.contains("/") }.allSatisfy { !$0.isDifferent })
+    #expect(longerSegments.filter { $0.text.contains("/") }.allSatisfy { !$0.isDifferent })
+    expectSegments(shorterSegments, restore: shorterPath)
+    expectSegments(longerSegments, restore: longerPath)
+}
+
+private func expectSegments(
+    _ segments: [RepositoryPathDifferenceSegment],
+    restore path: String
+) {
+    let restoredPath = segments.map(\.text).joined()
+    #expect(Data(restoredPath.utf8) == Data(path.utf8))
+}

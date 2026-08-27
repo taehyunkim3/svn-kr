@@ -156,11 +156,15 @@ struct RepositoryPathNormalizationView: View {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                     pathRow(
                         appLanguage.localized(.repository.pathNormalization.before),
-                        path: target.repositoryPath
+                        path: target.repositoryPath,
+                        comparedTo: target.normalizedPath,
+                        differenceColor: .orange
                     )
                     pathRow(
                         appLanguage.localized(.repository.pathNormalization.after),
-                        path: target.normalizedPath
+                        path: target.normalizedPath,
+                        comparedTo: target.repositoryPath,
+                        differenceColor: .accentColor
                     )
                 }
                 if !differences.isEmpty {
@@ -179,17 +183,45 @@ struct RepositoryPathNormalizationView: View {
         )
     }
 
-    private func pathRow(_ label: String, path: String) -> some View {
+    private func pathRow(
+        _ label: String,
+        path: String,
+        comparedTo comparisonPath: String,
+        differenceColor: Color
+    ) -> some View {
         GridRow {
             Text(label).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(path)
+                highlightedPath(
+                    path,
+                    comparedTo: comparisonPath,
+                    differenceColor: differenceColor
+                )
                     .font(.body.monospaced())
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
                 normalizationFormBadge(repositoryPathNormalizationForm(of: path))
             }
         }
+    }
+
+    private func highlightedPath(
+        _ path: String,
+        comparedTo comparisonPath: String,
+        differenceColor: Color
+    ) -> Text {
+        var attributedPath = AttributedString()
+        for segment in repositoryPathDifferenceSegments(
+            path: path,
+            comparedTo: comparisonPath
+        ) {
+            var attributedSegment = AttributedString(segment.text)
+            attributedSegment.foregroundColor = segment.isDifferent
+                ? differenceColor
+                : .primary
+            attributedPath.append(attributedSegment)
+        }
+        return Text(attributedPath)
     }
 
     private func normalizationFormBadge(
