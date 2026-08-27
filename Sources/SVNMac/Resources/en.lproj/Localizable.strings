@@ -634,6 +634,8 @@
 "ui.changes.switchedPath" = "Switched Path";
 "ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination" = "This path points to a different repository location. Verify the commit destination.";
 "ui.lock.alreadyHoldLocksAllSelectedFiles" = "You already hold locks for all selected files.";
+"ui.lock.actionRequiresNeedsLockProperty" = "This file does not have the svn:needs-lock property. Set Require Lock Before Editing and commit the property change first.";
+"ui.lock.checkingNeedsLockProperty" = "Checking the svn:needs-lock property.";
 "ui.lock.releasedAllLocks" = "Released all %1$@ of your locks.";
 "ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking" = "The current SVN client does not support forced multi-file locking.";
 "ui.lock.takeAnotherUserLock" = "Take Another User's Lock?";

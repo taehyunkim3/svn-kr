@@ -61,6 +61,34 @@ import SVNCore
     ) == baseMessage)
 }
 
+@Test func fileLockActionAvailabilityDistinguishesNeedsLockStates() {
+    let path = "Documents/report.hwp"
+
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        needsLockPaths: [path],
+        loadedNeedsLockPaths: [path]
+    ) == .enabled)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: [path]
+    ) == .needsLockMissing)
+    #expect(FileLockActionAvailability.resolve(
+        path: path,
+        needsLockPaths: [],
+        loadedNeedsLockPaths: []
+    ) == .checkingNeedsLock)
+    #expect(FileLockActionAvailability.needsLockMissing.helpMessage(
+        language: .korean,
+        fallback: ""
+    ) == "이 파일에는 svn:needs-lock 속성이 없어 잠금 기능을 사용할 수 없습니다. 먼저 ‘편집 전 잠금 강제’를 설정하고 커밋하세요.")
+    #expect(FileLockActionAvailability.checkingNeedsLock.helpMessage(
+        language: .english,
+        fallback: ""
+    ) == "Checking the svn:needs-lock property.")
+}
+
 @Test func unlockedPathsRunOneExplicitMultiPathLockCommand() async throws {
     let client = RecordingMultiplePathLocker()
     let command = ExplicitLockCommand(

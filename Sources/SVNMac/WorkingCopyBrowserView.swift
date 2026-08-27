@@ -142,6 +142,11 @@ struct WorkingCopyBrowserView: View {
     @ViewBuilder
     private func rowMenu(for ids: Set<String>) -> some View {
         if let id = ids.first, ids.count == 1, let node = displayedState.node(at: id) {
+            let lockActionAvailability = FileLockActionAvailability.resolve(
+                path: node.relativePath,
+                needsLockPaths: store.recoveryState.needsLockPaths,
+                loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
+            )
             if !node.isDirectory {
                 Button(appLanguage.localized(.ui.common.openFile)) {
                     open(node)
@@ -151,7 +156,11 @@ struct WorkingCopyBrowserView: View {
                     Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                         Task { await store.unlock(lock) }
                     }
-                    .disabled(store.isSelectedProjectActionBlocked)
+                    .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                    .help(lockActionAvailability.helpMessage(
+                        language: appLanguage,
+                        fallback: appLanguage.localized(.ui.lock.releaseFromBrowserAction)
+                    ))
                 }
             }
             Button(appLanguage.localized(.ui.common.revealFinder)) {
@@ -170,6 +179,13 @@ struct WorkingCopyBrowserView: View {
                     ) {
                         Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                     }
+                    .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                    .help(lockActionAvailability.helpMessage(
+                        language: appLanguage,
+                        fallback: lockInfo(for: node) == nil
+                            ? appLanguage.localized(.ui.lock.file)
+                            : appLanguage.localized(.ui.lock.reviewForceLock)
+                    ))
                 }
                 Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
                     Task { await store.loadFileHistory(for: node.repositoryRelativePath) }

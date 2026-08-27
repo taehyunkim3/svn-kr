@@ -342,6 +342,11 @@ struct ChangesView: View {
 
     @ViewBuilder
     private func changedFileContextMenu(_ entry: SVNStatusEntry) -> some View {
+            let lockActionAvailability = FileLockActionAvailability.resolve(
+                path: entry.path,
+                needsLockPaths: store.recoveryState.needsLockPaths,
+                loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
+            )
             Button(appLanguage.localized(.ui.common.openFile)) {
                 Task {
                     await store.prepareToOpen(
@@ -374,6 +379,13 @@ struct ChangesView: View {
                     ) {
                         Task { await store.prepareExplicitLock(paths: [lockPath(for: entry)]) }
                     }
+                    .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                    .help(lockActionAvailability.helpMessage(
+                        language: appLanguage,
+                        fallback: lockInfo(for: entry) == nil
+                            ? appLanguage.localized(.ui.lock.file)
+                            : appLanguage.localized(.ui.lock.reviewForceLock)
+                    ))
                 }
                 Button(appLanguage.localized(.ui.history.renameHistory)) {
                     store.requestVersionedFileAction(.move, path: entry.path)

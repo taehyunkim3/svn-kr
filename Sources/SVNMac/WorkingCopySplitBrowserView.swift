@@ -397,6 +397,11 @@ struct WorkingCopySplitBrowserView: View {
 
     @ViewBuilder
     private func contextMenuItems(for node: WorkingCopyFileNode) -> some View {
+        let lockActionAvailability = FileLockActionAvailability.resolve(
+            path: node.relativePath,
+            needsLockPaths: store.recoveryState.needsLockPaths,
+            loadedNeedsLockPaths: store.recoveryState.loadedNeedsLockPaths
+        )
         if !node.isDirectory {
             Button(appLanguage.localized(.ui.common.openFile)) {
                 Task { await openFile(node) }
@@ -406,7 +411,11 @@ struct WorkingCopySplitBrowserView: View {
                 Button(appLanguage.localized(.ui.lock.releaseFromBrowserAction)) {
                     Task { await store.unlock(lock) }
                 }
-                .disabled(store.isSelectedProjectActionBlocked)
+                .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                .help(lockActionAvailability.helpMessage(
+                    language: appLanguage,
+                    fallback: appLanguage.localized(.ui.lock.releaseFromBrowserAction)
+                ))
             }
         }
         Button(appLanguage.localized(.ui.common.revealFinder)) {
@@ -425,6 +434,13 @@ struct WorkingCopySplitBrowserView: View {
                 ) {
                     Task { await store.prepareExplicitLock(paths: [node.repositoryRelativePath]) }
                 }
+                .disabled(store.isSelectedProjectActionBlocked || !lockActionAvailability.isEnabled)
+                .help(lockActionAvailability.helpMessage(
+                    language: appLanguage,
+                    fallback: lockInfo(for: node) == nil
+                        ? appLanguage.localized(.ui.lock.file)
+                        : appLanguage.localized(.ui.lock.reviewForceLock)
+                ))
             }
             Button(appLanguage.localized(.ui.history.fileCommitHistory)) {
                 Task { await store.loadFileHistory(for: node.repositoryRelativePath) }

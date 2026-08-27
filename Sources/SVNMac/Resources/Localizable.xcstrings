@@ -4829,6 +4829,40 @@
         }
       }
     },
+    "ui.lock.actionRequiresNeedsLockProperty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file does not have the svn:needs-lock property. Set Require Lock Before Editing and commit the property change first."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일에는 svn:needs-lock 속성이 없어 잠금 기능을 사용할 수 없습니다. 먼저 ‘편집 전 잠금 강제’를 설정하고 커밋하세요."
+          }
+        }
+      }
+    },
+    "ui.lock.checkingNeedsLockProperty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the svn:needs-lock property."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "svn:needs-lock 속성을 확인 중입니다."
+          }
+        }
+      }
+    },
     "ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking": {
       "extractionState": "manual",
       "localizations": {

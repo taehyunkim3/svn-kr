@@ -545,8 +545,10 @@ struct LocalizationKey: Hashable, Sendable {
     ]
 
     private static let uiLockKeys: [LocalizationKey] = [
+        Self.ui.lock.actionRequiresNeedsLockProperty,
         Self.ui.lock.alreadyHoldLocksAllSelectedFiles,
         Self.ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther,
+        Self.ui.lock.checkingNeedsLockProperty,
         Self.ui.lock.countAccessibilityLabel,
         Self.ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking,
         Self.ui.lock.editingDocumentSvnKr,
@@ -1385,8 +1387,10 @@ struct LocalizationUIIgnoreKeys {
 }
 
 struct LocalizationUILockKeys {
+    let actionRequiresNeedsLockProperty = LocalizationKey("ui.lock.actionRequiresNeedsLockProperty")
     let alreadyHoldLocksAllSelectedFiles = LocalizationKey("ui.lock.alreadyHoldLocksAllSelectedFiles")
     let changedRequiredLockPropertyFileCommitItApplyChangeOther = LocalizationKey("ui.lock.changedRequiredLockPropertyFileCommitItApplyChangeOther")
+    let checkingNeedsLockProperty = LocalizationKey("ui.lock.checkingNeedsLockProperty")
     let countAccessibilityLabel = LocalizationKey("ui.lock.countAccessibilityLabel")
     let currentSvnClientDoesNotSupportForcedMultiFileLocking = LocalizationKey("ui.lock.currentSvnClientDoesNotSupportForcedMultiFileLocking")
     let editingDocumentSvnKr = LocalizationKey("ui.lock.editingDocumentSvnKr")

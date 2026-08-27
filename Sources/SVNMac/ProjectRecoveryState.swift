@@ -1,5 +1,35 @@
 import Foundation
 
+enum FileLockActionAvailability: Equatable {
+    case enabled
+    case needsLockMissing
+    case checkingNeedsLock
+
+    static func resolve(
+        path: String,
+        needsLockPaths: Set<String>,
+        loadedNeedsLockPaths: Set<String>
+    ) -> Self {
+        guard loadedNeedsLockPaths.contains(path) else { return .checkingNeedsLock }
+        return needsLockPaths.contains(path) ? .enabled : .needsLockMissing
+    }
+
+    var isEnabled: Bool {
+        self == .enabled
+    }
+
+    func helpMessage(language: AppLanguage, fallback: String) -> String {
+        switch self {
+        case .enabled:
+            fallback
+        case .needsLockMissing:
+            language.localized(.ui.lock.actionRequiresNeedsLockProperty)
+        case .checkingNeedsLock:
+            language.localized(.ui.lock.checkingNeedsLockProperty)
+        }
+    }
+}
+
 /// 충돌 해결과 작업 복사본 복구 화면이 쓰는 프로젝트별 상태입니다.
 /// `ProjectStore`는 이 구조체 하나만 저장 프로퍼티로 들고 있으므로,
 /// 새 화면 상태가 필요하면 `ProjectStore.swift`를 고치지 말고 여기에 필드를 추가합니다.
@@ -18,6 +48,7 @@ struct ProjectRecoveryState {
     var versionedFileActionRequest: VersionedFileActionRequest?
     var versionedFileActionFailureMessage: String?
     var needsLockPaths: Set<String> = []
+    var loadedNeedsLockPaths: Set<String> = []
     var explicitLockRequest: ExplicitLockRequest?
     var bulkUnlockRequest: BulkUnlockRequest?
     var bulkUnlockResult: BulkUnlockResult?

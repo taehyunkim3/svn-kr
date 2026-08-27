@@ -95,6 +95,7 @@ import Testing
     #expect(lockedProperties.contains { $0.name == "svn:needs-lock" })
     await store.loadNeedsLockState(for: [sharedPath, committedMovedPath])
     #expect(store.recoveryState.needsLockPaths == [sharedPath, committedMovedPath])
+    #expect(store.recoveryState.loadedNeedsLockPaths == [sharedPath, committedMovedPath])
 
     #expect(await store.setNeedsLock(false, paths: [sharedPath, committedMovedPath]))
     let unlockedProperties = try await fixture.client.properties(
