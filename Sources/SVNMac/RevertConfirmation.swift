@@ -16,6 +16,7 @@ private struct RevertConfirmationModifier: ViewModifier {
                 store.revertRequest = nil
                 store.revertImpactContext = nil
             }
+            .confirmationKeyboardShortcut(for: .cancel, behavior: .revert)
         } message: { request in
             Text(message(for: request))
         }

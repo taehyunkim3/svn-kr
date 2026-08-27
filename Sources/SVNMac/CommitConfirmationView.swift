@@ -126,14 +126,13 @@ struct CommitConfirmationView: View {
                 Button(appLanguage.localized(.ui.commit.no), role: .cancel) {
                     store.cancelCommitConfirmation()
                 }
-                // Escape는 항상 취소. 서버 삭제가 없을 때만 Return으로 커밋한다.
-                .keyboardShortcut(.cancelAction)
+                .confirmationKeyboardShortcut(for: .cancel, behavior: keyboardBehavior)
                 Button(appLanguage.localized(.ui.commit.confirm)) {
                     guard let currentRequest = store.commitConfirmationRequest else { return }
                     Task { _ = await store.confirmCommit(currentRequest) }
                 }
                 .buttonStyle(.borderedProminent)
-                .bindsReturnAsDefaultAction(serverDeletionEntries.isEmpty)
+                .confirmationKeyboardShortcut(for: .confirmCommit, behavior: keyboardBehavior)
                 .disabled(store.isSelectedProjectActionBlocked)
             }
         }
@@ -151,15 +150,11 @@ struct CommitConfirmationView: View {
     private var serverDeletionEntries: [SVNStatusEntry] {
         store.commitConfirmationRequest?.serverDeletionEntries ?? request.serverDeletionEntries
     }
-}
 
-private extension View {
-    @ViewBuilder
-    func bindsReturnAsDefaultAction(_ enabled: Bool) -> some View {
-        if enabled {
-            keyboardShortcut(.defaultAction)
-        } else {
-            self
-        }
+    private var keyboardBehavior: ConfirmationKeyboardBehavior {
+        .commitConfirmation(
+            serverDeletions: serverDeletionEntries.isEmpty ? .none : .present,
+            message: request.message.isEmpty ? .empty : .present
+        )
     }
 }
