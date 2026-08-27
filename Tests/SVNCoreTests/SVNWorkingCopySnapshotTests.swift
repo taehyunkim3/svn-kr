@@ -103,6 +103,44 @@ struct SVNWorkingCopySnapshotTests {
         ])
     }
 
+    @Test func canonicalAliasGroupPreservesTreeConflictAfterUnversionedEntry() throws {
+        let composed = "충돌 파일.txt"
+        let decomposed = composed.decomposedStringWithCanonicalMapping
+        let xml = """
+        <?xml version="1.0"?><status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(decomposed)"><wc-status item="unversioned" props="none"/></entry>
+          <entry path="\(composed)"><wc-status item="missing" revision="-1" props="normal" tree-conflicted="true"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.statuses.count == 1)
+        let status = try #require(snapshot.statuses.first)
+        #expect(Data(status.path.utf8) == Data(composed.utf8))
+        #expect(status.item == .conflicted)
+        #expect(status.revision == "-1")
+    }
+
+    @Test func canonicalAliasGroupPreservesTreeConflictBeforeUnversionedEntry() throws {
+        let composed = "충돌 파일.txt"
+        let decomposed = composed.decomposedStringWithCanonicalMapping
+        let xml = """
+        <?xml version="1.0"?><status><target path=".">
+          <entry path="."><wc-status item="normal" revision="13302"/></entry>
+          <entry path="\(composed)"><wc-status item="missing" revision="-1" props="normal" tree-conflicted="true"/></entry>
+          <entry path="\(decomposed)"><wc-status item="unversioned" props="none"/></entry>
+        </target></status>
+        """
+        let snapshot = try SVNXMLParser.workingCopySnapshot(from: Data(xml.utf8))
+
+        #expect(snapshot.statuses.count == 1)
+        let status = try #require(snapshot.statuses.first)
+        #expect(Data(status.path.utf8) == Data(composed.utf8))
+        #expect(status.item == .conflicted)
+        #expect(status.revision == "-1")
+    }
+
     @Test func preservesTopLevelNFDNewPathBytes() throws {
         let rawPath = "최상위 새 폴더".decomposedStringWithCanonicalMapping
         let snapshot = try SVNXMLParser.workingCopySnapshot(from: snapshotData(entries: [
