@@ -689,6 +689,20 @@ final class ProjectStore {
         }
     }
 
+    /// 변경 목록에 영향을 주는 새로고침만 봅니다. 커밋 기록 로딩은 변경 목록을 바꾸지 않으므로 제외합니다.
+    var isRefreshingSelectedProjectChanges: Bool {
+        guard let projectID = selectedProjectID else { return false }
+        return activeOperations.contains { operation in
+            switch operation.kind {
+            case .refresh(let operationProjectID),
+                 .refreshLocal(let operationProjectID):
+                operationProjectID == projectID
+            default:
+                false
+            }
+        }
+    }
+
     /// 선택 프로젝트의 작업 복사본 또는 저장소 상태를 바꾸는 작업만 추적합니다.
     /// 파일 기록·diff·탐색처럼 읽기 전용인 작업은 다른 액션을 불필요하게 막지 않습니다.
     var isMutatingSelectedProject: Bool {

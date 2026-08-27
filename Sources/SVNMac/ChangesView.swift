@@ -114,7 +114,7 @@ struct ChangesView: View {
             visibleStatusCount: visibleStatuses.count,
             visibleIgnoredStatusCount: visibleIgnoredStatuses.count,
             ignoredFileVisibility: store.showsIgnoredFiles ? .shown : .hidden,
-            refreshActivity: store.isRefreshingSelectedProject ? .refreshing : .idle
+            refreshActivity: store.isRefreshingSelectedProjectChanges ? .refreshing : .idle
         )
 
         return List {
