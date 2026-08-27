@@ -336,6 +336,22 @@ import Testing
 }
 
 @MainActor
+@Test func repositoryPathNormalizationExpectedCommitCountUsesBatchCapability() {
+    let store = makeStore(projects: [])
+    let targets = [
+        makeRepositoryPathNormalizationTarget("문서/첫 안내.md"),
+        makeRepositoryPathNormalizationTarget("문서/둘째 안내.md"),
+    ]
+    store.selectedRepositoryPathNormalizationTargets = Set(targets)
+
+    #expect(store.repositoryPathNormalizationExpectedCommitCount == 2)
+
+    store.canBatchNormalizeRepositoryPaths = true
+
+    #expect(store.repositoryPathNormalizationExpectedCommitCount == 1)
+}
+
+@MainActor
 @Test func repositoryPathNormalizationExposesLocalChangeBlockingPaths() async {
     let project = SVNProject(name: "프로젝트", path: "/tmp/normalization-local-block")
     let target = makeRepositoryPathNormalizationTarget("문서/한글 안내.md")

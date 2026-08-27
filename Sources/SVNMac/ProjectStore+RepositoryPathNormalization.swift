@@ -38,6 +38,12 @@ struct RepositoryPathNormalizationIssue {
 }
 
 extension ProjectStore {
+    var repositoryPathNormalizationExpectedCommitCount: Int {
+        canBatchNormalizeRepositoryPaths
+            ? 1
+            : selectedRepositoryPathNormalizationTargets.count
+    }
+
     var allRepositoryPathNormalizationTargetsAreSelected: Bool {
         !repositoryPathNormalizationTargets.isEmpty
             && selectedRepositoryPathNormalizationTargets.count

@@ -475,7 +475,7 @@ private struct RepositoryPathNormalizationConfirmationView: View {
                     ActionProgressLabel(
                         title: appLanguage.localized(
                             .repository.pathNormalization.confirmationRun,
-                            selectedCount
+                            store.repositoryPathNormalizationExpectedCommitCount
                         ),
                         inProgressTitle: appLanguage.localized(
                             .repository.pathNormalization.running
