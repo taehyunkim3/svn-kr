@@ -71,7 +71,13 @@ struct RepositoryPathNormalizationView: View {
     }
 
     private var selectionBar: some View {
-        HStack {
+        let availability = repositoryPathNormalizationSelectionAvailability(
+            targetCount: store.repositoryPathNormalizationTargets.count,
+            selectedCount: store.selectedRepositoryPathNormalizationTargets.count,
+            state: repositoryPathNormalizationSelectionState
+        )
+
+        return HStack {
             Text(
                 appLanguage.localized(
                     .ui.common.selectedCount,
@@ -80,23 +86,28 @@ struct RepositoryPathNormalizationView: View {
             )
             .foregroundStyle(.secondary)
             Spacer()
-            Button(
-                store.allRepositoryPathNormalizationTargetsAreSelected
-                    ? appLanguage.localized(.repository.pathNormalization.deselectAll)
-                    : appLanguage.localized(.ui.commit.selectAll)
-            ) {
-                store.setAllRepositoryPathNormalizationTargetsSelected(
-                    !store.allRepositoryPathNormalizationTargetsAreSelected
-                )
+            Button(appLanguage.localized(.ui.commit.selectAll)) {
+                store.setAllRepositoryPathNormalizationTargetsSelected(true)
             }
-            .disabled(
-                store.repositoryPathNormalizationTargets.isEmpty
-                    || store.isRepositoryPathNormalizationRunning
-                    || store.repositoryPathNormalizationResult != nil
-            )
+            .disabled(!availability.canSelectAll)
+            Button(appLanguage.localized(.repository.pathNormalization.deselectAll)) {
+                store.setAllRepositoryPathNormalizationTargetsSelected(false)
+            }
+            .disabled(!availability.canDeselectAll)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+    }
+
+    private var repositoryPathNormalizationSelectionState:
+        RepositoryPathNormalizationSelectionState {
+        if store.isRepositoryPathNormalizationRunning {
+            return .running
+        }
+        if store.repositoryPathNormalizationResult != nil {
+            return .showingResult
+        }
+        return .available
     }
 
     private var targetList: some View {

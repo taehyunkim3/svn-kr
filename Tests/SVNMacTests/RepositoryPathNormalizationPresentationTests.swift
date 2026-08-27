@@ -107,6 +107,69 @@ import Testing
     expectSegments(longerSegments, restore: longerPath)
 }
 
+@Test func determinesRepositoryPathNormalizationSelectionButtonAvailability() {
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 3,
+            selectedCount: 0,
+            state: .available
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: true,
+            canDeselectAll: false
+        )
+    )
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 3,
+            selectedCount: 1,
+            state: .available
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: true,
+            canDeselectAll: true
+        )
+    )
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 3,
+            selectedCount: 3,
+            state: .available
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: false,
+            canDeselectAll: true
+        )
+    )
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 0,
+            selectedCount: 0,
+            state: .available
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: false,
+            canDeselectAll: false
+        )
+    )
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 3,
+            selectedCount: 1,
+            state: .running
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: false,
+            canDeselectAll: false
+        )
+    )
+    #expect(
+        repositoryPathNormalizationSelectionAvailability(
+            targetCount: 3,
+            selectedCount: 1,
+            state: .showingResult
+        ) == RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: false,
+            canDeselectAll: false
+        )
+    )
+}
+
 private func expectSegments(
     _ segments: [RepositoryPathDifferenceSegment],
     restore path: String

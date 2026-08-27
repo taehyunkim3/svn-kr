@@ -15,6 +15,17 @@ struct RepositoryPathDifferenceSegment: Equatable {
     let isDifferent: Bool
 }
 
+enum RepositoryPathNormalizationSelectionState {
+    case available
+    case running
+    case showingResult
+}
+
+struct RepositoryPathNormalizationSelectionAvailability: Equatable {
+    let canSelectAll: Bool
+    let canDeselectAll: Bool
+}
+
 struct RepositoryPathNormalizationComponentDifference: Equatable {
     let componentIndex: Int
     let repositoryComponent: String
@@ -128,6 +139,23 @@ func repositoryPathDifferenceSegments(
     }
 
     return segments
+}
+
+func repositoryPathNormalizationSelectionAvailability(
+    targetCount: Int,
+    selectedCount: Int,
+    state: RepositoryPathNormalizationSelectionState
+) -> RepositoryPathNormalizationSelectionAvailability {
+    guard state == .available, targetCount > 0 else {
+        return RepositoryPathNormalizationSelectionAvailability(
+            canSelectAll: false,
+            canDeselectAll: false
+        )
+    }
+    return RepositoryPathNormalizationSelectionAvailability(
+        canSelectAll: selectedCount < targetCount,
+        canDeselectAll: selectedCount > 0
+    )
 }
 
 private func appendRepositoryPathSegment(
