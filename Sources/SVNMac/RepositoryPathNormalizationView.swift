@@ -40,7 +40,10 @@ struct RepositoryPathNormalizationView: View {
             Button(appLanguage.localized(.ui.common.close), role: .cancel) {
                 store.isShowingRepositoryPathNormalization = false
             }
-            .keyboardShortcut(.cancelAction)
+            .confirmationKeyboardShortcut(
+                for: .cancel,
+                behavior: .repositoryPathNormalizationDismissal
+            )
             .disabled(store.isRepositoryPathNormalizationRunning)
         }
         .padding()
@@ -369,13 +372,19 @@ struct RepositoryPathNormalizationView: View {
                 Button(appLanguage.localized(.repository.pathNormalization.scanAgain)) {
                     Task { await store.beginRepositoryPathNormalization() }
                 }
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(
+                    for: .rescanRepositoryPaths,
+                    behavior: .repositoryPathNormalizationRescan
+                )
                 .disabled(store.isRepositoryPathNormalizationRunning)
             } else {
                 Button(appLanguage.localized(.repository.pathNormalization.reviewAction)) {
                     store.requestRepositoryPathNormalizationConfirmation()
                 }
-                .keyboardShortcut(.defaultAction)
+                .confirmationKeyboardShortcut(
+                    for: .reviewRepositoryPathNormalization,
+                    behavior: .repositoryPathNormalizationReview
+                )
                 .disabled(!store.canConfirmRepositoryPathNormalization)
             }
         }

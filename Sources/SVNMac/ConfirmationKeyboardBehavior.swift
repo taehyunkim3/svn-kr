@@ -4,6 +4,8 @@ enum ConfirmationKeyboardAction: Equatable {
     case cancel
     case confirmCommit
     case openWithoutLock
+    case rescanRepositoryPaths
+    case reviewRepositoryPathNormalization
 }
 
 enum CommitServerDeletionState: CaseIterable {
@@ -46,6 +48,21 @@ struct ConfirmationKeyboardBehavior: Equatable {
     static let repositoryPathNormalization = Self(
         returnAction: .cancel,
         escapeAction: .cancel
+    )
+
+    static let repositoryPathNormalizationDismissal = Self(
+        returnAction: nil,
+        escapeAction: .cancel
+    )
+
+    static let repositoryPathNormalizationRescan = Self(
+        returnAction: .rescanRepositoryPaths,
+        escapeAction: nil
+    )
+
+    static let repositoryPathNormalizationReview = Self(
+        returnAction: .reviewRepositoryPathNormalization,
+        escapeAction: nil
     )
 
     static let deletion = Self(returnAction: .cancel, escapeAction: .cancel)

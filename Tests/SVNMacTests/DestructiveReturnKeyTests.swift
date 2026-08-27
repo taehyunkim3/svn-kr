@@ -31,6 +31,18 @@ struct DestructiveReturnKeyTests {
 
         #expect(behavior.returnAction == .cancel)
         #expect(behavior.escapeAction == .cancel)
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationDismissal.returnAction == nil)
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationDismissal.escapeAction == .cancel)
+        #expect(
+            ConfirmationKeyboardBehavior.repositoryPathNormalizationRescan.returnAction
+                == .rescanRepositoryPaths
+        )
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationRescan.escapeAction == nil)
+        #expect(
+            ConfirmationKeyboardBehavior.repositoryPathNormalizationReview.returnAction
+                == .reviewRepositoryPathNormalization
+        )
+        #expect(ConfirmationKeyboardBehavior.repositoryPathNormalizationReview.escapeAction == nil)
     }
 
     @Test func deletionConfirmationKeyboardBehavior() {
@@ -96,6 +108,34 @@ struct DestructiveReturnKeyTests {
         #expect(revert.contains("role: .cancel"))
         #expect(!restore.contains("role: .destructive"))
         #expect(restore.contains("role: .cancel"))
+    }
+
+    @Test(
+        "Confirmation views use only value-driven keyboard shortcuts",
+        arguments: [
+            "CommitConfirmationView.swift",
+            "RepositoryPathNormalizationView.swift",
+            "DeletionConfirmationView.swift",
+            "RevertConfirmation.swift",
+            "CommitDeletionRestoreConfirmation.swift",
+            "DocumentOpenConfirmation.swift",
+        ]
+    )
+    func confirmationViewsUseOnlyValueDrivenKeyboardShortcuts(fileName: String) throws {
+        let viewSource = try source(named: fileName)
+
+        #expect(
+            viewSource.contains(".confirmationKeyboardShortcut("),
+            "\(fileName)은 값 기반 단축키 modifier를 사용해야 한다."
+        )
+        #expect(
+            !viewSource.contains(".keyboardShortcut(.defaultAction)"),
+            "\(fileName)에 raw defaultAction 단축키를 붙이면 안 된다."
+        )
+        #expect(
+            !viewSource.contains(".keyboardShortcut(.cancelAction)"),
+            "\(fileName)에 raw cancelAction 단축키를 붙이면 안 된다."
+        )
     }
 
     private func source(named name: String) throws -> String {
