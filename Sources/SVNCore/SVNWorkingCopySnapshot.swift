@@ -314,7 +314,7 @@ public struct SVNWorkingCopySnapshot: Sendable {
         let groups = Dictionary(grouping: filtered, by: { canonicalKey($0.path) })
         return groups.keys.sorted().compactMap { key in
             guard let group = groups[key] else { return nil }
-            let preferred = group.first(where: { entry in
+            let preferred = group.first(where: \.treeConflicted) ?? group.first(where: { entry in
                 entry.revision.flatMap(Int.init).map { $0 >= 0 } == true && entry.status != "missing"
             }) ?? group.first
             guard let preferred else { return nil }
