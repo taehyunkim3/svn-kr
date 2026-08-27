@@ -13,6 +13,13 @@ struct ChangesViewPerformanceTests {
         #expect(commitControls.contains("@State private var commitMessage"))
     }
 
+    @Test func commitProgressVisibilityUsesStorePolicy() throws {
+        let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
+
+        #expect(changesView.contains("if store.showsCommitProgressLog"))
+        #expect(!changesView.contains("isCommitInteractionLocked || !store.commitLog.isEmpty"))
+    }
+
     @Test func changedFileListDoesNotConcatenateStatusCollections() throws {
         let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
 
