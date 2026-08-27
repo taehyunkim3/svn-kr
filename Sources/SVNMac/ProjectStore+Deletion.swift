@@ -22,7 +22,7 @@ extension ProjectStore {
         return CommitConfirmationRequest(
             projectID: project.id,
             message: "",
-            selectedPaths: selectedPaths,
+            selectedPaths: selectedCommitPaths(),
             statuses: statuses
         ).serverDeletionEntries
     }
@@ -51,7 +51,7 @@ extension ProjectStore {
         let request = CommitConfirmationRequest(
             projectID: project.id,
             message: message,
-            selectedPaths: selectedPaths,
+            selectedPaths: selectedCommitPaths(),
             statuses: statuses
         )
         guard message.isEmpty || !request.serverDeletionEntries.isEmpty else { return false }
@@ -78,7 +78,8 @@ extension ProjectStore {
         selectedCommitDeletionRestorePaths.removeAll()
         commitDeletionRestoreRequest = nil
         commitDeletionRestoreFailureMessage = nil
-        selectedPaths = request.selectedPaths
+        selectedPaths = request.selectedPaths.intersection(selectableStatusPaths)
+        selectedUntrackedChildPaths = request.selectedPaths.subtracting(selectedPaths)
         return await commitSelectedChanges(message: request.message)
     }
 
@@ -122,7 +123,7 @@ extension ProjectStore {
     func commitSelectedChanges(message: String) async -> Bool {
         guard let project = selectedProject, canCommitSelectedPaths else { return false }
         let missingPaths = statuses.compactMap { entry in
-            entry.canScheduleRepositoryDeletion && self.selectedPaths.contains(entry.path)
+            entry.canScheduleRepositoryDeletion && selectedCommitPaths().contains(entry.path)
                 ? entry.path
                 : nil
         }

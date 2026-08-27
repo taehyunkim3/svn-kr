@@ -215,8 +215,10 @@ struct LocalizationKey: Hashable, Sendable {
     private static let uiChangesKeys: [LocalizationKey] = [
         Self.ui.changes.affected,
         Self.ui.changes.cancelDeletionRestore,
+        Self.ui.changes.collapseFolder,
         Self.ui.changes.deletePendingItems,
         Self.ui.changes.deleteRepository,
+        Self.ui.changes.expandFolder,
         Self.ui.changes.filesInsideFolderAddedTogether,
         Self.ui.changes.includeCommit,
         Self.ui.changes.includeExcludeFileNextCommit,
@@ -1041,8 +1043,10 @@ struct LocalizationUICertificateKeys {
 struct LocalizationUIChangesKeys {
     let affected = LocalizationKey("ui.changes.affected")
     let cancelDeletionRestore = LocalizationKey("ui.changes.cancelDeletionRestore")
+    let collapseFolder = LocalizationKey("ui.changes.collapseFolder")
     let deletePendingItems = LocalizationKey("ui.changes.deletePendingItems")
     let deleteRepository = LocalizationKey("ui.changes.deleteRepository")
+    let expandFolder = LocalizationKey("ui.changes.expandFolder")
     let filesInsideFolderAddedTogether = LocalizationKey("ui.changes.filesInsideFolderAddedTogether")
     let includeCommit = LocalizationKey("ui.changes.includeCommit")
     let includeExcludeFileNextCommit = LocalizationKey("ui.changes.includeExcludeFileNextCommit")

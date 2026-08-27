@@ -47,7 +47,7 @@ struct ChangesViewPerformanceTests {
         #expect(changesView.contains(".ui.changes.deleteRepository"))
         #expect(changesView.contains(".ui.changes.restorePendingDeletions"))
         #expect(changesView.contains("store.requestSelectedDeletionRestore()"))
-        #expect(commitControls.contains("store.selectAllStatusPaths"))
+        #expect(commitControls.contains("store.selectAllCommitPaths()"))
         #expect(commitControls.contains("store.canCommitSelectedPaths"))
         #expect(commitControls.contains("store.scheduledDeletionCount"))
     }
@@ -59,6 +59,14 @@ struct ChangesViewPerformanceTests {
         #expect(changesView.contains("entry.item == .unversioned && entry.nodeKind == .directory"))
     }
 
+    @Test func untrackedChildCheckboxUsesExistingCommitInteractionLock() throws {
+        let changesView = try source(named: "ChangesView.swift", in: try svnMacSources())
+
+        #expect(changesView.contains("untrackedChildRow"))
+        #expect(changesView.contains("|| store.isUntrackedChildSelectionDisabled(in: row.parentDirectory)"))
+        #expect(changesView.contains(".disabled(store.isCommitInteractionLocked ||"))
+    }
+
     @Test func temporaryFilesHaveDedicatedBadgeAndSelectAllPolicy() throws {
         let sources = try svnMacSources()
         let changesView = try source(named: "ChangesView.swift", in: sources)
@@ -66,8 +74,8 @@ struct ChangesViewPerformanceTests {
 
         #expect(changesView.contains("TemporaryFilePolicy.isTemporaryFile(entry)"))
         #expect(changesView.contains(".ui.changes.temporary"))
-        #expect(commitControls.contains("store.selectAllStatusPaths"))
-        #expect(commitControls.contains("store.selectedPaths.removeAll()"))
+        #expect(commitControls.contains("store.selectAllCommitPaths()"))
+        #expect(commitControls.contains("store.clearCommitSelection()"))
     }
 
     @Test func hiddenTemporaryFilesDoNotLeakIntoHistoryOrBulkDeletion() throws {

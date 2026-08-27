@@ -31,7 +31,7 @@ extension ProjectStore {
         store.selectedStatusPath = DemoData.statuses.first?.path
         store.diffContent = .text(DemoData.diff)
         store.projectSummaries = [
-            projects[0].id: ProjectStatusSummary(localChangeCount: 6, conflictCount: 0, lockCount: 1, needsUpdate: true),
+            projects[0].id: ProjectStatusSummary(localChangeCount: 7, conflictCount: 0, lockCount: 1, needsUpdate: true),
             projects[1].id: ProjectStatusSummary(localChangeCount: 2, conflictCount: 0, lockCount: 0, needsUpdate: false)
         ]
         return store
@@ -56,6 +56,7 @@ private enum DemoData {
         SVNStatusEntry(path: "Sources/Features/Login/BiometricButton.swift", item: .added),
         SVNStatusEntry(path: "Resources/Colors.xcassets/AccentColor.colorset/Contents.json", item: .modified, revision: "1842"),
         SVNStatusEntry(path: "Docs/legacy-login-flow.md", item: .deleted, revision: "1817"),
+        SVNStatusEntry(path: "Resources/Preview Assets", item: .unversioned, nodeKind: .directory),
         SVNStatusEntry(path: "Docs/obsolete-guide.md", item: .missing, revision: "1842", nodeKind: .file),
         SVNStatusEntry(path: "Resources/Legacy", item: .missing, revision: "1842", nodeKind: .directory)
     ]
@@ -262,6 +263,23 @@ private actor DemoSVNClient: SVNClientServing {
         )
     }
     func ignoredStatus(at _: String, credentials _: SVNCredentials?) async throws -> [SVNStatusEntry] { [SVNStatusEntry(path: ".build/", item: .ignored)] }
+    func untrackedChildren(at _: String, directory: String, credentials _: SVNCredentials?) async throws -> [SVNUntrackedChild] {
+        switch directory {
+        case "Resources/Preview Assets":
+            [
+                SVNUntrackedChild(path: "Resources/Preview Assets/App Store", isDirectory: true, isIgnored: false),
+                SVNUntrackedChild(path: "Resources/Preview Assets/Launch.png", isDirectory: false, isIgnored: false),
+                SVNUntrackedChild(path: "Resources/Preview Assets/export.log", isDirectory: false, isIgnored: true),
+            ]
+        case "Resources/Preview Assets/App Store":
+            [
+                SVNUntrackedChild(path: "Resources/Preview Assets/App Store/iPhone.png", isDirectory: false, isIgnored: false),
+                SVNUntrackedChild(path: "Resources/Preview Assets/App Store/iPad.png", isDirectory: false, isIgnored: false),
+            ]
+        default:
+            []
+        }
+    }
     func ignoreRules(at _: String, credentials _: SVNCredentials?) async throws -> [SVNIgnoreRule] { [SVNIgnoreRule(directory: ".", pattern: ".build")] }
     func addIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}
     func removeIgnoreRule(at _: String, directory _: String, pattern _: String, propertyKind _: SVNIgnorePropertyKind, credentials _: SVNCredentials?) async throws {}

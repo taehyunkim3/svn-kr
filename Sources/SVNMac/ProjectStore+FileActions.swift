@@ -172,7 +172,7 @@ extension ProjectStore {
                 id: confirmation.id,
                 projectID: project.id,
                 message: confirmation.message,
-                selectedPaths: selectedPaths,
+                selectedPaths: selectedCommitPaths(),
                 statuses: statuses
             )
         }

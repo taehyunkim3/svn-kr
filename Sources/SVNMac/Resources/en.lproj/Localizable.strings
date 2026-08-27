@@ -189,7 +189,9 @@
 "ui.revision.fileCommitHistory" = "File Commit History";
 "ui.browser.files" = "Files";
 "ui.checkout.filesDownloadedAppearHereAfterCheckoutStarts" = "Files being downloaded will appear here after checkout starts.";
-"ui.changes.filesInsideFolderAddedTogether" = "Files inside this folder will be added together.";
+"ui.changes.filesInsideFolderAddedTogether" = "Select the folder to add everything inside it, or expand it to select only some items.";
+"ui.changes.expandFolder" = "Expand %1$@";
+"ui.changes.collapseFolder" = "Collapse %1$@";
 "ui.authentication.folderCredentials" = "Folder Credentials";
 "ui.common.folder" = "Folder";
 "ui.settings.folderSettings" = "Folder Settings";
