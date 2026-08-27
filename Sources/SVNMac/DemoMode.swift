@@ -336,6 +336,7 @@ private actor DemoSVNClient: SVNClientServing {
     func workingCopyIsOutOfDate(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> Bool { true }
     func remoteChanges(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNStatusEntry] { DemoData.remoteChanges }
     func update(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Updated to revision 1845" }
+    func updateDirectoryRevisions(at _: String, relativePaths _: [String], credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Updated directory revisions" }
     func scheduleRepositoryCleanupDeletion(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws {}
     func diff(at _: String, relativePath _: String?, credentials _: SVNCredentials?) async throws -> String { DemoData.diff }
     func revert(at _: String, relativePath _: String, credentials _: SVNCredentials?) async throws -> String { "Reverted" }
