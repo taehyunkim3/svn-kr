@@ -273,7 +273,7 @@ function main() {
     make -j "$JOBS" svn svnmucc
   )
   cp "$BUILD_ROOT/build-subversion/subversion/svn/svn" "$OUTPUT_ROOT/bin/svn"
-  cp "$BUILD_ROOT/build-subversion/tools/client-side/svnmucc/svnmucc" \
+  cp "$BUILD_ROOT/build-subversion/subversion/svnmucc/svnmucc" \
     "$OUTPUT_ROOT/bin/svnmucc"
   chmod 755 "$OUTPUT_ROOT/bin/svn" "$OUTPUT_ROOT/bin/svnmucc"
 
