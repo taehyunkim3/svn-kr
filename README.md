@@ -39,6 +39,12 @@
 swift run SVNMac
 ```
 
+`swift run`은 Info.plist가 없는 맨 실행 파일이라 창이 앞으로 나오지 않습니다. 개발 중 화면을 확인하려면 개발용 번들을 만들어 실행합니다.
+
+```bash
+./scripts/run-dev.sh
+```
+
 테스트와 릴리스 앱 번들은 다음처럼 만들 수 있습니다.
 
 ```bash
