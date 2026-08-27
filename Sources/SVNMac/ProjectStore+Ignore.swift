@@ -103,6 +103,56 @@ extension ProjectStore {
         }
     }
 
+    func addIgnoreRule(
+        pattern: String,
+        directory: String,
+        propertyKind: SVNIgnorePropertyKind
+    ) async {
+        guard let project = selectedProject else { return }
+        let input: ManualIgnoreRuleInput
+        do {
+            input = try ManualIgnoreRuleValidation.validate(
+                pattern: pattern,
+                directory: directory,
+                propertyKind: propertyKind,
+                existingRules: ignoreRules
+            )
+        } catch let error as ManualIgnoreRuleValidationError {
+            errorMessage = manualIgnoreRuleValidationMessage(for: error)
+            return
+        } catch {
+            errorMessage = localizedError(error)
+            return
+        }
+
+        let operationID = beginOperation(.ignore(project.id))
+        defer { endOperation(operationID) }
+        do {
+            try await client.addIgnoreRule(
+                at: project.path,
+                directory: input.directory,
+                pattern: input.pattern,
+                propertyKind: input.propertyKind,
+                credentials: nil
+            )
+            guard selectedProjectID == project.id else { return }
+            notice = AppLanguage.current.localized(
+                .ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam,
+                input.pattern
+            )
+            await refresh()
+            await loadIgnoreRules()
+            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
+            guard selectedProjectID == project.id else { return }
+            manualIgnorePattern = ""
+            manualIgnoreDirectory = "."
+            manualIgnorePropertyKind = .local
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            errorMessage = localizedError(error)
+        }
+    }
+
     func removeIgnoreRule(_ rule: SVNIgnoreRule) async {
         guard let project = selectedProject else { return }
         guard rule.inheritedFrom == nil else {
@@ -254,6 +304,19 @@ extension ProjectStore {
             errorMessage = localizedError(applicationError)
         } else {
             notice = AppLanguage.current.localized(.ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare, proposals.count)
+        }
+    }
+
+    private func manualIgnoreRuleValidationMessage(
+        for error: ManualIgnoreRuleValidationError
+    ) -> String {
+        switch error {
+        case .emptyPattern:
+            AppLanguage.current.localized(.ui.ignore.enterPattern)
+        case .invalidPattern:
+            AppLanguage.current.localized(.ui.ignore.patternMustNotContainSlashOrLineBreak)
+        case .duplicateRule:
+            AppLanguage.current.localized(.ui.ignore.duplicateRule)
         }
     }
 }

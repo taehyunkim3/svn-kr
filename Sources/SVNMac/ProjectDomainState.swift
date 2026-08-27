@@ -8,6 +8,9 @@ final class ProjectChangesStore {
     var pathCollisions: [SVNPathCollision] = []
     var ignoredStatuses: [SVNStatusEntry] = []
     var ignoreRules: [SVNIgnoreRule] = []
+    var manualIgnorePattern = ""
+    var manualIgnoreDirectory = "."
+    var manualIgnorePropertyKind: SVNIgnorePropertyKind = .local
     var gitIgnoreImportItems: [IgnoreImportItem] = []
     var selectedGitIgnoreImportIDs: Set<IgnoreImportItem.ID> = []
     var hasComparedGitIgnore = false

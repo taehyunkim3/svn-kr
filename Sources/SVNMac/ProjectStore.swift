@@ -297,6 +297,18 @@ final class ProjectStore {
         get { changesState.ignoreRules }
         set { changesState.ignoreRules = newValue }
     }
+    var manualIgnorePattern: String {
+        get { changesState.manualIgnorePattern }
+        set { changesState.manualIgnorePattern = newValue }
+    }
+    var manualIgnoreDirectory: String {
+        get { changesState.manualIgnoreDirectory }
+        set { changesState.manualIgnoreDirectory = newValue }
+    }
+    var manualIgnorePropertyKind: SVNIgnorePropertyKind {
+        get { changesState.manualIgnorePropertyKind }
+        set { changesState.manualIgnorePropertyKind = newValue }
+    }
     var gitIgnoreImportItems: [IgnoreImportItem] {
         get { changesState.gitIgnoreImportItems }
         set { changesState.gitIgnoreImportItems = newValue }

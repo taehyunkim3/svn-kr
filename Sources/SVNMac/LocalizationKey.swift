@@ -502,7 +502,9 @@ struct LocalizationKey: Hashable, Sendable {
     ]
 
     private static let uiIgnoreKeys: [LocalizationKey] = [
+        Self.ui.ignore.addRule,
         Self.ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam,
+        Self.ui.ignore.addingRule,
         Self.ui.ignore.alreadyVersionedFilesNotHiddenIgnoreRules,
         Self.ui.ignore.applied,
         Self.ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare,
@@ -513,6 +515,9 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.ignore.available,
         Self.ui.ignore.clear,
         Self.ui.ignore.compareGitRules,
+        Self.ui.ignore.directory,
+        Self.ui.ignore.duplicateRule,
+        Self.ui.ignore.enterPattern,
         Self.ui.ignore.fileExtension,
         Self.ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust,
         Self.ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply,
@@ -525,6 +530,9 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.ignore.noGitignore,
         Self.ui.ignore.noGitignoreFileFoundWorkingCopy,
         Self.ui.ignore.noSvnIgnoreRulesConfigured,
+        Self.ui.ignore.pattern,
+        Self.ui.ignore.patternMustNotContainSlashOrLineBreak,
+        Self.ui.ignore.propertyKind,
         Self.ui.ignore.removeInheritedRulesParentDirectoryThatOwnsProperty,
         Self.ui.ignore.removeRule,
         Self.ui.ignore.removedIgnoreRule,
@@ -1330,7 +1338,9 @@ struct LocalizationUIHistoryKeys {
 }
 
 struct LocalizationUIIgnoreKeys {
+    let addRule = LocalizationKey("ui.ignore.addRule")
     let addedIgnoreRuleCommitDirectoryPropertyShareItTeam = LocalizationKey("ui.ignore.addedIgnoreRuleCommitDirectoryPropertyShareItTeam")
+    let addingRule = LocalizationKey("ui.ignore.addingRule")
     let alreadyVersionedFilesNotHiddenIgnoreRules = LocalizationKey("ui.ignore.alreadyVersionedFilesNotHiddenIgnoreRules")
     let applied = LocalizationKey("ui.ignore.applied")
     let appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare = LocalizationKey("ui.ignore.appliedGitRuleSvnIgnorePropertiesCommitPropertyChangesShare")
@@ -1341,6 +1351,9 @@ struct LocalizationUIIgnoreKeys {
     let available = LocalizationKey("ui.ignore.available")
     let clear = LocalizationKey("ui.ignore.clear")
     let compareGitRules = LocalizationKey("ui.ignore.compareGitRules")
+    let directory = LocalizationKey("ui.ignore.directory")
+    let duplicateRule = LocalizationKey("ui.ignore.duplicateRule")
+    let enterPattern = LocalizationKey("ui.ignore.enterPattern")
     let fileExtension = LocalizationKey("ui.ignore.fileExtension")
     let gitignoreNotModifiedImportOneWaySvnPropertyChangesMust = LocalizationKey("ui.ignore.gitignoreNotModifiedImportOneWaySvnPropertyChangesMust")
     let globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply = LocalizationKey("ui.ignore.globalRulesCanAffectManyDirectoriesBelowWorkingCopyApply")
@@ -1353,6 +1366,9 @@ struct LocalizationUIIgnoreKeys {
     let noGitignore = LocalizationKey("ui.ignore.noGitignore")
     let noGitignoreFileFoundWorkingCopy = LocalizationKey("ui.ignore.noGitignoreFileFoundWorkingCopy")
     let noSvnIgnoreRulesConfigured = LocalizationKey("ui.ignore.noSvnIgnoreRulesConfigured")
+    let pattern = LocalizationKey("ui.ignore.pattern")
+    let patternMustNotContainSlashOrLineBreak = LocalizationKey("ui.ignore.patternMustNotContainSlashOrLineBreak")
+    let propertyKind = LocalizationKey("ui.ignore.propertyKind")
     let removeInheritedRulesParentDirectoryThatOwnsProperty = LocalizationKey("ui.ignore.removeInheritedRulesParentDirectoryThatOwnsProperty")
     let removeRule = LocalizationKey("ui.ignore.removeRule")
     let removedIgnoreRule = LocalizationKey("ui.ignore.removedIgnoreRule")
