@@ -1476,6 +1476,56 @@ public actor SVNClient {
         }
     }
 
+    public func scheduleLocalPreservingDeletion(
+        at path: String,
+        relativePath: String,
+        credentials: SVNCredentials? = nil
+    ) async throws {
+        let snapshot = try await workingCopySnapshot(at: path, credentials: credentials)
+        guard !snapshot.hasPathCollisions,
+              let resolvedPath = snapshot.resolvedPath(for: relativePath) else {
+            throw SVNError.pathNormalizationCollision(paths: [relativePath])
+        }
+        let isRepositoryVersioned = snapshot.versionedPathsByCanonicalKey[
+            resolvedPath.precomposedStringWithCanonicalMapping
+        ]?.contains(where: { Data($0.utf8) == Data(resolvedPath.utf8) }) == true
+        let resolvedIdentity = SVNPathIdentity(rawPath: resolvedPath)
+        let isScheduledAddition = snapshot.scheduledAdditionPaths.contains {
+            SVNPathIdentity(rawPath: $0) == resolvedIdentity
+        }
+        guard isRepositoryVersioned || isScheduledAddition else {
+            throw SVNError.deletionValidationFailed(paths: [relativePath])
+        }
+        guard !snapshot.statuses.contains(where: {
+            SVNPathIdentity(rawPath: $0.path) == resolvedIdentity
+                && ($0.item == .deleted || $0.item == .unversioned || $0.item == .ignored)
+        }) else {
+            throw SVNError.deletionValidationFailed(paths: [relativePath])
+        }
+        let localURL = URL(fileURLWithPath: path, isDirectory: true)
+            .appendingPathComponent(resolvedPath)
+        guard Self.pathEntryExists(at: localURL) else {
+            throw SVNError.deletionValidationFailed(paths: [relativePath])
+        }
+
+        _ = try await checkedRunWithSingleWorkingCopyPathArgument(
+            ["delete", "--keep-local"],
+            projectRelativePath: resolvedPath,
+            at: path,
+            credentials: credentials
+        )
+
+        let after = try await workingCopySnapshot(at: path, credentials: credentials)
+        let expectedStatus: SVNStatusKind = isRepositoryVersioned ? .deleted : .unversioned
+        guard Self.pathEntryExists(at: localURL),
+              after.statuses.contains(where: {
+                  SVNPathIdentity(rawPath: $0.path) == resolvedIdentity
+                      && $0.item == expectedStatus
+              }) else {
+            throw SVNError.deletionValidationFailed(paths: [relativePath])
+        }
+    }
+
     public func repositoryLocks(
         at path: String,
         credentials: SVNCredentials? = nil,

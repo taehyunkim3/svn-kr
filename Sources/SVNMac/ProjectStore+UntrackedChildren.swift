@@ -36,7 +36,7 @@ extension ProjectStore {
 
     func visibleUntrackedChildren(in directory: String) -> [SVNUntrackedChild] {
         (untrackedChildrenByDirectory[directory] ?? []).filter {
-            showsIgnoredFiles || !$0.isIgnored
+            (showsIgnoredFiles || !$0.isIgnored) && !isCommitSelectionBlocked($0.path)
         }
     }
 
@@ -67,6 +67,7 @@ extension ProjectStore {
             selectedUntrackedChildPaths.remove(directory)
             return
         }
+        guard !isCommitSelectionBlocked(directory) else { return }
         removeSelectedUntrackedAncestors(of: directory)
         removeSelectedUntrackedDescendants(of: directory)
         if selectableStatusPaths.contains(directory) {
@@ -85,6 +86,7 @@ extension ProjectStore {
             selectedUntrackedChildPaths.remove(path)
             return
         }
+        guard !isCommitSelectionBlocked(path) else { return }
         guard untrackedChildrenByDirectory[parentDirectory]?.contains(where: {
             $0.path == path
         }) == true else { return }

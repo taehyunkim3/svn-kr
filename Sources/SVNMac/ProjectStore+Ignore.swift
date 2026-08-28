@@ -103,6 +103,85 @@ extension ProjectStore {
         }
     }
 
+    func requestUntrackAndIgnore(_ entry: SVNStatusEntry) {
+        guard let project = selectedProject,
+              UntrackAndIgnoreRequest.isEligible(entry) else { return }
+        untrackAndIgnoreRequest = UntrackAndIgnoreRequest(
+            projectID: project.id,
+            entry: entry
+        )
+    }
+
+    func cancelUntrackAndIgnore() {
+        untrackAndIgnoreRequest = nil
+    }
+
+    func untrackAndIgnore(
+        _ request: UntrackAndIgnoreRequest,
+        propertyKind: SVNIgnorePropertyKind
+    ) async {
+        guard let project = selectedProject,
+              project.id == request.projectID,
+              UntrackAndIgnoreRequest.isEligible(request.entry) else {
+            untrackAndIgnoreRequest = nil
+            return
+        }
+        untrackAndIgnoreRequest = nil
+        let path = request.entry.path as NSString
+        let directory = path.deletingLastPathComponent.isEmpty
+            ? "."
+            : path.deletingLastPathComponent
+        let pattern = path.lastPathComponent
+        let operationID = beginOperation(.ignore(project.id))
+        defer { endOperation(operationID) }
+        var deletionWasScheduled = false
+        var ignoreRuleWasAdded = false
+
+        do {
+            let projectCredentials = try credentials(for: project)
+            try await client.scheduleLocalPreservingDeletion(
+                at: project.path,
+                relativePath: request.entry.path,
+                credentials: projectCredentials
+            )
+            deletionWasScheduled = true
+            guard selectedProjectID == project.id else { return }
+            try await client.addIgnoreRule(
+                at: project.path,
+                directory: directory,
+                pattern: pattern,
+                propertyKind: propertyKind,
+                credentials: projectCredentials
+            )
+            ignoreRuleWasAdded = true
+            guard selectedProjectID == project.id else { return }
+            await refreshLocalWorkingCopy()
+            guard selectedProjectID == project.id else { return }
+            await loadIgnoreRules()
+            if showsIgnoredFiles { await setShowsIgnoredFiles(true) }
+            guard selectedProjectID == project.id else { return }
+            notice = AppLanguage.current.localized(
+                .ui.ignore.untrackAndIgnoreSucceeded,
+                request.entry.path.precomposedStringWithCanonicalMapping
+            )
+        } catch {
+            guard selectedProjectID == project.id else { return }
+            if deletionWasScheduled {
+                await refreshLocalWorkingCopy()
+            }
+            guard selectedProjectID == project.id else { return }
+            if deletionWasScheduled, !ignoreRuleWasAdded {
+                errorMessage = AppLanguage.current.localized(
+                    .ui.ignore.untrackAndIgnorePartialFailure,
+                    request.entry.path.precomposedStringWithCanonicalMapping,
+                    localizedError(error)
+                )
+            } else {
+                errorMessage = localizedError(error)
+            }
+        }
+    }
+
     func addIgnoreRule(
         pattern: String,
         directory: String,

@@ -366,6 +366,11 @@
 "ui.revision.selectCommit" = "Select a Commit";
 "ui.revision.selectFile" = "Select a File";
 "ui.ignore.selectAll" = "Select All";
+"ui.ignore.untrackAndIgnore" = "Untrack & Ignore…";
+"ui.ignore.untrackAndIgnoreTitle" = "Untrack & Ignore";
+"ui.ignore.untrackAndIgnoreExplanation" = "The local file will be preserved, deleted only from the SVN repository, and added to the ignore list.";
+"ui.ignore.untrackAndIgnoreSucceeded" = "Untracked %1$@ from the repository and added it to the ignore rules.";
+"ui.ignore.untrackAndIgnorePartialFailure" = "The local file for %1$@ was preserved and repository deletion was scheduled, but adding the ignore rule failed.\n\n%2$@";
 "ui.ignore.includeRule" = "Include ignore rule %1$@";
 "ui.commit.selectAllCurrentlyChangedFilesCommit" = "Select all currently changed files for commit.";
 "ui.commit.selectAll" = "Select All";
