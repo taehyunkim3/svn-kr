@@ -90,6 +90,10 @@ struct ChangesView: View {
             DeletionConfirmationView(request: request)
                 .environment(store)
         }
+        .sheet(item: $store.untrackAndIgnoreRequest) { request in
+            UntrackAndIgnoreView(request: request)
+                .environment(store)
+        }
         .sheet(item: $store.recoveryState.versionedFileActionRequest) { request in
             VersionedFileActionView(request: request)
                 .environment(store)
@@ -501,6 +505,12 @@ struct ChangesView: View {
                     Task { await store.ignore(path: entry.path, byExtension: true) }
                 }
             }
+        }
+        if UntrackAndIgnoreRequest.isEligible(entry) {
+            Button(appLanguage.localized(.ui.ignore.untrackAndIgnore)) {
+                store.requestUntrackAndIgnore(entry)
+            }
+            .disabled(store.isSelectedProjectActionBlocked)
         }
         if entry.canScheduleRepositoryDeletion {
             Divider()

@@ -226,8 +226,8 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.changes.filesInsideFolderAddedTogether,
         Self.ui.changes.includeCommit,
         Self.ui.changes.includeExcludeFileNextCommit,
-        Self.ui.changes.localChangesRefreshed,
         Self.ui.changes.loadingChangeList,
+        Self.ui.changes.localChangesRefreshed,
         Self.ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose,
         Self.ui.changes.noChanges,
         Self.ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination,
@@ -548,6 +548,11 @@ struct LocalizationKey: Hashable, Sendable {
         Self.ui.ignore.svnIgnoreRules,
         Self.ui.ignore.thereNoGitRulesImport,
         Self.ui.ignore.unsupported,
+        Self.ui.ignore.untrackAndIgnore,
+        Self.ui.ignore.untrackAndIgnoreExplanation,
+        Self.ui.ignore.untrackAndIgnorePartialFailure,
+        Self.ui.ignore.untrackAndIgnoreSucceeded,
+        Self.ui.ignore.untrackAndIgnoreTitle,
     ]
 
     private static let uiLockKeys: [LocalizationKey] = [
@@ -1081,8 +1086,8 @@ struct LocalizationUIChangesKeys {
     let filesInsideFolderAddedTogether = LocalizationKey("ui.changes.filesInsideFolderAddedTogether")
     let includeCommit = LocalizationKey("ui.changes.includeCommit")
     let includeExcludeFileNextCommit = LocalizationKey("ui.changes.includeExcludeFileNextCommit")
-    let localChangesRefreshed = LocalizationKey("ui.changes.localChangesRefreshed")
     let loadingChangeList = LocalizationKey("ui.changes.loadingChangeList")
+    let localChangesRefreshed = LocalizationKey("ui.changes.localChangesRefreshed")
     let multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose = LocalizationKey("ui.changes.multipleCanonicallyEquivalentServerPathsExistSoAppCannotChoose")
     let noChanges = LocalizationKey("ui.changes.noChanges")
     let pathPointsDifferentRepositoryLocationVerifyCommitDestination = LocalizationKey("ui.changes.pathPointsDifferentRepositoryLocationVerifyCommitDestination")
@@ -1403,6 +1408,11 @@ struct LocalizationUIIgnoreKeys {
     let svnIgnoreRules = LocalizationKey("ui.ignore.svnIgnoreRules")
     let thereNoGitRulesImport = LocalizationKey("ui.ignore.thereNoGitRulesImport")
     let unsupported = LocalizationKey("ui.ignore.unsupported")
+    let untrackAndIgnore = LocalizationKey("ui.ignore.untrackAndIgnore")
+    let untrackAndIgnoreExplanation = LocalizationKey("ui.ignore.untrackAndIgnoreExplanation")
+    let untrackAndIgnorePartialFailure = LocalizationKey("ui.ignore.untrackAndIgnorePartialFailure")
+    let untrackAndIgnoreSucceeded = LocalizationKey("ui.ignore.untrackAndIgnoreSucceeded")
+    let untrackAndIgnoreTitle = LocalizationKey("ui.ignore.untrackAndIgnoreTitle")
 }
 
 struct LocalizationUILockKeys {

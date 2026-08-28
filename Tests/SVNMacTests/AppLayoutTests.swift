@@ -59,6 +59,7 @@ import Testing
         AppLayout.addRepositorySheetMinimumSize,
         AppLayout.repositoryLocksSheetMinimumSize,
         AppLayout.ignoreRulesSheetMinimumSize,
+        AppLayout.untrackAndIgnoreSheetMinimumSize,
         AppLayout.deletionConfirmationSheetMinimumSize,
         AppLayout.documentOpenConfirmationSheetMinimumSize,
         AppLayout.updatePreviewSheetMinimumSize,

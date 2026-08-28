@@ -288,6 +288,9 @@ private actor DemoSVNClient: SVNClientServing {
         scheduledDeletionPaths.formUnion(paths)
         return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
+    func scheduleLocalPreservingDeletion(at _: String, relativePath: String, credentials _: SVNCredentials?) async throws {
+        scheduledDeletionPaths.insert(relativePath)
+    }
     func repositoryLocks(at _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> [SVNLockInfo] { [SVNLockInfo(path: "Design/AppFlow.fig", owner: "design.team", comment: "홈 화면 개편 작업 중")] }
     func lockInfo(at _: String, relativePath _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> SVNLockInfo? { nil }
     func lock(at _: String, relativePath _: String, comment _: String, credentials _: SVNCredentials?, allowUntrustedServerCertificate _: Bool, allowedServerCertificateFailures _: Set<SVNServerCertificateFailure>) async throws -> String { "Locked" }

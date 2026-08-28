@@ -366,6 +366,11 @@
 "ui.revision.selectCommit" = "커밋을 선택하세요";
 "ui.revision.selectFile" = "파일을 선택하세요";
 "ui.ignore.selectAll" = "모두 선택";
+"ui.ignore.untrackAndIgnore" = "저장소 추적 해제 및 무시…";
+"ui.ignore.untrackAndIgnoreTitle" = "저장소 추적 해제 및 무시";
+"ui.ignore.untrackAndIgnoreExplanation" = "로컬 파일은 보존되고 SVN 저장소에서만 삭제되며 무시 목록에 추가됩니다.";
+"ui.ignore.untrackAndIgnoreSucceeded" = "%1$@의 저장소 추적을 해제하고 무시 규칙에 추가했습니다.";
+"ui.ignore.untrackAndIgnorePartialFailure" = "%1$@의 로컬 파일은 보존했고 저장소 삭제를 예약했지만 무시 규칙 추가에 실패했습니다.\n\n%2$@";
 "ui.ignore.includeRule" = "무시 규칙 %1$@ 포함";
 "ui.commit.selectAllCurrentlyChangedFilesCommit" = "현재 변경된 파일을 모두 커밋 대상으로 선택합니다.";
 "ui.commit.selectAll" = "전체 선택";

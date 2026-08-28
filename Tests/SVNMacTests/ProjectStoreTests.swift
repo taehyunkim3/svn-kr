@@ -4463,6 +4463,120 @@ import Testing
 }
 
 @MainActor
+@Test func deletedDirectoryHidesAndDisablesUnversionedDescendants() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/untrack-selection")
+    let deletedDirectory = SVNStatusEntry(
+        path: "generated",
+        item: .deleted,
+        revision: "10",
+        nodeKind: .directory
+    )
+    let retainedChild = SVNStatusEntry(
+        path: "generated/local.txt",
+        item: .unversioned,
+        nodeKind: .file
+    )
+    let store = makeStore(projects: [project])
+    store.statuses = [deletedDirectory, retainedChild]
+    store.selectedPaths = [retainedChild.path]
+
+    #expect(store.visibleStatuses == [deletedDirectory])
+    #expect(store.selectableStatusPaths == [deletedDirectory.path])
+    #expect(!store.canCommitSelectedPaths)
+    store.selectAllCommitPaths()
+    #expect(store.selectedCommitPaths() == [deletedDirectory.path])
+}
+
+@MainActor
+@Test func ignoredDirectoryHidesAndDisablesUnversionedDescendants() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/ignore-selection")
+    let ignoredDirectory = SVNStatusEntry(
+        path: "generated",
+        item: .ignored,
+        nodeKind: .directory
+    )
+    let retainedChild = SVNStatusEntry(
+        path: "generated/local.txt",
+        item: .unversioned,
+        nodeKind: .file
+    )
+    let store = makeStore(projects: [project])
+    store.statuses = [retainedChild]
+    store.ignoredStatuses = [ignoredDirectory]
+    store.selectedPaths = [retainedChild.path]
+
+    #expect(store.visibleStatuses.isEmpty)
+    #expect(store.selectableStatusPaths.isEmpty)
+    #expect(!store.canCommitSelectedPaths)
+    store.selectAllCommitPaths()
+    #expect(store.selectedCommitPaths().isEmpty)
+}
+
+@MainActor
+@Test func untrackAndIgnoreSchedulesLocalPreservingDeletionAndSelectedIgnoreProperty() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/untrack-and-ignore")
+    let entry = SVNStatusEntry(
+        path: "Generated/report.txt",
+        item: .modified,
+        revision: "10",
+        nodeKind: .file
+    )
+    let client = StubSVNClient(statusesByPath: [project.path: [entry]])
+    let store = makeStore(projects: [project], client: client)
+
+    store.requestUntrackAndIgnore(entry)
+    let request = try #require(store.untrackAndIgnoreRequest)
+    await store.untrackAndIgnore(request, propertyKind: .global)
+
+    #expect(await client.requestedLocalPreservingDeletionPaths() == [entry.path])
+    #expect(await client.requestedAddedIgnoreRules() == [SVNIgnoreRule(
+        directory: "Generated",
+        pattern: "report.txt",
+        propertyKind: .global
+    )])
+    #expect(store.untrackAndIgnoreRequest == nil)
+    #expect(store.notice != nil)
+}
+
+@MainActor
+@Test func untrackAndIgnoreRequestIsDiscardedAfterProjectSwitch() async throws {
+    let first = SVNProject(name: "첫 프로젝트", path: "/tmp/untrack-first")
+    let second = SVNProject(name: "둘째 프로젝트", path: "/tmp/untrack-second")
+    let entry = SVNStatusEntry(path: "report.txt", item: .modified, revision: "10")
+    let client = StubSVNClient()
+    let store = makeStore(projects: [first, second], client: client)
+    store.requestUntrackAndIgnore(entry)
+    let request = try #require(store.untrackAndIgnoreRequest)
+
+    store.selectedProjectID = second.id
+    await store.untrackAndIgnore(request, propertyKind: .local)
+
+    #expect(await client.requestedLocalPreservingDeletionPaths().isEmpty)
+    #expect(store.untrackAndIgnoreRequest == nil)
+}
+
+@MainActor
+@Test func untrackAndIgnoreRefreshesScheduledDeletionWhenIgnoreRuleFails() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/untrack-partial")
+    let entry = SVNStatusEntry(path: "report.txt", item: .modified, revision: "10")
+    let client = StubSVNClient(
+        statusesByPath: [project.path: [entry]],
+        addIgnoreRuleFailureAtRequest: 1
+    )
+    let store = makeStore(projects: [project], client: client)
+    store.requestUntrackAndIgnore(entry)
+
+    await store.untrackAndIgnore(
+        try #require(store.untrackAndIgnoreRequest),
+        propertyKind: .local
+    )
+
+    #expect(await client.requestedLocalPreservingDeletionPaths() == [entry.path])
+    #expect(await client.snapshotRequestCount() == 1)
+    #expect(store.errorMessage?.contains(entry.path) == true)
+}
+
+@MainActor
 @Test func deletionRequestWaitsForConfirmationAndSelectsOnlyVerifiedDeletedPaths() async throws {
     let project = SVNProject(name: "프로젝트", path: "/tmp/delete-flow")
     let missing = SVNStatusEntry(path: "old.txt", item: .missing, revision: "10", nodeKind: .file)
@@ -4925,6 +5039,7 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
     private var resolvedPaths: [String] = []
     private var addedIgnoreRules: [SVNIgnoreRule] = []
     private var scheduleDeletionRequests = 0
+    private var localPreservingDeletionPaths: [String] = []
     private var repositoryPathNormalizationScanRequests = 0
     private var repositoryPathNormalizationRequests = 0
     private var updateRequests = 0
@@ -5225,6 +5340,10 @@ private actor StubSVNClient: SVNClientServing, MultiplePathLockServing {
         return SVNDeletionResult(scheduledPaths: paths, failedPaths: [])
     }
     func scheduleDeletionRequestCount() -> Int { scheduleDeletionRequests }
+    func scheduleLocalPreservingDeletion(at path: String, relativePath: String, credentials: SVNCredentials?) async throws {
+        localPreservingDeletionPaths.append(relativePath)
+    }
+    func requestedLocalPreservingDeletionPaths() -> [String] { localPreservingDeletionPaths }
     func scheduleRepositoryCleanupDeletion(at path: String, relativePath: String, credentials: SVNCredentials?) async throws {
         repositoryCleanupDeletionPaths.append(relativePath)
     }

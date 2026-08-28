@@ -91,6 +91,7 @@ struct DestructiveReturnKeyTests {
         let commit = try source(named: "CommitConfirmationView.swift")
         let normalization = try source(named: "RepositoryPathNormalizationView.swift")
         let deletion = try source(named: "DeletionConfirmationView.swift")
+        let untrackAndIgnore = try source(named: "UntrackAndIgnoreView.swift")
         let revert = try source(named: "RevertConfirmation.swift")
         let restore = try source(named: "CommitDeletionRestoreConfirmation.swift")
         let normalizationConfirmationStart = try #require(
@@ -104,6 +105,8 @@ struct DestructiveReturnKeyTests {
         #expect(normalizationConfirmation.contains("role: .cancel"))
         #expect(deletion.contains("Button(role: .destructive)"))
         #expect(deletion.contains("role: .cancel"))
+        #expect(untrackAndIgnore.contains("role: .destructive"))
+        #expect(untrackAndIgnore.contains("role: .cancel"))
         #expect(revert.contains("role: .destructive"))
         #expect(revert.contains("role: .cancel"))
         #expect(!restore.contains("role: .destructive"))
@@ -116,6 +119,7 @@ struct DestructiveReturnKeyTests {
             "CommitConfirmationView.swift",
             "RepositoryPathNormalizationView.swift",
             "DeletionConfirmationView.swift",
+            "UntrackAndIgnoreView.swift",
             "RevertConfirmation.swift",
             "CommitDeletionRestoreConfirmation.swift",
             "DocumentOpenConfirmation.swift",

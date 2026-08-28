@@ -267,6 +267,7 @@ final class ProjectStore {
     var resolvingConflictProjectID: SVNProject.ID?
     var revertRequest: RevertRequest?
     var deletionRequest: DeletionRequest?
+    var untrackAndIgnoreRequest: UntrackAndIgnoreRequest?
     var authenticationRequest: SVNAuthenticationRequest?
     var lastCompletedCommitMessage: String?
     var notice: String?
@@ -764,12 +765,16 @@ final class ProjectStore {
             || activeTreeConflictSession != nil
             || recoveryState.propertyConflictSession != nil
             || deletionRequest != nil
+            || untrackAndIgnoreRequest != nil
             || revertRequest != nil
             || documentOpenRequest != nil
     }
 
     var visibleStatuses: [SVNStatusEntry] {
-        TemporaryFilePolicy.visibleEntries(statuses, hideTemporaryFiles: hideTemporaryFiles)
+        TemporaryFilePolicy.visibleEntries(
+            commitSelectionSafeStatuses,
+            hideTemporaryFiles: hideTemporaryFiles
+        )
     }
 
     var visibleIgnoredStatuses: [SVNStatusEntry] {
@@ -786,13 +791,13 @@ final class ProjectStore {
 
     var selectableStatusPaths: Set<String> {
         Set(TemporaryFilePolicy.commitEligibleEntries(
-            statuses,
+            commitSelectionSafeStatuses,
             hideTemporaryFiles: hideTemporaryFiles
         ).map(\.path))
     }
 
     var selectAllStatusPaths: Set<String> {
-        Set(TemporaryFilePolicy.automaticallySelectedEntries(statuses).map(\.path))
+        Set(TemporaryFilePolicy.automaticallySelectedEntries(commitSelectionSafeStatuses).map(\.path))
     }
 
     var canRepairCanonicalAliases: Bool {
@@ -810,10 +815,36 @@ final class ProjectStore {
     var canCommitSelectedPaths: Bool {
         let commitPaths = selectedCommitPaths()
         let knownChildPaths = Set(untrackedChildrenByDirectory.values.joined().map(\.path))
+        let blockingRoots = commitSelectionBlockingRoots
         return !hasUnrepairablePathCollisions
             && !commitPaths.isEmpty
             && selectedPaths.isSubset(of: selectableStatusPaths)
             && selectedUntrackedChildPaths.isSubset(of: knownChildPaths)
+            && !commitPaths.contains { Self.path($0, isBelowAny: blockingRoots) }
+    }
+
+    var commitSelectionSafeStatuses: [SVNStatusEntry] {
+        let blockingRoots = commitSelectionBlockingRoots
+        return statuses.filter { entry in
+            entry.item != .unversioned
+                || !Self.path(entry.path, isBelowAny: blockingRoots)
+        }
+    }
+
+    func isCommitSelectionBlocked(_ path: String) -> Bool {
+        Self.path(path, isBelowAny: commitSelectionBlockingRoots)
+    }
+
+    private var commitSelectionBlockingRoots: [Data] {
+        statuses.lazy.filter { $0.item == .deleted }.map { Data($0.path.utf8) }
+            + ignoredStatuses.lazy.filter { $0.item == .ignored }.map { Data($0.path.utf8) }
+    }
+
+    private static func path(_ path: String, isBelowAny roots: [Data]) -> Bool {
+        let pathBytes = Data(path.utf8)
+        return roots.contains { root in
+            pathBytes.starts(with: root + Data([0x2F]))
+        }
     }
 
     init(
@@ -2192,6 +2223,7 @@ final class ProjectStore {
         resolvingConflictProjectID = nil
         revertRequest = nil
         deletionRequest = nil
+        untrackAndIgnoreRequest = nil
         isShowingRepositoryPathNormalization = false
         isConfirmingRepositoryPathNormalization = false
         repositoryPathNormalizationTargets = []
