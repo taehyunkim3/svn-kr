@@ -7,9 +7,17 @@ struct UntrackAndIgnoreRequest: Identifiable, Equatable {
     let entry: SVNStatusEntry
 
     static func isEligible(_ entry: SVNStatusEntry) -> Bool {
-        entry.item != .unversioned
-            && entry.item != .ignored
-            && entry.item != .deleted
+        // `.`는 작업 복사본 루트라 `svn delete --keep-local` 대상이 될 수 없다.
+        guard entry.path != ".", !entry.path.isEmpty else { return false }
+        guard entry.propertyState != .conflicted else { return false }
+        switch entry.item {
+        case .modified, .added, .replaced:
+            return true
+        case .unknown(let raw) where raw == "normal":
+            return true
+        default:
+            return false
+        }
     }
 }
 
