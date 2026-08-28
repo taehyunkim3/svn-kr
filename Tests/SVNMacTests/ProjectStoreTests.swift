@@ -4488,6 +4488,28 @@ import Testing
 }
 
 @MainActor
+@Test func deletedDirectoryBlocksUntrackedChildSelection() {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/untrack-child-block")
+    let deletedDirectory = SVNStatusEntry(
+        path: "generated",
+        item: .deleted,
+        revision: "10",
+        nodeKind: .directory
+    )
+    let child = SVNUntrackedChild(path: "generated/local.txt", isDirectory: false, isIgnored: false)
+    let store = makeStore(projects: [project])
+    store.statuses = [deletedDirectory]
+    store.untrackedChildrenByDirectory = [deletedDirectory.path: [child]]
+    store.expandedUntrackedDirectoryPaths = [deletedDirectory.path]
+
+    store.setUntrackedChildSelected(child.path, parentDirectory: deletedDirectory.path, selected: true)
+
+    #expect(store.isCommitSelectionBlocked(child.path))
+    #expect(store.selectedUntrackedChildPaths.isEmpty)
+    #expect(store.visibleUntrackedChildren(in: deletedDirectory.path).isEmpty)
+}
+
+@MainActor
 @Test func ignoredDirectoryHidesAndDisablesUnversionedDescendants() {
     let project = SVNProject(name: "프로젝트", path: "/tmp/ignore-selection")
     let ignoredDirectory = SVNStatusEntry(
@@ -4536,6 +4558,27 @@ import Testing
     )])
     #expect(store.untrackAndIgnoreRequest == nil)
     #expect(store.notice != nil)
+}
+
+@MainActor
+@Test func untrackAndIgnoreUsesWorkingCopyRootDirectoryForTopLevelPath() async throws {
+    let project = SVNProject(name: "프로젝트", path: "/tmp/untrack-root-path")
+    let entry = SVNStatusEntry(path: "report.txt", item: .added)
+    let client = StubSVNClient(statusesByPath: [project.path: [entry]])
+    let store = makeStore(projects: [project], client: client)
+
+    store.requestUntrackAndIgnore(entry)
+    await store.untrackAndIgnore(
+        try #require(store.untrackAndIgnoreRequest),
+        propertyKind: .local
+    )
+
+    #expect(await client.requestedLocalPreservingDeletionPaths() == [entry.path])
+    #expect(await client.requestedAddedIgnoreRules() == [SVNIgnoreRule(
+        directory: ".",
+        pattern: "report.txt",
+        propertyKind: .local
+    )])
 }
 
 @MainActor

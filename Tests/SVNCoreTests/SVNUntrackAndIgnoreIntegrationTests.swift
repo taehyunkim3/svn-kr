@@ -71,6 +71,52 @@ import Testing
     })
 }
 
+@Test func realSVNUntrackAndIgnoreSetsRequestedPropertyKindOnly() async throws {
+    let fixture = try UntrackFixture()
+    defer { fixture.remove() }
+    try fixture.write(Data("local".utf8), relativePath: "Documents/keep-local.txt")
+    try fixture.write(Data("global".utf8), relativePath: "Documents/keep-global.txt")
+    try fixture.addAndCommit()
+
+    try await fixture.client.scheduleLocalPreservingDeletion(
+        at: fixture.workingCopy.path,
+        relativePath: "Documents/keep-local.txt"
+    )
+    try await fixture.client.addIgnoreRule(
+        at: fixture.workingCopy.path,
+        directory: "Documents",
+        pattern: "keep-local.txt",
+        propertyKind: .local
+    )
+    try await fixture.client.scheduleLocalPreservingDeletion(
+        at: fixture.workingCopy.path,
+        relativePath: "Documents/keep-global.txt"
+    )
+    try await fixture.client.addIgnoreRule(
+        at: fixture.workingCopy.path,
+        directory: "Documents",
+        pattern: "keep-global.txt",
+        propertyKind: .global
+    )
+
+    #expect(try Data(contentsOf: fixture.workingCopy.appendingPathComponent("Documents/keep-local.txt")) == Data("local".utf8))
+    #expect(try Data(contentsOf: fixture.workingCopy.appendingPathComponent("Documents/keep-global.txt")) == Data("global".utf8))
+
+    let rules = try await fixture.client.ignoreRules(at: fixture.workingCopy.path)
+    let localRule = try #require(rules.first { $0.pattern == "keep-local.txt" })
+    let globalRule = try #require(rules.first { $0.pattern == "keep-global.txt" })
+    #expect(localRule.propertyKind == .local)
+    #expect(globalRule.propertyKind == .global)
+    #expect((localRule.directory as NSString).lastPathComponent == "Documents")
+    #expect((globalRule.directory as NSString).lastPathComponent == "Documents")
+    #expect(!rules.contains {
+        $0.pattern == "keep-local.txt" && $0.propertyKind == .global
+    })
+    #expect(!rules.contains {
+        $0.pattern == "keep-global.txt" && $0.propertyKind == .local
+    })
+}
+
 private struct UntrackFixture {
     let root: URL
     let repositoryURL: String
