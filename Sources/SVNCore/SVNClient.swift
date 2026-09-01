@@ -1046,6 +1046,13 @@ public actor SVNClient {
         var resolution = CanonicalFileReplacementResolution()
 
         for replacement in snapshot.canonicalFileReplacements {
+            let versionedIdentity = SVNPathIdentity(rawPath: replacement.versionedPath)
+            let versionedRawPath = path + "/" + replacement.versionedPath
+            let localAliasRawPath = path + "/" + replacement.localAliasPath
+            if SVNFileSystem.pathsReferToSameDirectory(versionedRawPath, localAliasRawPath) {
+                resolution.unchanged.insert(versionedIdentity)
+                continue
+            }
             let localURL = root.appendingPathComponent(replacement.localAliasPath)
             guard let values = try? localURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
                   values.isRegularFile == true,
@@ -1065,7 +1072,6 @@ public actor SVNClient {
                       credentials: credentials,
                       outputDestinationURL: baseURL
                   )
-                let versionedIdentity = SVNPathIdentity(rawPath: replacement.versionedPath)
                 if try SVNFileSystem.filesHaveEqualContents(localURL, baseURL) {
                     resolution.unchanged.insert(versionedIdentity)
                 } else {

@@ -1075,7 +1075,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     ])
 }
 
-@Test func workingCopySnapshotDoesNotTreatCanonicalAliasDirectoryAsFileReplacement() async throws {
+@Test func workingCopySnapshotHidesCanonicalAliasDirectoryWhenBothPathsResolveSameNode() async throws {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("svn-file-replacement-directory-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -1106,9 +1106,7 @@ private func writeCredentialTestRawFile(_ data: Data, atPath path: String) throw
     )
     let snapshot = try await client.workingCopySnapshot(at: directory.path)
 
-    #expect(snapshot.statuses == [
-        SVNStatusEntry(path: composed, item: .missing, revision: "7", nodeKind: .directory),
-    ])
+    #expect(snapshot.statuses.isEmpty)
 }
 
 @Test func batchesSelectedCommitTargets() async throws {

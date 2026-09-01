@@ -46,4 +46,19 @@ public enum SVNFileSystem {
             if lhsChunk.isEmpty { return true }
         }
     }
+
+    static func pathsReferToSameDirectory(_ lhs: String, _ rhs: String) -> Bool {
+        var lhsInformation = stat()
+        var rhsInformation = stat()
+        let lhsResult = lhs.withCString { Darwin.lstat($0, &lhsInformation) }
+        let rhsResult = rhs.withCString { Darwin.lstat($0, &rhsInformation) }
+        guard lhsResult == 0,
+              rhsResult == 0,
+              lhsInformation.st_mode & S_IFMT == S_IFDIR,
+              rhsInformation.st_mode & S_IFMT == S_IFDIR else {
+            return false
+        }
+        return lhsInformation.st_dev == rhsInformation.st_dev
+            && lhsInformation.st_ino == rhsInformation.st_ino
+    }
 }
