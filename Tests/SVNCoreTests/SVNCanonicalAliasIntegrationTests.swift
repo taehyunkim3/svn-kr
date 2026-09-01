@@ -453,6 +453,89 @@ func realSVNPreservesRepositoryPathSpellingForDecomposedRegisteredSubdirectory(
     #expect(!committedSnapshot.statuses.contains { $0.path == replacementPath })
 }
 
+@Test(arguments: [
+    "03 설계/300 프로그램설계",
+    "02 분석/99 받은 자료",
+])
+func realSVNHidesUnchangedDirectoryWhoseDiskNameBecameNFD(
+    nfcDirectory: String
+) async throws {
+    let fileManager = FileManager.default
+    let svnPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svn", "/usr/local/bin/svn", "/usr/bin/svn",
+    ]))
+    let svnadminPath = try #require(firstExecutable(at: [
+        "/opt/homebrew/bin/svnadmin", "/usr/local/bin/svnadmin", "/usr/bin/svnadmin",
+    ]))
+    let fixture = URL(fileURLWithPath: "/tmp", isDirectory: true)
+        .appendingPathComponent("svn-real-nfd-status-\(UUID().uuidString)", isDirectory: true)
+    let repository = fixture.appendingPathComponent("repository", isDirectory: true)
+    let workingCopy = fixture.appendingPathComponent("wc", isDirectory: true)
+    defer { try? fileManager.removeItem(at: fixture) }
+
+    try fileManager.createDirectory(at: fixture, withIntermediateDirectories: true)
+    _ = try runIntegrationCommand(svnadminPath, ["create", repository.path])
+    let repositoryURL = URL(fileURLWithPath: repository.path, isDirectory: true).absoluteString
+    _ = try runIntegrationCommand(svnPath, ["mkdir", repositoryURL + "trunk", "-m", "initial"])
+    _ = try runIntegrationCommand(svnPath, ["checkout", repositoryURL + "trunk", workingCopy.path])
+
+    let components = nfcDirectory.split(separator: "/").map(String.init)
+    let nfcParent = try #require(components.first)
+    let nfcName = try #require(components.last)
+    let nfdDirectory = nfcParent + "/" + nfcName.decomposedStringWithCanonicalMapping
+    try createRawDirectory(atPath: workingCopy.path + "/" + nfcParent)
+    try createRawDirectory(atPath: workingCopy.path + "/" + nfcDirectory)
+    try writeRawFile(
+        Data("tracked".utf8),
+        atPath: workingCopy.path + "/" + nfcDirectory + "/tracked.txt"
+    )
+    _ = try runIntegrationCommand(svnPath, ["add", "--force", "."], currentDirectory: workingCopy)
+    _ = try runIntegrationCommand(
+        svnPath,
+        ["commit", ".", "-m", "add directory"],
+        currentDirectory: workingCopy
+    )
+    try renameRawPath(
+        workingCopy.path + "/" + nfcDirectory,
+        to: workingCopy.path + "/" + nfdDirectory
+    )
+
+    let statusXML = try runIntegrationCommand(
+        svnPath,
+        ["status", "--verbose", "--no-ignore", "--xml"],
+        currentDirectory: workingCopy
+    )
+    let rawEntries = try SVNXMLParser.workingCopyEntries(from: Data(statusXML.utf8))
+    #expect(rawEntries.contains {
+        Data($0.path.utf8) == Data(nfcDirectory.utf8) && $0.status == "missing"
+    })
+    #expect(rawEntries.contains {
+        Data($0.path.utf8) == Data(nfdDirectory.utf8) && $0.status == "unversioned"
+    })
+
+    let client = SVNClient(
+        executablePath: svnPath,
+        configDirectoryPath: fixture.appendingPathComponent("svn-config", isDirectory: true).path
+    )
+    let snapshot = try await client.workingCopySnapshot(at: workingCopy.path)
+    #expect(snapshot.statuses.isEmpty)
+
+    let trackedPath = nfcDirectory + "/tracked.txt"
+    try writeRawFile(
+        Data("changed".utf8),
+        atPath: workingCopy.path + "/" + nfdDirectory + "/tracked.txt"
+    )
+    let changedSnapshot = try await client.workingCopySnapshot(at: workingCopy.path)
+    #expect(changedSnapshot.statuses == [
+        SVNStatusEntry(
+            path: trackedPath,
+            item: .modified,
+            revision: "2",
+            nodeKind: .file
+        ),
+    ])
+}
+
 @Test func canonicalAliasDiskImageDetachRetriesBeforeWarning() {
     var attempts = 0
     var waits: [TimeInterval] = []
@@ -511,6 +594,17 @@ private func writeRawFile(_ data: Data, atPath path: String) throws {
     }
 }
 
+private func renameRawPath(_ source: String, to destination: String) throws {
+    let result = source.withCString { sourcePath in
+        destination.withCString { destinationPath in
+            Darwin.rename(sourcePath, destinationPath)
+        }
+    }
+    guard result == 0 else {
+        throw IntegrationPOSIXError(operation: "rename", path: source, code: errno)
+    }
+}
+
 private let diskImageDetachAttemptCount = 3
 private let diskImageDetachRetryInterval: TimeInterval = 0.5
 
@@ -535,12 +629,14 @@ private func detachDiskImage(
 @discardableResult
 private func runIntegrationCommand(
     _ executablePath: String,
-    _ arguments: [String]
+    _ arguments: [String],
+    currentDirectory: URL? = nil
 ) throws -> String {
     let process = Process()
     let output = Pipe()
     process.executableURL = URL(fileURLWithPath: executablePath)
     process.arguments = arguments
+    process.currentDirectoryURL = currentDirectory
     process.standardOutput = output
     process.standardError = output
     try process.run()
